@@ -48,6 +48,9 @@ async function closeAll() {
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 }
 
+/** Posição do botão Desfazer na barra fixa (ver TOP_BAR em test/webview). */
+const TOP_BAR_UNDO = 13;
+
 const pages = async () =>
   (await vscode.workspace.findFiles('wiki*/docs/**/*.md')).sort((a, b) => a.path.localeCompare(b.path));
 
@@ -103,6 +106,17 @@ export function defineTests() {
       await vscode.commands.executeCommand('undo');
       await until(() => document.getText(), text => text === original, 'documento não voltou ao original');
       await until(() => session.saved(), text => text === original, 'editor visual não voltou ao original');
+    });
+
+    test('botão Desfazer da barra do editor visual volta o documento ao original', async () => {
+      const [uri] = await pages();
+      const { session, document } = await openVisual(uri);
+      const original = document.getText();
+      session.insert('Texto para o botão desfazer.');
+      await until(() => document.getText(), text => text.includes('Texto para o botão desfazer.'), 'edição não chegou');
+      await session.settled();
+      session.clickTopBar(TOP_BAR_UNDO);
+      await until(() => document.getText(), text => text === original, 'o botão Desfazer não desfez');
     });
 
     test('mudança feita fora (editor de texto) aparece no editor visual', async () => {

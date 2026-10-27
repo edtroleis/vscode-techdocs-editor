@@ -113,11 +113,12 @@ Decisões e achados:
 | R2 | O Mocha de navegador (UMD) troca o `module.exports` do bundle de testes, e o VS Code chamava o `run` do Mocha | Bundle web dos testes em IIFE, com `module.exports` definido no fim |
 | R3 | Bundle do webview: 2,8 MB minificado (976 KB gzip). Maiores: linguagens do CodeMirror (~470 KB, `@codemirror/legacy-modes` + `@lezer/*`) e KaTeX (263 KB), importados pelo Crepe mesmo com LaTeX desligado | Cabe no limite de 5 MB do `.vsix`. Fase 2: bundle ESM com `splitting` (linguagens carregadas sob demanda) e tirar o KaTeX |
 | R4 | `npm audit`: 4 avisos de severidade baixa no `katex` (vem do Crepe) | Some junto com o R3 |
-| R5 | Não verificado automaticamente: **Ctrl+Z com o foco dentro do editor visual**. O ProseMirror tem desfazer próprio, e o VS Code também recebe a tecla: risco de desfazer duas vezes (W4 da spec 01) | Conferir à mão (F5) antes da fase 2; se acontecer, desligar o histórico do ProseMirror e deixar só o do documento |
-| R6 | Mudança vinda de fora recria o editor visual (perde cursor e rolagem) | Aceitável na prova; W3 da spec 01 pede manter a posição: fase 2 |
+| R5 | Não verificado automaticamente: **Ctrl+Z com o foco dentro do editor visual**. O ProseMirror tem desfazer próprio, e o VS Code também recebe a tecla: risco de desfazer duas vezes (W4 da spec 01) | **Resolvido**: o histórico é um só, o do documento do VS Code. Botões e Ctrl+Z/Y do visual mandam `undo`/`redo` ao host, que espera o painel ficar ativo antes do comando (o aviso de painel ativo chegava depois do clique e o desfazer se perdia). Coberto por `e2e/history.spec.ts` no VS Code de verdade |
+| R6 | Mudança vinda de fora recria o editor visual (perde cursor e rolagem) | **Resolvido**: `setMarkdown` troca só o trecho diferente (`ui/src/externalContent.ts`); cursor, rolagem e histórico ficam |
 
 Código: `packages/core` (por enquanto só `mkdocs.ts`, com os testes), `packages/ui` (editor do plugin sem
 Material UI) e `packages/extension`. Mudanças no código que veio do plugin: `specs/para-o-plugin.md`.
 
-Comandos (raiz): `npm run typecheck`, `npm run test:unit`, `npm run test:webview`, `npm run test:vscode`,
-`npm run test:web`, `npm run roundtrip -- <pasta>`. F5 no VS Code abre a extensão com as wikis de teste.
+Comandos (raiz): `npm run test:fast` (typecheck, unitários e webview, ~1 min), `npm run test:all` (tudo, inclusive o
+VS Code de verdade); separados: `test:unit`, `test:webview`, `test:editor`, `test:vscode`, `test:web`, `test:e2e`
+(Playwright dirigindo o VS Code desktop sem janela) e `npm run roundtrip -- <pasta>`. F5 no VS Code abre a extensão com as wikis de teste.

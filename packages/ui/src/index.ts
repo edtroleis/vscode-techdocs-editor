@@ -4,3 +4,4 @@ export { editorTextFrom } from './labels';
 export type { EditorText, TextLookup } from './labels';
 export { en } from './messages/en';
 export { ptBR } from './messages/pt-BR';
+export type { ExternalHistory } from './externalHistory';

@@ -13,10 +13,14 @@
   "scripts": {
     "build": "npm run build -w packages/extension",
     "typecheck": "tsc -p packages/core && tsc -p packages/ui && tsc -p packages/extension && tsc -p tsconfig.test.json",
+    "test:fast": "npm run typecheck && npm run test:unit && npm run test:webview",
+    "test:all": "npm run test:fast && npm run test:editor && npm run test:vscode && npm run test:web && playwright test -c packages/extension/e2e/playwright.config.ts",
     "test:unit": "vitest run",
+    "test:editor": "playwright test -c packages/ui/e2e/playwright.config.ts",
     "test:webview": "npm run build && playwright test -c packages/extension/test/webview/playwright.config.ts",
     "test:vscode": "npm run build && node packages/extension/test/vscode/run.mjs",
     "test:web": "npm run build && node packages/extension/test/vscode/run-web.mjs",
+    "test:e2e": "npm run build && playwright test -c packages/extension/e2e/playwright.config.ts",
     "roundtrip": "npm run build && node packages/extension/test/webview/roundtrip.mjs"
   },
   "devDependencies": {

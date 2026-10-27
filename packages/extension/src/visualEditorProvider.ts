@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { HostMessage, WebviewMessage } from './protocol';
+import { rebase } from './rebase';
 import { minimalEdit, toEol, toLf } from './textSync';
 
 /**
@@ -76,7 +77,9 @@ export class EditorSession {
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document !== document || event.contentChanges.length === 0) return;
         const text = toLf(document.getText());
-        if (text === this.lastFromWebview) return;
+        // Eco da própria edição do webview. Desfazer e refazer nunca são eco, mesmo quando voltam a um
+        // texto que o webview mandou (refazer volta exatamente a ele)
+        if (event.reason === undefined && text === this.lastFromWebview) return;
         this.post({ type: 'update', text });
       }),
     );
@@ -97,6 +100,11 @@ export class EditorSession {
   /** Testes: insere Markdown no cursor do editor visual. */
   insert(markdown: string) {
     this.post({ type: 'test:insert', markdown });
+  }
+
+  /** Testes: clica no botão da barra fixa do editor visual. */
+  clickTopBar(index: number) {
+    this.post({ type: 'test:clickTopBar', index });
   }
 
   /** Espera as edições recebidas do webview chegarem ao documento. */
@@ -130,7 +138,15 @@ export class EditorSession {
         this.markReady();
         return;
       case 'edit':
-        this.queue = this.queue.then(() => this.apply(message.text));
+        this.queue = this.queue.then(() => this.apply(message.before, message.after));
+        return;
+      case 'undo':
+      case 'redo':
+        // Na fila: a última edição do webview chega ao documento antes de desfazer. O comando age no
+        // editor ativo, que tem de ser este (ver activated)
+        this.queue = this.queue.then(async () => {
+          if (await this.activated()) await vscode.commands.executeCommand(message.type);
+        });
         return;
       case 'test:saved':
         this.requests.get(message.id)?.(message.text);
@@ -139,20 +155,59 @@ export class EditorSession {
     }
   }
 
-  private async apply(text: string) {
-    const current = toLf(this.document.getText());
-    if (text === current) return;
-    this.lastFromWebview = text;
-    // Trecho calculado no texto como está no arquivo (com o fim de linha dele)
-    const before = this.document.getText();
-    const { start, end, text: replacement } = minimalEdit(before, toEol(text, this.eol));
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(
-      this.document.uri,
-      new vscode.Range(this.document.positionAt(start), this.document.positionAt(end)),
-      replacement,
-    );
-    await vscode.workspace.applyEdit(edit);
+  /**
+   * Espera o painel ficar ativo. O clique ou a tecla vieram do webview, mas o aviso de painel ativo
+   * pode chegar ao host depois da mensagem (com o foco antes no texto ao lado, o desfazer se perdia).
+   * Se não chegar logo, traz o painel para a frente; desiste depois de um tempo, para nunca desfazer
+   * em outro editor.
+   */
+  private async activated(timeoutMs = 1_000): Promise<boolean> {
+    if (this.panel.active) return true;
+    const changed = new Promise<boolean>(resolve => {
+      const timer = setTimeout(() => {
+        listener.dispose();
+        resolve(this.panel.active);
+      }, timeoutMs);
+      const listener = this.panel.onDidChangeViewState(({ webviewPanel }) => {
+        if (!webviewPanel.active) return;
+        clearTimeout(timer);
+        listener.dispose();
+        resolve(true);
+      });
+    });
+    setTimeout(() => {
+      if (!this.panel.active) this.panel.reveal(this.panel.viewColumn, false);
+    }, 200);
+    return changed;
+  }
+
+  /**
+   * Aplica a mudança do webview ao documento como ele está agora. Se o documento mudar no meio
+   * (alguém digitando no texto ao lado), o VS Code recusa a edição: calcula de novo e tenta outra vez.
+   */
+  private async apply(before: string, after: string) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const current = toLf(this.document.getText());
+      const text = rebase(before, after, current);
+      if (text === current) return;
+      this.lastFromWebview = text;
+      // Trecho calculado no texto como está no arquivo (com o fim de linha dele)
+      const file = this.document.getText();
+      const { start, end, text: replacement } = minimalEdit(file, toEol(text, this.eol));
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(
+        this.document.uri,
+        new vscode.Range(this.document.positionAt(start), this.document.positionAt(end)),
+        replacement,
+      );
+      const applied = await vscode.workspace.applyEdit(edit);
+      this.lastFromWebview = undefined;
+      if (applied) {
+        // Juntou com mudanças que o webview ainda não tinha: ele precisa do resultado
+        if (text !== after) this.post({ type: 'update', text });
+        return;
+      }
+    }
   }
 }
 

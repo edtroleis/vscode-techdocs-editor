@@ -1,7 +1,8 @@
 // Suíte de integração no VS Code para navegador (o mesmo código que roda no vscode.dev).
 import { runTests } from '@vscode/test-web';
 import { join } from 'node:path';
-import { createWorkspace, extensionRoot } from './workspace.mjs';
+import workspaceModule from './workspace.cjs';
+const { createWorkspace, extensionRoot } = workspaceModule;
 
 try {
   await runTests({

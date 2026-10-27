@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 const HARNESS = pathToFileURL(join(__dirname, 'harness.html')).href;
 
-type Sent = { type: string; text?: string; id?: number };
+type Sent = { type: string; text?: string; after?: string; id?: number };
 
 export const sent = (page: Page) => page.evaluate(() => (window as unknown as { sent: Sent[] }).sent);
 
@@ -30,7 +30,7 @@ export async function savedText(page: Page): Promise<string> {
   return (await sent(page)).find(m => m.type === 'test:saved' && m.id === id)!.text!;
 }
 
-/** Último texto que o webview mandou ao host como edição. */
+/** Texto depois da última edição que o webview mandou ao host. */
 export async function lastEdit(page: Page): Promise<string | undefined> {
-  return (await sent(page)).filter(m => m.type === 'edit').at(-1)?.text;
+  return (await sent(page)).filter(m => m.type === 'edit').at(-1)?.after;
 }

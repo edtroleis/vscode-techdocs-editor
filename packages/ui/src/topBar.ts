@@ -7,6 +7,7 @@ import { liftListItem } from '@milkdown/kit/prose/schema-list';
 import { deleteTable } from '@milkdown/kit/prose/tables';
 import { NodeSelection } from '@milkdown/kit/prose/state';
 import type { Command, EditorState } from '@milkdown/kit/prose/state';
+import { externalHistoryCtx } from './externalHistory';
 import { inlineCodeTyping, toggleInlineCodeTyping } from './inlineCodeTyping';
 
 const icon = (path: string) =>
@@ -168,6 +169,22 @@ export function buildTopBar(builder: TopBarBuilder) {
 
   builder
     .addGroup('history', 'Histórico')
-    .addItem('undo', { icon: UNDO_ICON, active: () => false, onRun: (ctx: Ctx) => run(ctx, undo) })
-    .addItem('redo', { icon: REDO_ICON, active: () => false, onRun: (ctx: Ctx) => run(ctx, redo) });
+    .addItem('undo', {
+      icon: UNDO_ICON,
+      active: () => false,
+      onRun: (ctx: Ctx) => {
+        const external = ctx.get(externalHistoryCtx);
+        if (external) external.undo();
+        else run(ctx, undo);
+      },
+    })
+    .addItem('redo', {
+      icon: REDO_ICON,
+      active: () => false,
+      onRun: (ctx: Ctx) => {
+        const external = ctx.get(externalHistoryCtx);
+        if (external) external.redo();
+        else run(ctx, redo);
+      },
+    });
 }
