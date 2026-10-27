@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { fromEditor, toEditor } from '@edtroleis/techdocs-editor-core';
 import { MarkdownEditor, MarkdownEditorHandle, editorTextFrom, en, ptBR } from '@edtroleis/techdocs-editor-ui';
-import type { HostMessage, WebviewMessage } from '../src/protocol';
+import type { HostMessage, ProblemView, WebviewLabels, WebviewMessage } from '../src/protocol';
 import { rebase } from '../src/rebase';
 import './webview.css';
 
@@ -14,7 +14,10 @@ declare function acquireVsCodeApi(): { postMessage(message: WebviewMessage): voi
 const vscode = acquireVsCodeApi();
 const post = (message: WebviewMessage) => vscode.postMessage(message);
 
-type Content = { text: string; language: string; baseUri: string };
+type Content = { text: string; language: string; baseUri: string; labels: WebviewLabels };
+
+/** Texto com `{0}` trocado pelo valor. */
+const format = (template: string, value: number) => template.replace('{0}', String(value));
 
 function lookupFor(language: string) {
   const messages = language.toLowerCase().startsWith('pt') ? ptBR : en;
@@ -29,6 +32,8 @@ function App({ content }: { content: Content }) {
   // Texto do documento como o webview o conhece: o que veio do host ou o último enviado
   const documentText = useRef(content.text);
   const text = useMemo(() => editorTextFrom(lookupFor(content.language)), [content.language]);
+  const [problems, setProblems] = useState<ProblemView[]>([]);
+  const problemLines = useMemo(() => [...new Set(problems.map(p => p.line))], [problems]);
 
   useEffect(() => {
     const listener = (event: MessageEvent<HostMessage>) => {
@@ -53,11 +58,17 @@ function App({ content }: { content: Content }) {
           post({ type: 'edit', before, after });
           return;
         }
+        case 'lint':
+          setProblems(message.problems);
+          return;
         case 'test:getSaved':
           post({ type: 'test:saved', id: message.id, text: fromEditor(editor.current!.getMarkdown()) });
           return;
         case 'test:insert':
           editor.current!.insertMarkdown(message.markdown);
+          return;
+        case 'test:click':
+          document.querySelector<HTMLElement>(message.selector)?.click();
           return;
         case 'test:clickTopBar': {
           const button = document.querySelectorAll<HTMLElement>('.top-bar-item')[message.index];
@@ -86,7 +97,13 @@ function App({ content }: { content: Content }) {
     return new URL(url, `${content.baseUri.replace(/\/?$/, '/')}`).toString();
   };
 
+  const lineTitle = (line: number) => {
+    const here = problems.filter(p => p.line === line).map(p => p.message);
+    return [...here, format(content.labels.showLine, line)].join('\n');
+  };
+
   return (
+    <>
     <MarkdownEditor
       ref={editor}
       initialValue={initialValue}
@@ -101,11 +118,48 @@ function App({ content }: { content: Content }) {
       // Envio de imagens: fase 2 (grava em <docs>/assets/ pelo host)
       onUploadImage={() => Promise.reject(new Error('Envio de imagens ainda não disponível'))}
       resolveImage={resolveImage}
-      problemLines={[]}
+      problemLines={problemLines}
       text={text}
       onReady={() => post({ type: 'ready' })}
       history={history}
+      onLineClick={line => post({ type: 'showLine', line })}
+      lineTitle={lineTitle}
     />
+    <Problems problems={problems} labels={content.labels} />
+    </>
+  );
+}
+
+/** Problemas de formatação da página (spec 01, L-3 e L-4): a lista, "Ver linha" e "Ajustar agora". */
+function Problems({ problems, labels }: { problems: ProblemView[]; labels: WebviewLabels }) {
+  if (problems.length === 0) return null;
+  const title = problems.length === 1 ? labels.problemsOne : format(labels.problemsOther, problems.length);
+  return (
+    <section className="problems" aria-label={title}>
+      <details open>
+        <summary>{title}</summary>
+        <ul>
+          {problems.map((problem, i) => (
+            <li key={i}>
+              <button
+                type="button"
+                className="problem-line"
+                title={format(labels.showLine, problem.line)}
+                onClick={() => post({ type: 'showLine', line: problem.line })}
+              >
+                {format(labels.line, problem.line)}
+              </button>{' '}
+              {problem.message}
+            </li>
+          ))}
+        </ul>
+      </details>
+      {problems.some(p => p.fixable) && (
+        <button type="button" className="problems-fix" onClick={() => post({ type: 'fixLint' })}>
+          {labels.fixAll}
+        </button>
+      )}
+    </section>
   );
 }
 

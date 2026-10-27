@@ -1,4 +1,10 @@
 {
   "This page has Git conflict markers. Resolve the conflict in the Markdown text before editing it here.": "Esta página tem marcadores de conflito do Git. Resolva o conflito no texto Markdown antes de editar aqui.",
-  "Open as text": "Abrir como texto"
+  "Open as text": "Abrir como texto",
+  "Fix formatting automatically": "Ajustar a formatação automaticamente",
+  "1 formatting problem": "1 problema de formatação",
+  "{0} formatting problems": "{0} problemas de formatação",
+  "Fix automatically": "Ajustar agora",
+  "Line {0}": "Linha {0}",
+  "Show line {0} in the Markdown text": "Ver a linha {0} no texto Markdown"
 }

@@ -30,6 +30,17 @@
   user-select: none;
   pointer-events: none;
 }
+.docs-editor-line-link {
+  pointer-events: auto;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.docs-editor-line-link:hover {
+  text-decoration: underline;
+}
+.docs-editor-line-link:focus-visible {
+  outline: 1px solid var(--docs-editor-focus, currentColor);
+}
 .docs-editor-problem {
   color: var(--docs-editor-error, #d32f2f);
   font-weight: 700;

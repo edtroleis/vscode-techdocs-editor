@@ -4,7 +4,16 @@ import { pathToFileURL } from 'node:url';
 
 const HARNESS = pathToFileURL(join(__dirname, 'harness.html')).href;
 
-type Sent = { type: string; text?: string; after?: string; id?: number };
+type Sent = { type: string; text?: string; after?: string; id?: number; line?: number };
+
+/** Os textos que o host manda no `init` (os em inglês do `vscode.l10n`). */
+export const LABELS = {
+  problemsOne: '1 formatting problem',
+  problemsOther: '{0} formatting problems',
+  fixAll: 'Fix automatically',
+  line: 'Line {0}',
+  showLine: 'Show line {0} in the Markdown text',
+};
 
 export const sent = (page: Page) => page.evaluate(() => (window as unknown as { sent: Sent[] }).sent);
 
@@ -16,7 +25,7 @@ export async function openWebview(page: Page, text: string, language = 'pt-br') 
   await expect.poll(async () => (await sent(page)).some(m => m.type === 'loaded'), { message: 'webview carregado' }).toBe(true);
   await page.evaluate(
     message => window.postMessage(message, '*'),
-    { type: 'init', text, language, baseUri: 'file:///wiki/docs' },
+    { type: 'init', text, language, baseUri: 'file:///wiki/docs', labels: LABELS },
   );
   await expect.poll(async () => (await sent(page)).some(m => m.type === 'ready'), { message: 'editor pronto' }).toBe(true);
   return { errors };
@@ -34,3 +43,6 @@ export async function savedText(page: Page): Promise<string> {
 export async function lastEdit(page: Page): Promise<string | undefined> {
   return (await sent(page)).filter(m => m.type === 'edit').at(-1)?.after;
 }
+
+/** Mensagem do host para o webview. */
+export const fromHost = (page: Page, message: object) => page.evaluate(m => window.postMessage(m, '*'), message);

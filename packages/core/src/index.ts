@@ -1,6 +1,7 @@
 export * from './checks';
 export * from './github';
 export * from './lint';
+export * from './lintRules';
 export * from './merge3';
 export * from './mkdocs';
 export * from './pageDates';

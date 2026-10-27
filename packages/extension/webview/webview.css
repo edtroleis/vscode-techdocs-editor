@@ -62,3 +62,79 @@ body .docs-editor {
   outline: 1px solid var(--vscode-focusBorder);
   outline-offset: 2px;
 }
+
+/* Problemas de formatação (spec 01, L-3): presos no fim da janela, sem cobrir o texto */
+.problems {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 6px 16px;
+  border-top: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, #8884));
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.problems details {
+  flex: 1;
+  min-width: 0;
+}
+
+.problems summary {
+  cursor: pointer;
+  color: var(--vscode-editorWarning-foreground);
+  font-weight: 600;
+}
+
+.problems ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.problems li {
+  padding: 2px 0;
+}
+
+.problems .problem-line {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--vscode-textLink-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.problems .problem-line:hover {
+  text-decoration: underline;
+}
+
+.problems .problems-fix {
+  flex: none;
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.problems .problems-fix:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.problems button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+body .docs-editor {
+  --docs-editor-focus: var(--vscode-focusBorder);
+}

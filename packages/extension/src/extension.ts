@@ -1,13 +1,20 @@
 import * as vscode from 'vscode';
+import { LintActions } from './lintActions';
+import { LintService } from './lintService';
 import { LocalSites } from './localSites';
 import { openVisualByDefault } from './openByDefault';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
-  const provider = new VisualEditorProvider(context.extensionUri);
   const sites = new LocalSites();
+  const lint = new LintService(sites);
+  const provider = new VisualEditorProvider(context.extensionUri, lint);
   context.subscriptions.push(
     sites,
+    lint,
+    vscode.languages.registerCodeActionsProvider({ language: 'markdown' }, new LintActions(lint), {
+      providedCodeActionKinds: LintActions.kinds,
+    }),
     openVisualByDefault(sites),
     vscode.window.registerCustomEditorProvider(VisualEditorProvider.viewType, provider, {
       // Trocar de aba recriaria o editor e perderia cursor e rolagem
@@ -24,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites };
+  return { provider, sites, lint };
 }
 
 function activeCustomEditorUri(): vscode.Uri | undefined {

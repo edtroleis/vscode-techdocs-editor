@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import type { HostMessage, WebviewMessage } from './protocol';
+import type { LintService } from './lintService';
+import type { HostMessage, WebviewLabels, WebviewMessage } from './protocol';
 import { hasConflictMarkers } from './docsSite';
 import { rebase } from './rebase';
 import { minimalEdit, toEol, toLf } from './textSync';
@@ -15,11 +16,14 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   private readonly sessions = new Map<string, EditorSession>();
   private readonly onDidOpenEmitter = new vscode.EventEmitter<string>();
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly lint: LintService,
+  ) {}
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
-    const session = new EditorSession(document, panel, this.extensionUri);
+    const session = new EditorSession(document, panel, this.extensionUri, this.lint);
     this.sessions.set(key, session);
     panel.onDidDispose(() => {
       if (this.sessions.get(key) === session) this.sessions.delete(key);
@@ -64,6 +68,7 @@ export class EditorSession {
     private readonly document: vscode.TextDocument,
     private readonly panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
+    private readonly lint: LintService,
   ) {
     this.ready = new Promise(resolve => (this.markReady = resolve));
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
@@ -77,6 +82,9 @@ export class EditorSession {
 
     this.disposables.push(
       panel.webview.onDidReceiveMessage((message: WebviewMessage) => this.receive(message)),
+      lint.onDidLint(({ uri, problems }) => {
+        if (uri.toString() === document.uri.toString()) this.post({ type: 'lint', problems });
+      }),
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document !== document || event.contentChanges.length === 0) return;
         const text = toLf(document.getText());
@@ -118,6 +126,11 @@ export class EditorSession {
     this.post({ type: 'test:clickTopBar', index });
   }
 
+  /** Testes: clica no elemento do webview que casar com o seletor. */
+  click(selector: string) {
+    this.post({ type: 'test:click', selector });
+  }
+
   /** Espera as edições recebidas do webview chegarem ao documento. */
   settled(): Promise<unknown> {
     return this.queue;
@@ -147,7 +160,18 @@ export class EditorSession {
           .then(() => this.panel.dispose());
         return;
       case 'ready':
+        this.post({ type: 'lint', problems: this.lint.problems(this.document.uri) });
         this.markReady();
+        return;
+      case 'fixLint':
+        // Na fila: a última edição do webview chega ao documento antes da correção
+        this.queue = this.queue.then(async () => {
+          const edit = await this.lint.fixEdit(this.document);
+          if (edit) await vscode.workspace.applyEdit(edit);
+        });
+        return;
+      case 'showLine':
+        void this.showLine(message.line);
         return;
       case 'edit':
         if (this.conflicted) return;
@@ -166,6 +190,20 @@ export class EditorSession {
         this.requests.delete(message.id);
         return;
     }
+  }
+
+  /**
+   * "Ver linha" (spec 01, W12): o texto Markdown na linha, no editor de texto já aberto ao lado ou num
+   * novo, ao lado do visual.
+   */
+  private async showLine(line: number) {
+    const position = new vscode.Position(Math.max(0, Math.min(line, this.document.lineCount) - 1), 0);
+    const open = vscode.window.visibleTextEditors.find(e => e.document === this.document);
+    const editor = await vscode.window.showTextDocument(this.document, {
+      viewColumn: open?.viewColumn ?? vscode.ViewColumn.Beside,
+      selection: new vscode.Range(position, position),
+    });
+    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
   }
 
   /** Conteúdo do documento para o webview: o editor, ou o aviso se o arquivo tem marcadores de conflito. */
@@ -187,6 +225,7 @@ export class EditorSession {
       text,
       language: vscode.env.language,
       baseUri: this.panel.webview.asWebviewUri(this.pageDir).toString(),
+      labels: webviewLabels(),
     });
   }
 
@@ -244,6 +283,16 @@ export class EditorSession {
       }
     }
   }
+}
+
+function webviewLabels(): WebviewLabels {
+  return {
+    problemsOne: vscode.l10n.t('1 formatting problem'),
+    problemsOther: vscode.l10n.t('{0} formatting problems'),
+    fixAll: vscode.l10n.t('Fix automatically'),
+    line: vscode.l10n.t('Line {0}'),
+    showLine: vscode.l10n.t('Show line {0} in the Markdown text'),
+  };
 }
 
 function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string {

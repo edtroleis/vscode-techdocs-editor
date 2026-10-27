@@ -6,6 +6,7 @@
  * fim de linha do Windows. Nada é gravado em disco: cada teste reverte o documento no fim.
  */
 import * as vscode from 'vscode';
+import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
@@ -30,7 +31,7 @@ async function until<T>(read: () => T | Promise<T>, accept: (value: T) => boolea
   return value;
 }
 
-type Api = { provider: VisualEditorProvider; sites: LocalSites };
+type Api = { provider: VisualEditorProvider; sites: LocalSites; lint: LintService };
 
 async function api(): Promise<Api> {
   const extension = vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor');
@@ -224,6 +225,113 @@ export function defineTests() {
       await vscode.window.showTextDocument(page);
       await new Promise(resolve => setTimeout(resolve, 1_000));
       equal(visualTabs(page).length, 0, 'abriu no visual com a configuração desligada');
+    });
+  });
+
+  suite('Lint', function () {
+    this.timeout(60_000);
+    teardown(async () => {
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+      await closeAll();
+    });
+
+    const file = (path: string) => vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, path);
+    const ours = (uri: vscode.Uri) => vscode.languages.getDiagnostics(uri).filter(d => d.source === 'TechDocs');
+    const rules = (uri: vscode.Uri) => ours(uri).map(d => (d.code as { value: string }).value).sort();
+
+    async function appendLines(document: vscode.TextDocument, text: string) {
+      const edit = new vscode.WorkspaceEdit();
+      edit.insert(document.uri, document.lineAt(document.lineCount - 1).range.end, text);
+      ok(await vscode.workspace.applyEdit(edit), 'edição recusada');
+    }
+
+    test('as páginas das wikis de teste não têm problemas', async () => {
+      await (await api()).sites.ready;
+      for (const uri of await pages()) {
+        const document = await vscode.workspace.openTextDocument(uri);
+        const problems = await (await api()).lint.lintNow(document);
+        equal(JSON.stringify(problems), '[]', `${vscode.workspace.asRelativePath(uri)} com problemas`);
+      }
+    });
+
+    test('problema aparece no painel com a linha e o texto simples; a configuração da pipeline vale', async () => {
+      await (await api()).sites.ready;
+      const uri = file('wiki/docs/index.md');
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+      const long = 'Uma linha bem comprida '.repeat(8);
+      await appendLines(document, `\n${long}<b>html</b>\n\nTexto com espaços no fim.   \n`);
+      await until(() => rules(uri), r => r.includes('MD009'), 'o problema não apareceu no painel');
+      equal(rules(uri).join(), 'MD009', 'só o MD009: MD013 e MD033 estão desligados no .markdownlint.yaml');
+      const [diagnostic] = ours(uri);
+      equal(diagnostic.message, 'There are extra spaces at the end of the line', 'texto do problema');
+      equal(document.lineAt(diagnostic.range.start.line).text, 'Texto com espaços no fim.   ', 'linha do problema');
+      equal(diagnostic.severity, vscode.DiagnosticSeverity.Warning, 'gravidade');
+    });
+
+    test('"Ajustar a formatação automaticamente" na lâmpada corrige e o aviso some', async () => {
+      await (await api()).sites.ready;
+      const uri = file('wiki/docs/index.md');
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+      const original = document.getText();
+      await appendLines(document, '\nTexto com espaços no fim.   \n');
+      // O aviso desta linha (não um que sobrou do teste anterior, antes do lint do texto revertido)
+      await until(
+        () => ours(uri).map(d => (d.range.start.line < document.lineCount ? document.lineAt(d.range.start.line).text : '')),
+        lines => lines.length === 1 && lines[0] === 'Texto com espaços no fim.   ',
+        'o problema não apareceu',
+      );
+      const actions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
+        'vscode.executeCodeActionProvider',
+        uri,
+        ours(uri)[0].range,
+        vscode.CodeActionKind.QuickFix.value,
+      );
+      const fix = actions.find(a => a.title === 'Fix formatting automatically');
+      ok(fix?.edit, `ação de correção não oferecida: [${actions.map(a => a.title).join(', ')}]`);
+      ok(await vscode.workspace.applyEdit(fix!.edit!), 'correção recusada');
+      equal(document.getText(), `${original}\nTexto com espaços no fim.\n`, 'texto corrigido');
+      await until(() => ours(uri).length, n => n === 0, 'o aviso não saiu depois de corrigir');
+    });
+
+    test('problema sem correção automática não oferece a lâmpada', async () => {
+      await (await api()).sites.ready;
+      const uri = file('wiki/docs/index.md');
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+      await appendLines(document, '\n```\nsem linguagem\n```\n');
+      await until(() => rules(uri).join(), r => r === 'MD040', 'o problema não apareceu');
+      const actions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
+        'vscode.executeCodeActionProvider',
+        uri,
+        ours(uri)[0].range,
+        vscode.CodeActionKind.QuickFix.value,
+      );
+      equal(actions.filter(a => a.title === 'Fix formatting automatically').length, 0, 'lâmpada num problema sem correção');
+    });
+
+    test('arquivo fora de um docs_dir não é verificado', async () => {
+      const uri = file('crlf/pagina.md');
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+      await appendLines(document, '\r\nTexto com espaços no fim.   \r\n');
+      await new Promise(resolve => setTimeout(resolve, 1_000));
+      equal(ours(uri).length, 0, 'arquivo fora do docs_dir com diagnostics');
+    });
+
+    test('"Ajustar agora" no editor visual corrige o documento', async () => {
+      await (await api()).sites.ready;
+      const uri = file('wiki/docs/index.md');
+      const { session, document } = await openVisual(uri);
+      // Um Título 1 a mais, vindo do texto (o visual não produz espaços no fim: o tidy tira)
+      await appendLines(document, '\n# Seção extra\n\nTexto da seção.\n');
+      await until(async () => (await api()).lint.problems(uri).map(p => p.rule).join(), r => r === 'MD025', 'lint não rodou');
+      await until(() => session.saved(), text => text === document.getText(), 'o visual não recebeu a mudança');
+      session.click('.problems-fix');
+      await until(() => document.getText(), text => text.includes('\n## Seção extra\n'), 'a correção não chegou ao documento');
+      await until(async () => (await api()).lint.problems(uri).length, n => n === 0, 'o problema continuou');
+      await until(() => session.saved(), text => text === document.getText(), 'o visual não recebeu o texto corrigido');
     });
   });
 }

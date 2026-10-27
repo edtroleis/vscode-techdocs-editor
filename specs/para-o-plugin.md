@@ -13,6 +13,8 @@ usar os pacotes `core` e `ui` e estas mudanças chegam lá sozinhas; até lá, f
 | 2026-10-27 | `ui/src/MarkdownEditor.tsx` | `onChange(markdown, previous)`; no handle, `setMarkdown`, `pendingChange`, `flushChange`; prop `history` | Mudança de fora entra no editor sem recriá-lo (cursor, rolagem e histórico ficam); a extensão manda só o que mudou | `test/webview/update.spec.ts` |
 | 2026-10-27 | `ui/src/externalContent.ts` (novo) | `setMarkdown` troca só o trecho diferente; compara sem o `id` dos títulos e com o parágrafo vazio final; diferença que pega estrutura (tabela, lista) troca os blocos de primeiro nível inteiros | Sem isso, a diferença ia do primeiro título ao fim (cursor ia para o fim) e tabela consertada pelo plugin de tabelas não voltava ao desfazer | `ui/src/externalContent.test.ts`, `e2e/history.spec.ts` |
 | 2026-10-27 | `ui/src/externalHistory.ts` (novo), `ui/src/topBar.ts` | Desfazer/refazer da barra e Ctrl+Z/Y/Shift+Z vão para um histórico de fora quando ele existe | Na extensão o histórico é um só, o do documento do VS Code (spec 01, W4). No plugin, sem `history`, nada muda | `e2e/history.spec.ts` |
+| 2026-10-27 | `core/src/lintRules.ts` (novo) | Textos das regras do markdownlint em linguagem simples (en e pt-BR), os mesmos de `lintRules` do plugin | A extensão mostra os problemas no painel Problemas (host, sem React); no plugin, podem substituir as chaves `lintRules.*` da tradução | `extension/src/lintProblems.test.ts` |
+| 2026-10-27 | `ui/src/MarkdownEditor.tsx`, `ui/src/editor.css` | Props `onLineClick` (número da linha clicável, com teclado) e `lineTitle` (dica com o problema da linha) | "Ver linha" (W12) e o problema na dica. Ver B2: no plugin a dica `problemMark` nunca aparece | `test/webview/problems.spec.ts` |
 
 ## Bugs encontrados aqui: situação no plugin
 
@@ -39,6 +41,16 @@ Cenários testados no plugin (o salvo comparado com o documento do ProseMirror):
 
 Teste para levar ao plugin se ele ganhar `setMarkdown`: digitar, chamar `setMarkdown` com uma mudança em outro
 parágrafo antes de 200 ms e conferir que o salvo tem as duas (aqui: `test/webview/update.spec.ts`).
+
+### B2. Dica da marca de problema nunca aparece
+
+| | |
+|---|---|
+| Sintoma | Passar o mouse no `● 12` ao lado de um bloco com problema não mostra a dica "Há um problema neste trecho" |
+| Causa | O número da linha tem `pointer-events: none` (para não atrapalhar o clique no texto) e o `title` com a dica; elemento que não recebe o mouse não mostra dica |
+| Correção aqui | Com `onLineClick`, o número recebe o mouse (`.docs-editor-line-link`: `pointer-events: auto`) e a dica traz o problema em si (`lineTitle`) |
+| Situação no plugin (0.2.1, `efd3784`) | **Confirmado no código**, não rodando: `MarkdownEditor.tsx` linha 38 (`pointerEvents: 'none'`) e linha 235 (`title={mark.problem ? text.problemMark : undefined}`) |
+| Correção sugerida | Só as marcas com problema recebem o mouse (`pointer-events: auto` em `.docs-editor-problem`); a fase 7 leva a versão daqui |
 
 ### Só da extensão (não se aplicam ao plugin hoje)
 

@@ -130,10 +130,14 @@ e o modo local da spec 02 cobertos pelos testes. O painel de publicação (LC5) 
 
 | Parte | Entrega | Requisitos | Testes |
 |-------|---------|------------|--------|
-| 2a. Modo local | Ativação por `mkdocs.yml`; páginas do `docs_dir` reconhecidas como docs; `techdocsEditor.openVisualByDefault` (padrão: texto no modo local, A4); arquivo com marcadores de conflito do Git não abre no visual, oferece o texto | LC1, LC2, LC4, A4 | unitários (detecção de página e de conflito); e2e |
-| 2b. Lint | Diagnostics no painel Problemas, 400 ms depois de parar de digitar, com a configuração da raiz do repositório e textos em linguagem simples (pt-BR/en, das regras do plugin); code action "Ajustar agora"; no visual, marca nos blocos e lista com botão; sem diagnostics duplicados se a extensão `DavidAnson.vscode-markdownlint` estiver instalada; workspace não confiável: sem a configuração do repositório | L-1 a L-6, W11 | unitários; integração (diagnostics e code action); e2e |
-| 2c. Ver linha | Número da linha no visual abre o texto nativo lado a lado na linha; problema no painel abre no texto | W12 | e2e |
+| 2a. Modo local ✅ `40baeac` | Ativação por `mkdocs.yml`; páginas do `docs_dir` reconhecidas como docs; `techdocsEditor.openVisualByDefault` (padrão: texto no modo local, A4); arquivo com marcadores de conflito do Git não abre no visual, oferece o texto | LC1, LC2, LC4, A4 | unitários (detecção de página e de conflito); e2e |
+| 2b. Lint ✅ | Diagnostics no painel Problemas, 400 ms depois de parar de digitar, com a configuração da raiz do repositório e textos em linguagem simples (pt-BR/en, das regras do plugin); code action "Ajustar agora"; no visual, marca nos blocos e lista com botão; sem diagnostics duplicados se a extensão `DavidAnson.vscode-markdownlint` estiver instalada; workspace não confiável: sem a configuração do repositório | L-1 a L-6, W11 | unitários; integração (diagnostics e code action); e2e |
+| 2c. Ver linha ✅ | Número da linha no visual abre o texto nativo lado a lado na linha; problema no painel abre no texto | W12 | e2e |
 | 2d. Imagens | Envio pelo visual grava `<docs>/assets/<timestamp>-<nome>` com `workspace.fs`, link relativo à página; só `image/*` até `techdocsEditor.images.maxSizeMB` (padrão 5, como o plugin); nunca `blob:` | W9, LC3 | webview (mensagens); integração (arquivo gravado e link) |
 | 2e. Busca no visual | Ctrl+F no visual com "N de M" (a barra do plugin, sem Material UI) | W10 | webview |
 | 2f. Árvore "Documentação" | Páginas do `docs_dir` pelo `nav` do `mkdocs.yml` (ou pastas, sem `nav`) na barra lateral | LC6 | unitários (nav → árvore); integração |
 | 2g. Bundle | Webview em ESM com `splitting` (linguagens do CodeMirror sob demanda) e sem KaTeX | R3, R4 | suítes inteiras; tamanho do bundle |
+
+Pendente de conferência na 2b: a convivência com a extensão do markdownlint (L-6) e o workspace não confiável
+não têm teste automático. Os dois dependem do ambiente: instalar outra extensão e abrir um workspace sem
+confiança. Ficam para a fase 5, junto com o Dev Spaces.

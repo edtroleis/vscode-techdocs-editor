@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
 import { editorViewCtx, parserCtx, remarkCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core';
 import { insert } from '@milkdown/kit/utils';
@@ -72,6 +72,10 @@ type Props = {
   onReady?: () => void;
   /** Histórico de fora do editor (ver externalHistory.ts); sem ele, o do ProseMirror. */
   history?: ExternalHistory;
+  /** Clique (ou Enter) no número da linha ao lado do bloco: sem ele, o número é só informativo. */
+  onLineClick?: (line: number) => void;
+  /** Dica do número da linha; sem ela (ou sem texto), a dica genérica nos blocos com problema. */
+  lineTitle?: (line: number, problem: boolean) => string | undefined;
 };
 
 /**
@@ -79,7 +83,22 @@ type Props = {
  * Ao lado de cada bloco, a linha em que ele começa no arquivo salvo (a mesma que a pipeline aponta).
  */
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
-  ({ initialValue, onChange, onUploadImage, resolveImage, problemLines, showsSavedVersion = true, text, onReady, history }, ref) => {
+  (
+    {
+      initialValue,
+      onChange,
+      onUploadImage,
+      resolveImage,
+      problemLines,
+      showsSavedVersion = true,
+      text,
+      onReady,
+      history,
+      onLineClick,
+      lineTitle,
+    },
+    ref,
+  ) => {
   const crepeRef = useRef<Crepe>();
   const container = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -293,9 +312,19 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       {marks.map((mark, i) => (
         <span
           key={i}
-          className={`docs-editor-line${mark.problem ? ' docs-editor-problem' : ''}`}
+          className={`docs-editor-line${mark.problem ? ' docs-editor-problem' : ''}${onLineClick ? ' docs-editor-line-link' : ''}`}
           style={{ top: mark.top }}
-          title={mark.problem ? text.problemMark : undefined}
+          title={lineTitle?.(mark.line, mark.problem) ?? (mark.problem ? text.problemMark : undefined)}
+          {...(onLineClick && {
+            role: 'button',
+            tabIndex: 0,
+            onClick: () => onLineClick(mark.line),
+            onKeyDown: (event: ReactKeyboardEvent) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              onLineClick(mark.line);
+            },
+          })}
         >
           {mark.problem ? '● ' : ''}
           {mark.line}
