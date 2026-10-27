@@ -1,0 +1,10 @@
+{
+  "name": "@edtroleis/techdocs-editor-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Núcleo do editor de TechDocs, sem React e sem Backstage: ponte MkDocs, lint, merge e cliente do GitHub",
+  "license": "Apache-2.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false
+}

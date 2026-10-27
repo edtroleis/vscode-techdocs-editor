@@ -1,0 +1,36 @@
+/* Ajustes do editor sobre o tema do Crepe (vendor/crepe-theme.css, importado antes no MarkdownEditor). */
+
+/* Mesma fonte do portal nos títulos e no texto (o tema usa Noto Serif/Sans, que não são carregadas) */
+.milkdown {
+  --crepe-font-title: inherit;
+  --crepe-font-default: inherit;
+}
+
+/* Busca no modo visual */
+.milkdown .docs-search-match {
+  background: rgba(255, 213, 79, 0.45);
+}
+.milkdown .docs-search-current {
+  background: rgba(255, 152, 0, 0.85);
+}
+
+/* Números de linha ao lado de cada bloco (no plugin eram estilos do Material UI) */
+.docs-editor {
+  position: relative;
+}
+.docs-editor-line {
+  position: absolute;
+  left: 0;
+  width: 40px;
+  padding-top: 6px;
+  text-align: right;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--docs-editor-secondary-text, #6b6b6b);
+  user-select: none;
+  pointer-events: none;
+}
+.docs-editor-problem {
+  color: var(--docs-editor-error, #d32f2f);
+  font-weight: 700;
+}

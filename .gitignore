@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.vsix
+.vscode-test/
+.vscode-test-web/
+test-results/
+playwright-report/
+out-test/

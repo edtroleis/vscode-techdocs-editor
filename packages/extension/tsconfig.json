@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "types": ["node", "mocha"] },
+  "include": ["src", "webview", "test/vscode/suite", "test/webview"],
+  "exclude": ["src/**/*.test.ts"]
+}

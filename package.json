@@ -1,0 +1,28 @@
+{
+  "name": "vscode-techdocs-editor-monorepo",
+  "private": true,
+  "license": "Apache-2.0",
+  "workspaces": [
+    "packages/core",
+    "packages/ui",
+    "packages/extension"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build -w packages/extension",
+    "typecheck": "tsc -p packages/core && tsc -p packages/ui && tsc -p packages/extension && tsc -p tsconfig.test.json",
+    "test:unit": "vitest run",
+    "test:webview": "npm run build && playwright test -c packages/extension/test/webview/playwright.config.ts",
+    "test:vscode": "npm run build && node packages/extension/test/vscode/run.mjs",
+    "test:web": "npm run build && node packages/extension/test/vscode/run-web.mjs",
+    "roundtrip": "npm run build && node packages/extension/test/webview/roundtrip.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "24.19.2",
+    "typescript": "5.9.3",
+    "vitest": "5.0.4"
+  }
+}

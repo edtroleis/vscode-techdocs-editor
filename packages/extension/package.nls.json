@@ -1,0 +1,7 @@
+{
+  "displayName": "TechDocs Editor",
+  "description": "Visual editor for TechDocs (MkDocs) pages, with the same Markdown fidelity as the Backstage plugin",
+  "customEditor.displayName": "TechDocs visual editor",
+  "command.openVisual": "Open in visual editor",
+  "command.openText": "Open as Markdown text"
+}
