@@ -5,6 +5,11 @@ export type HostMessage =
   | { type: 'init'; text: string; language: string; baseUri: string }
   /** O documento mudou fora do editor visual (editor de texto, desfazer do VS Code, git). */
   | { type: 'update'; text: string }
+  /**
+   * O arquivo tem marcadores de conflito do Git: no lugar do editor, o aviso com o botão (spec 02, LC4).
+   * Resolvido o conflito, o host manda `init` de novo e o editor volta.
+   */
+  | { type: 'conflict'; message: string; action: string }
   /** Testes: devolve o que o editor gravaria agora (`fromEditor` do Markdown do editor). */
   | { type: 'test:getSaved'; id: number }
   /** Testes: insere Markdown no cursor, como se a pessoa digitasse. */
@@ -15,7 +20,10 @@ export type HostMessage =
 export type WebviewMessage =
   /** O script do webview está ouvindo: só agora o host manda o `init` (antes, a mensagem se perdia). */
   | { type: 'loaded' }
+  /** Editor (ou o aviso de conflito) na tela. */
   | { type: 'ready' }
+  /** "Abrir como texto" no aviso de conflito. */
+  | { type: 'openText' }
   /**
    * Mudança feita pela pessoa no editor visual: o texto antes e depois dela (formato do repositório,
    * com `\n`). O host aplica só essa diferença ao documento como ele está (ver rebase.ts).

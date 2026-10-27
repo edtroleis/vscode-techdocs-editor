@@ -33,3 +33,32 @@ body .docs-editor {
   --docs-editor-secondary-text: var(--vscode-editorLineNumber-foreground);
   --docs-editor-error: var(--vscode-errorForeground);
 }
+
+/* Aviso de conflito do Git no lugar do editor (spec 02, LC4), com os botões do VS Code */
+.conflict {
+  max-width: 40rem;
+  margin: 2rem auto;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid var(--vscode-editorWarning-foreground);
+  background: var(--vscode-inputValidation-warningBackground, var(--vscode-editorWidget-background));
+  font-family: var(--vscode-font-family);
+}
+
+.conflict button {
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.conflict button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.conflict button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}

@@ -3,5 +3,6 @@
   "description": "Editor visual para páginas do TechDocs (MkDocs), com a mesma fidelidade de Markdown do plugin do Backstage",
   "customEditor.displayName": "Editor visual do TechDocs",
   "command.openVisual": "Abrir no editor visual",
-  "command.openText": "Abrir como texto Markdown"
+  "command.openText": "Abrir como texto Markdown",
+  "config.openVisualByDefault": "Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto Markdown. Para ver o texto, use **Reabrir Editor com…**."
 }

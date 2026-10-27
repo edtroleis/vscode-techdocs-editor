@@ -109,10 +109,25 @@ function App({ content }: { content: Content }) {
   );
 }
 
+/** No lugar do editor quando o arquivo tem marcadores de conflito do Git (spec 02, LC4). */
+function Conflict({ message, action }: { message: string; action: string }) {
+  useEffect(() => post({ type: 'ready' }), []);
+  return (
+    <div className="conflict" role="alert">
+      <p>{message}</p>
+      <button type="button" onClick={() => post({ type: 'openText' })}>
+        {action}
+      </button>
+    </div>
+  );
+}
+
 const root = createRoot(document.getElementById('root')!);
-window.addEventListener('message', function init(event: MessageEvent<HostMessage>) {
-  if (event.data.type !== 'init') return;
-  window.removeEventListener('message', init);
-  root.render(<App content={event.data} />);
+// `init` chega de novo quando o conflito é resolvido: um editor novo, com o texto de agora
+let generation = 0;
+window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
+  const message = event.data;
+  if (message.type === 'init') root.render(<App key={++generation} content={message} />);
+  else if (message.type === 'conflict') root.render(<Conflict key={++generation} {...message} />);
 });
 post({ type: 'loaded' });

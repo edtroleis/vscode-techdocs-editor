@@ -6,6 +6,7 @@
  * fim de linha do Windows. Nada é gravado em disco: cada teste reverte o documento no fim.
  */
 import * as vscode from 'vscode';
+import type { LocalSites } from '../../../src/localSites';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
 function equal<T>(actual: T, expected: T, message: string) {
@@ -29,11 +30,15 @@ async function until<T>(read: () => T | Promise<T>, accept: (value: T) => boolea
   return value;
 }
 
-async function provider(): Promise<VisualEditorProvider> {
-  const extension = vscode.extensions.getExtension<{ provider: VisualEditorProvider }>('edtroleis.techdocs-editor');
+type Api = { provider: VisualEditorProvider; sites: LocalSites };
+
+async function api(): Promise<Api> {
+  const extension = vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor');
   ok(extension, 'extensão não encontrada');
-  return (await extension!.activate()).provider;
+  return extension!.activate();
 }
+
+const provider = async () => (await api()).provider;
 
 async function openVisual(uri: vscode.Uri) {
   await vscode.commands.executeCommand('vscode.openWith', uri, 'techdocsEditor.visual');
@@ -142,6 +147,83 @@ export function defineTests() {
       await until(() => document.getText(), text => text.includes('Mais uma linha.'), 'edição não chegou');
       await session.settled();
       ok(!/[^\r]\n/.test(document.getText()), 'apareceu fim de linha LF no arquivo CRLF');
+    });
+  });
+
+  suite('Modo local', function () {
+    this.timeout(60_000);
+    teardown(closeAll);
+
+    const file = (path: string) => vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, path);
+    const visualTabs = (uri: vscode.Uri) =>
+      vscode.window.tabGroups.all.flatMap(g => g.tabs).filter(
+        t => t.input instanceof vscode.TabInputCustom && t.input.uri.toString() === uri.toString(),
+      );
+    const textTabs = (uri: vscode.Uri) =>
+      vscode.window.tabGroups.all.flatMap(g => g.tabs).filter(
+        t => t.input instanceof vscode.TabInputText && t.input.uri.toString() === uri.toString(),
+      );
+
+    test('páginas do docs_dir de cada mkdocs.yml são reconhecidas; o resto não', async () => {
+      const { sites } = await api();
+      await sites.ready;
+      ok(sites.siteOf(file('wiki/docs/index.md')), 'wiki/docs/index.md deveria ser página de docs');
+      ok(sites.siteOf(file('wiki-demo/docs/guias/primeiros-passos.md')), 'página da wiki-demo não reconhecida');
+      ok(!sites.siteOf(file('crlf/pagina.md')), 'crlf/pagina.md não está em nenhum docs_dir');
+      ok(!sites.siteOf(file('wiki/mkdocs.yml')), 'mkdocs.yml não é página');
+    });
+
+    test('arquivo com conflito do Git mostra o aviso; resolvido, o editor volta', async () => {
+      const uri = file('conflito/pagina.md');
+      const conflicted = '# Conflito\n\n<<<<<<< HEAD\nTexto meu.\n=======\nTexto deles.\n>>>>>>> main\n';
+      await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(conflicted));
+      try {
+        const { session, document } = await openVisual(uri);
+        ok(session.conflicted, 'deveria mostrar o aviso de conflito');
+        // Resolver no texto: fica o texto dos dois lados
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(uri, new vscode.Range(0, 0, document.lineCount, 0), '# Conflito\n\nTexto meu.\n\nTexto deles.\n');
+        ok(await vscode.workspace.applyEdit(edit), 'edição recusada');
+        await until(() => session.conflicted, value => !value, 'o aviso não saiu depois de resolver');
+        await until(() => session.saved(), text => text === document.getText(), 'o editor não voltou com o texto resolvido');
+        await vscode.commands.executeCommand('workbench.action.files.revert');
+      } finally {
+        await closeAll();
+        await vscode.workspace.fs.delete(uri);
+      }
+    });
+
+    test('openVisualByDefault: página de docs aberta como texto vai para o visual; fora do docs_dir, não', async () => {
+      const config = vscode.workspace.getConfiguration();
+      await config.update('techdocsEditor.openVisualByDefault', true, vscode.ConfigurationTarget.Workspace);
+      try {
+        await (await api()).sites.ready;
+        const page = file('wiki/docs/index.md');
+        await vscode.window.showTextDocument(page);
+        await until(() => visualTabs(page).length, n => n === 1, 'a página não foi para o visual');
+        await until(() => textTabs(page).length, n => n === 0, 'a aba de texto continuou aberta');
+        await (await provider()).session(page);
+        // "Abrir como texto" com o visual aberto: o texto fica ao lado
+        await vscode.commands.executeCommand('techdocsEditor.openText', page);
+        await until(() => textTabs(page).length, n => n === 1, 'o texto pedido ao lado não abriu');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        equal(textTabs(page).length, 1, 'o texto pedido ao lado foi trocado pelo visual');
+        await closeAll();
+
+        const other = file('crlf/pagina.md');
+        await vscode.window.showTextDocument(other);
+        await new Promise(resolve => setTimeout(resolve, 1_000));
+        equal(visualTabs(other).length, 0, 'arquivo fora do docs_dir foi para o visual');
+      } finally {
+        await config.update('techdocsEditor.openVisualByDefault', undefined, vscode.ConfigurationTarget.Workspace);
+      }
+    });
+
+    test('openVisualByDefault desligado (padrão): página de docs abre como texto', async () => {
+      const page = file('wiki/docs/index.md');
+      await vscode.window.showTextDocument(page);
+      await new Promise(resolve => setTimeout(resolve, 1_000));
+      equal(visualTabs(page).length, 0, 'abriu no visual com a configuração desligada');
     });
   });
 }

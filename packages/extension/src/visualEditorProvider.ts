@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { HostMessage, WebviewMessage } from './protocol';
+import { hasConflictMarkers } from './docsSite';
 import { rebase } from './rebase';
 import { minimalEdit, toEol, toLf } from './textSync';
 
@@ -50,6 +51,8 @@ export class EditorSession {
   readonly ready: Promise<void>;
   private markReady!: () => void;
   private readonly disposables: vscode.Disposable[] = [];
+  /** O webview mostra o aviso de conflito em vez do editor (spec 02, LC4). */
+  conflicted = false;
   /** Último texto mandado pelo webview: a mudança que ele causa no documento não volta ao webview. */
   private lastFromWebview: string | undefined;
   /** As edições do webview são aplicadas uma de cada vez, na ordem em que chegaram. */
@@ -77,6 +80,14 @@ export class EditorSession {
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document !== document || event.contentChanges.length === 0) return;
         const text = toLf(document.getText());
+        const conflicted = hasConflictMarkers(text);
+        if (conflicted !== this.conflicted) {
+          // Conflito apareceu (git merge com a página aberta) ou foi resolvido: troca o editor pelo aviso
+          // ou o aviso pelo editor, com o texto de agora
+          this.sendContent();
+          return;
+        }
+        if (conflicted) return;
         // Eco da própria edição do webview. Desfazer e refazer nunca são eco, mesmo quando voltam a um
         // texto que o webview mandou (refazer volta exatamente a ele)
         if (event.reason === undefined && text === this.lastFromWebview) return;
@@ -127,17 +138,19 @@ export class EditorSession {
   private receive(message: WebviewMessage) {
     switch (message.type) {
       case 'loaded':
-        this.post({
-          type: 'init',
-          text: toLf(this.document.getText()),
-          language: vscode.env.language,
-          baseUri: this.panel.webview.asWebviewUri(this.pageDir).toString(),
-        });
+        this.sendContent();
+        return;
+      case 'openText':
+        // Troca este editor pelo texto, no mesmo lugar
+        void vscode.commands
+          .executeCommand('vscode.openWith', this.document.uri, 'default', this.panel.viewColumn)
+          .then(() => this.panel.dispose());
         return;
       case 'ready':
         this.markReady();
         return;
       case 'edit':
+        if (this.conflicted) return;
         this.queue = this.queue.then(() => this.apply(message.before, message.after));
         return;
       case 'undo':
@@ -153,6 +166,28 @@ export class EditorSession {
         this.requests.delete(message.id);
         return;
     }
+  }
+
+  /** Conteúdo do documento para o webview: o editor, ou o aviso se o arquivo tem marcadores de conflito. */
+  private sendContent() {
+    const text = toLf(this.document.getText());
+    this.conflicted = hasConflictMarkers(text);
+    if (this.conflicted) {
+      this.post({
+        type: 'conflict',
+        message: vscode.l10n.t(
+          'This page has Git conflict markers. Resolve the conflict in the Markdown text before editing it here.',
+        ),
+        action: vscode.l10n.t('Open as text'),
+      });
+      return;
+    }
+    this.post({
+      type: 'init',
+      text,
+      language: vscode.env.language,
+      baseUri: this.panel.webview.asWebviewUri(this.pageDir).toString(),
+    });
   }
 
   /**

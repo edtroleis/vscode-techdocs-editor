@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
+import { LocalSites } from './localSites';
+import { openVisualByDefault } from './openByDefault';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
   const provider = new VisualEditorProvider(context.extensionUri);
+  const sites = new LocalSites();
   context.subscriptions.push(
+    sites,
+    openVisualByDefault(sites),
     vscode.window.registerCustomEditorProvider(VisualEditorProvider.viewType, provider, {
       // Trocar de aba recriaria o editor e perderia cursor e rolagem
       webviewOptions: { retainContextWhenHidden: true },
@@ -19,7 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider };
+  return { provider, sites };
 }
 
 function activeCustomEditorUri(): vscode.Uri | undefined {
