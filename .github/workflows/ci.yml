@@ -28,6 +28,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:fast
+      - run: npm run test:bundle
 
   editor:
     name: suítes do editor (herdadas do plugin)

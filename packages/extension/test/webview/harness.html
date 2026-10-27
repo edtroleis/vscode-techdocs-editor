@@ -2,7 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <!-- O mesmo bundle do webview, fora do VS Code: acquireVsCodeApi é simulado e as mensagens
+  <!-- O mesmo bundle do webview, fora do VS Code (servido por page.route em http://webview.test,
+       porque módulos ES não carregam de file://): acquireVsCodeApi é simulado e as mensagens
        mandadas pelo editor ficam em window.sent. Os testes mandam as do host com window.postMessage. -->
   <link rel="stylesheet" href="../../dist/webview/main.css">
   <script>
@@ -12,6 +13,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <script src="../../dist/webview/main.js"></script>
+  <script type="module" src="../../dist/webview/main.js"></script>
 </body>
 </html>

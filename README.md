@@ -17,6 +17,7 @@ npm run test:all       # tudo, inclusive o VS Code de verdade (~6 min)
 npm run typecheck
 npm run test:unit      # Vitest: núcleo, sincronização com o documento
 npm run test:webview   # Playwright: bundle do webview no Chromium (cursor de lista, ida e volta, desfazer)
+npm run test:bundle    # tamanho do webview no build de produção (orçamento) e linguagens em pedaços
 npm run test:editor    # suítes do editor herdadas do plugin
 npm run test:vscode    # suíte de integração no VS Code desktop (baixa o VS Code na 1ª vez)
 npm run test:web       # a mesma suíte no VS Code para navegador

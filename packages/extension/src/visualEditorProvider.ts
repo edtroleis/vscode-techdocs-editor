@@ -342,7 +342,8 @@ function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string 
     b.toString(16).padStart(2, '0'),
   ).join('');
   // Estilos inline: o ProseMirror e o Crepe posicionam menus com `style`. Imagens externas (https) são
-  // as que a própria página já usa; scripts só os do pacote, com nonce.
+  // as que a própria página já usa; scripts só os do pacote, com nonce. Os pedaços que o módulo principal
+  // importa (linguagens dos blocos de código) herdam o nonce dele.
   const csp = [
     "default-src 'none'",
     `img-src ${webview.cspSource} https: data:`,
@@ -360,7 +361,7 @@ function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string 
 </head>
 <body>
   <div id="root"></div>
-  <script nonce="${nonce}" src="${asset('main.js')}"></script>
+  <script type="module" nonce="${nonce}" src="${asset('main.js')}"></script>
 </body>
 </html>`;
 }

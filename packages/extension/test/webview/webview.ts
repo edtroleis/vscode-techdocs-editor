@@ -1,8 +1,18 @@
-import { expect, Page } from '@playwright/test';
+import { BrowserContext, expect, Page } from '@playwright/test';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 
-const HARNESS = pathToFileURL(join(__dirname, 'harness.html')).href;
+/** Pasta do pacote da extensão, servida em http://webview.test (módulos ES não carregam de file://). */
+const ROOT = join(__dirname, '..', '..');
+const ORIGIN = 'http://webview.test';
+const HARNESS = `${ORIGIN}/test/webview/harness.html`;
+
+/** Responde os pedidos a http://webview.test com os arquivos do pacote, sem abrir porta. */
+export const serveExtension = (target: Page | BrowserContext) =>
+  target.route(`${ORIGIN}/**`, route => {
+    const path = join(ROOT, decodeURIComponent(new URL(route.request().url()).pathname));
+    return existsSync(path) ? route.fulfill({ path }) : route.fulfill({ status: 404 });
+  });
 
 type Sent = { type: string; text?: string; after?: string; id?: number; line?: number };
 
@@ -21,6 +31,7 @@ export const sent = (page: Page) => page.evaluate(() => (window as unknown as { 
 export async function openWebview(page: Page, text: string, language = 'pt-br') {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
+  await serveExtension(page);
   await page.goto(HARNESS);
   await expect.poll(async () => (await sent(page)).some(m => m.type === 'loaded'), { message: 'webview carregado' }).toBe(true);
   await page.evaluate(
