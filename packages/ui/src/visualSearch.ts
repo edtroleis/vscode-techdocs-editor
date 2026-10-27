@@ -67,7 +67,8 @@ function scrollToCurrent(view: EditorView) {
   element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
-const result = (view: EditorView): SearchResult => {
+/** Resultado da busca de agora: posição (a partir de 1) e total. */
+export const searchResult = (view: EditorView): SearchResult => {
   const { matches, current } = key.getState(view.state)!;
   return { current: matches.length ? current + 1 : 0, total: matches.length };
 };
@@ -76,15 +77,15 @@ const result = (view: EditorView): SearchResult => {
 export function search(view: EditorView, query: string): SearchResult {
   view.dispatch(view.state.tr.setMeta(key, { query, current: 0 }));
   scrollToCurrent(view);
-  return result(view);
+  return searchResult(view);
 }
 
 /** Vai para o próximo (+1) ou anterior (-1) resultado, voltando ao início/fim. */
 export function moveSearch(view: EditorView, delta: 1 | -1): SearchResult {
   const { matches, current } = key.getState(view.state)!;
-  if (!matches.length) return result(view);
+  if (!matches.length) return searchResult(view);
   const next = (current + delta + matches.length) % matches.length;
   view.dispatch(view.state.tr.setMeta(key, { current: next }));
   scrollToCurrent(view);
-  return result(view);
+  return searchResult(view);
 }

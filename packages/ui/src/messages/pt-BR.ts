@@ -32,4 +32,10 @@ export const ptBR: Record<string, string> = {
   'editorText.imageUrlPlaceholderInline': 'ou cole o endereço de uma imagem',
   'editorText.imageCaption': 'Legenda da imagem',
   'editorText.problemMark': 'Há um problema neste trecho (veja as verificações ao lado)',
+  'search.placeholder': 'Buscar no texto',
+  'search.count': '{{current}} de {{total}}',
+  'search.none': 'nenhum resultado',
+  'search.previous': 'Anterior (Shift+Enter)',
+  'search.next': 'Próximo (Enter)',
+  'search.close': 'Fechar (Esc)',
 };

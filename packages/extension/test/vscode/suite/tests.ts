@@ -359,8 +359,13 @@ export function defineTests() {
       await (await api()).sites.ready;
       const opened = await openVisual(file('wiki/docs/guias/primeiros-passos.md'));
       opened.session.insert('![]()');
-      // O bloco entra no cursor (começo do título): o que isso muda no documento chega antes da imagem
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // O bloco entra no cursor (começo do título) e o que isso muda chega ao documento com atraso:
+      // espera o documento ficar igual ao editor antes de escolher a imagem
+      await until(
+        async () => (await opened.session.saved()) === opened.document.getText(),
+        same => same,
+        'o documento não acompanhou o bloco de imagem',
+      );
       await opened.session.settled();
       return opened;
     }

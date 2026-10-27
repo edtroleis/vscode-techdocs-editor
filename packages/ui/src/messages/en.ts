@@ -32,4 +32,10 @@ export const en: Record<string, string> = {
   'editorText.imageUrlPlaceholderInline': 'or paste the address of an image',
   'editorText.imageCaption': 'Image caption',
   'editorText.problemMark': 'There is a problem in this passage (see the checks on the side)',
+  'search.placeholder': 'Search the text',
+  'search.count': '{{current}} of {{total}}',
+  'search.none': 'no results',
+  'search.previous': 'Previous (Shift+Enter)',
+  'search.next': 'Next (Enter)',
+  'search.close': 'Close (Esc)',
 };

@@ -5,7 +5,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { fromEditor, toEditor } from '@edtroleis/techdocs-editor-core';
-import { MarkdownEditor, MarkdownEditorHandle, editorTextFrom, en, ptBR } from '@edtroleis/techdocs-editor-ui';
+import {
+  MarkdownEditor,
+  MarkdownEditorHandle,
+  SearchBar,
+  editorTextFrom,
+  en,
+  ptBR,
+  searchTextFrom,
+  useVisualSearch,
+} from '@edtroleis/techdocs-editor-ui';
 import type { HostMessage, ProblemView, WebviewLabels, WebviewMessage } from '../src/protocol';
 import { rebase } from '../src/rebase';
 import './webview.css';
@@ -58,6 +67,11 @@ function App({ content }: { content: Content }) {
   // Texto do documento como o webview o conhece: o que veio do host ou o último enviado
   const documentText = useRef(content.text);
   const text = useMemo(() => editorTextFrom(lookupFor(content.language)), [content.language]);
+  const searchText = useMemo(() => searchTextFrom(lookupFor(content.language)), [content.language]);
+  const search = useVisualSearch(editor);
+  // Lido pelos ouvintes registrados uma vez só
+  const searchRef = useRef(search);
+  searchRef.current = search;
   const [problems, setProblems] = useState<ProblemView[]>([]);
   const problemLines = useMemo(() => [...new Set(problems.map(p => p.line))], [problems]);
 
@@ -73,6 +87,7 @@ function App({ content }: { content: Content }) {
           if (!pending) {
             documentText.current = message.text;
             editor.current?.setMarkdown(toEditor(message.text));
+            searchRef.current.refresh();
             return;
           }
           const before = fromEditor(pending.previous);
@@ -119,6 +134,20 @@ function App({ content }: { content: Content }) {
     return () => window.removeEventListener('message', listener);
   }, []);
 
+  useEffect(() => {
+    // Ctrl+F (Cmd+F no Mac) abre a busca do editor visual (spec 01, W10); com uma palavra selecionada,
+    // já procura por ela, como a busca do VS Code
+    const keydown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'f') return;
+      event.preventDefault();
+      event.stopPropagation();
+      const selected = window.getSelection()?.toString() ?? '';
+      searchRef.current.show(selected && !selected.includes('\n') ? selected : undefined);
+    };
+    window.addEventListener('keydown', keydown, true);
+    return () => window.removeEventListener('keydown', keydown, true);
+  }, []);
+
   /** Avisa o que ainda não foi avisado (o editor avisa com atraso) e então desfaz/refaz no documento. */
   const history = useMemo(() => {
     const run = (type: 'undo' | 'redo') => {
@@ -140,6 +169,7 @@ function App({ content }: { content: Content }) {
 
   return (
     <>
+    {search.open && <SearchBar text={searchText} {...search} />}
     <MarkdownEditor
       ref={editor}
       initialValue={initialValue}
@@ -150,6 +180,7 @@ function App({ content }: { content: Content }) {
         if (before === after) return;
         documentText.current = rebase(before, after, documentText.current);
         post({ type: 'edit', before, after });
+        search.refresh();
       }}
       onUploadImage={uploadImage}
       resolveImage={resolveImage}

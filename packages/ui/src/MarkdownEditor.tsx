@@ -11,7 +11,7 @@ import { imageAltPlugin } from './imageAlt';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
 import { buildTopBar } from './topBar';
 import { EditorText, headingOptions, labelTopBar, selectionToolbar, slashMenu } from './labels';
-import { SearchResult, moveSearch, search, visualSearchPlugin } from './visualSearch';
+import { SearchResult, moveSearch, search, searchResult, visualSearchPlugin } from './visualSearch';
 // Tema do Crepe resolvido num arquivo do pacote (scripts/bundle-crepe-theme.mjs), depois os ajustes
 import './vendor/crepe-theme.css';
 import './editor.css';
@@ -36,6 +36,10 @@ export type MarkdownEditorHandle = {
   search: (query: string) => SearchResult;
   /** Próximo (+1) ou anterior (-1) resultado. */
   moveSearch: (delta: 1 | -1) => SearchResult;
+  /** Resultado da busca de agora (o texto pode ter mudado depois de buscar). */
+  searchResult: () => SearchResult;
+  /** Põe o foco no texto do editor. */
+  focus: () => void;
   /** Markdown atual do editor (formato do editor, antes do `fromEditor`). */
   getMarkdown: () => string;
   /** Insere Markdown na posição do cursor, como se a pessoa tivesse digitado. */
@@ -289,6 +293,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   useImperativeHandle(ref, () => ({
     search: query => search(crepeRef.current!.editor.ctx.get(editorViewCtx), query),
     moveSearch: delta => moveSearch(crepeRef.current!.editor.ctx.get(editorViewCtx), delta),
+    searchResult: () => searchResult(crepeRef.current!.editor.ctx.get(editorViewCtx)),
+    focus: () => crepeRef.current!.editor.ctx.get(editorViewCtx).focus(),
     getMarkdown: () => crepeRef.current!.getMarkdown(),
     insertMarkdown: markdown => crepeRef.current!.editor.action(insert(markdown)),
     setMarkdown: markdown => {

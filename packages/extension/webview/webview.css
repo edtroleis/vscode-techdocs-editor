@@ -138,3 +138,69 @@ body .docs-editor {
 body .docs-editor {
   --docs-editor-focus: var(--vscode-focusBorder);
 }
+
+/* Busca no editor visual (spec 01, W10): no canto de cima, como a busca do VS Code, e com as cores dela */
+body .docs-editor {
+  --docs-search-match: var(--vscode-editor-findMatchHighlightBackground);
+  --docs-search-current: var(--vscode-editor-findMatchBackground);
+  --docs-search-current-border: var(--vscode-editor-findMatchBorder, transparent);
+}
+
+.docs-search-bar {
+  position: fixed;
+  top: 8px;
+  right: 20px;
+  z-index: 20;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 6px;
+  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-widget-border, #8884));
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, #0004);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size, 13px);
+}
+
+.docs-search-bar input {
+  width: 14rem;
+  padding: 3px 6px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font: inherit;
+}
+
+.docs-search-bar input:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.docs-search-count {
+  min-width: 6.5rem;
+  color: var(--vscode-descriptionForeground);
+  white-space: nowrap;
+}
+
+.docs-search-bar button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.docs-search-bar button:hover {
+  background: var(--vscode-toolbar-hoverBackground, #8883);
+}
+
+.docs-search-bar button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+}

@@ -6,12 +6,13 @@
   --crepe-font-default: inherit;
 }
 
-/* Busca no modo visual */
+/* Busca no modo visual (as cores podem vir de quem usa o editor: o tema do VS Code, na extensão) */
 .milkdown .docs-search-match {
-  background: rgba(255, 213, 79, 0.45);
+  background: var(--docs-search-match, rgba(255, 213, 79, 0.45));
 }
 .milkdown .docs-search-current {
-  background: rgba(255, 152, 0, 0.85);
+  background: var(--docs-search-current, rgba(255, 152, 0, 0.85));
+  outline: 1px solid var(--docs-search-current-border, transparent);
 }
 
 /* Números de linha ao lado de cada bloco (no plugin eram estilos do Material UI) */
