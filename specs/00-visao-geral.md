@@ -60,6 +60,7 @@ até a fase 7.
 | [01](01-editor-e-nucleo.md) | Núcleo compartilhado, editor no webview, fidelidade do Markdown e lint |
 | [02](02-modos-e-publicacao.md) | Modo local, modo remoto, escolha do modo, autenticação, fluxo de publicação, configuração, integração com o Backstage |
 | [03](03-qualidade-seguranca-release.md) | Testes, segurança, desempenho, versões fixas e release |
+| [04](04-templates.md) | Templates de documentação: páginas e sites a partir de modelos da extensão ou do repositório |
 
 ## Fases
 
@@ -72,6 +73,7 @@ até a fase 7.
 | 4. **Modo remoto (desktop)** | `FileSystemProvider` do GitHub, Salvar rascunho / Salvar e verificar / Enviar / Descartar / Histórico, conflitos por SHA | Mesmos cenários do `test:editor:portal` do plugin, com o GitHub simulado |
 | 5. **Web e Dev Spaces** | Build `browser` (vscode.dev), Open VSX, devfile de exemplo | Suíte no `@vscode/test-web`; instalação no Dev Spaces |
 | 6. **Publicar** | Marketplace + Open VSX, README com GIFs, changelog | Release automatizada, pacote verificado |
+| T. **Templates** (depois da fase 4) | Nova página ou site a partir de template, com campos e `nav` (spec 04, T1 a T5) | Testes da spec 04; templates da extensão com lint limpo e ida e volta idêntica |
 | 7. **Depois: plugin** (fora do foco atual) | Publicar `core`/`ui` no npm, o plugin passa a consumi-los, e "Abrir no VS Code" no lápis do plugin (spec 02, B2) | Suítes do plugin verdes, sem mudança de comportamento |
 
 ## Pontos em aberto

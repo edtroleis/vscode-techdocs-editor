@@ -1,0 +1,153 @@
+# 04 — Templates de documentação
+
+## Problema
+
+Quem cria uma página nova começa da folha em branco: não sabe que seções uma página de arquitetura, um
+runbook ou um onboarding costumam ter, e cada time inventa a sua estrutura. O resultado são docs
+incompletas e diferentes entre serviços. O time de plataforma, que mais quer padronizar, não tem como
+oferecer o seu modelo dentro do editor.
+
+## Objetivo
+
+Criar uma página (ou um site inteiro) a partir de um template, em poucos cliques, já no lugar certo do
+`docs_dir`, no `nav` e aberta no editor visual. Templates prontos na extensão, e templates próprios da
+empresa ou do time, guardados no repositório.
+
+Fora do escopo: o Scaffolder do Backstage (templates de código). Aqui "golden path" é a **página que
+documenta** um golden path, não o template que cria o serviço.
+
+## Catálogo da extensão
+
+Organizado pelas quatro categorias do [Diátaxis](https://diataxis.fr/), que é como a página é usada: aprender
+(tutorial), fazer uma tarefa (guia), consultar (referência) e entender (explicação). Na lista de escolha, a
+categoria agrupa os templates e a descrição diz quando usar cada um.
+
+### Páginas (v1)
+
+| Template | Categoria | Quando usar | Seções |
+|----------|-----------|-------------|--------|
+| Página inicial do serviço | Referência | Primeira página de um componente no catálogo | O que é; quem cuida (time, canal); links (repositório, dashboards, catálogo); dependências; como começar |
+| Tutorial | Tutorial | Ensinar algo do zero, passo a passo, com resultado no fim | O que você vai construir; antes de começar; passos numerados, cada um com o resultado esperado; próximos passos |
+| Onboarding | Tutorial | Primeiros dias de quem chega no time ou no serviço | Boas-vindas; acessos a pedir; ambiente local; primeira tarefa; pessoas e canais; glossário do time |
+| Golden path | Tutorial | Documentar o caminho recomendado para um tipo de serviço | Quando usar (e quando não); o que você ganha; pré-requisitos; passo a passo (com o template do Scaffolder, se houver); dono do golden path; alternativas |
+| Guia | Guia | Fazer uma tarefa conhecida (os "guias gerais") | Objetivo; antes de começar; passos; como conferir que deu certo; problemas comuns |
+| Runbook | Guia | Responder a um alerta ou executar um procedimento de operação | Alerta ou gatilho; impacto; diagnóstico; ações (com comandos); como escalar; depois de resolver |
+| Solução de problemas | Guia | Sintomas frequentes e como resolver | Uma seção por sintoma: causa provável, como confirmar, como resolver |
+| Operação e suporte | Referência | Como o serviço é operado no dia a dia | Plantão e escalonamento; SLOs; alertas (com link para os runbooks); dashboards e logs; deploy e rollback; manutenção |
+| Referência de API | Referência | Contrato de uma API para quem integra | Visão geral; autenticação; endpoints (método, caminho, parâmetros, exemplo, erros); limites; versões |
+| Arquitetura | Explicação | Como o sistema é hoje e por quê | Contexto; visão geral (diagrama); componentes; dados; integrações; decisões importantes (links para os ADRs); riscos conhecidos |
+| ADR | Explicação | Registrar uma decisão de arquitetura | Status; contexto; decisão; consequências; alternativas consideradas |
+| Postmortem | Explicação | Revisão de um incidente, sem culpados | Resumo; impacto; linha do tempo; causa raiz; o que funcionou e o que não; ações (dono e prazo) |
+| Página de wiki | Referência | Página livre de uma wiki de time | Resumo; conteúdo; links relacionados; última revisão |
+
+### Páginas (depois da v1)
+
+| Template | Categoria | Quando usar |
+|----------|-----------|-------------|
+| RFC / design doc | Explicação | Proposta antes da decisão (o ADR registra o resultado) |
+| Notas de versão | Referência | Mudanças de cada versão, para quem usa |
+| Glossário | Referência | Termos do domínio ou do time |
+
+### Sites (conjuntos de páginas)
+
+Criam o `mkdocs.yml`, o `docs/` com as páginas e o `nav`. Para o TechDocs, dizem o que pôr no
+`catalog-info.yaml` (a anotação `backstage.io/techdocs-ref: dir:.`) sem alterar o arquivo.
+
+| Template | Páginas |
+|----------|---------|
+| Docs de serviço | Página inicial do serviço; Arquitetura; Operação e suporte; `adr/` com o primeiro ADR ("Registrar decisões de arquitetura") |
+| Wiki de time | Início (como usar a wiki); Onboarding; Guias; Página de wiki de exemplo |
+| Golden path | Visão geral (o template Golden path); Tutorial; Solução de problemas |
+
+## Requisitos
+
+| # | Requisito |
+|---|-----------|
+| TP1 | Comando "TechDocs: Nova página a partir de template…" na paleta, no menu da árvore "Documentação" (seção ou página: cria na mesma pasta) e no menu do Explorer em pastas dentro de um `docs_dir` |
+| TP2 | Lista de escolha agrupada por categoria, com descrição de cada template; os templates do repositório aparecem primeiro, marcados com a origem |
+| TP3 | Pede o título; o nome do arquivo sai do título (`Guia de deploy` → `guia-de-deploy.md`, sem acento) e pode ser editado; pasta sugerida pelo template (o ADR vai para `adr/` com número: `adr/0007-usar-postgres.md`) |
+| TP4 | Nunca sobrescreve: arquivo existente pede outro nome. A pasta tem de ficar dentro do `docs_dir` (template ou nome com `..` é recusado) |
+| TP5 | Campos `{{nome}}` do template preenchidos na criação: `title` (o título), `date` (hoje, `AAAA-MM-DD`), `site_name` (do `mkdocs.yml`), `owner` (do `spec.owner` do `catalog-info.yaml` da raiz, se houver); os outros campos que o template declarar são perguntados um a um (com valor padrão, se o template der) |
+| TP6 | Site com `nav`: oferece pôr a página no `nav`, na seção onde ela foi criada (pela árvore) ou no fim; edita o `mkdocs.yml` mantendo comentários e formatação (API `Document` do `yaml`). Sem `nav`, nada a fazer: a pasta já define o menu |
+| TP7 | A página criada abre no editor visual, com o cursor no primeiro trecho a preencher |
+| TP8 | Templates do repositório: arquivos `.md` em `.techdocs/templates/` (na raiz do workspace ou do site; o do site vale mais) e nas pastas de `techdocsEditor.templates.paths`. Site: uma pasta com `template.yml` e os arquivos. `techdocsEditor.templates.builtIn: false` esconde os da extensão |
+| TP9 | Templates da extensão em inglês e português, pela língua do VS Code; os do repositório como estão |
+| TP10 | Modo remoto (fase 4): o mesmo fluxo, com a página criada por commit na branch do rascunho e os templates do repositório lidos pela API |
+| TP11 | "TechDocs: Novo site de documentação…": escolhe um template de site e a pasta (padrão: raiz do workspace, se não houver `mkdocs.yml`); cria os arquivos e mostra a anotação do `catalog-info.yaml` para copiar |
+
+## Formato do template
+
+Um `.md` com front matter que descreve o template; o corpo é a página.
+
+```markdown
+---
+template:
+  name: Runbook
+  description: Responder a um alerta ou executar um procedimento de operação
+  category: guide          # tutorial | guide | reference | explanation
+  folder: runbooks         # sugerida, relativa ao docs_dir (opcional)
+  fields:
+    alert:
+      prompt: Nome do alerta
+      default: ""
+---
+
+# {{title}}
+
+**Alerta:** {{alert}} · **Dono:** {{owner}} · **Revisado em:** {{date}}
+
+## Impacto
+
+Quem é afetado e como, enquanto o alerta está ativo.
+```
+
+- O bloco `template:` sai da página criada; outras chaves do front matter (ex.: `tags`) ficam.
+- `{{campo}}` sem valor vira texto vazio; `{{` sem `}}` fica como está.
+- Site: `template.yml` com `name`, `description`, `fields` e a lista de arquivos (com `nav` opcional); os
+  arquivos usam os mesmos campos.
+
+## Conteúdo dos templates da extensão
+
+- Passam no lint com a configuração padrão (`{ default: true }`) e com a das wikis de teste.
+- Ida e volta byte a byte pelo editor visual (o mesmo teste das páginas das wikis).
+- Instruções de preenchimento no próprio texto, como exemplo a substituir ("Quem é afetado e como…"),
+  curtas. Sem comentários HTML (ver TA2).
+- Só Markdown que o editor visual edita: títulos, listas, tabelas, blocos de código com linguagem,
+  admonitions do MkDocs (`!!! note`). Sem HTML.
+
+## Segurança
+
+- Template é texto: nada é executado, nada vem da rede (no modo local).
+- Campos entram como texto na página; o caminho do arquivo é validado (TP4).
+- Templates do repositório são lidos também em workspace não confiável (são só Markdown), mas a origem
+  aparece na lista (TP2).
+
+## Testes
+
+| Camada | O quê |
+|--------|-------|
+| Unitários (`core`) | Leitura do front matter; campos (`{{title}}`, padrões, campo sem valor); nome do arquivo a partir do título (acentos, espaços, números de ADR); caminho fora do `docs_dir` recusado; inserção no `nav` mantendo comentários |
+| Conteúdo | Cada template da extensão (en e pt-BR): lint limpo e ida e volta idêntica pelo editor |
+| Integração | Criar pela paleta e pela árvore (arquivo, campos, `nav`); arquivo existente não é sobrescrito; template do repositório aparece primeiro e sobrepõe por nome; `builtIn: false` |
+| e2e | Menu da árvore → template → título → página aberta no visual; site novo com `mkdocs.yml` reconhecido e árvore montada |
+
+## Fases
+
+Implementação depois da fase 4 (ordem pedida em 2026-10-27), salvo decisão contrária.
+
+| Parte | Entrega |
+|-------|---------|
+| T1 | Formato, campos e criação de página no modo local (TP1 a TP5, TP7, TP9) com os 13 templates de página da v1 |
+| T2 | `nav` (TP6) e templates do repositório (TP8) |
+| T3 | Templates de site (TP11) |
+| T4 | Modo remoto (TP10), junto com o que a fase 4 já entregou |
+| T5 | Templates de página depois da v1 (RFC, notas de versão, glossário) |
+
+## Pontos em aberto
+
+| # | Ponto | Como fechar |
+|---|-------|-------------|
+| TA1 | De onde vem `owner` quando não há `catalog-info.yaml`: perguntar, usar o nome do Git ou deixar vazio | Decidir na T1; proposta: perguntar, com o `user.name` do Git como padrão |
+| TA2 | Instruções de preenchimento como comentário HTML (`<!-- -->`, somem na página publicada) em vez de texto de exemplo | Prova na T1: se o editor visual mantiver o comentário na ida e volta e o mostrar de forma discreta, pode valer a pena |
+| TA3 | Templates centrais da empresa num repositório só (`techdocsEditor.templates.repository: owner/repo/pasta`), em vez de copiar `.techdocs/templates/` em cada repositório | Depois da T4 (usa a API do GitHub da fase 4) |
+| TA4 | Templates vindos do Backstage (uma entidade `Template` ou um endpoint do plugin) | Fase 7, junto com o plugin |
