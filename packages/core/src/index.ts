@@ -1,4 +1,5 @@
 export * from './checks';
+export * from './docsTree';
 export * from './github';
 export * from './lint';
 export * from './lintRules';

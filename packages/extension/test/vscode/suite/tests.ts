@@ -6,6 +6,7 @@
  * fim de linha do Windows. Nada é gravado em disco: cada teste reverte o documento no fim.
  */
 import * as vscode from 'vscode';
+import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
@@ -31,7 +32,7 @@ async function until<T>(read: () => T | Promise<T>, accept: (value: T) => boolea
   return value;
 }
 
-type Api = { provider: VisualEditorProvider; sites: LocalSites; lint: LintService };
+type Api = { provider: VisualEditorProvider; sites: LocalSites; lint: LintService; docs: DocsTreeView };
 
 async function api(): Promise<Api> {
   const extension = vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor');
@@ -404,6 +405,69 @@ export function defineTests() {
       } finally {
         await config.update('techdocsEditor.images.maxSizeMB', undefined, vscode.ConfigurationTarget.Workspace);
       }
+    });
+  });
+
+  suite('Documentação', function () {
+    this.timeout(60_000);
+    const file = (path: string) => vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, path);
+    /** A árvore como texto: um item por linha, recuado pelo nível, com o tipo quando não é página. */
+    const outline = (docs: DocsTreeView, items: DocsItem[], depth = 0): string[] =>
+      items.flatMap(item => [
+        `${'  '.repeat(depth)}${item.label}${item.kind === 'page' ? '' : ` (${item.kind})`}`,
+        ...outline(docs, docs.getChildren(item), depth + 1),
+      ]);
+    const siteItem = (docs: DocsTreeView, folder: string) =>
+      docs.getChildren().find(item => item.kind === 'site' && item.description === folder);
+
+    test('site sem nav: pelas pastas, com o título 1 de cada página', async () => {
+      const { docs } = await api();
+      await docs.ready;
+      const wiki = siteItem(docs, 'wiki');
+      ok(wiki, `site wiki não está na árvore: ${outline(docs, docs.getChildren()).join(' | ')}`);
+      equal(
+        outline(docs, docs.getChildren(wiki)).join('\n'),
+        ['Wiki de Demonstração', 'Guias (section)', '  Imagens', '  Primeiros passos', 'Processos (section)', '  Processo de aprovação'].join('\n'),
+        'árvore da wiki',
+      );
+      const page = docs.pageItem(file('wiki/docs/guias/imagens.md'));
+      ok(page, 'página sem item');
+      equal(docs.getTreeItem(page!).command?.command, 'vscode.open', 'clicar na página não a abre');
+    });
+
+    test('site com nav: na ordem do nav, página que não existe e páginas fora do nav', async () => {
+      const { docs } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      await write('nav-site/docs/index.md', '# Início\n');
+      await write('nav-site/docs/b.md', '# Página B\n');
+      await write('nav-site/docs/solta.md', '# Solta\n');
+      await write(
+        'nav-site/mkdocs.yml',
+        'site_name: Com nav\nnav:\n  - Começo: index.md\n  - Seção:\n    - b.md\n    - Some: nao-existe.md\n  - GitHub: https://github.com\n',
+      );
+      try {
+        const expected = [
+          'Começo',
+          'Seção (section)',
+          '  Página B',
+          '  Some (missing)',
+          'GitHub (link)',
+          'Fora do nav (notInNav)',
+          '  Solta',
+        ];
+        const actual = () => {
+          const site = siteItem(docs, 'nav-site');
+          return site ? outline(docs, docs.getChildren(site)).join('\n') : '';
+        };
+        const english = expected.map(line => line.replace('Fora do nav', 'Not in the nav')).join('\n');
+        await until(actual, text => text === english || text === expected.join('\n'), 'árvore do site com nav');
+        // Título mudou no arquivo: a árvore acompanha
+        await write('nav-site/docs/b.md', '# Outro título\n');
+        await until(actual, text => text.includes('  Outro título'), 'título novo não chegou à árvore');
+      } finally {
+        await vscode.workspace.fs.delete(file('nav-site'), { recursive: true });
+      }
+      await until(() => siteItem(docs, 'nav-site') === undefined, gone => gone, 'site removido continuou na árvore');
     });
   });
 }

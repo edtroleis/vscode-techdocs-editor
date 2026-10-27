@@ -20,6 +20,7 @@ export class LocalSites implements vscode.Disposable {
 
   constructor() {
     const watcher = vscode.workspace.createFileSystemWatcher(MKDOCS);
+    const folders = vscode.workspace.createFileSystemWatcher('**/*', true, true, false);
     this.disposables.push(
       watcher,
       watcher.onDidCreate(uri => this.read(uri)),
@@ -27,9 +28,23 @@ export class LocalSites implements vscode.Disposable {
       watcher.onDidDelete(uri => {
         if (this.sites.delete(uri.toString())) this.changeEmitter.fire();
       }),
+      // Pasta apagada: o VS Code avisa só a pasta, não o `mkdocs.yml` de dentro
+      folders,
+      folders.onDidDelete(folder => {
+        const inside = [...this.sites.keys()].filter(key => key.startsWith(`${folder.toString()}/`));
+        inside.forEach(key => this.sites.delete(key));
+        if (inside.length) this.changeEmitter.fire();
+      }),
       this.changeEmitter,
     );
     this.ready = this.scan();
+  }
+
+  /** Todos os sites, com o `mkdocs.yml` de cada um, na ordem dos caminhos. */
+  list(): { mkdocs: vscode.Uri; site: DocsSite }[] {
+    return [...this.sites.entries()]
+      .map(([key, { site }]) => ({ mkdocs: vscode.Uri.parse(key), site }))
+      .sort((a, b) => a.site.root.localeCompare(b.site.root));
   }
 
   /** Site da página, ou undefined se ela não está no `docs_dir` de nenhum `mkdocs.yml`. */

@@ -9,5 +9,9 @@
   "Show line {0} in the Markdown text": "Ver a linha {0} no texto Markdown",
   "\"{0}\" is not an image": "\"{0}\" não é uma imagem",
   "\"{0}\" is larger than {1} MB. Use a smaller image.": "\"{0}\" passa de {1} MB. Use uma imagem menor.",
-  "Could not save the image \"{0}\": {1}": "Não foi possível gravar a imagem \"{0}\": {1}"
+  "Could not save the image \"{0}\": {1}": "Não foi possível gravar a imagem \"{0}\": {1}",
+  "Open": "Abrir",
+  "The nav in mkdocs.yml points to a page that does not exist: {0}": "O nav do mkdocs.yml aponta para uma página que não existe: {0}",
+  "Pages in docs_dir that are not in the nav of mkdocs.yml: MkDocs builds them, but they are not in the menu": "Páginas do docs_dir que não estão no nav do mkdocs.yml: o MkDocs gera essas páginas, mas elas não aparecem no menu",
+  "Not in the nav": "Fora do nav"
 }

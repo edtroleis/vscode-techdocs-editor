@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { DocsTreeView } from './docsTreeView';
 import { LintActions } from './lintActions';
 import { LintService } from './lintService';
 import { LocalSites } from './localSites';
@@ -9,9 +10,11 @@ export function activate(context: vscode.ExtensionContext) {
   const sites = new LocalSites();
   const lint = new LintService(sites);
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
+  const docs = new DocsTreeView(sites);
   context.subscriptions.push(
     sites,
     lint,
+    docs,
     vscode.languages.registerCodeActionsProvider({ language: 'markdown' }, new LintActions(lint), {
       providedCodeActionKinds: LintActions.kinds,
     }),
@@ -31,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint };
+  return { provider, sites, lint, docs };
 }
 
 function activeCustomEditorUri(): vscode.Uri | undefined {
