@@ -1,0 +1,9 @@
+#!/bin/sh
+# Antes de cada commit: typecheck, testes unitários e do webview (~1 min).
+# Pular numa emergência: git commit --no-verify
+set -e
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  . "$HOME/.nvm/nvm.sh" >/dev/null
+  nvm use >/dev/null 2>&1 || true
+fi
+npm run --silent test:fast

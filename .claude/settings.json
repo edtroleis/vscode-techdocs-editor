@@ -3,5 +3,21 @@
     "commit": "",
     "pr": "",
     "sessionUrl": false
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/test-after-edit.sh",
+            "asyncRewake": true,
+            "timeout": 300,
+            "statusMessage": "test:fast"
+          }
+        ]
+      }
+    ]
   }
 }
