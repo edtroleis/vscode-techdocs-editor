@@ -24,6 +24,8 @@ export type HostMessage =
   | { type: 'conflict'; message: string; action: string }
   /** Problemas de formatação da página, a cada lint (lista vazia: sem problemas). */
   | { type: 'lint'; problems: ProblemView[] }
+  /** Resposta a `uploadImage`: o link para pôr no Markdown, ou o motivo da recusa (já mostrado ao usuário). */
+  | { type: 'uploaded'; id: number; link?: string; error?: string }
   /** Testes: devolve o que o editor gravaria agora (`fromEditor` do Markdown do editor). */
   | { type: 'test:getSaved'; id: number }
   /** Testes: insere Markdown no cursor, como se a pessoa digitasse. */
@@ -31,7 +33,9 @@ export type HostMessage =
   /** Testes: clica no botão da barra fixa do editor (posição, a partir de 0). */
   | { type: 'test:clickTopBar'; index: number }
   /** Testes: clica no elemento do webview (o primeiro que casar com o seletor). */
-  | { type: 'test:click'; selector: string };
+  | { type: 'test:click'; selector: string }
+  /** Testes: escolhe o arquivo no botão de envio do primeiro bloco de imagem vazio, como a pessoa faria. */
+  | { type: 'test:chooseImage'; name: string; mime: string; data: Uint8Array };
 
 export type WebviewMessage =
   /** O script do webview está ouvindo: só agora o host manda o `init` (antes, a mensagem se perdia). */
@@ -44,6 +48,8 @@ export type WebviewMessage =
   | { type: 'fixLint' }
   /** "Ver linha": abrir o texto Markdown ao lado, nesta linha do arquivo (spec 01, W12). */
   | { type: 'showLine'; line: number }
+  /** Imagem escolhida no editor visual: o host grava em `<docs>/assets/` e responde com `uploaded`. */
+  | { type: 'uploadImage'; id: number; name: string; mime: string; data: Uint8Array }
   /**
    * Mudança feita pela pessoa no editor visual: o texto antes e depois dela (formato do repositório,
    * com `\n`). O host aplica só essa diferença ao documento como ele está (ver rebase.ts).

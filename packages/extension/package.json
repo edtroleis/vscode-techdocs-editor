@@ -93,6 +93,12 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "%config.openVisualByDefault%"
+        },
+        "techdocsEditor.images.maxSizeMB": {
+          "type": "number",
+          "default": 5,
+          "minimum": 0,
+          "markdownDescription": "%config.images.maxSizeMB%"
         }
       }
     }

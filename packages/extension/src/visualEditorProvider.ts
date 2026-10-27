@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import type { LintService } from './lintService';
+import type { LocalSites } from './localSites';
+import { DEFAULT_MAX_IMAGE_MB, imageProblem, imageTarget } from './imageUpload';
 import type { HostMessage, WebviewLabels, WebviewMessage } from './protocol';
 import { hasConflictMarkers } from './docsSite';
 import { rebase } from './rebase';
@@ -19,11 +21,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly lint: LintService,
+    private readonly sites: LocalSites,
   ) {}
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
-    const session = new EditorSession(document, panel, this.extensionUri, this.lint);
+    const session = new EditorSession(document, panel, this.extensionUri, this.lint, this.sites);
     this.sessions.set(key, session);
     panel.onDidDispose(() => {
       if (this.sessions.get(key) === session) this.sessions.delete(key);
@@ -69,6 +72,7 @@ export class EditorSession {
     private readonly panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
     private readonly lint: LintService,
+    private readonly sites: LocalSites,
   ) {
     this.ready = new Promise(resolve => (this.markReady = resolve));
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
@@ -131,6 +135,11 @@ export class EditorSession {
     this.post({ type: 'test:click', selector });
   }
 
+  /** Testes: escolhe a imagem no primeiro bloco de imagem vazio do editor visual. */
+  chooseImage(name: string, mime: string, data: Uint8Array) {
+    this.post({ type: 'test:chooseImage', name, mime, data });
+  }
+
   /** Espera as edições recebidas do webview chegarem ao documento. */
   settled(): Promise<unknown> {
     return this.queue;
@@ -173,6 +182,16 @@ export class EditorSession {
       case 'showLine':
         void this.showLine(message.line);
         return;
+      case 'uploadImage':
+        void this.uploadImage(message.name, message.mime, message.data).then(
+          link => this.post({ type: 'uploaded', id: message.id, link }),
+          (e: Error) => {
+            // O editor descarta o erro do envio em silêncio: o aviso fica com o VS Code
+            void vscode.window.showErrorMessage(e.message);
+            this.post({ type: 'uploaded', id: message.id, error: e.message });
+          },
+        );
+        return;
       case 'edit':
         if (this.conflicted) return;
         this.queue = this.queue.then(() => this.apply(message.before, message.after));
@@ -190,6 +209,28 @@ export class EditorSession {
         this.requests.delete(message.id);
         return;
     }
+  }
+
+  /**
+   * Grava a imagem em `<docs>/assets/` (spec 01, W9) e devolve o link relativo à página. Nunca `blob:`:
+   * o endereço temporário do navegador não existe no repositório.
+   */
+  private async uploadImage(name: string, mime: string, data: Uint8Array): Promise<string> {
+    const maxMB = vscode.workspace
+      .getConfiguration('techdocsEditor', this.document.uri)
+      .get<number>('images.maxSizeMB', DEFAULT_MAX_IMAGE_MB);
+    const problem = imageProblem(mime, data.byteLength, maxMB);
+    if (problem === 'notAnImage') throw new Error(vscode.l10n.t('"{0}" is not an image', name));
+    if (problem === 'tooLarge') {
+      throw new Error(vscode.l10n.t('"{0}" is larger than {1} MB. Use a smaller image.', name, maxMB));
+    }
+    const { path, link } = imageTarget(this.document.uri.path, this.sites.siteOf(this.document.uri)?.docsDir, name, Date.now());
+    try {
+      await vscode.workspace.fs.writeFile(this.document.uri.with({ path }), data);
+    } catch (e) {
+      throw new Error(vscode.l10n.t('Could not save the image "{0}": {1}', name, e instanceof Error ? e.message : String(e)));
+    }
+    return link;
   }
 
   /**

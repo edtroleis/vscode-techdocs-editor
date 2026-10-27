@@ -14,6 +14,7 @@ usar os pacotes `core` e `ui` e estas mudanças chegam lá sozinhas; até lá, f
 | 2026-10-27 | `ui/src/externalContent.ts` (novo) | `setMarkdown` troca só o trecho diferente; compara sem o `id` dos títulos e com o parágrafo vazio final; diferença que pega estrutura (tabela, lista) troca os blocos de primeiro nível inteiros | Sem isso, a diferença ia do primeiro título ao fim (cursor ia para o fim) e tabela consertada pelo plugin de tabelas não voltava ao desfazer | `ui/src/externalContent.test.ts`, `e2e/history.spec.ts` |
 | 2026-10-27 | `ui/src/externalHistory.ts` (novo), `ui/src/topBar.ts` | Desfazer/refazer da barra e Ctrl+Z/Y/Shift+Z vão para um histórico de fora quando ele existe | Na extensão o histórico é um só, o do documento do VS Code (spec 01, W4). No plugin, sem `history`, nada muda | `e2e/history.spec.ts` |
 | 2026-10-27 | `core/src/lintRules.ts` (novo) | Textos das regras do markdownlint em linguagem simples (en e pt-BR), os mesmos de `lintRules` do plugin | A extensão mostra os problemas no painel Problemas (host, sem React); no plugin, podem substituir as chaves `lintRules.*` da tradução | `extension/src/lintProblems.test.ts` |
+| 2026-10-27 | `ui/src/imageAlt.ts` (novo), `ui/src/MarkdownEditor.tsx` | O bloco de imagem guarda o texto alternativo (`alt`) e não grava mais o tamanho na tela no lugar dele; sem `alt`, usa a legenda; imagem recém-enviada sem legenda usa o nome do arquivo, como o GitHub | Ver B3: o texto alternativo de toda imagem sozinha no parágrafo virava `1.00` | `test/webview/images.spec.ts`, `test/fixtures/wiki/docs/guias/imagens.md` (ida e volta) |
 | 2026-10-27 | `ui/src/MarkdownEditor.tsx`, `ui/src/editor.css` | Props `onLineClick` (número da linha clicável, com teclado) e `lineTitle` (dica com o problema da linha) | "Ver linha" (W12) e o problema na dica. Ver B2: no plugin a dica `problemMark` nunca aparece | `test/webview/problems.spec.ts` |
 
 ## Bugs encontrados aqui: situação no plugin
@@ -51,6 +52,16 @@ parágrafo antes de 200 ms e conferir que o salvo tem as duas (aqui: `test/webvi
 | Correção aqui | Com `onLineClick`, o número recebe o mouse (`.docs-editor-line-link`: `pointer-events: auto`) e a dica traz o problema em si (`lineTitle`) |
 | Situação no plugin (0.2.1, `efd3784`) | **Confirmado no código**, não rodando: `MarkdownEditor.tsx` linha 38 (`pointerEvents: 'none'`) e linha 235 (`title={mark.problem ? text.problemMark : undefined}`) |
 | Correção sugerida | Só as marcas com problema recebem o mouse (`pointer-events: auto` em `.docs-editor-problem`); a fase 7 leva a versão daqui |
+
+### B3. Texto alternativo das imagens vira `1.00`
+
+| | |
+|---|---|
+| Sintoma | `![Diagrama da arquitetura](../assets/a.png)` sozinho no parágrafo é gravado como `![1.00](../assets/a.png)`. A descrição da imagem (leitores de tela, imagem que não carrega) se perde, e o lint não acusa, porque `1.00` conta como texto alternativo. Imagem nova enviada pelo editor também sai com `![1.00](…)` |
+| Causa | O bloco de imagem do Crepe (`@milkdown/components/image-block`, 7.22.3) usa o `alt` do Markdown para guardar o tamanho do bloco na tela: lê `Number(alt)` (texto vira 1) e grava `ratio.toFixed(2)`. A legenda vai no título da imagem |
+| Correção aqui | `ui/src/imageAlt.ts` troca a leitura e a gravação do bloco: o `alt` fica como estava; sem ele, a legenda; imagem enviada sem legenda, o nome do arquivo. O tamanho na tela não vai mais para o arquivo (o MkDocs não usa) |
+| Situação no plugin (0.2.1, `efd3784`) | **Confirmado no código**, não rodando: mesmo Crepe (7.22.3), sem nada que troque o bloco de imagem, e o plugin grava o Markdown inteiro (`usePublishFlow.tsx` linha 173, `fromEditor(markdown)`). Então todo salvamento troca o texto alternativo de todas as imagens sozinhas no parágrafo da página. Aqui o efeito era menor: a extensão só aplica o trecho alterado, e a imagem só perdia o texto quando o bloco dela mudava. Reproduzido aqui com o mesmo Crepe, antes da correção: `![Diagrama da arquitetura](assets/a.png)` saiu `![1.00](assets/a.png)` |
+| Correção sugerida | A fase 7 leva `imageAlt.ts`. Teste para levar: página com imagens com texto alternativo na ida e volta (aqui, `guias/imagens.md` das wikis de teste). O teste do plugin `fromEditor('Um.\n\n![1.00]()\n')` continua valendo para arquivos já gravados com `1.00` |
 
 ### Só da extensão (não se aplicam ao plugin hoje)
 

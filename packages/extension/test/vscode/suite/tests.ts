@@ -334,4 +334,71 @@ export function defineTests() {
       await until(() => session.saved(), text => text === document.getText(), 'o visual não recebeu o texto corrigido');
     });
   });
+
+  suite('Imagens', function () {
+    this.timeout(60_000);
+    const file = (path: string) => vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, path);
+    const assets = file('wiki/docs/assets');
+    const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+    const assetNames = async () => (await vscode.workspace.fs.readDirectory(assets)).map(([name]) => name).sort();
+    let before: string[] = [];
+
+    setup(async () => {
+      before = await assetNames();
+    });
+    teardown(async () => {
+      for (const name of await assetNames()) {
+        if (!before.includes(name)) await vscode.workspace.fs.delete(vscode.Uri.joinPath(assets, name));
+      }
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+      await closeAll();
+    });
+
+    /** Página de uma subpasta com um bloco de imagem vazio, pronto para escolher o arquivo. */
+    async function pageWithImageBlock() {
+      await (await api()).sites.ready;
+      const opened = await openVisual(file('wiki/docs/guias/primeiros-passos.md'));
+      opened.session.insert('![]()');
+      // O bloco entra no cursor (começo do título): o que isso muda no documento chega antes da imagem
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await opened.session.settled();
+      return opened;
+    }
+
+    test('grava em <docs>/assets/<horário>-<nome> e põe o link relativo à página', async () => {
+      const { session, document } = await pageWithImageBlock();
+      session.chooseImage('Captura de Tela.png', 'image/png', PNG);
+      const text = await until(() => document.getText(), t => t.includes('](../assets/'), 'o link não chegou ao documento');
+      const [link] = /\.\.\/assets\/\d+-captura-de-tela\.png/.exec(text) ?? [];
+      ok(link, `link inesperado: ${text}`);
+      ok(!text.includes('blob:'), 'link temporário (blob:) no documento');
+      const saved = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(file('wiki/docs/guias'), link!));
+      equal(Array.from(saved).join(), Array.from(PNG).join(), 'bytes gravados diferentes dos enviados');
+    });
+
+    test('arquivo que não é imagem é recusado: nada gravado, nada no documento', async () => {
+      const { session, document } = await pageWithImageBlock();
+      const original = document.getText();
+      session.chooseImage('notas.pdf', 'application/pdf', PNG);
+      await new Promise(resolve => setTimeout(resolve, 1_500));
+      equal((await assetNames()).join(), before.join(), 'gravou arquivo recusado');
+      ok(!document.getText().includes('notas'), 'arquivo recusado no documento');
+      equal(document.getText(), original, 'documento mudou');
+    });
+
+    test('imagem acima de techdocsEditor.images.maxSizeMB é recusada', async () => {
+      const config = vscode.workspace.getConfiguration();
+      await config.update('techdocsEditor.images.maxSizeMB', 0.001, vscode.ConfigurationTarget.Workspace);
+      try {
+        const { session, document } = await pageWithImageBlock();
+        const original = document.getText();
+        session.chooseImage('grande.png', 'image/png', new Uint8Array(2048));
+        await new Promise(resolve => setTimeout(resolve, 1_500));
+        equal((await assetNames()).join(), before.join(), 'gravou imagem acima do limite');
+        equal(document.getText(), original, 'documento mudou');
+      } finally {
+        await config.update('techdocsEditor.images.maxSizeMB', undefined, vscode.ConfigurationTarget.Workspace);
+      }
+    });
+  });
 }

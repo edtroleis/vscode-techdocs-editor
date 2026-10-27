@@ -8,7 +8,7 @@ import { VisualEditorProvider } from './visualEditorProvider';
 export function activate(context: vscode.ExtensionContext) {
   const sites = new LocalSites();
   const lint = new LintService(sites);
-  const provider = new VisualEditorProvider(context.extensionUri, lint);
+  const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
   context.subscriptions.push(
     sites,
     lint,

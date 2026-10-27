@@ -19,6 +19,32 @@ type Content = { text: string; language: string; baseUri: string; labels: Webvie
 /** Texto com `{0}` trocado pelo valor. */
 const format = (template: string, value: number) => template.replace('{0}', String(value));
 
+/** Envios de imagem esperando a resposta do host, por id. */
+const uploads = new Map<number, { resolve: (link: string) => void; reject: (error: Error) => void }>();
+let nextUpload = 0;
+
+/** Manda a imagem ao host, que grava em `<docs>/assets/` e devolve o link relativo à página. */
+async function uploadImage(file: File): Promise<string> {
+  const data = new Uint8Array(await file.arrayBuffer());
+  const id = nextUpload++;
+  return new Promise((resolve, reject) => {
+    uploads.set(id, { resolve, reject });
+    post({ type: 'uploadImage', id, name: file.name, mime: file.type, data });
+  });
+}
+
+/** Testes: escolhe o arquivo no botão de envio do bloco de imagem vazio (esperando ele aparecer). */
+async function chooseImage(name: string, mime: string, data: Uint8Array) {
+  const selector = '.milkdown-image-block input[type="file"]';
+  for (let i = 0; i < 50 && !document.querySelector(selector); i++) await new Promise(r => setTimeout(r, 100));
+  const input = document.querySelector<HTMLInputElement>(selector);
+  if (!input) return;
+  const files = new DataTransfer();
+  files.items.add(new File([new Uint8Array(data)], name, { type: mime }));
+  input.files = files.files;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
 function lookupFor(language: string) {
   const messages = language.toLowerCase().startsWith('pt') ? ptBR : en;
   return (key: string, vars: Record<string, string | number> = {}) =>
@@ -60,6 +86,16 @@ function App({ content }: { content: Content }) {
         }
         case 'lint':
           setProblems(message.problems);
+          return;
+        case 'uploaded': {
+          const pending = uploads.get(message.id);
+          uploads.delete(message.id);
+          if (message.link !== undefined) pending?.resolve(message.link);
+          else pending?.reject(new Error(message.error));
+          return;
+        }
+        case 'test:chooseImage':
+          void chooseImage(message.name, message.mime, message.data);
           return;
         case 'test:getSaved':
           post({ type: 'test:saved', id: message.id, text: fromEditor(editor.current!.getMarkdown()) });
@@ -115,8 +151,7 @@ function App({ content }: { content: Content }) {
         documentText.current = rebase(before, after, documentText.current);
         post({ type: 'edit', before, after });
       }}
-      // Envio de imagens: fase 2 (grava em <docs>/assets/ pelo host)
-      onUploadImage={() => Promise.reject(new Error('Envio de imagens ainda não disponível'))}
+      onUploadImage={uploadImage}
       resolveImage={resolveImage}
       problemLines={problemLines}
       text={text}

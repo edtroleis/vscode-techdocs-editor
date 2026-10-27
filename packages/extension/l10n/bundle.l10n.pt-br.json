@@ -6,5 +6,8 @@
   "{0} formatting problems": "{0} problemas de formatação",
   "Fix automatically": "Ajustar agora",
   "Line {0}": "Linha {0}",
-  "Show line {0} in the Markdown text": "Ver a linha {0} no texto Markdown"
+  "Show line {0} in the Markdown text": "Ver a linha {0} no texto Markdown",
+  "\"{0}\" is not an image": "\"{0}\" não é uma imagem",
+  "\"{0}\" is larger than {1} MB. Use a smaller image.": "\"{0}\" passa de {1} MB. Use uma imagem menor.",
+  "Could not save the image \"{0}\": {1}": "Não foi possível gravar a imagem \"{0}\": {1}"
 }

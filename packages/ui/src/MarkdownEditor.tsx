@@ -7,6 +7,7 @@ import { defaultCodeLanguagePlugin } from './defaultCodeLanguage';
 import { replaceChanged } from './externalContent';
 import { ExternalHistory, externalHistoryCtx } from './externalHistory';
 import { listCaretFixPlugin } from './listCaretFix';
+import { imageAltPlugin } from './imageAlt';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
 import { buildTopBar } from './topBar';
 import { EditorText, headingOptions, labelTopBar, selectionToolbar, slashMenu } from './labels';
@@ -108,6 +109,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   onChangeRef.current = onChange;
   const uploadRef = useRef(onUploadImage);
   uploadRef.current = onUploadImage;
+  /** Nome (sem extensão) de cada imagem enviada, pelo link: o texto alternativo dela (ver imageAlt.ts). */
+  const uploadedNames = useRef(new Map<string, string>());
   const resolveRef = useRef(resolveImage);
   resolveRef.current = resolveImage;
   const problemsRef = useRef(problemLines);
@@ -130,6 +133,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   useEffect(() => {
     // Os textos valem para o editor criado agora (um idioma novo recria a página inteira)
     const labels = textRef.current;
+    const upload = async (file: File) => {
+      const url = await uploadRef.current(file);
+      uploadedNames.current.set(url, file.name.replace(/\.[^.]*$/, ''));
+      return url;
+    };
     const crepe = new Crepe({
       root: root.current,
       defaultValue: initialValue,
@@ -147,9 +155,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         [Crepe.Feature.LinkTooltip]: { inputPlaceholder: labels.linkPlaceholder },
         // Sem isto o editor grava "blob:..." (endereço temporário do navegador) e a imagem quebra
         [Crepe.Feature.ImageBlock]: {
-          onUpload: file => uploadRef.current(file),
-          inlineOnUpload: file => uploadRef.current(file),
-          blockOnUpload: file => uploadRef.current(file),
+          onUpload: file => upload(file),
+          inlineOnUpload: file => upload(file),
+          blockOnUpload: file => upload(file),
           proxyDomURL: url => resolveRef.current(url),
           blockUploadButton: labels.uploadImage,
           inlineUploadButton: labels.uploadImageInline,
@@ -171,7 +179,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(defaultCodeLanguagePlugin)
       .use(inlineCodeTypingPlugin)
       .use(listCaretFixPlugin)
-      .use(visualSearchPlugin);
+      .use(visualSearchPlugin)
+      .use(imageAltPlugin(src => uploadedNames.current.get(src)));
     crepeRef.current = crepe;
 
     // Linha de cada bloco: os blocos do editor e os do Markdown (remark) andam um para um; a linha no
