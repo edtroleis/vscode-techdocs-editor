@@ -62,15 +62,22 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
 
 ![Ctrl+F no editor visual destaca e conta os resultados](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/search.gif)
 
-- **Árvore Documentação** no Explorer: as páginas de cada site do MkDocs do workspace, na ordem do `nav` do
-  `mkdocs.yml` (ou das pastas, sem `nav`), com o título de cada página. Páginas fora do `nav` e itens do
-  `nav` que apontam para páginas que não existem aparecem marcados.
+- **TechDocs na barra de atividades:** um ícone próprio, que só aparece em workspaces com `mkdocs.yml`, para o
+  resto do seu Markdown não atrapalhar. Ele tem três seções: **Documentação**, **Verificação** e o painel
+  opcional **Publicação**.
+- **Árvore Documentação:** as páginas de cada site do MkDocs do workspace, na ordem do `nav` do `mkdocs.yml`
+  (ou das pastas, sem `nav`), com o título de cada página. Páginas fora do `nav` e itens do `nav` que apontam
+  para páginas que não existem aparecem marcados.
+- **Só nas páginas das docs:** o botão e o comando **Abrir no editor visual** aparecem para páginas dentro de um
+  `docs_dir`, não para todo arquivo Markdown (READMEs, changelogs).
 - **Busca** com Ctrl+F no editor visual, com "1 de 3" e Enter / Shift+Enter entre os resultados.
 
 ### Começar de um template
 
-**TechDocs: Nova página a partir de template…** (paleta de comandos, árvore **Documentação** ou clique direito
-numa pasta das docs) cria uma página com as seções que aquele tipo de página precisa, já com o título, a data
+![Nova página a partir de uma seção da árvore Documentação: escolha o tipo de página, dê um título, e ela abre no editor visual pronta para preencher](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-page.gif)
+
+**TechDocs: Nova página a partir de template…** (paleta de comandos, o **+** num site ou seção da árvore
+**Documentação** ou clique direito numa pasta das docs) cria uma página com as seções que aquele tipo de página precisa, já com o título, a data
 e o dono do `catalog-info.yaml`, e abre no editor visual.
 
 | Para… | Templates |
@@ -125,7 +132,9 @@ Alerta: {{alert}}. Dono: {{owner}}. Revisado em {{date}}.
 
 #### Um site de documentação inteiro
 
-**TechDocs: Novo site de documentação…** (paleta de comandos ou clique direito numa pasta) cria o `mkdocs.yml`
+![Novo site de documentação a partir de template: dê o nome, responda às perguntas, e o mkdocs.yml e as páginas ficam prontos](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-site.gif)
+
+**TechDocs: Novo site de documentação…** (paleta de comandos, menu da seção Documentação ou clique direito numa pasta) cria o `mkdocs.yml`
 (com o `nav` e o plugin `techdocs-core`) e as páginas em `docs/`, na raiz do workspace ou na pasta escolhida.
 Nunca sobrescreve um arquivo e diz a anotação a pôr no `catalog-info.yaml` (`backstage.io/techdocs-ref: dir:.`)
 sem alterá-lo.
@@ -158,20 +167,25 @@ files:
 
 ### Conferir e preparar o repositório
 
-**TechDocs: Conferir a documentação do repositório** lista, no painel Problemas, o que falta ou está errado
-para o TechDocs montar cada site: `site_name` e o plugin `techdocs-core` no `mkdocs.yml`, a pasta das docs e o
+![A seção Verificação agrupa por tipo o que o TechDocs precisa; um clique leva à linha; Corrigir mostra o diff antes de aplicar](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/check-and-fix.gif)
+
+A seção **Verificação** da barra lateral TechDocs lista, agrupado por tipo, o que falta ou está errado para o
+TechDocs montar cada site: `site_name` e o plugin `techdocs-core` no `mkdocs.yml`, a pasta das docs e o
 `index.md` dela, itens do `nav` que apontam para páginas que não existem e páginas fora do `nav`, a anotação
 `backstage.io/techdocs-ref` no `catalog-info.yaml`, a configuração do markdownlint, problemas de formatação,
-links para arquivos que não existem e imagens que faltam.
+links para arquivos que não existem e imagens que faltam. Ela confere sozinha quando aparece pela primeira vez e
+de novo depois que você salva; o ícone mostra quantos itens faltam. Um clique abre o arquivo na linha, e
+**Corrigir** mostra o diff daquela correção antes de gravar qualquer coisa. Os mesmos itens ficam no painel
+Problemas.
 
 **TechDocs: Preparar a documentação neste repositório** cria um site de template quando não há `mkdocs.yml`.
 Se há, passa pelas correções uma por uma, com o diff antes, para você aplicar, pular ou parar. Links quebrados
-e imagens que faltam ficam no painel Problemas: só uma pessoa sabe o destino certo.
+e imagens que faltam não têm correção: só uma pessoa sabe o destino certo.
 
 ### Publicar sem sair do VS Code (opcional)
 
 Para quem prefere não lidar com branches e pull requests: ligue `techdocsEditor.local.publishPanel` e um
-painel **Publicação** aparece no Explorer, com o mesmo fluxo do plugin do Backstage.
+painel **Publicação** aparece na barra lateral TechDocs, com o mesmo fluxo do plugin do Backstage.
 
 | Botão | O que acontece no GitHub |
 |-------|--------------------------|
@@ -195,9 +209,12 @@ painel **Publicação** aparece no Explorer, com o mesmo fluxo do plugin do Back
 1. Instale o **TechDocs Editor** pelo Marketplace do VS Code.
 2. Abra uma pasta que tenha um `mkdocs.yml` (a extensão começa sozinha ali).
 3. Abra uma página:
-   - pela seção **Documentação** do Explorer, ou
+   - pela seção **Documentação** do ícone TechDocs na barra de atividades, ou
    - pelo botão **Abrir no editor visual** na barra de título de um arquivo `.md`, ou
    - por **Reabrir Editor com… → Editor visual do TechDocs**.
+
+Primeira vez? **Ajuda → Bem-vindo → Comece com o TechDocs Editor** passa por criar um site, a barra lateral, uma
+página nova, o editor visual, a verificação, a publicação e os templates da empresa.
 
 Para abrir as páginas de documentação sempre no editor visual, ligue `techdocsEditor.openVisualByDefault`.
 Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ver o texto.
@@ -239,8 +256,9 @@ Corrigir a formatação ao salvar:
 | **TechDocs: Abrir como texto Markdown** | Abre o texto da página ao lado do editor visual |
 | **TechDocs: Nova página a partir de template…** | Cria uma página de documentação a partir de um template e abre no editor visual |
 | **TechDocs: Novo site de documentação…** | Cria o `mkdocs.yml` e as páginas de um site de documentação a partir de um template |
-| **TechDocs: Conferir a documentação do repositório** | Lista no painel Problemas o que falta ou está errado para o TechDocs |
+| **TechDocs: Conferir a documentação do repositório** | Lista na seção Verificação e no painel Problemas o que falta ou está errado para o TechDocs |
 | **TechDocs: Preparar a documentação neste repositório** | Cria um site, ou aplica as correções da conferência uma por uma, com o diff antes |
+| **TechDocs: Atualizar os templates da empresa** | Confere o repositório de templates da empresa na hora, sem esperar a conferência de cada hora |
 
 ## Onde o lint acha a configuração
 

@@ -61,15 +61,22 @@ the page. Never a temporary `blob:` address, and never larger than you allow
 
 ![Ctrl+F in the visual editor highlights the matches and counts them](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/search.gif)
 
-- **Documentation tree** in the Explorer: the pages of each MkDocs site in the workspace, in the order of
-  the `nav` in `mkdocs.yml` (or of the folders, without a `nav`), with the page titles. Pages missing from
-  the `nav`, and `nav` entries pointing to missing pages, are flagged.
+- **TechDocs in the activity bar:** an icon of its own, shown only in workspaces with a `mkdocs.yml`, so the
+  rest of your Markdown stays out of the way. It has three sections: **Documentation**, **Check** and the
+  optional **Publishing** panel.
+- **Documentation tree:** the pages of each MkDocs site in the workspace, in the order of the `nav` in
+  `mkdocs.yml` (or of the folders, without a `nav`), with the page titles. Pages missing from the `nav`, and
+  `nav` entries pointing to missing pages, are flagged.
+- **Only on docs pages:** the **Open in visual editor** button and command show up for pages inside a
+  `docs_dir`, not for every Markdown file (READMEs, changelogs).
 - **Search** with Ctrl+F in the visual editor, with "1 of 3" and Enter / Shift+Enter between matches.
 
 ### Start from a template
 
-**TechDocs: New page from template…** (command palette, the **Documentation** tree, or right-click on a docs
-folder) creates a page with the sections that kind of page needs, already filled with the title, the date and
+![New page from a section of the Documentation tree: choose the kind of page, give it a title, and it opens in the visual editor ready to fill](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-page.gif)
+
+**TechDocs: New page from template…** (command palette, the **+** on a site or section of the
+**Documentation** tree, or right-click on a docs folder) creates a page with the sections that kind of page needs, already filled with the title, the date and
 the owner from `catalog-info.yaml`, and opens it in the visual editor.
 
 | To… | Templates |
@@ -124,7 +131,9 @@ Alert: {{alert}}. Owner: {{owner}}. Reviewed on {{date}}.
 
 #### A whole documentation site
 
-**TechDocs: New documentation site…** (command palette, or right-click on a folder) creates `mkdocs.yml`
+![New documentation site from a template: name it, answer its questions, and mkdocs.yml and the pages are ready](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-site.gif)
+
+**TechDocs: New documentation site…** (command palette, the Documentation view menu, or right-click on a folder) creates `mkdocs.yml`
 (with the `nav` and the `techdocs-core` plugin) and the pages in `docs/`, in the workspace root or in the folder
 you chose. It never overwrites a file, and it tells you the annotation to add to `catalog-info.yaml`
 (`backstage.io/techdocs-ref: dir:.`) without changing it.
@@ -157,20 +166,24 @@ files:
 
 ### Check and prepare the repository
 
-**TechDocs: Check the documentation of the repository** lists, in the Problems panel, what is missing or wrong
-for TechDocs to build each site: `site_name` and the `techdocs-core` plugin in `mkdocs.yml`, the docs folder
+![The Check view groups what TechDocs needs by kind; a click goes to the line; Fix shows the diff before applying](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/check-and-fix.gif)
+
+The **Check** section of the TechDocs sidebar lists, grouped by kind, what is missing or wrong for TechDocs to
+build each site: `site_name` and the `techdocs-core` plugin in `mkdocs.yml`, the docs folder
 and its `index.md`, `nav` entries pointing to missing pages and pages left out of the `nav`, the
 `backstage.io/techdocs-ref` annotation in `catalog-info.yaml`, the markdownlint configuration, formatting
-problems, links to missing files and missing images.
+problems, links to missing files and missing images. It checks on its own when it first shows up and again
+after you save; the icon shows how many items are left. A click opens the file at the line, and **Fix** shows the
+diff of that one fix before writing anything. The same items are in the Problems panel.
 
 **TechDocs: Prepare the documentation in this repository** creates a site from a template when there is no
 `mkdocs.yml`. Otherwise it goes through the fixes one by one, showing the diff first, so you apply, skip or
-stop. Broken links and missing images stay in the Problems panel: only a person knows the right target.
+stop. Broken links and missing images have no fix: only a person knows the right target.
 
 ### Publish without leaving VS Code (optional)
 
 For people who would rather not deal with branches and pull requests: turn on
-`techdocsEditor.local.publishPanel` and a **Publishing** panel shows up in the Explorer, with the same flow as
+`techdocsEditor.local.publishPanel` and a **Publishing** panel shows up in the TechDocs sidebar, with the same flow as
 the Backstage plugin.
 
 | Button | What happens on GitHub |
@@ -194,9 +207,12 @@ the Backstage plugin.
 1. Install **TechDocs Editor** from the VS Code Marketplace.
 2. Open a folder that has a `mkdocs.yml` (the extension starts on its own there).
 3. Open a page:
-   - from the **Documentation** section in the Explorer, or
+   - from the **Documentation** section of the TechDocs icon in the activity bar, or
    - with the **Open in visual editor** button in the editor title bar of a `.md` file, or
    - with **Reopen Editor With… → TechDocs visual editor**.
+
+New to it? **Help → Welcome → Get started with TechDocs Editor** walks through creating a site, the sidebar, a
+new page, the visual editor, the check, publishing and company templates.
 
 To always open documentation pages in the visual editor, turn on `techdocsEditor.openVisualByDefault`. Use
 **Reopen Editor With…** or **TechDocs: Open as Markdown text** to see the text.
@@ -238,8 +254,9 @@ Fix formatting on save:
 | **TechDocs: Open as Markdown text** | Opens the text of the page side by side with the visual editor |
 | **TechDocs: New page from template…** | Creates a documentation page from a template and opens it in the visual editor |
 | **TechDocs: New documentation site…** | Creates `mkdocs.yml` and the pages of a documentation site from a template |
-| **TechDocs: Check the documentation of the repository** | Lists what is missing or wrong for TechDocs in the Problems panel |
+| **TechDocs: Check the documentation of the repository** | Lists what is missing or wrong for TechDocs in the Check view and the Problems panel |
 | **TechDocs: Prepare the documentation in this repository** | Creates a site, or applies the fixes of the check one by one with the diff first |
+| **TechDocs: Refresh company templates** | Checks the company templates repository right away instead of waiting for the hourly check |
 
 ## How the lint finds its configuration
 
