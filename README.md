@@ -66,6 +66,28 @@ the page. Never a temporary `blob:` address, and never larger than you allow
   the `nav`, and `nav` entries pointing to missing pages, are flagged.
 - **Search** with Ctrl+F in the visual editor, with "1 of 3" and Enter / Shift+Enter between matches.
 
+### Publish without leaving VS Code (optional)
+
+For people who would rather not deal with branches and pull requests: turn on
+`techdocsEditor.local.publishPanel` and a **Publishing** panel shows up in the Explorer, with the same flow as
+the Backstage plugin.
+
+| Button | What happens on GitHub |
+|--------|------------------------|
+| **Save draft** | Commit and push to the draft branch, with `[skip ci]`: no checks, no pull request |
+| **Save and check** | Fixes what the formatting check can fix, commits, pushes and opens a **draft** pull request the first time, which starts the checks |
+| **Send for publication** / **Send for review** | Marks the pull request as ready. The page is published by whoever merges it on GitHub: the panel never merges |
+| **Discard** | Closes the pull request and, on a branch the panel created, deletes it here and on GitHub |
+
+- On the default branch, saving creates `docs/<your-login>/<page>` and switches to it. On a branch of your
+  own, the panel uses that branch.
+- Commits only take the page and the new images in `assets/` it uses, never other changes in your workspace.
+- The checks of any CI (GitHub Actions check runs and commit statuses), with failures in plain language and a
+  link to the line. Without a pipeline, the formatting check of the editor is the verification.
+- Repository admins get **Set up checks**: a workflow with the standard checks, the formatting rules and branch
+  protection, the files in a pull request for the team to review.
+- Signs in with the GitHub account of VS Code (GitHub Enterprise Server too). The token stays with VS Code.
+
 ## Getting started
 
 1. Install **TechDocs Editor** from the VS Code Marketplace.
@@ -84,6 +106,17 @@ To always open documentation pages in the visual editor, turn on `techdocsEditor
 |---------|---------|--------------|
 | `techdocsEditor.openVisualByDefault` | `false` | Open pages inside a MkDocs `docs_dir` in the visual editor instead of the text |
 | `techdocsEditor.images.maxSizeMB` | `5` | Largest image the visual editor saves to `assets`. Images go into the repository: large files weigh on every clone |
+| `techdocsEditor.local.publishPanel` | `false` | Show the **Publishing** panel |
+| `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch created for a draft when you are on the default branch |
+| `techdocsEditor.drafts.skipCi` | `true` | **Save draft** adds `[skip ci]`, so the pipeline only runs on **Save and check** |
+| `techdocsEditor.verification.mode` | `auto` | `auto` (the pipeline when there is one), `pipeline` or `editor` |
+| `techdocsEditor.verification.startTimeoutSeconds` | `120` | Wait for the first check before warning that nothing started |
+| `techdocsEditor.verification.checkHelp` | `{}` | Plain-language message per check name, shown when it fails |
+| `techdocsEditor.polling.intervalSeconds` / `idleIntervalSeconds` | `8` / `60` | Check queries while something runs / when idle. Nothing is queried while the window is in the background |
+| `techdocsEditor.github.scopes` | `["repo"]` | Scopes asked when signing in to GitHub (`public_repo` for public repositories) |
+
+A `.techdocs-editor.yaml` at the repository root (`verification.mode`, `startTimeoutSeconds`, `checkHelp`)
+wins over the settings, so the whole team gets the same checks.
 
 Fix formatting on save:
 
@@ -115,8 +148,9 @@ otherwise). Only pages inside a `docs_dir` are checked.
 ## Privacy and security
 
 - **No telemetry.** The extension collects nothing.
-- **No network in local mode.** Pages are read and written through VS Code. The only requests are for
-  images your pages already link with `https://`.
+- **No network in local mode** unless you turn on the publishing panel. Pages are read and written through
+  VS Code; the only requests are for images your pages already link with `https://`. The panel talks only to
+  the GitHub of your repository's remote, from the extension host: the token never reaches the webview.
 - The visual editor runs in a webview with a strict content security policy: only the extension's own
   scripts run.
 
@@ -124,9 +158,9 @@ otherwise). Only pages inside a `docs_dir` are checked.
 
 - VS Code 1.100 or later.
 - Works on local folders and clones (local mode). Git stays with VS Code's source control.
-- Not yet: the optional publishing panel (branch, pull request and checks without leaving VS Code), the
-  remote mode (edit a repository on GitHub without cloning it), VS Code for the Web, and documentation
-  templates. See the [roadmap](specs/00-visao-geral.md#fases).
+- The publishing panel needs a clone with a GitHub remote and VS Code's Git extension.
+- Not yet: the remote mode (edit a repository on GitHub without cloning it), VS Code for the Web, and
+  documentation templates. See the [roadmap](specs/00-visao-geral.md#fases).
 - Math (LaTeX) is off, as in TechDocs' default MkDocs setup.
 - Some advanced Material for MkDocs constructs, such as grid cards and HTML blocks with `markdown`, are still
   being hardened. Review the diff before committing pages that use them.

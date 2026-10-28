@@ -69,7 +69,7 @@ até a fase 7.
 | 0. **Prova técnica** | Webview com o Milkdown sobre `CustomTextEditorProvider`, abrindo páginas reais | Abrir e salvar sem editar deixa as páginas da wiki idênticas byte a byte; digitar logo após criar item de lista não troca letras; a mesma extensão sobe no `@vscode/test-web` |
 | 1. **Trazer o núcleo** | `packages/core` e `packages/ui` neste repositório, copiados do `-common` e do frontend do plugin, sem Backstage (spec 01, N1 a N5), com os testes do editor do plugin (harness Playwright) | Suítes do editor herdadas verdes aqui; o plugin não muda |
 | 2. **Modo local (MVP)** | Editor visual, imagens em `assets/`, lint com diagnostics e correções automáticas, "ver linha" no editor nativo | Spec 01 e modo local da spec 02 cobertos pelos testes |
-| 3. **Publicação no modo local** | Painel opcional: branch, PR em rascunho, checks em linguagem simples, enviar | Cenários de pipeline da spec 02 com o GitHub simulado |
+| 3. **Publicação no modo local** ✅ | Painel opcional: branch, PR em rascunho, checks em linguagem simples, enviar | Cenários de pipeline da spec 02 com o GitHub simulado |
 | 4. **Modo remoto (desktop)** | `FileSystemProvider` do GitHub, Salvar rascunho / Salvar e verificar / Enviar / Descartar / Histórico, conflitos por SHA | Mesmos cenários do `test:editor:portal` do plugin, com o GitHub simulado |
 | 5. **Web e Dev Spaces** | Build `browser` (vscode.dev), Open VSX, devfile de exemplo | Suíte no `@vscode/test-web`; instalação no Dev Spaces |
 | 6. **Publicar** | Marketplace + Open VSX, README com GIFs, changelog | Release automatizada, pacote verificado |
@@ -172,3 +172,16 @@ Decisões:
 | 3c. Painel e ações ✅ | `techdocsEditor.local.publishPanel`; `WebviewView` "Publicação" no Explorer; Salvar rascunho, Salvar e verificar, Enviar, Descartar pelo `vscode.git` e pelo `GitHubClient`; `drafts.skipCi`, `branchPattern` | LC5, D3-2 a D3-4 | unitários (cenários do plugin com Git e GitHub simulados); integração (repositório Git de verdade com remote local) |
 | 3d. Verificações no painel ✅ | Checks e apontamentos em linguagem simples com "ver linha"; aviso sem check em `startTimeoutSeconds`; erro de consulta; consulta só com a janela em foco; `verification.*` e `.techdocs-editor.yaml` | P1 a P8 | unitários; webview do painel |
 | 3e. Configurar verificações ✅ | Para admin sem a configuração mínima: `planSetup`/`applySetup`, pedindo o escopo `workflow` só nessa hora | P7 | unitários |
+
+**Resultado (2026-10-28): fase 3 feita.** As cinco partes entraram com os testes delas:
+
+| Suíte | O que cobre |
+|-------|-------------|
+| Unitários (`core`) | `branchFor`, remote → repositório, `ChecksWatcher` (P1 a P5, P9), `Poller` (P8) |
+| Unitários (`extension`) | Os cenários do plugin no `LocalPublisher` com Git e GitHub simulados: rascunho, verificar (com ajuste automático e com bloqueio), enviar (publicação e revisão), descartar (branch do painel e branch própria), só a página e as imagens no commit, arquivo de fora no stage, sem pipeline, PR retomado, erro do GitHub, Configurar verificações; textos de erro de login (A-5); precedência do `.techdocs-editor.yaml` |
+| Webview | O painel no Chromium: estados, botões, checks com "ver linha", aviso sem check, erro de consulta, sem pipeline, setup, texto escapado |
+| Integração (desktop) | Salvar e verificar, enviar e descartar com o `vscode.git` de verdade num clone cujo `origin` aponta para um bare local (`url.<bare>.insteadOf`) |
+
+Não verificado automaticamente: o login de verdade no GitHub (`vscode.authentication`, inclusive o
+`forceNewSession` do 401) e o `git push` com credenciais. Os dois dependem de uma conta do GitHub; conferir à
+mão antes da fase 6. O GitHub simulado (`core/test/fakeGitHub.ts`) é a base da fase 4.

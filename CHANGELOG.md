@@ -23,4 +23,8 @@ First public version: local mode (folders and clones with a `mkdocs.yml`).
 - Documentation tree in the Explorer, from the `nav` of `mkdocs.yml` or from the folders.
 - `techdocsEditor.openVisualByDefault` to open documentation pages in the visual editor.
 - Pages with Git conflict markers open as text, with a notice, until the conflict is resolved.
+- Optional **Publishing** panel (`techdocsEditor.local.publishPanel`): Save draft, Save and check, Send and
+  Discard through VS Code's Git and the GitHub API, a draft pull request, the checks of any CI in plain
+  language with a link to the line, and **Set up checks** for repository admins. GitHub sign-in through VS
+  Code (GitHub Enterprise Server too), with a clear message for SSO and OAuth app restrictions.
 - English and Portuguese (Brazil).

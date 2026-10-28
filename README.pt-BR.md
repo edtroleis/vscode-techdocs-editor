@@ -67,6 +67,28 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
   `nav` que apontam para páginas que não existem aparecem marcados.
 - **Busca** com Ctrl+F no editor visual, com "1 de 3" e Enter / Shift+Enter entre os resultados.
 
+### Publicar sem sair do VS Code (opcional)
+
+Para quem prefere não lidar com branches e pull requests: ligue `techdocsEditor.local.publishPanel` e um
+painel **Publicação** aparece no Explorer, com o mesmo fluxo do plugin do Backstage.
+
+| Botão | O que acontece no GitHub |
+|-------|--------------------------|
+| **Salvar rascunho** | Commit e push na branch do rascunho, com `[skip ci]`: sem verificações e sem pull request |
+| **Salvar e verificar** | Ajusta o que a verificação de formatação sabe ajustar, faz commit e push e abre um pull request **em rascunho** na primeira vez, o que dispara as verificações |
+| **Enviar para publicação** / **Enviar para revisão** | Marca o pull request como pronto. Quem publica é quem faz o merge no GitHub: o painel nunca faz merge |
+| **Descartar** | Fecha o pull request e, numa branch criada pelo painel, apaga a branch aqui e no GitHub |
+
+- Na branch principal, salvar cria `docs/<seu-login>/<página>` e troca para ela. Numa branch sua, o painel usa
+  essa branch.
+- Os commits levam só a página e as imagens novas de `assets/` que ela usa, nunca outras alterações do
+  workspace.
+- As verificações de qualquer CI (check runs do GitHub Actions e commit statuses), com as falhas em
+  linguagem simples e link para a linha. Sem pipeline, a verificação é a de formatação do editor.
+- Quem administra o repositório vê **Configurar verificações**: um workflow com as verificações padrão, as
+  regras de formatação e a proteção da branch, com os arquivos num pull request para o time revisar.
+- O login é a conta do GitHub do VS Code (GitHub Enterprise Server também). O token fica com o VS Code.
+
 ## Como começar
 
 1. Instale o **TechDocs Editor** pelo Marketplace do VS Code.
@@ -85,6 +107,17 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 |--------------|--------|-----------|
 | `techdocsEditor.openVisualByDefault` | `false` | Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto |
 | `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
+| `techdocsEditor.local.publishPanel` | `false` | Mostra o painel **Publicação** |
+| `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch criada para o rascunho quando você está na branch principal |
+| `techdocsEditor.drafts.skipCi` | `true` | **Salvar rascunho** põe `[skip ci]`, para a pipeline rodar só em **Salvar e verificar** |
+| `techdocsEditor.verification.mode` | `auto` | `auto` (a pipeline, quando há uma), `pipeline` ou `editor` |
+| `techdocsEditor.verification.startTimeoutSeconds` | `120` | Espera pela primeira verificação antes de avisar que nada começou |
+| `techdocsEditor.verification.checkHelp` | `{}` | Mensagem em linguagem simples por nome de check, mostrada quando ele falha |
+| `techdocsEditor.polling.intervalSeconds` / `idleIntervalSeconds` | `8` / `60` | Consultas às verificações com algo rodando / parado. Nada é consultado com a janela em segundo plano |
+| `techdocsEditor.github.scopes` | `["repo"]` | Escopos pedidos no login do GitHub (`public_repo` para repositórios públicos) |
+
+Um `.techdocs-editor.yaml` na raiz do repositório (`verification.mode`, `startTimeoutSeconds`, `checkHelp`)
+vence as configurações, para o time inteiro ter as mesmas verificações.
 
 Corrigir a formatação ao salvar:
 
@@ -116,8 +149,10 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 ## Privacidade e segurança
 
 - **Sem telemetria.** A extensão não coleta nada.
-- **Sem rede no modo local.** As páginas são lidas e gravadas pelo VS Code. Os únicos acessos são às
-  imagens que as suas páginas já apontam com `https://`.
+- **Sem rede no modo local**, a não ser que você ligue o painel de publicação. As páginas são lidas e
+  gravadas pelo VS Code; os únicos acessos são às imagens que as suas páginas já apontam com `https://`. O
+  painel só fala com o GitHub do remote do seu repositório, a partir do host da extensão: o token nunca chega
+  ao webview.
 - O editor visual roda num webview com política de segurança de conteúdo restrita: só os scripts da
   própria extensão rodam.
 
@@ -125,9 +160,9 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 
 - VS Code 1.100 ou mais novo.
 - Funciona em pastas locais e clones (modo local). O Git continua com o controle de versão do VS Code.
-- Ainda não: o painel opcional de publicação (branch, pull request e verificações sem sair do VS Code), o
-  modo remoto (editar um repositório do GitHub sem clonar), o VS Code para a Web e os templates de
-  documentação. Veja o [plano](specs/00-visao-geral.md#fases).
+- O painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
+- Ainda não: o modo remoto (editar um repositório do GitHub sem clonar), o VS Code para a Web e os templates
+  de documentação. Veja o [plano](specs/00-visao-geral.md#fases).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.
 - Algumas construções avançadas do Material for MkDocs, como grid cards e blocos HTML com `markdown`, ainda
   estão sendo reforçadas. Confira o diff antes de commitar páginas que as usam.
