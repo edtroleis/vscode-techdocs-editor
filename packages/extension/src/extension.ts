@@ -7,6 +7,7 @@ import { LintService } from './lintService';
 import { LocalSites } from './localSites';
 import { openVisualByDefault } from './openByDefault';
 import { ProposedChanges } from './proposedChange';
+import { PrepareContext } from './prepareContext';
 import { PublishPanel } from './publish/publishPanel';
 import { RepoCheck } from './repoCheck';
 import { CentralTemplates } from './templates/centralTemplates';
@@ -28,11 +29,13 @@ export function activate(context: vscode.ExtensionContext) {
   const checkView = new CheckView(repoCheck);
   const catalogOptions = new CatalogOptions(repoCheck);
   newSite.useCatalogOptions(catalogOptions);
+  const prepare = new PrepareContext(sites);
   context.subscriptions.push(
     proposals,
     publish,
     repoCheck,
     checkView,
+    prepare,
     docsPageContext(sites),
     vscode.window.registerWebviewViewProvider(PublishPanel.viewId, publish),
     sites,
@@ -72,7 +75,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare };
 }
 
 /**

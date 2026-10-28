@@ -11,6 +11,7 @@ import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { NewPageCommand } from '../../../src/templates/newPage';
+import type { PrepareContext } from '../../../src/prepareContext';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { CatalogOptions } from '../../../src/catalogOptions';
 import type { CheckView } from '../../../src/checkView';
@@ -52,6 +53,7 @@ type Api = {
   publish: PublishPanel;
   central: CentralTemplates;
   catalogOptions: CatalogOptions;
+  prepare: PrepareContext;
 };
 
 async function api(): Promise<Api> {
@@ -488,6 +490,46 @@ export function defineTests() {
         await vscode.workspace.fs.delete(file('nav-site'), { recursive: true });
       }
       await until(() => siteItem(docs, 'nav-site') === undefined, gone => gone, 'site removido continuou na árvore');
+    });
+
+    test('sem mkdocs.yml: README, docs/ ou catalog-info.yaml ligam a tela "Preparar"; o site criado a desliga', async () => {
+      const { prepare, sites } = await api();
+      await prepare.ready;
+      equal(prepare.active, false, 'com site, a tela de preparar apareceu');
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const remove = (path: string) => vscode.workspace.fs.delete(file(path), { recursive: true }).then(undefined, () => undefined);
+      const mkdocs = sites.list().map(s => s.mkdocs);
+      const saved = await Promise.all(mkdocs.map(uri => vscode.workspace.fs.readFile(uri)));
+      try {
+        for (const uri of mkdocs) await vscode.workspace.fs.delete(uri);
+        await until(() => sites.list().length, count => count === 0, 'os sites continuaram depois de apagar os mkdocs.yml');
+        // Sem nada do que se procura na raiz (as páginas das wikis não estão em docs/): nada aparece
+        await new Promise(resolve => setTimeout(resolve, 1_000));
+        equal(prepare.active, false, 'sem README, docs/ nem catalog-info.yaml, a tela apareceu');
+
+        await write('README.md', '# Repositório\n');
+        await until(() => prepare.active && prepare.found.readme, Boolean, 'o README.md não ligou a tela');
+        await remove('README.md');
+        await until(() => prepare.active, active => !active, 'sem o README.md, a tela continuou');
+
+        await write('docs/guia.md', '# Guia\n');
+        await until(() => prepare.active && prepare.found.docs, Boolean, 'a pasta docs/ não ligou a tela');
+        await remove('docs/guia.md');
+        await remove('docs');
+        await until(() => prepare.active, active => !active, 'sem a pasta docs/, a tela continuou');
+
+        await write('catalog-info.yaml', 'kind: Component\n');
+        await until(() => prepare.active && prepare.found.catalog, Boolean, 'o catalog-info.yaml não ligou a tela');
+        // Com o site de volta, a árvore toma o lugar da tela
+        for (const [i, uri] of mkdocs.entries()) await vscode.workspace.fs.writeFile(uri, saved[i]);
+        await until(() => prepare.active, active => !active, 'com o site criado, a tela continuou');
+      } finally {
+        await remove('README.md');
+        await remove('docs');
+        await remove('catalog-info.yaml');
+        for (const [i, uri] of mkdocs.entries()) await vscode.workspace.fs.writeFile(uri, saved[i]);
+      }
+      await until(() => sites.list().length, count => count === mkdocs.length, 'os sites não voltaram');
     });
   });
 

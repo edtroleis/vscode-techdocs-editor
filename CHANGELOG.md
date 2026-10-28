@@ -22,6 +22,10 @@ All notable changes to the TechDocs Editor extension. The format follows
 - `README.md` as the home page: when creating a site from a template next to a README, copy it to
   `docs/index.md`, move it there (the README keeps a link to the docs), or leave it out. Links to `docs/…` are
   made relative to the docs folder.
+- The TechDocs icon also shows up in repositories without a `mkdocs.yml` that have a `README.md`, a `docs/`
+  folder with pages or a `catalog-info.yaml`. It opens a welcome screen that says what was found, with
+  **Prepare the documentation** and links to the walkthrough and to the TechDocs docs. Once the site exists, the
+  Documentation tree takes its place.
 
 ### Changed
 

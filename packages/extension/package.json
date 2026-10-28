@@ -43,7 +43,10 @@
   "browser": "./dist/web/extension.js",
   "activationEvents": [
     "workspaceContains:**/mkdocs.yml",
-    "workspaceContains:**/mkdocs.yaml"
+    "workspaceContains:**/mkdocs.yaml",
+    "workspaceContains:README.md",
+    "workspaceContains:docs/**/*.md",
+    "workspaceContains:catalog-info.yaml"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -368,7 +371,7 @@
         {
           "id": "techdocsEditor.docs",
           "name": "%view.docs%",
-          "when": "techdocsEditor.hasDocs",
+          "when": "techdocsEditor.hasDocs || techdocsEditor.canPrepare",
           "icon": "$(book)"
         },
         {
@@ -387,6 +390,31 @@
       ]
     },
     "viewsWelcome": [
+      {
+        "view": "techdocsEditor.docs",
+        "contents": "%viewsWelcome.prepare.intro%",
+        "when": "techdocsEditor.canPrepare"
+      },
+      {
+        "view": "techdocsEditor.docs",
+        "contents": "%viewsWelcome.prepare.readme%",
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.readme"
+      },
+      {
+        "view": "techdocsEditor.docs",
+        "contents": "%viewsWelcome.prepare.docs%",
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.docs"
+      },
+      {
+        "view": "techdocsEditor.docs",
+        "contents": "%viewsWelcome.prepare.catalog%",
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.catalog"
+      },
+      {
+        "view": "techdocsEditor.docs",
+        "contents": "%viewsWelcome.prepare.action%",
+        "when": "techdocsEditor.canPrepare"
+      },
       {
         "view": "techdocsEditor.check",
         "contents": "%viewsWelcome.check%"
