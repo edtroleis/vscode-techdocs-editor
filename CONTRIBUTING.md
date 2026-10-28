@@ -80,9 +80,31 @@ Built-in templates live in `packages/core/templates/<language>/<id>.md`, one fil
 3. Approve the `release` environment. The same `.vsix` then goes to the VS Code Marketplace, Open VSX
    and the GitHub release, with that version's changelog as the notes.
 
-One-time setup: a `release` environment with required reviewers and the `VSCE_PAT` (Azure DevOps, scope
-Marketplace → Manage) and `OVSX_PAT` secrets, and the `edtroleis` namespace on Open VSX
-(`npx ovsx create-namespace edtroleis -p <token>`).
+One-time setup, all in the `release` environment (with required reviewers):
+
+- **Marketplace:** the variables `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` of the Entra ID app registration
+  `vscode-techdocs-editor-publisher` (no Azure subscription needed), with a federated credential that lets
+  this repo's `release` environment sign in as it. The repo uses GitHub's **immutable** OIDC subject, so it
+  must match exactly:
+
+  ```bash
+  APP_ID=$(az ad app create --display-name vscode-techdocs-editor-publisher --query appId -o tsv)
+  az ad sp create --id "$APP_ID"
+  az ad app federated-credential create --id "$APP_ID" --parameters '{
+    "name": "github-release-techdocs-editor",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:edtroleis@31828901/vscode-techdocs-editor@1436322382:environment:release",
+    "audiences": ["api://AzureADTokenExchange"]
+  }'
+  ```
+
+  The first release prints the notice *ID de membro no Marketplace* and fails at *Marketplace*; add that
+  ID as a **Contributor** at <https://marketplace.visualstudio.com/manage/publishers/edtroleis> (Members)
+  and re-run the failed job. Confirm the subject with `gh api repos/edtroleis/vscode-techdocs-editor/actions/oidc/customization/sub`
+  (append `:environment:release` to its `sub_claim_prefix`). A `VSCE_PAT` secret (Azure DevOps, scope
+  Marketplace → Manage, organization-scoped) also works, but global tokens stop working on 2026-12-01.
+- **Open VSX:** the `OVSX_PAT` secret and the `edtroleis` namespace (`npx ovsx create-namespace edtroleis -p
+  <token>`). Without the secret the release skips Open VSX with a warning.
 
 ## Rules of thumb
 

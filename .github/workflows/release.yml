@@ -1,6 +1,7 @@
 # Release a cada tag v<versão> (ex.: v0.1.0): todas as suítes do CI, um único .vsix e, depois da aprovação
 # manual do ambiente "release", o mesmo .vsix no Marketplace, no Open VSX e na release do GitHub (spec 03).
-# Os tokens (VSCE_PAT e OVSX_PAT) são segredos do ambiente "release", não do repositório.
+# Credenciais só no ambiente "release": a identidade da Azure (variáveis AZURE_*) ou o VSCE_PAT para o
+# Marketplace, e o OVSX_PAT para o Open VSX (sem ele, o Open VSX fica de fora com um aviso).
 name: Release
 
 on:
@@ -59,6 +60,8 @@ jobs:
     environment: release
     permissions:
       contents: write
+      # Só para entrar na Azure pelo OIDC (Entra ID), sem segredo guardado.
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -69,12 +72,44 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: vsix
+      # Marketplace: de preferência pela identidade gerenciada da Azure que é membro do publisher (variáveis
+      # AZURE_CLIENT_ID e AZURE_TENANT_ID do ambiente, a mesma das outras extensões); senão, o segredo VSCE_PAT.
+      - name: Entrar na Azure (Entra ID)
+        if: vars.AZURE_CLIENT_ID != ''
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          # A identidade não tem papel em assinatura nenhuma, só é membro do publisher.
+          allow-no-subscriptions: true
+      # O ID a pôr como membro do publisher (Contributor). Só a própria identidade o lê, então é aqui que
+      # ele aparece na primeira configuração.
+      - name: ID de membro no Marketplace
+        if: vars.AZURE_CLIENT_ID != ''
+        run: |
+          id=$(az rest -u "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1-preview.3" \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 --query id -o tsv)
+          echo "::notice title=ID de membro no Marketplace::$id (membro do publisher, papel Contributor)"
       - name: Marketplace
-        run: npx vsce publish --packagePath techdocs-editor-*.vsix
+        run: |
+          if [ "$USE_ENTRA" = "true" ]; then
+            npx vsce publish --azure-credential --packagePath techdocs-editor-*.vsix
+          elif [ -n "$VSCE_PAT" ]; then
+            npx vsce publish --packagePath techdocs-editor-*.vsix
+          else
+            echo "::error::Sem credencial do Marketplace: as variáveis AZURE_* ou o segredo VSCE_PAT no ambiente release (CONTRIBUTING.md)"
+            exit 1
+          fi
         env:
+          USE_ENTRA: ${{ vars.AZURE_CLIENT_ID != '' }}
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
       - name: Open VSX
-        run: npx ovsx publish techdocs-editor-*.vsix
+        run: |
+          if [ -z "$OVSX_PAT" ]; then
+            echo "::warning::Sem o segredo OVSX_PAT no ambiente release: esta versão não foi para o Open VSX"
+            exit 0
+          fi
+          npx ovsx publish techdocs-editor-*.vsix
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
       - name: Release do GitHub
