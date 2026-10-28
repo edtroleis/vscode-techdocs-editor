@@ -155,6 +155,8 @@ To always open documentation pages in the visual editor, turn on `techdocsEditor
 |---------|---------|--------------|
 | `techdocsEditor.openVisualByDefault` | `false` | Open pages inside a MkDocs `docs_dir` in the visual editor instead of the text |
 | `techdocsEditor.images.maxSizeMB` | `5` | Largest image the visual editor saves to `assets`. Images go into the repository: large files weigh on every clone |
+| `techdocsEditor.templates.paths` | `[]` | More folders with page templates, relative to the workspace folder (`.techdocs/templates/` is always read) |
+| `techdocsEditor.templates.builtIn` | `true` | Offer the templates that come with the extension |
 | `techdocsEditor.local.publishPanel` | `false` | Show the **Publishing** panel |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch created for a draft when you are on the default branch |
 | `techdocsEditor.drafts.skipCi` | `true` | **Save draft** adds `[skip ci]`, so the pipeline only runs on **Save and check** |

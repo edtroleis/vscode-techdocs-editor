@@ -6,6 +6,10 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-28
+
+Templates of your own and pages that go straight into the site menu.
+
 ### Added
 
 - New page from template: on a site with a `nav`, offers to add the page to it, in the section clicked in

@@ -156,6 +156,8 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 |--------------|--------|-----------|
 | `techdocsEditor.openVisualByDefault` | `false` | Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto |
 | `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
+| `techdocsEditor.templates.paths` | `[]` | Mais pastas com templates de página, relativas à pasta do workspace (o `.techdocs/templates/` é sempre lido) |
+| `techdocsEditor.templates.builtIn` | `true` | Oferece os templates que vêm com a extensão |
 | `techdocsEditor.local.publishPanel` | `false` | Mostra o painel **Publicação** |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch criada para o rascunho quando você está na branch principal |
 | `techdocsEditor.drafts.skipCi` | `true` | **Salvar rascunho** põe `[skip ci]`, para a pipeline rodar só em **Salvar e verificar** |
