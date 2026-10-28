@@ -32,6 +32,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   private readonly view: vscode.TreeView<DocsItem>;
   private readonly disposables: vscode.Disposable[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private runs = 0;
+  private latest: Promise<void> = Promise.resolve();
   /** Última montagem da árvore (os testes esperam por ela). */
   ready: Promise<void> = Promise.resolve();
 
@@ -118,10 +120,20 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     }, REFRESH_DELAY_MS);
   }
 
-  private async refresh() {
+  /**
+   * Leituras de um refresh mais antigo podem terminar depois das de um novo (e pôr de volta um título velho): só
+   * o último vale, e quem espera um antigo espera o último.
+   */
+  private refresh(): Promise<void> {
+    const latest = this.build(++this.runs);
+    this.latest = latest;
+    return latest;
+  }
+
+  private async build(run: number): Promise<void> {
     const sites = this.sites.list();
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasDocs', sites.length > 0);
-    this.pages = new Map();
+    const pages = new Map<string, DocsItem>();
     const single = sites.length === 1;
     const roots: DocsItem[] = [];
     for (const { mkdocs, site } of sites) {
@@ -130,18 +142,20 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       const parent = single
         ? undefined
         : new DocsItem('site', siteName(yml) ?? site.root.split('/').pop()!, undefined, docsDir, vscode.workspace.asRelativePath(mkdocs.with({ path: site.root })));
-      const items = await this.siteItems(yml, site, docsDir, parent);
+      const items = await this.siteItems(yml, site, docsDir, parent, pages);
       if (parent) {
         parent.children.push(...items);
         roots.push(parent);
       } else roots.push(...items);
     }
+    if (run !== this.runs) return this.latest;
     this.roots = roots;
+    this.pages = pages;
     this.changeEmitter.fire();
     this.revealActive();
   }
 
-  private async siteItems(yml: string | undefined, site: DocsSite, docsDir: vscode.Uri, parent: DocsItem | undefined) {
+  private async siteItems(yml: string | undefined, site: DocsSite, docsDir: vscode.Uri, parent: DocsItem | undefined, pages: Map<string, DocsItem>) {
     const files = await vscode.workspace.findFiles(new vscode.RelativePattern(docsDir, '**/*.md'));
     // Só as do site (um site dentro do docs_dir de outro fica com as dele)
     const own = files.filter(uri => this.sites.siteOf(uri)?.docsDir === site.docsDir);
@@ -162,7 +176,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       }
       if (node.missing) return new DocsItem('missing', node.title, under, undefined, node.path);
       const page = new DocsItem('page', node.title, under, vscode.Uri.joinPath(docsDir, node.path));
-      this.pages.set(page.uri!.toString(), page);
+      pages.set(page.uri!.toString(), page);
       return page;
     };
     const items = tree.nodes.map(node => toItem(node, parent));
