@@ -75,6 +75,21 @@ Criam o `mkdocs.yml`, o `docs/` com as páginas e o `nav`. Para o TechDocs, dize
 | TP10 | Modo remoto (fase 4): o mesmo fluxo, com a página criada por commit na branch do rascunho e os templates do repositório lidos pela API |
 | TP11 | "TechDocs: Novo site de documentação…": escolhe um template de site e a pasta (padrão: raiz do workspace, se não houver `mkdocs.yml`); cria os arquivos e mostra a anotação do `catalog-info.yaml` para copiar |
 
+## Onde ficam e como evoluem (decidido em 2026-10-28)
+
+| Camada | Onde fica | Como muda | Quem recebe |
+|--------|-----------|-----------|-------------|
+| Templates da extensão | `packages/core/templates/<língua>/` deste repositório (no `core`, para o plugin usar os mesmos na fase 7, sem copiar) | Versão nova da extensão; propostas por PR aqui, com o CI exigindo lint limpo e ida e volta idêntica | Todo mundo, pela atualização automática do Marketplace e do Open VSX |
+| Templates da empresa ou do time | `.techdocs/templates/` do repositório das docs | PR no próprio repositório, versionado pelo Git; nada a publicar | Quem clona o repositório; sobrepõem os da extensão pelo nome |
+| Templates centrais (TA3) | Um repositório só da empresa (`techdocsEditor.templates.repository`) | PR nesse repositório | Todo repositório que aponta para ele (configuração recomendada pelo time de plataforma) |
+
+- O repositório do plugin não muda: os templates entram no plugin na fase 7, pelo `core` publicado no npm.
+- Template só é usado na criação: página já criada não muda quando o template muda.
+- O formato tem versão (`template.version`, padrão 1). A extensão continua lendo as versões antigas; um
+  template de versão mais nova que a extensão conhece aparece na lista desligado, com "atualize a extensão".
+- Ordem das versões da extensão: 0.1.0 sem templates (editor, lint e painel); 0.2.0 com T1 e T2; 0.3.0 com T3;
+  depois, modo remoto (T4) e templates centrais (TA3).
+
 ## Formato do template
 
 Um `.md` com front matter que descreve o template; o corpo é a página.
@@ -82,6 +97,7 @@ Um `.md` com front matter que descreve o template; o corpo é a página.
 ```markdown
 ---
 template:
+  version: 1
   name: Runbook
   description: Responder a um alerta ou executar um procedimento de operação
   category: guide          # tutorial | guide | reference | explanation
@@ -140,14 +156,28 @@ Implementação depois da fase 4 (ordem pedida em 2026-10-27), salvo decisão co
 | T1 | Formato, campos e criação de página no modo local (TP1 a TP5, TP7, TP9) com os 13 templates de página da v1 |
 | T2 | `nav` (TP6) e templates do repositório (TP8) |
 | T3 | Templates de site (TP11) |
+| T3b | Conferir e preparar a documentação do repositório (seção acima) |
 | T4 | Modo remoto (TP10), junto com o que a fase 4 já entregou |
 | T5 | Templates de página depois da v1 (RFC, notas de versão, glossário) |
+
+## Preparar e conferir o repositório (proposta de 2026-10-28)
+
+Pedido: uma feature que crie a estrutura do MkDocs num repositório ou confira se ela já está pronta. Junta-se à
+T3 (templates de site) e ao "Configurar verificações" do painel (P7):
+
+| Comando | O que faz |
+|---------|-----------|
+| "TechDocs: Conferir a documentação do repositório" | Relatório (painel Problemas e uma página de resultado) com o que falta ou está errado, cada item com a correção oferecida: `mkdocs.yml` (existe, `site_name`, `docs_dir` existe, plugin `techdocs-core` na lista de `plugins`), `docs/index.md`, itens do `nav` que apontam para páginas que não existem e páginas fora do `nav` (a árvore já detecta), `catalog-info.yaml` com `backstage.io/techdocs-ref`, `.markdownlint.*`, páginas com problemas de lint, links internos quebrados, imagens referenciadas que não existem |
+| "TechDocs: Preparar a documentação neste repositório" | Sem `mkdocs.yml`: escolhe um template de site (T3) e cria tudo; com `mkdocs.yml`: aplica só as correções que a conferência apontou, uma por uma, com o diff antes |
+
+A lógica da conferência fica no `core` (lista de achados com código, gravidade e correção), para o painel de
+publicação, o modo remoto e o plugin usarem a mesma. Parte **T3b**, logo depois da T3.
 
 ## Pontos em aberto
 
 | # | Ponto | Como fechar |
 |---|-------|-------------|
-| TA1 | De onde vem `owner` quando não há `catalog-info.yaml`: perguntar, usar o nome do Git ou deixar vazio | Decidir na T1; proposta: perguntar, com o `user.name` do Git como padrão |
+| TA1 | De onde vem `owner` quando não há `catalog-info.yaml`: perguntar, usar o nome do Git ou deixar vazio | **Decidido na T1:** o `spec.owner` do `catalog-info.yaml` da raiz do site ou do workspace; sem ele, perguntado como os outros campos, com o nome do Git (`user.name`) como sugestão quando o `vscode.git` estiver disponível |
 | TA2 | Instruções de preenchimento como comentário HTML (`<!-- -->`, somem na página publicada) em vez de texto de exemplo | Prova na T1: se o editor visual mantiver o comentário na ida e volta e o mostrar de forma discreta, pode valer a pena |
 | TA3 | Templates centrais da empresa num repositório só (`techdocsEditor.templates.repository: owner/repo/pasta`), em vez de copiar `.techdocs/templates/` em cada repositório | Depois da T4 (usa a API do GitHub da fase 4) |
 | TA4 | Templates vindos do Backstage (uma entidade `Template` ou um endpoint do plugin) | Fase 7, junto com o plugin |
