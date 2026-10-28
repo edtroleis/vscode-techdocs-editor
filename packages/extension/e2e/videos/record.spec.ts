@@ -6,7 +6,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 import { cursorToEnd } from '../../test/webview/editing';
-import { expect, openFile, prose, runCommand, test, visual } from '../vscode';
+import { expect, openFile, openVisualCommand, prose, runCommand, test, visual } from '../vscode';
 
 export const OUT = join(__dirname, '../../../../node_modules/.cache/editor-videos');
 const SIZE = { width: 1280, height: 800 };
@@ -124,7 +124,7 @@ test.describe('lint-and-fix', () => {
     appendFileSync(join(workspace, 'wiki/docs/index.md'), '\n# Perguntas frequentes\n\nResposta curta.   \n');
     await overlay(page);
     await openFile(page, 'wiki/docs/index.md');
-    await runCommand(page, 'TechDocs: Open in visual editor');
+    await openVisualCommand(page);
     await prose(page).waitFor({ timeout: 30_000 });
     const problems = visual(page).locator('.problems');
     await expect(problems).toBeVisible();
@@ -147,7 +147,7 @@ test.describe('images', () => {
     const png = readFileSync(join(workspace, 'wiki/docs/assets/diagrama.png'));
     await overlay(page);
     await openFile(page, 'wiki/docs/guias/primeiros-passos.md');
-    await runCommand(page, 'TechDocs: Open in visual editor');
+    await openVisualCommand(page);
     await prose(page).waitFor({ timeout: 30_000 });
     markStart('images', startedAt);
     await caption(page, 'Type / to insert a block');
@@ -179,7 +179,7 @@ test.describe('search', () => {
   test('Ctrl+F no visual', async ({ vscode: { page, startedAt } }) => {
     await overlay(page);
     await openFile(page, 'wiki/docs/processos/aprovacao.md');
-    await runCommand(page, 'TechDocs: Open in visual editor');
+    await openVisualCommand(page);
     await prose(page).waitFor({ timeout: 30_000 });
     markStart('search', startedAt);
     await clickLike(page, prose(page).locator('> p').first());

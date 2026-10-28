@@ -3,18 +3,19 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, openFile, runCommand, test, visual } from './vscode';
+import { expect, openFile, openVisualCommand, runCommand, test, visual } from './vscode';
 
 test('arquivo com conflito mostra o aviso, e "Abrir como texto" troca o visual pelo texto', async ({
   vscode: { page, workspace },
 }) => {
-  mkdirSync(join(workspace, 'conflito'), { recursive: true });
+  // Numa pasta de docs: o comando do editor visual só aparece nas páginas das docs
+  mkdirSync(join(workspace, 'wiki/docs/conflito'), { recursive: true });
   writeFileSync(
-    join(workspace, 'conflito', 'pagina.md'),
+    join(workspace, 'wiki/docs/conflito', 'pagina.md'),
     '# Conflito\n\n<<<<<<< HEAD\nTexto meu.\n=======\nTexto deles.\n>>>>>>> main\n',
   );
-  await openFile(page, 'conflito/pagina.md');
-  await runCommand(page, 'TechDocs: Open in visual editor');
+  await openFile(page, 'wiki/docs/conflito/pagina.md');
+  await openVisualCommand(page);
 
   const notice = visual(page).locator('.conflict');
   await expect(notice).toContainText('conflict markers');

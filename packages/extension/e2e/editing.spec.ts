@@ -2,6 +2,8 @@
  * O que uma pessoa faz no editor visual dentro do VS Code, com mouse e teclado de verdade.
  * O conteúdo é conferido no disco depois de salvar (Ctrl+S): é o que vai para o repositório.
  */
+import { copyFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   activeTabDirty,
   cursorAtEndOfFirstParagraph,
@@ -139,13 +141,15 @@ test('digitar logo depois de criar um item de lista não troca as letras', async
   await expect.poll(() => file(PAGE)).toMatch(/- um\n- dois\n/);
 });
 
-test('arquivo com CRLF continua com CRLF depois de editar e salvar', async ({ vscode: { page, file } }) => {
-  await openVisual(page, 'crlf/pagina.md');
+test('arquivo com CRLF continua com CRLF depois de editar e salvar', async ({ vscode: { page, file, workspace } }) => {
+  // Numa pasta de docs: o comando do editor visual só aparece nas páginas das docs
+  copyFileSync(join(workspace, 'crlf/pagina.md'), join(workspace, 'wiki/docs/crlf.md'));
+  await openVisual(page, 'wiki/docs/crlf.md');
   await cursorAtEndOfFirstParagraph(page);
   await page.keyboard.type(' Mais texto.');
   await page.waitForTimeout(800);
   await save(page);
-  const saved = file('crlf/pagina.md');
+  const saved = file('wiki/docs/crlf.md');
   expect(saved).toContain(' Mais texto.');
   expect(saved).not.toMatch(/[^\r]\n/);
 });

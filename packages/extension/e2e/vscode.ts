@@ -130,10 +130,19 @@ export const visual = (page: Page): FrameLocator =>
 
 export const prose = (page: Page) => visual(page).locator('.milkdown .ProseMirror');
 
+/**
+ * "TechDocs: Open in visual editor" pela paleta. O comando só aparece em página das docs, e a extensão liga esse
+ * contexto um instante depois de a aba abrir: espera o botão do editor, senão a paleta abre sem o comando.
+ */
+export async function openVisualCommand(page: Page) {
+  await page.getByRole('button', { name: 'Open in visual editor' }).first().waitFor({ timeout: 30_000 });
+  await runCommand(page, 'TechDocs: Open in visual editor');
+}
+
 /** Abre o arquivo e muda para o editor visual pelo comando da extensão. */
 export async function openVisual(page: Page, path: string) {
   await openFile(page, path);
-  await runCommand(page, 'TechDocs: Open in visual editor');
+  await openVisualCommand(page);
   await prose(page).waitFor({ timeout: 30_000 });
   await expect(visual(page).locator('.top-bar-item').first()).toBeVisible();
 }

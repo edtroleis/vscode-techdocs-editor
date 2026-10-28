@@ -106,13 +106,19 @@
         "title": "%command.prepareDocs%",
         "category": "TechDocs",
         "icon": "$(wand)"
+      },
+      {
+        "command": "techdocsEditor.fixFinding",
+        "title": "%command.fixFinding%",
+        "category": "TechDocs",
+        "icon": "$(wand)"
       }
     ],
     "menus": {
       "editor/title": [
         {
           "command": "techdocsEditor.openVisual",
-          "when": "resourceLangId == markdown && activeEditor == workbench.editors.files.textFileEditor",
+          "when": "resourceLangId == markdown && activeEditor == workbench.editors.files.textFileEditor && techdocsEditor.activeIsDocs",
           "group": "navigation"
         },
         {
@@ -124,7 +130,7 @@
       "commandPalette": [
         {
           "command": "techdocsEditor.openVisual",
-          "when": "resourceLangId == markdown"
+          "when": "techdocsEditor.activeIsDocs"
         },
         {
           "command": "techdocsEditor.openText",
@@ -133,6 +139,10 @@
         {
           "command": "techdocsEditor.newPage",
           "when": "techdocsEditor.hasDocs"
+        },
+        {
+          "command": "techdocsEditor.fixFinding",
+          "when": "false"
         }
       ],
       "view/item/context": [
@@ -155,6 +165,16 @@
           "command": "techdocsEditor.newPage",
           "when": "view == techdocsEditor.docs && viewItem =~ /^(site|section|page|notInNav)$/",
           "group": "navigation@1"
+        },
+        {
+          "command": "techdocsEditor.fixFinding",
+          "when": "view == techdocsEditor.check && viewItem == fixable",
+          "group": "inline"
+        },
+        {
+          "command": "techdocsEditor.fixFinding",
+          "when": "view == techdocsEditor.check && viewItem == fixable",
+          "group": "navigation"
         }
       ],
       "view/title": [
@@ -164,13 +184,24 @@
           "group": "navigation"
         },
         {
-          "command": "techdocsEditor.checkDocs",
+          "command": "techdocsEditor.newSite",
           "when": "view == techdocsEditor.docs",
-          "group": "navigation@2"
+          "group": "1_create@1"
+        },
+        {
+          "command": "techdocsEditor.refreshTemplates",
+          "when": "view == techdocsEditor.docs",
+          "group": "1_create@2"
+        },
+        {
+          "command": "techdocsEditor.checkDocs",
+          "when": "view == techdocsEditor.check",
+          "group": "navigation@1"
         },
         {
           "command": "techdocsEditor.prepareDocs",
-          "when": "view == techdocsEditor.docs"
+          "when": "view == techdocsEditor.check",
+          "group": "navigation@2"
         }
       ],
       "explorer/context": [
@@ -287,13 +318,28 @@
         }
       }
     },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "techdocs",
+          "title": "%viewContainer.techdocs%",
+          "icon": "media/activitybar.svg"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "techdocs": [
         {
           "id": "techdocsEditor.docs",
           "name": "%view.docs%",
           "when": "techdocsEditor.hasDocs",
           "icon": "$(book)"
+        },
+        {
+          "id": "techdocsEditor.check",
+          "name": "%view.check%",
+          "when": "techdocsEditor.hasDocs",
+          "icon": "$(checklist)"
         },
         {
           "type": "webview",
@@ -303,7 +349,103 @@
           "icon": "$(git-pull-request)"
         }
       ]
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "techdocsEditor.check",
+        "contents": "%viewsWelcome.check%"
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "getStarted",
+        "title": "%walkthrough.title%",
+        "description": "%walkthrough.description%",
+        "steps": [
+          {
+            "id": "site",
+            "title": "%walkthrough.site.title%",
+            "description": "%walkthrough.site.description%",
+            "media": {
+              "markdown": "%walkthrough.site.media%"
+            },
+            "completionEvents": [
+              "onCommand:techdocsEditor.newSite",
+              "onCommand:techdocsEditor.prepareDocs",
+              "onContext:techdocsEditor.hasDocs"
+            ]
+          },
+          {
+            "id": "sidebar",
+            "title": "%walkthrough.sidebar.title%",
+            "description": "%walkthrough.sidebar.description%",
+            "media": {
+              "markdown": "%walkthrough.sidebar.media%"
+            },
+            "completionEvents": [
+              "onView:techdocsEditor.docs"
+            ]
+          },
+          {
+            "id": "page",
+            "title": "%walkthrough.page.title%",
+            "description": "%walkthrough.page.description%",
+            "media": {
+              "markdown": "%walkthrough.page.media%"
+            },
+            "completionEvents": [
+              "onCommand:techdocsEditor.newPage"
+            ]
+          },
+          {
+            "id": "visual",
+            "title": "%walkthrough.visual.title%",
+            "description": "%walkthrough.visual.description%",
+            "media": {
+              "markdown": "%walkthrough.visual.media%"
+            },
+            "completionEvents": [
+              "onCommand:techdocsEditor.openVisual",
+              "onSettingChanged:techdocsEditor.openVisualByDefault"
+            ]
+          },
+          {
+            "id": "check",
+            "title": "%walkthrough.check.title%",
+            "description": "%walkthrough.check.description%",
+            "media": {
+              "markdown": "%walkthrough.check.media%"
+            },
+            "completionEvents": [
+              "onCommand:techdocsEditor.checkDocs",
+              "onView:techdocsEditor.check"
+            ]
+          },
+          {
+            "id": "publish",
+            "title": "%walkthrough.publish.title%",
+            "description": "%walkthrough.publish.description%",
+            "media": {
+              "markdown": "%walkthrough.publish.media%"
+            },
+            "completionEvents": [
+              "onSettingChanged:techdocsEditor.local.publishPanel"
+            ]
+          },
+          {
+            "id": "company",
+            "title": "%walkthrough.company.title%",
+            "description": "%walkthrough.company.description%",
+            "media": {
+              "markdown": "%walkthrough.company.media%"
+            },
+            "completionEvents": [
+              "onSettingChanged:techdocsEditor.templates.repository"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "build": "node build.mjs",

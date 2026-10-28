@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { CheckView } from './checkView';
 import { DocsItem, DocsTreeView } from './docsTreeView';
 import { LintActions } from './lintActions';
 import { LintService } from './lintService';
@@ -6,8 +7,8 @@ import { LocalSites } from './localSites';
 import { openVisualByDefault } from './openByDefault';
 import { PublishPanel } from './publish/publishPanel';
 import { RepoCheck } from './repoCheck';
-import { NewPageCommand } from './templates/newPage';
 import { CentralTemplates } from './templates/centralTemplates';
+import { NewPageCommand } from './templates/newPage';
 import { NewSiteCommand } from './templates/newSite';
 import { VisualEditorProvider } from './visualEditorProvider';
 
@@ -21,9 +22,12 @@ export function activate(context: vscode.ExtensionContext) {
   const newPage = new NewPageCommand(sites, provider, central);
   const newSite = new NewSiteCommand(central);
   const repoCheck = new RepoCheck(sites, lint, newSite);
+  const checkView = new CheckView(repoCheck);
   context.subscriptions.push(
     publish,
     repoCheck,
+    checkView,
+    docsPageContext(sites),
     vscode.window.registerWebviewViewProvider(PublishPanel.viewId, publish),
     sites,
     lint,
@@ -58,7 +62,27 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, central };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central };
+}
+
+/**
+ * `techdocsEditor.activeIsDocs`: o editor ativo é uma página de um `docs_dir`. Os botões e comandos do editor
+ * visual aparecem só nessas páginas, e não em qualquer Markdown (um README, por exemplo).
+ */
+function docsPageContext(sites: LocalSites): vscode.Disposable {
+  const update = () => {
+    const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+    const uri = input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom ? input.uri : undefined;
+    void vscode.commands.executeCommand('setContext', 'techdocsEditor.activeIsDocs', Boolean(uri && sites.siteOf(uri)));
+  };
+  update();
+  return vscode.Disposable.from(
+    // O editor de texto ativo muda antes do evento das abas: os dois atualizam
+    vscode.window.onDidChangeActiveTextEditor(update),
+    vscode.window.tabGroups.onDidChangeTabs(update),
+    vscode.window.tabGroups.onDidChangeTabGroups(update),
+    sites.onDidChange(update),
+  );
 }
 
 /** "Atualizar os templates da empresa" (TA3): confere no GitHub agora, sem esperar a hora. */

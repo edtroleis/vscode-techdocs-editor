@@ -6,6 +6,8 @@
 !dist/webview/**
 dist/**/*.map
 !media/icon.png
+!media/activitybar.svg
+!media/walkthrough/**
 !l10n/**
 !package.json
 !package.nls.json

@@ -12,6 +12,7 @@ import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { NewPageCommand } from '../../../src/templates/newPage';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
+import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
 import type { CentralTemplates } from '../../../src/templates/centralTemplates';
 import type { NewSiteCommand } from '../../../src/templates/newSite';
@@ -46,6 +47,7 @@ type Api = {
   newPage: NewPageCommand;
   newSite: NewSiteCommand;
   repoCheck: RepoCheck;
+  checkView: CheckView;
   publish: PublishPanel;
   central: CentralTemplates;
 };
@@ -631,7 +633,7 @@ export function defineTests() {
     });
 
     test('conferir: achados no painel Problemas; preparar: aplica as correções e sobra o que precisa de uma pessoa', async () => {
-      const { repoCheck, sites } = await api();
+      const { repoCheck, sites, checkView } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
       const yml = 'site_name: Conferir\nnav:\n  - Início: index.md\n  - Sumiu: sumiu.md\nplugins:\n  - search\n';
       await write('check-site/docs/index.md', '# Conferir\n\nVeja [a outra](nada.md) e a [fora](fora.md).\n');
@@ -647,6 +649,12 @@ export function defineTests() {
         const problems = vscode.languages.getDiagnostics(file('check-site/mkdocs.yml'));
         ok(problems.some(d => d.code === 'nav-page-missing' && d.range.start.line === 3), `painel Problemas: ${problems.map(d => `${d.code}@${d.range.start.line}`)}`);
         ok(vscode.languages.getDiagnostics(file('check-site/docs/index.md')).some(d => d.code === 'broken-link'), 'link quebrado no painel');
+        // Seção Verificação: um nó por site (há vários no workspace), com os grupos por tipo
+        const groups = () => {
+          const site = checkView.getChildren().find(item => item.label === 'check-site/mkdocs.yml');
+          return site ? checkView.getChildren(site).map(item => item.label) : [];
+        };
+        ok(groups().includes('Nav points to missing pages') && groups().includes('Broken links'), `Verificação: ${groups()}`);
 
         // Sem o arquivo de regras na raiz do workspace, para não mexer nos outros testes
         const applied = await repoCheck.prepare(file('check-site'), { apply: f => f.code !== 'lint-config-missing' });
@@ -659,6 +667,7 @@ export function defineTests() {
         equal(await read('check-site/docs/sumiu.md'), '# Sumiu\n', 'página do nav criada');
         const left = vscode.languages.getDiagnostics(file('check-site/mkdocs.yml')).map(d => d.code).sort();
         ok(!left.includes('techdocs-plugin-missing') && !left.includes('nav-page-missing'), `o painel não foi atualizado: ${left}`);
+        ok(!groups().includes('Nav points to missing pages') && groups().includes('Broken links'), `Verificação depois de preparar: ${groups()}`);
         ok(vscode.languages.getDiagnostics(file('check-site/docs/index.md')).some(d => d.code === 'broken-link'), 'o link quebrado (sem correção) sumiu');
       } finally {
         await remove('check-site');
@@ -678,6 +687,8 @@ export function defineTests() {
       // GitHub simulado mínimo (o FakeGitHub do core usa node:crypto, que a suíte web não tem): repositório privado
       const calls: string[] = [];
       let offline = false;
+      // Commit novo a cada execução: a cópia de uma execução anterior (no perfil dos testes) não serve
+      const commit = `c${Date.now()}`;
       const reply = (status: number, json: unknown) => new Response(JSON.stringify(json), { status, headers: { 'content-type': 'application/json' } });
       const fetchFake = async (input: RequestInfo | URL, init?: RequestInit) => {
         const path = new URL(String(input)).pathname.replace('/repos/acme/tpl', '');
@@ -686,7 +697,7 @@ export function defineTests() {
         if (offline) throw new TypeError('fetch failed');
         if (!auth) return reply(404, { message: 'Not Found' });
         if (path === '') return reply(200, { default_branch: 'main', permissions: {} });
-        if (path === '/commits/main') return reply(200, { sha: 'c1', commit: { tree: { sha: 't1' } } });
+        if (path === '/commits/main') return reply(200, { sha: commit, commit: { tree: { sha: 't1' } } });
         if (path === '/git/trees/t1') return reply(200, { tree: Object.keys(files).map((p, i) => ({ path: p, type: 'blob', sha: `b${i}`, size: 10 })), truncated: false });
         const blob = /^\/git\/blobs\/b(\d+)$/.exec(path);
         if (blob) return reply(200, { content: btoa(unescape(encodeURIComponent(Object.values(files)[Number(blob[1])]))), encoding: 'base64' });

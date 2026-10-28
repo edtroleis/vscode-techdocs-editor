@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = join(__dirname, '..');
@@ -37,5 +37,28 @@ describe('traduções (l10n)', () => {
   it('variáveis {0}, {1}… iguais no original e na tradução', () => {
     const vars = (s: string) => [...s.matchAll(/\{\w+\}/g)].map(m => m[0]).sort().join();
     expect(Object.entries(bundle).filter(([key, value]) => vars(key) !== vars(value))).toEqual([]);
+  });
+});
+
+describe('package.json', () => {
+  const manifest = readFileSync(join(root, 'package.json'), 'utf8');
+  const keys = [...manifest.matchAll(/"%([^%"]+)%"/g)].map(m => m[1]);
+
+  it('toda chave %…% tem texto em inglês e em português', () => {
+    for (const file of ['package.nls.json', 'package.nls.pt-br.json']) {
+      const nls = JSON.parse(readFileSync(join(root, file), 'utf8')) as Record<string, string>;
+      expect(keys.filter(key => !nls[key]), file).toEqual([]);
+    }
+  });
+
+  it('as páginas do guia de primeiros passos existem e entram no pacote', () => {
+    const ignore = readFileSync(join(root, '.vscodeignore'), 'utf8');
+    expect(ignore).toContain('!media/walkthrough/**');
+    for (const file of ['package.nls.json', 'package.nls.pt-br.json']) {
+      const nls = JSON.parse(readFileSync(join(root, file), 'utf8')) as Record<string, string>;
+      const media = Object.entries(nls).filter(([key]) => /^walkthrough\.\w+\.media$/.test(key));
+      expect(media.length).toBe(7);
+      for (const [, path] of media) expect(existsSync(join(root, path)), path).toBe(true);
+    }
   });
 });

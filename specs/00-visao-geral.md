@@ -186,7 +186,19 @@ Não verificado automaticamente: o login de verdade no GitHub (`vscode.authentic
 `forceNewSession` do 401) e o `git push` com credenciais. Os dois dependem de uma conta do GitHub; conferir à
 mão antes da fase 6. O GitHub simulado (`core/test/fakeGitHub.ts`) é a base da fase 4.
 
-## Lançamento e templates (2026-10-28)
+## Barra lateral TechDocs e primeiros passos (2026-10-28)
+
+Pedido do usuário, para a extensão não parecer "mais um editor de Markdown" e para as features serem achadas:
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| BL1 | Contêiner próprio na barra de atividades ("TechDocs", ícone de livro): **Documentação** (a árvore, que sai do Explorer), **Verificação** (achados da T3b por tipo, com "Corrigir" em cada um, contagem no ícone) e **Publicação** | As features ficavam espalhadas pela paleta e por ícones pequenos no Explorer |
+| BL2 | As seções só aparecem com `mkdocs.yml` no workspace (`techdocsEditor.hasDocs`); sem elas, o VS Code esconde o ícone | Sem poluir outros projetos de quem instalou; quem ainda não tem site chega pela paleta, pelo clique direito numa pasta ou pelo guia |
+| BL3 | "Abrir no editor visual" (botão e paleta) só em página de um `docs_dir` (`techdocsEditor.activeIsDocs`) | Antes aparecia em qualquer `.md` (um README, por exemplo). O "Reabrir com…" do VS Code continua oferecendo o editor para qualquer `.md`: o seletor do `customEditors` é estático |
+| BL4 | A Verificação confere sozinha na primeira vez em que aparece e de novo a cada arquivo salvo (800 ms depois) | Fica em dia sem a pessoa lembrar de conferir |
+| BL5 | Guia de primeiros passos (walkthrough) com 7 passos, textos em `media/walkthrough/<língua>/` (o caminho vem do `package.nls`) | Aparece na tela de boas-vindas para todo mundo que instala, com botões para cada comando; sem GIFs no pacote, para o `.vsix` não crescer |
+
+
 
 O usuário vai liberar a extensão. Ordem das versões (spec 04, "Onde ficam e como evoluem"):
 

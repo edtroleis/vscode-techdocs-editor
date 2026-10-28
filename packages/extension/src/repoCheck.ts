@@ -16,6 +16,9 @@ export type SiteCheck = { mkdocs: vscode.Uri; base: vscode.Uri; findings: SiteFi
 export type PrepareAnswers = { site?: vscode.Uri; apply: (finding: SiteFinding) => boolean };
 
 const PROPOSED_SCHEME = 'techdocs-proposed';
+export const CHECK_VIEW = 'techdocsEditor.check';
+/** Depois de salvar, espera um pouco antes de conferir de novo (salvar vários arquivos dá uma conferência só). */
+const RECHECK_DELAY_MS = 800;
 
 /**
  * "TechDocs: Conferir a documentação do repositório" e "TechDocs: Preparar a documentação neste repositório"
@@ -26,7 +29,13 @@ export class RepoCheck implements vscode.Disposable {
   private readonly diagnostics = vscode.languages.createDiagnosticCollection('techdocs-check');
   /** Texto proposto de cada correção, para o diff (`techdocs-proposed:`). */
   private readonly proposed = new Map<string, string>();
-  private readonly disposables: vscode.Disposable[] = [this.diagnostics];
+  private readonly checkedEmitter = new vscode.EventEmitter<SiteCheck[]>();
+  /** Uma conferência terminou (a seção Verificação se redesenha). */
+  readonly onDidCheck = this.checkedEmitter.event;
+  /** Resultado da última conferência (undefined: ainda não conferiu nesta sessão). */
+  last: SiteCheck[] | undefined;
+  private recheckTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly disposables: vscode.Disposable[] = [this.diagnostics, this.checkedEmitter];
 
   constructor(
     private readonly sites: LocalSites,
@@ -37,14 +46,24 @@ export class RepoCheck implements vscode.Disposable {
       vscode.workspace.registerTextDocumentContentProvider(PROPOSED_SCHEME, {
         provideTextDocumentContent: uri => this.proposed.get(uri.toString()) ?? '',
       }),
+      // Depois de conferir uma vez, a conferência acompanha o que a pessoa salva
+      vscode.workspace.onDidSaveTextDocument(() => {
+        if (!this.last) return;
+        clearTimeout(this.recheckTimer);
+        this.recheckTimer = setTimeout(() => void this.check(true), RECHECK_DELAY_MS);
+      }),
     );
   }
 
   dispose() {
+    clearTimeout(this.recheckTimer);
     this.disposables.forEach(d => d.dispose());
   }
 
-  /** Confere todos os sites do workspace e põe os achados no painel Problemas. `quiet`: sem a mensagem do resumo. */
+  /**
+   * Confere todos os sites do workspace: os achados vão para a seção Verificação e para o painel Problemas.
+   * Sem `quiet`, mostra a seção Verificação.
+   */
   async check(quiet = false): Promise<SiteCheck[]> {
     await this.sites.ready;
     const sites = this.sites.list();
@@ -63,7 +82,9 @@ export class RepoCheck implements vscode.Disposable {
       results.push({ mkdocs: site.mkdocs, base, findings: checkSite(snapshot) });
     }
     this.show(results);
-    if (!quiet) void this.summary(results);
+    this.last = results;
+    this.checkedEmitter.fire(results);
+    if (!quiet) void vscode.commands.executeCommand(`${CHECK_VIEW}.focus`);
     return results;
   }
 
@@ -83,28 +104,43 @@ export class RepoCheck implements vscode.Disposable {
     const fixable = checkSite(snapshot).filter(f => f.fix);
     let applied = 0;
     for (const finding of fixable) {
-      const fix = finding.fix!;
-      const uri = vscode.Uri.joinPath(base, fix.file);
-      const current = await this.currentText(uri);
-      const next = fix.apply(current);
-      // Outra correção já resolveu (ex.: o index.md criado pela da pasta das docs)
-      if (next === current) continue;
-      const decision = answers ? (answers.apply(finding) ? 'apply' : 'skip') : await this.ask(finding, uri, current, next);
+      const decision = await this.applyFix(finding, base, answers ? () => (answers.apply(finding) ? 'apply' : 'skip') : undefined);
       if (decision === 'stop') break;
-      if (decision === 'skip') continue;
-      await this.write(uri, current, next);
-      applied++;
+      if (decision === 'apply') applied++;
     }
     const results = await this.check(true);
     const left = results.find(r => r.mkdocs.toString() === site.mkdocs.toString())?.findings.length ?? 0;
     if (!answers) {
       void vscode.window.showInformationMessage(
         fixable.length
-          ? vscode.l10n.t('Fixes applied: {0}. Still to review in the Problems panel: {1}.', applied, left)
-          : vscode.l10n.t('Nothing to fix automatically. Still to review in the Problems panel: {0}.', left),
+          ? vscode.l10n.t('Fixes applied: {0}. Still to review in the Check view: {1}.', applied, left)
+          : vscode.l10n.t('Nothing to fix automatically. Still to review in the Check view: {0}.', left),
       );
     }
     return applied;
+  }
+
+  /** Um achado da seção Verificação: o diff da correção, a pergunta e a conferência de novo. */
+  async fixOne(finding: SiteFinding, base: vscode.Uri): Promise<void> {
+    if (!finding.fix) return;
+    const decision = await this.applyFix(finding, base);
+    if (decision === 'unchanged') void vscode.window.showInformationMessage(vscode.l10n.t('Already fixed: nothing to change.'));
+    await this.check(true);
+  }
+
+  /**
+   * Aplica a correção sobre o texto do momento, depois do diff e da pergunta (ou da resposta pronta dos testes).
+   * `'unchanged'`: outra correção já resolveu (ex.: o index.md criado pela da pasta das docs).
+   */
+  private async applyFix(finding: SiteFinding, base: vscode.Uri, decide?: () => 'apply' | 'skip') {
+    const fix = finding.fix!;
+    const uri = vscode.Uri.joinPath(base, fix.file);
+    const current = await this.currentText(uri);
+    const next = fix.apply(current);
+    if (next === current) return 'unchanged';
+    const decision = decide ? decide() : await this.ask(finding, uri, current, next);
+    if (decision === 'apply') await this.write(uri, current, next);
+    return decision;
   }
 
   /** O site a preparar: o do arquivo ou pasta, o único, ou o escolhido; undefined sem nenhum, null se cancelou. */
@@ -241,24 +277,6 @@ export class RepoCheck implements vscode.Disposable {
       }
     }
     for (const { uri, list } of byFile.values()) this.diagnostics.set(uri, list);
-  }
-
-  private async summary(results: SiteCheck[]) {
-    const findings = results.flatMap(r => r.findings);
-    if (!findings.length) {
-      void vscode.window.showInformationMessage(vscode.l10n.t('The documentation is ready: nothing missing or wrong.'));
-      return;
-    }
-    const errors = findings.filter(f => f.severity === 'error').length;
-    const showProblems = vscode.l10n.t('Show problems');
-    const fix = vscode.l10n.t('Fix…');
-    const answer = await vscode.window.showWarningMessage(
-      vscode.l10n.t('Documentation check: {0} items to review ({1} errors), {2} with an automatic fix.', findings.length, errors, findings.filter(f => f.fix).length),
-      showProblems,
-      ...(findings.some(f => f.fix) ? [fix] : []),
-    );
-    if (answer === showProblems) await vscode.commands.executeCommand('workbench.actions.view.problems');
-    if (answer === fix) await this.prepare(results.length === 1 ? results[0].mkdocs : undefined);
   }
 }
 
