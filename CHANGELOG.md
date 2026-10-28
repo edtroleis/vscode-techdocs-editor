@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-28
+
 First public version: local mode (folders and clones with a `mkdocs.yml`).
 
 ### Added

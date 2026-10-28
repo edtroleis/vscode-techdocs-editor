@@ -1,11 +1,12 @@
-# Todas as suítes a cada push e pull request. O VS Code dos testes roda sem janela (--ozone-platform=headless),
-# sem xvfb. Ações fixadas por SHA (spec 03).
+# Todas as suítes a cada push e pull request, e antes de cada release (o release.yml chama este workflow).
+# O VS Code dos testes roda sem janela (--ozone-platform=headless), sem xvfb. Ações fixadas por SHA (spec 03).
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read

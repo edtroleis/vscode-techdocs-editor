@@ -71,6 +71,19 @@ Built-in templates live in `packages/core/templates/<language>/<id>.md`, one fil
 - `npm run test:webview`: the page opens in the visual editor without a single change (tables aligned, short
   lines, only Markdown the editor edits).
 
+## Releasing
+
+1. Bump `version` in `packages/extension/package.json` and turn `## [Unreleased]` in `CHANGELOG.md` into
+   `## [x.y.z] - date` (keep an empty `[Unreleased]` above it).
+2. Commit, then push a tag `vx.y.z`. The [Release](.github/workflows/release.yml) workflow runs every CI
+   suite, checks that the tag matches the version and the changelog, and builds a single `.vsix`.
+3. Approve the `release` environment. The same `.vsix` then goes to the VS Code Marketplace, Open VSX
+   and the GitHub release, with that version's changelog as the notes.
+
+One-time setup: a `release` environment with required reviewers and the `VSCE_PAT` (Azure DevOps, scope
+Marketplace → Manage) and `OVSX_PAT` secrets, and the `edtroleis` namespace on Open VSX
+(`npx ovsx create-namespace edtroleis -p <token>`).
+
 ## Rules of thumb
 
 - **The Markdown file is the source of truth.** Opening a page must not change it, and saving must only
