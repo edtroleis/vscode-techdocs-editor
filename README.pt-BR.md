@@ -149,6 +149,18 @@ files:
     page: runbook            # um template de página
 ```
 
+### Conferir e preparar o repositório
+
+**TechDocs: Conferir a documentação do repositório** lista, no painel Problemas, o que falta ou está errado
+para o TechDocs montar cada site: `site_name` e o plugin `techdocs-core` no `mkdocs.yml`, a pasta das docs e o
+`index.md` dela, itens do `nav` que apontam para páginas que não existem e páginas fora do `nav`, a anotação
+`backstage.io/techdocs-ref` no `catalog-info.yaml`, a configuração do markdownlint, problemas de formatação,
+links para arquivos que não existem e imagens que faltam.
+
+**TechDocs: Preparar a documentação neste repositório** cria um site de template quando não há `mkdocs.yml`.
+Se há, passa pelas correções uma por uma, com o diff antes, para você aplicar, pular ou parar. Links quebrados
+e imagens que faltam ficam no painel Problemas: só uma pessoa sabe o destino certo.
+
 ### Publicar sem sair do VS Code (opcional)
 
 Para quem prefere não lidar com branches e pull requests: ligue `techdocsEditor.local.publishPanel` e um
@@ -219,6 +231,8 @@ Corrigir a formatação ao salvar:
 | **TechDocs: Abrir como texto Markdown** | Abre o texto da página ao lado do editor visual |
 | **TechDocs: Nova página a partir de template…** | Cria uma página de documentação a partir de um template e abre no editor visual |
 | **TechDocs: Novo site de documentação…** | Cria o `mkdocs.yml` e as páginas de um site de documentação a partir de um template |
+| **TechDocs: Conferir a documentação do repositório** | Lista no painel Problemas o que falta ou está errado para o TechDocs |
+| **TechDocs: Preparar a documentação neste repositório** | Cria um site, ou aplica as correções da conferência uma por uma, com o diff antes |
 
 ## Onde o lint acha a configuração
 

@@ -1,0 +1,300 @@
+import * as vscode from 'vscode';
+import { checkSite, LINT_CONFIG_FILES, SiteFinding, SiteSnapshot } from '@edtroleis/techdocs-editor-core';
+import type { DocsSite } from './docsSite';
+import { configDirs } from './lintProblems';
+import type { LintService } from './lintService';
+import type { LocalSites } from './localSites';
+import type { NewSiteCommand } from './templates/newSite';
+import { exists, readText } from './templates/templateSources';
+
+type Site = { mkdocs: vscode.Uri; site: DocsSite };
+
+/** Achados de um site, com a raiz do repositório (os caminhos dos achados são relativos a ela). */
+export type SiteCheck = { mkdocs: vscode.Uri; base: vscode.Uri; findings: SiteFinding[] };
+
+/** Respostas prontas para "Preparar", nos testes: o site e quais correções aplicar (sem diff nem perguntas). */
+export type PrepareAnswers = { site?: vscode.Uri; apply: (finding: SiteFinding) => boolean };
+
+const PROPOSED_SCHEME = 'techdocs-proposed';
+
+/**
+ * "TechDocs: Conferir a documentação do repositório" e "TechDocs: Preparar a documentação neste repositório"
+ * (spec 04, T3b). A lógica fica no `core` (`checkSite`); aqui, o retrato de cada site, o painel Problemas e as
+ * correções, uma por uma, com o diff antes.
+ */
+export class RepoCheck implements vscode.Disposable {
+  private readonly diagnostics = vscode.languages.createDiagnosticCollection('techdocs-check');
+  /** Texto proposto de cada correção, para o diff (`techdocs-proposed:`). */
+  private readonly proposed = new Map<string, string>();
+  private readonly disposables: vscode.Disposable[] = [this.diagnostics];
+
+  constructor(
+    private readonly sites: LocalSites,
+    private readonly lint: LintService,
+    private readonly newSite: NewSiteCommand,
+  ) {
+    this.disposables.push(
+      vscode.workspace.registerTextDocumentContentProvider(PROPOSED_SCHEME, {
+        provideTextDocumentContent: uri => this.proposed.get(uri.toString()) ?? '',
+      }),
+    );
+  }
+
+  dispose() {
+    this.disposables.forEach(d => d.dispose());
+  }
+
+  /** Confere todos os sites do workspace e põe os achados no painel Problemas. `quiet`: sem a mensagem do resumo. */
+  async check(quiet = false): Promise<SiteCheck[]> {
+    await this.sites.ready;
+    const sites = this.sites.list();
+    if (!sites.length) {
+      this.diagnostics.clear();
+      if (!quiet) {
+        const prepare = vscode.l10n.t('Prepare the documentation');
+        const answer = await vscode.window.showWarningMessage(vscode.l10n.t('There is no mkdocs.yml in the workspace.'), prepare);
+        if (answer === prepare) await this.prepare();
+      }
+      return [];
+    }
+    const results: SiteCheck[] = [];
+    for (const site of sites) {
+      const { snapshot, base } = await this.snapshot(site);
+      results.push({ mkdocs: site.mkdocs, base, findings: checkSite(snapshot) });
+    }
+    this.show(results);
+    if (!quiet) void this.summary(results);
+    return results;
+  }
+
+  /**
+   * Sem `mkdocs.yml`: cria um site de template (T3). Com: as correções da conferência do site, uma por uma, com o
+   * diff antes. O que não tem correção automática fica no painel Problemas.
+   */
+  async prepare(target?: vscode.Uri, answers?: PrepareAnswers): Promise<number> {
+    await this.sites.ready;
+    const site = await this.pickSite(answers?.site ?? target);
+    if (site === null) return 0;
+    if (!site) {
+      await this.newSite.run(target);
+      return 0;
+    }
+    const { snapshot, base } = await this.snapshot(site);
+    const fixable = checkSite(snapshot).filter(f => f.fix);
+    let applied = 0;
+    for (const finding of fixable) {
+      const fix = finding.fix!;
+      const uri = vscode.Uri.joinPath(base, fix.file);
+      const current = await this.currentText(uri);
+      const next = fix.apply(current);
+      // Outra correção já resolveu (ex.: o index.md criado pela da pasta das docs)
+      if (next === current) continue;
+      const decision = answers ? (answers.apply(finding) ? 'apply' : 'skip') : await this.ask(finding, uri, current, next);
+      if (decision === 'stop') break;
+      if (decision === 'skip') continue;
+      await this.write(uri, current, next);
+      applied++;
+    }
+    const results = await this.check(true);
+    const left = results.find(r => r.mkdocs.toString() === site.mkdocs.toString())?.findings.length ?? 0;
+    if (!answers) {
+      void vscode.window.showInformationMessage(
+        fixable.length
+          ? vscode.l10n.t('Fixes applied: {0}. Still to review in the Problems panel: {1}.', applied, left)
+          : vscode.l10n.t('Nothing to fix automatically. Still to review in the Problems panel: {0}.', left),
+      );
+    }
+    return applied;
+  }
+
+  /** O site a preparar: o do arquivo ou pasta, o único, ou o escolhido; undefined sem nenhum, null se cancelou. */
+  private async pickSite(target?: vscode.Uri): Promise<Site | undefined | null> {
+    const sites = this.sites.list();
+    if (!sites.length) return undefined;
+    if (target) {
+      const path = target.path;
+      const inside = sites
+        .filter(s => path === s.mkdocs.path || path === s.site.root || path.startsWith(`${s.site.root}/`))
+        .sort((a, b) => b.site.root.length - a.site.root.length)[0];
+      if (inside) return inside;
+    }
+    if (sites.length === 1) return sites[0];
+    const newSite = { label: vscode.l10n.t('$(add) New documentation site…'), site: undefined };
+    const picked = await vscode.window.showQuickPick(
+      [...sites.map(s => ({ label: vscode.workspace.asRelativePath(s.mkdocs), site: s as Site | undefined })), newSite],
+      { title: vscode.l10n.t('Which documentation site?') },
+    );
+    return picked ? picked.site : null;
+  }
+
+  /** Retrato do site para o `core`, com os caminhos relativos à pasta do workspace (a raiz do repositório). */
+  private async snapshot(site: Site): Promise<{ snapshot: SiteSnapshot; base: vscode.Uri }> {
+    const root = site.mkdocs.with({ path: site.site.root });
+    const base = vscode.workspace.getWorkspaceFolder(site.mkdocs)?.uri ?? root;
+    const rel = (uri: vscode.Uri) => (uri.path === base.path ? '' : uri.path.startsWith(`${base.path}/`) ? uri.path.slice(base.path.length + 1) : uri.path);
+    const docsDir = site.mkdocs.with({ path: site.site.docsDir });
+    const docsDirExists = (await vscode.workspace.fs.stat(docsDir).then(s => s.type, () => 0)) === vscode.FileType.Directory;
+    const files = docsDirExists
+      ? (await vscode.workspace.findFiles(new vscode.RelativePattern(docsDir, '**/*'))).map(uri => uri.path.slice(docsDir.path.length + 1)).sort()
+      : [];
+    const pages: Record<string, string> = {};
+    for (const path of files.filter(f => /\.md$/i.test(f))) {
+      const text = await this.currentText(vscode.Uri.joinPath(docsDir, path));
+      if (text !== undefined) pages[path] = text;
+    }
+    let lintConfigFile: string | undefined;
+    for (const dir of configDirs(root.path, base.path)) {
+      for (const name of LINT_CONFIG_FILES) {
+        if (!lintConfigFile && (await exists(root.with({ path: `${dir}/${name}` })))) lintConfigFile = rel(root.with({ path: `${dir}/${name}` }));
+      }
+    }
+    let catalog: SiteSnapshot['catalog'];
+    for (const dir of [root, base]) {
+      const uri = vscode.Uri.joinPath(dir, 'catalog-info.yaml');
+      const text = catalog ? undefined : await this.currentText(uri);
+      if (text !== undefined) catalog = { file: rel(uri), text };
+    }
+    return {
+      base,
+      snapshot: {
+        root: rel(root),
+        mkdocsFile: rel(site.mkdocs),
+        mkdocsYml: (await this.currentText(site.mkdocs)) ?? '',
+        docsDir: rel(docsDir),
+        docsDirExists,
+        files,
+        pages,
+        lintConfigFile,
+        // Sem confiar no workspace, a configuração do repositório não vale e o lint não é conferido (spec 02)
+        lintConfig: await this.lint.configFor(vscode.Uri.joinPath(docsDir, 'index.md')),
+        catalog,
+      },
+    };
+  }
+
+  /** Texto do arquivo como está no editor (com o que não foi salvo), ou do disco; undefined se não existe. */
+  private async currentText(uri: vscode.Uri): Promise<string | undefined> {
+    const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
+    return open ? open.getText() : readText(uri);
+  }
+
+  private async write(uri: vscode.Uri, current: string | undefined, next: string) {
+    if (current === undefined) {
+      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
+      await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(next));
+      return;
+    }
+    const document = await vscode.workspace.openTextDocument(uri);
+    const wasDirty = document.isDirty;
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), next);
+    if ((await vscode.workspace.applyEdit(edit)) && !wasDirty) await document.save();
+  }
+
+  /** Mostra o diff da correção e pergunta: aplicar, pular ou parar. */
+  private async ask(finding: SiteFinding, uri: vscode.Uri, current: string | undefined, next: string): Promise<'apply' | 'skip' | 'stop'> {
+    const right = vscode.Uri.from({ scheme: PROPOSED_SCHEME, path: uri.path, query: String(Date.now()) });
+    const left = current === undefined ? right.with({ query: `${right.query}-empty` }) : uri;
+    this.proposed.set(right.toString(), next);
+    if (current === undefined) this.proposed.set(left.toString(), '');
+    const file = vscode.workspace.asRelativePath(uri);
+    await vscode.commands.executeCommand('vscode.diff', left, right, vscode.l10n.t('{0} (proposed fix)', file), { preview: true });
+    // Lista em vez de diálogo: fica aberta enquanto a pessoa rola o diff
+    const picked = await vscode.window.showQuickPick(
+      [
+        {
+          label: vscode.l10n.t('Apply'),
+          description: current === undefined ? vscode.l10n.t('creates {0}', file) : vscode.l10n.t('changes {0}, as in the diff', file),
+          value: 'apply' as const,
+        },
+        { label: vscode.l10n.t('Skip'), description: vscode.l10n.t('go to the next fix'), value: 'skip' as const },
+        { label: vscode.l10n.t('Stop'), description: vscode.l10n.t('leave the other fixes for later'), value: 'stop' as const },
+      ],
+      { title: findingMessage(finding), ignoreFocusOut: true },
+    );
+    await this.closeDiff(right);
+    this.proposed.delete(right.toString());
+    this.proposed.delete(left.toString());
+    return picked?.value ?? 'stop';
+  }
+
+  private async closeDiff(right: vscode.Uri) {
+    const tabs = vscode.window.tabGroups.all
+      .flatMap(group => group.tabs)
+      .filter(tab => tab.input instanceof vscode.TabInputTextDiff && tab.input.modified.toString() === right.toString());
+    if (tabs.length) await vscode.window.tabGroups.close(tabs);
+  }
+
+  private show(results: SiteCheck[]) {
+    this.diagnostics.clear();
+    const byFile = new Map<string, { uri: vscode.Uri; list: vscode.Diagnostic[] }>();
+    for (const { base, findings } of results) {
+      for (const finding of findings) {
+        const uri = vscode.Uri.joinPath(base, finding.file);
+        const line = Math.max(0, (finding.line ?? 1) - 1);
+        const diagnostic = new vscode.Diagnostic(new vscode.Range(line, 0, line, Number.MAX_SAFE_INTEGER), findingMessage(finding), SEVERITY[finding.severity]);
+        diagnostic.source = 'TechDocs';
+        diagnostic.code = finding.code;
+        const entry = byFile.get(uri.toString()) ?? { uri, list: [] };
+        entry.list.push(diagnostic);
+        byFile.set(uri.toString(), entry);
+      }
+    }
+    for (const { uri, list } of byFile.values()) this.diagnostics.set(uri, list);
+  }
+
+  private async summary(results: SiteCheck[]) {
+    const findings = results.flatMap(r => r.findings);
+    if (!findings.length) {
+      void vscode.window.showInformationMessage(vscode.l10n.t('The documentation is ready: nothing missing or wrong.'));
+      return;
+    }
+    const errors = findings.filter(f => f.severity === 'error').length;
+    const showProblems = vscode.l10n.t('Show problems');
+    const fix = vscode.l10n.t('Fix…');
+    const answer = await vscode.window.showWarningMessage(
+      vscode.l10n.t('Documentation check: {0} items to review ({1} errors), {2} with an automatic fix.', findings.length, errors, findings.filter(f => f.fix).length),
+      showProblems,
+      ...(findings.some(f => f.fix) ? [fix] : []),
+    );
+    if (answer === showProblems) await vscode.commands.executeCommand('workbench.actions.view.problems');
+    if (answer === fix) await this.prepare(results.length === 1 ? results[0].mkdocs : undefined);
+  }
+}
+
+const SEVERITY = {
+  error: vscode.DiagnosticSeverity.Error,
+  warning: vscode.DiagnosticSeverity.Warning,
+  info: vscode.DiagnosticSeverity.Information,
+};
+
+/** Texto do achado em linguagem simples. */
+export function findingMessage(finding: SiteFinding): string {
+  const target = finding.target ?? '';
+  switch (finding.code) {
+    case 'site-name-missing':
+      return vscode.l10n.t('mkdocs.yml has no site_name: TechDocs needs it to build the site.');
+    case 'techdocs-plugin-missing':
+      return vscode.l10n.t('The techdocs-core plugin is missing from plugins in mkdocs.yml: TechDocs builds the site with it.');
+    case 'docs-dir-missing':
+      return vscode.l10n.t('The docs folder {0} does not exist.', target);
+    case 'index-missing':
+      return vscode.l10n.t('The site has no home page (index.md in the docs folder).');
+    case 'nav-page-missing':
+      return vscode.l10n.t('The nav points to a page that does not exist: {0}', target);
+    case 'page-not-in-nav':
+      return vscode.l10n.t('This page is not in the nav of mkdocs.yml, so it does not show in the site menu.');
+    case 'catalog-missing':
+      return vscode.l10n.t('There is no catalog-info.yaml in the site folder or in the repository root: the docs will not show in the Backstage catalog.');
+    case 'catalog-ref-missing':
+      return vscode.l10n.t('catalog-info.yaml has no TechDocs annotation. Add to metadata.annotations: {0}', target);
+    case 'lint-config-missing':
+      return vscode.l10n.t('There is no markdownlint configuration: the formatting check uses every rule. Suggested: {0}', target);
+    case 'lint-problems':
+      return vscode.l10n.t('Formatting problems on this page: {0}', target);
+    case 'broken-link':
+      return vscode.l10n.t('Link to a file that does not exist: {0}', target);
+    case 'missing-image':
+      return vscode.l10n.t('Image that does not exist: {0}', target);
+  }
+}

@@ -22,6 +22,8 @@
   "config.polling.idleIntervalSeconds": "Segundos entre as consultas quando nada está rodando.",
   "command.newPage": "Nova página a partir de template…",
   "command.newSite": "Novo site de documentação…",
+  "command.checkDocs": "Conferir a documentação do repositório",
+  "command.prepareDocs": "Preparar a documentação neste repositório",
   "config.templates.paths": "Mais pastas com templates, relativas à pasta do workspace: templates de página (arquivos `.md` com o bloco `template:`) e de site (subpastas com um `template.yml`). Vêm depois do `.techdocs/templates/` do site e do workspace, que são sempre lidos.",
   "config.templates.builtIn": "Mostra os templates que vêm com a extensão. Desligado, oferece só os templates do repositório."
 }

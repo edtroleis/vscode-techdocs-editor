@@ -15,6 +15,12 @@ All notable changes to the TechDocs Editor extension. The format follows
 - Site templates of your own: folders with a `template.yml` in `.techdocs/templates/` (and in
   `techdocsEditor.templates.paths`). Each page comes from a page template, yours or a built-in one, or from a
   file in the folder.
+- **TechDocs: Check the documentation of the repository**: lists in the Problems panel what TechDocs needs
+  and is missing or wrong: `site_name` and the `techdocs-core` plugin, the docs folder and its home page, the
+  `nav` (missing pages, pages left out), the `catalog-info.yaml` annotation, the markdownlint configuration,
+  formatting problems, broken links and missing images.
+- **TechDocs: Prepare the documentation in this repository**: with no `mkdocs.yml`, creates a site from a
+  template; otherwise applies the fixes of the check one by one, each with its diff first.
 
 ## [0.2.0] - 2026-10-28
 

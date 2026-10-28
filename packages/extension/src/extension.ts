@@ -5,6 +5,7 @@ import { LintService } from './lintService';
 import { LocalSites } from './localSites';
 import { openVisualByDefault } from './openByDefault';
 import { PublishPanel } from './publish/publishPanel';
+import { RepoCheck } from './repoCheck';
 import { NewPageCommand } from './templates/newPage';
 import { NewSiteCommand } from './templates/newSite';
 import { VisualEditorProvider } from './visualEditorProvider';
@@ -17,8 +18,10 @@ export function activate(context: vscode.ExtensionContext) {
   const publish = new PublishPanel(context.extensionUri, sites, lint);
   const newPage = new NewPageCommand(sites, provider);
   const newSite = new NewSiteCommand();
+  const repoCheck = new RepoCheck(sites, lint, newSite);
   context.subscriptions.push(
     publish,
+    repoCheck,
     vscode.window.registerWebviewViewProvider(PublishPanel.viewId, publish),
     sites,
     lint,
@@ -42,13 +45,17 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.newSite', (target?: vscode.Uri) =>
       newSite.run(target instanceof vscode.Uri ? target : undefined),
     ),
+    vscode.commands.registerCommand('techdocsEditor.checkDocs', () => repoCheck.check()),
+    vscode.commands.registerCommand('techdocsEditor.prepareDocs', (target?: vscode.Uri) =>
+      repoCheck.prepare(target instanceof vscode.Uri ? target : undefined),
+    ),
     vscode.commands.registerCommand('techdocsEditor.openText', (uri?: vscode.Uri) => {
       const target = uri ?? activeCustomEditorUri();
       if (target) return vscode.commands.executeCommand('vscode.openWith', target, 'default', vscode.ViewColumn.Beside);
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck };
 }
 
 function activeCustomEditorUri(): vscode.Uri | undefined {

@@ -148,6 +148,18 @@ files:
     page: runbook            # a page template
 ```
 
+### Check and prepare the repository
+
+**TechDocs: Check the documentation of the repository** lists, in the Problems panel, what is missing or wrong
+for TechDocs to build each site: `site_name` and the `techdocs-core` plugin in `mkdocs.yml`, the docs folder
+and its `index.md`, `nav` entries pointing to missing pages and pages left out of the `nav`, the
+`backstage.io/techdocs-ref` annotation in `catalog-info.yaml`, the markdownlint configuration, formatting
+problems, links to missing files and missing images.
+
+**TechDocs: Prepare the documentation in this repository** creates a site from a template when there is no
+`mkdocs.yml`. Otherwise it goes through the fixes one by one, showing the diff first, so you apply, skip or
+stop. Broken links and missing images stay in the Problems panel: only a person knows the right target.
+
 ### Publish without leaving VS Code (optional)
 
 For people who would rather not deal with branches and pull requests: turn on
@@ -218,6 +230,8 @@ Fix formatting on save:
 | **TechDocs: Open as Markdown text** | Opens the text of the page side by side with the visual editor |
 | **TechDocs: New page from template…** | Creates a documentation page from a template and opens it in the visual editor |
 | **TechDocs: New documentation site…** | Creates `mkdocs.yml` and the pages of a documentation site from a template |
+| **TechDocs: Check the documentation of the repository** | Lists what is missing or wrong for TechDocs in the Problems panel |
+| **TechDocs: Prepare the documentation in this repository** | Creates a site, or applies the fixes of the check one by one with the diff first |
 
 ## How the lint finds its configuration
 

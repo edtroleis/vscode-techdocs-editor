@@ -88,6 +88,18 @@
         "title": "%command.newSite%",
         "category": "TechDocs",
         "icon": "$(book)"
+      },
+      {
+        "command": "techdocsEditor.checkDocs",
+        "title": "%command.checkDocs%",
+        "category": "TechDocs",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "techdocsEditor.prepareDocs",
+        "title": "%command.prepareDocs%",
+        "category": "TechDocs",
+        "icon": "$(wand)"
       }
     ],
     "menus": {
@@ -144,6 +156,15 @@
           "command": "techdocsEditor.newPage",
           "when": "view == techdocsEditor.docs",
           "group": "navigation"
+        },
+        {
+          "command": "techdocsEditor.checkDocs",
+          "when": "view == techdocsEditor.docs",
+          "group": "navigation@2"
+        },
+        {
+          "command": "techdocsEditor.prepareDocs",
+          "when": "view == techdocsEditor.docs"
         }
       ],
       "explorer/context": [

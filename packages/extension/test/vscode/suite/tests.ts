@@ -11,6 +11,7 @@ import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { NewPageCommand } from '../../../src/templates/newPage';
+import type { RepoCheck } from '../../../src/repoCheck';
 import type { NewSiteCommand } from '../../../src/templates/newSite';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
@@ -42,6 +43,7 @@ type Api = {
   docs: DocsTreeView;
   newPage: NewPageCommand;
   newSite: NewSiteCommand;
+  repoCheck: RepoCheck;
 };
 
 async function api(): Promise<Api> {
@@ -621,6 +623,41 @@ export function defineTests() {
         );
       } finally {
         for (const path of ['.techdocs', 'site-repo']) await remove(path);
+      }
+    });
+
+    test('conferir: achados no painel Problemas; preparar: aplica as correções e sobra o que precisa de uma pessoa', async () => {
+      const { repoCheck, sites } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const yml = 'site_name: Conferir\nnav:\n  - Início: index.md\n  - Sumiu: sumiu.md\nplugins:\n  - search\n';
+      await write('check-site/docs/index.md', '# Conferir\n\nVeja [a outra](nada.md) e a [fora](fora.md).\n');
+      await write('check-site/docs/fora.md', '# Fora\n');
+      await write('check-site/mkdocs.yml', yml);
+      try {
+        await until(() => sites.list().some(s => s.mkdocs.path.endsWith('/check-site/mkdocs.yml')), Boolean, 'site não reconhecido');
+        const result = (await repoCheck.check(true)).find(r => r.mkdocs.path.endsWith('/check-site/mkdocs.yml'));
+        const codes = result!.findings.map(f => f.code).join(', ');
+        for (const code of ['techdocs-plugin-missing', 'nav-page-missing', 'broken-link', 'page-not-in-nav', 'catalog-missing']) {
+          ok(codes.includes(code), `faltou ${code}: ${codes}`);
+        }
+        const problems = vscode.languages.getDiagnostics(file('check-site/mkdocs.yml'));
+        ok(problems.some(d => d.code === 'nav-page-missing' && d.range.start.line === 3), `painel Problemas: ${problems.map(d => `${d.code}@${d.range.start.line}`)}`);
+        ok(vscode.languages.getDiagnostics(file('check-site/docs/index.md')).some(d => d.code === 'broken-link'), 'link quebrado no painel');
+
+        // Sem o arquivo de regras na raiz do workspace, para não mexer nos outros testes
+        const applied = await repoCheck.prepare(file('check-site'), { apply: f => f.code !== 'lint-config-missing' });
+        equal(applied, 3, 'correções aplicadas: plugin, página do nav e página fora do nav');
+        equal(
+          await read('check-site/mkdocs.yml'),
+          'site_name: Conferir\nnav:\n  - Início: index.md\n  - Sumiu: sumiu.md\n  - Fora: fora.md\nplugins:\n  - techdocs-core\n  - search\n',
+          'mkdocs.yml',
+        );
+        equal(await read('check-site/docs/sumiu.md'), '# Sumiu\n', 'página do nav criada');
+        const left = vscode.languages.getDiagnostics(file('check-site/mkdocs.yml')).map(d => d.code).sort();
+        ok(!left.includes('techdocs-plugin-missing') && !left.includes('nav-page-missing'), `o painel não foi atualizado: ${left}`);
+        ok(vscode.languages.getDiagnostics(file('check-site/docs/index.md')).some(d => d.code === 'broken-link'), 'o link quebrado (sem correção) sumiu');
+      } finally {
+        await remove('check-site');
       }
     });
 

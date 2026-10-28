@@ -219,7 +219,7 @@ T1 a T3b e T5 não dependem do modo remoto; só a T4 espera a fase 4.
 | T1 ✅ | Formato, campos e criação de página no modo local (TP1 a TP5, TP7, TP9) com os 13 templates de página da v1. Feita em 2026-10-28: `core/src/templates.ts`, `core/templates/<língua>/`, comando `techdocsEditor.newPage` (paleta, árvore, Explorer). Testes: unitários (formato, campos, nome do arquivo, número, caminho), conteúdo (lint dos 26), ida e volta dos 26 pelo editor, integração desktop e web. Pendente do TP7: o cursor no primeiro trecho a preencher (a página abre no visual, com o cursor no início) |
 | T2 ✅ | `nav` (TP6 ✅: `addToNav` no `core`, insere uma linha só, pelas posições do `yaml`; a seção vem da árvore, senão a das páginas da mesma pasta, senão o fim), templates do repositório (TP8 ✅: site, workspace e `templates.paths`, o primeiro de cada id vale; na lista, separados por categoria com "este repositório" e a pasta; versão nova do formato aparece e avisa), cursor no primeiro trecho (TP7 ✅: `firstToFill` no `core` acha o texto de exemplo da primeira seção; o host manda `select` e o editor seleciona o trecho) e a prova do TA2 (feita: fica o texto de exemplo, ver TA2) |
 | T3 ✅ | Templates de site (TP11). Feita em 2026-10-28: comando `techdocsEditor.newSite` (paleta e Explorer), 3 sites da extensão em inglês e português, sites do repositório (`.techdocs/templates/<id>/template.yml`). Ver "Como ficou na T3" |
-| T3b | Conferir e preparar a documentação do repositório (seção acima) |
+| T3b ✅ | Conferir e preparar a documentação do repositório (seção acima). Feita em 2026-10-28: `core/src/siteCheck.ts`, comandos `techdocsEditor.checkDocs` e `techdocsEditor.prepareDocs`. Ver "Como ficou na T3b" |
 | T4 | Modo remoto (TP10), junto com o que a fase 4 já entregou |
 | T5 | Templates de página depois da v1 (RFC, notas de versão, glossário) |
 
@@ -235,6 +235,44 @@ T3 (templates de site) e ao "Configurar verificações" do painel (P7):
 
 A lógica da conferência fica no `core` (lista de achados com código, gravidade e correção), para o painel de
 publicação, o modo remoto e o plugin usarem a mesma. Parte **T3b**, logo depois da T3.
+
+### Como ficou na T3b
+
+- **`core/src/siteCheck.ts`:** `checkSite(retrato)` devolve os achados (`code`, `severity`, arquivo e linha
+  relativos à raiz do repositório, `target`, `fix`). O retrato (`SiteSnapshot`) é montado por quem chama: o
+  `mkdocs.yml`, os arquivos e páginas do `docs_dir`, o arquivo de regras do lint achado, a configuração do lint
+  (ausente sem confiança no workspace: o lint não é conferido) e o `catalog-info.yaml` da pasta do site ou da raiz.
+- **Correção** é `{ file, apply(textoAtual) }`: calculada na hora de aplicar, sobre o texto do momento, para
+  várias correções no mesmo `mkdocs.yml` se somarem; devolver o mesmo texto é "nada a fazer". As do
+  `mkdocs.yml` e do `catalog-info.yaml` acrescentam linhas pelas posições do `yaml`, sem reformatar (só a lista
+  `plugins` na mesma linha, `[search]`, é reescrita).
+
+| Código | Gravidade | Correção |
+|--------|-----------|----------|
+| `site-name-missing` | erro | `site_name` (nome da pasta) na primeira linha depois dos comentários |
+| `techdocs-plugin-missing` | erro | `techdocs-core` como primeiro item de `plugins` (ou a chave nova) |
+| `docs-dir-missing` | erro | cria `<docs_dir>/index.md` |
+| `nav-page-missing` | erro | cria a página com o título do `nav` (não tira do `nav`: nada se perde) |
+| `broken-link`, `missing-image` | erro | nenhuma: só a pessoa sabe o destino certo |
+| `index-missing` | aviso | cria `index.md` com o `site_name` como título |
+| `page-not-in-nav` | aviso | `addToNav` (T2), quando há `nav` em lista |
+| `catalog-ref-missing` | aviso | a anotação em `metadata.annotations` do `kind: Component` (ou do primeiro documento) |
+| `lint-problems` | aviso | um achado por página, com o total; correção se algum problema se corrige sozinho |
+| `catalog-missing` | info | nenhuma: criar um componente pede nome, dono e tipo |
+| `lint-config-missing` | info | `.markdownlint.yaml` na raiz com as regras do setup (P7) |
+
+- **Links e imagens:** inline e por referência, fora de código; URLs, âncoras (`#`) e caminhos absolutos ficam
+  de fora; link para pasta vale se há arquivo dentro; link que sai do `docs_dir` conta como quebrado.
+- **Extensão** (`extension/src/repoCheck.ts`): "Conferir" confere todos os sites e põe os achados no painel
+  Problemas (fonte `TechDocs`, código do achado), com um resumo e os botões "Ver os problemas" e "Corrigir…".
+  **Mudança na proposta:** a "página de resultado" ficou sendo o próprio painel Problemas, que já leva a cada
+  arquivo e linha; um relatório à parte repetiria a lista. "Preparar": sem site, o comando da T3; com site
+  (o do arquivo clicado, o único ou o escolhido), cada correção abre o diff (`vscode.diff` contra o texto
+  proposto) e uma lista Aplicar / Pular / Parar que fica aberta enquanto a pessoa rola o diff. No fim, confere de
+  novo e diz quantas correções entraram e quantos itens sobraram.
+- **Testes:** unitários (cada código, correções somadas e idempotentes, `plugins` em bloco, na mesma linha e com
+  opções, anotação com e sem `annotations`, lint, links); integração desktop e web (achados no painel na linha
+  certa, "Preparar" aplica as correções e o painel se atualiza, o link quebrado continua).
 
 ## Pontos em aberto
 
