@@ -679,6 +679,23 @@ export function defineTests() {
       }
     });
 
+    test('no fim, sem catalog-info.yaml: pergunta se o Backstage usa; "não" grava catalog: off e não fala mais nele', async () => {
+      const { newSite } = await api();
+      await vscode.workspace.fs.writeFile(file('catalogo/docs/index.md'), new TextEncoder().encode('# Catálogo\n'));
+      const config = '.techdocs-editor.yaml';
+      const before = await read(config).catch(() => undefined);
+      try {
+        const result = await newSite.run(undefined, { folder: file('catalogo'), adopt: true, values: { site_name: 'Catálogo' }, catalog: 'no' });
+        ok(result, 'não criou');
+        equal(result!.annotation, undefined, 'com catalog: off, não há anotação a sugerir');
+        ok((await read(config)).includes('catalog: off'), `${config} sem catalog: off`);
+      } finally {
+        await remove('catalogo');
+        if (before === undefined) await remove(config);
+        else await vscode.workspace.fs.writeFile(file(config), new TextEncoder().encode(before));
+      }
+    });
+
     test('conferir: achados no painel Problemas; preparar: aplica as correções e sobra o que precisa de uma pessoa', async () => {
       const { repoCheck, sites, checkView } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));

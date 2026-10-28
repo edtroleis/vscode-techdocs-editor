@@ -27,6 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
   const repoCheck = new RepoCheck(sites, lint, newSite, proposals);
   const checkView = new CheckView(repoCheck);
   const catalogOptions = new CatalogOptions(repoCheck);
+  newSite.useCatalogOptions(catalogOptions);
   context.subscriptions.push(
     proposals,
     publish,

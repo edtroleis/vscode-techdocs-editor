@@ -14,6 +14,7 @@ import {
   TemplateField,
   today,
 } from '@edtroleis/techdocs-editor-core';
+import { catalogModeFor, type CatalogOptions, type CatalogUsageAnswer, repositoryFolder } from '../catalogOptions';
 import type { ProposedChanges } from '../proposedChange';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import type { CentralTemplates } from './centralTemplates';
@@ -41,6 +42,8 @@ export type NewSiteAnswers = {
   values?: Record<string, string>;
   adopt?: boolean;
   readme?: ReadmeUse;
+  /** A resposta a "Seu Backstage usa catalog-info.yaml?" (sem ela, nos testes, não pergunta). */
+  catalog?: CatalogUsageAnswer;
 };
 
 /** O README.md como página inicial: copiado, movido (fica um link para as docs) ou não usado. */
@@ -61,6 +64,8 @@ const DOCS_DIR = 'docs';
  * README.md, pode usá-lo como página inicial (0.4.0).
  */
 export class NewSiteCommand {
+  private catalogOptions: CatalogOptions | undefined;
+
   constructor(
     private readonly central?: CentralTemplates,
     private readonly proposals?: ProposedChanges,
@@ -82,7 +87,7 @@ export class NewSiteCommand {
     if (existing.length) {
       const adopt = answers ? Boolean(answers.adopt) : await askAdopt(existing.length, docsDir);
       if (adopt === undefined) return undefined;
-      if (adopt) return this.adopt(root, docsDir, existing, answers?.values?.site_name);
+      if (adopt) return this.adopt(root, docsDir, existing, answers);
     }
     // O README.md vira a página inicial (só sem docs/index.md: nunca por cima de uma página)
     const readme = existing.some(isHome) ? undefined : await findReadme(root);
@@ -134,16 +139,15 @@ export class NewSiteCommand {
     }
 
     await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.joinPath(docsDir, pages[0].path), VisualEditorProvider.viewType);
-    const annotation = await this.catalogAnnotation(root);
-    if (annotation) void this.showAnnotation(annotation, root);
-    return { mkdocs, annotation: annotation?.text };
+    return this.finish(root, mkdocs, answers);
   }
 
   /**
    * Adota as páginas que já existem em `docs/` (0.4.0): só o `mkdocs.yml`, com o `nav` montado pelas pastas e pelos
    * títulos, depois do diff. Nenhuma página é criada ou alterada. `siteName`: a resposta pronta dos testes.
    */
-  private async adopt(root: vscode.Uri, docsDir: vscode.Uri, pages: string[], siteName?: string): Promise<NewSiteResult | undefined> {
+  private async adopt(root: vscode.Uri, docsDir: vscode.Uri, pages: string[], answers?: NewSiteAnswers): Promise<NewSiteResult | undefined> {
+    const siteName = answers?.values?.site_name;
     const titles = new Map<string, string | undefined>();
     for (const page of pages) titles.set(page, pageTitle((await readText(vscode.Uri.joinPath(docsDir, page))) ?? ''));
     const home = pages.find(isHome);
@@ -170,9 +174,7 @@ export class NewSiteCommand {
     }
     await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(yml));
     if (home) await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.joinPath(docsDir, home), VisualEditorProvider.viewType);
-    const annotation = await this.catalogAnnotation(root);
-    if (annotation) void this.showAnnotation(annotation, root);
-    return { mkdocs, annotation: annotation?.text };
+    return this.finish(root, mkdocs, answers);
   }
 
   /**
@@ -324,6 +326,42 @@ export class NewSiteCommand {
       values[field.name] = value;
     }
     return values;
+  }
+
+  /** As opções da verificação, para a pergunta do `catalog-info.yaml` no fim (criadas depois, com o `RepoCheck`). */
+  useCatalogOptions(options: CatalogOptions) {
+    this.catalogOptions = options;
+  }
+
+  /**
+   * Depois de criar o site: a anotação do TechDocs a pôr no `catalog-info.yaml` (TP11). Sem o arquivo e sem o modo
+   * definido, pergunta uma vez se o Backstage usa o `catalog-info.yaml` do repositório: "não" grava `catalog: off`
+   * e não fala mais nele; "sim" grava `required` e leva à Verificação, que oferece criar o arquivo.
+   */
+  private async finish(root: vscode.Uri, mkdocs: vscode.Uri, answers?: NewSiteAnswers): Promise<NewSiteResult> {
+    const annotation = await this.catalogAnnotation(root);
+    const folder = repositoryFolder(root);
+    const current = await catalogModeFor(folder);
+    let mode = current.mode;
+    if (annotation && !annotation.catalog && current.source === 'default' && this.catalogOptions && (!answers || answers.catalog)) {
+      mode = (await this.catalogOptions.askUsage(folder, answers?.catalog)) ?? 'auto';
+    }
+    if (mode === 'off') return { mkdocs };
+    if (annotation && !annotation.catalog && mode === 'required') {
+      if (!answers) void this.showCreateCatalog();
+      return { mkdocs, annotation: annotation.text };
+    }
+    if (annotation) void this.showAnnotation(annotation, root);
+    return { mkdocs, annotation: annotation?.text };
+  }
+
+  private async showCreateCatalog() {
+    const open = vscode.l10n.t('Open the Check view');
+    const answer = await vscode.window.showInformationMessage(
+      vscode.l10n.t('Site created. The Check view offers to create catalog-info.yaml with the TechDocs annotation.'),
+      open,
+    );
+    if (answer === open) await vscode.commands.executeCommand('techdocsEditor.checkDocs');
   }
 
   /**

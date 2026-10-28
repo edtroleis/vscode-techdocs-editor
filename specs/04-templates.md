@@ -317,7 +317,9 @@ organização, provedores), e há quem use só MkDocs. A conferência passou a t
   antes) ou "Só para mim" (configuração global). A dica "Sem catalog-info.yaml" tem o mesmo comando como ação.
   Confere de novo ao gravar e quando a configuração muda.
 - **Para o "Preparar":** `CatalogOptions.askUsage()` pergunta uma vez "Seu Backstage usa um catalog-info.yaml
-  no repositório?" (sim grava `required`, não grava `off`, "não sei" não grava nada).
+  no repositório?" (sim grava `required`, não grava `off`, "não sei" não grava nada). O "Novo site" e o "Preparar" fazem essa pergunta no
+  fim, só quando não há `catalog-info.yaml` e o modo não foi definido: com `off`, não sugerem a anotação; com
+  `required`, levam à Verificação, que oferece criar o arquivo.
 - **Testes:** unitários (os três modos, esqueleto com e sem dono, nome normalizado, o esqueleto passa na
   conferência, `setCatalogMode` mantém comentários); integração desktop (só para mim, para o time vence a
   configuração, a correção cria o esqueleto, `askUsage`).

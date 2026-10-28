@@ -209,5 +209,7 @@
   "Do not use the README": "Não usar o README",
   "the home page comes from the template": "a página inicial vem do template",
   "Use README.md as the home page of the documentation?": "Usar o README.md como página inicial da documentação?",
-  "The documentation of this repository is in [docs/](docs/index.md), published by TechDocs.": "A documentação deste repositório está em [docs/](docs/index.md), publicada pelo TechDocs."
+  "The documentation of this repository is in [docs/](docs/index.md), published by TechDocs.": "A documentação deste repositório está em [docs/](docs/index.md), publicada pelo TechDocs.",
+  "Open the Check view": "Abrir a Verificação",
+  "Site created. The Check view offers to create catalog-info.yaml with the TechDocs annotation.": "Site criado. A Verificação oferece criar o catalog-info.yaml com a anotação do TechDocs."
 }
