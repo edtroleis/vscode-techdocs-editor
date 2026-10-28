@@ -5,6 +5,7 @@ import {
   hasTechdocsRef,
   isTemplateSupported,
   pageTitle,
+  readmeAsHome,
   SitePage,
   SiteSources,
   siteMkdocsYml,
@@ -32,26 +33,32 @@ import {
 
 /**
  * Respostas prontas, para os testes de integração (sem as caixas de escolha). `adopt`: usar as páginas que já existem
- * em `docs/` (sem template).
+ * em `docs/` (sem template); `readme`: o que fazer com o README.md (sem resposta, não é usado).
  */
 export type NewSiteAnswers = {
   template?: string;
   folder?: vscode.Uri;
   values?: Record<string, string>;
   adopt?: boolean;
+  readme?: ReadmeUse;
 };
+
+/** O README.md como página inicial: copiado, movido (fica um link para as docs) ou não usado. */
+export type ReadmeUse = 'copy' | 'move' | 'skip';
 
 /** O que foi criado: o `mkdocs.yml` e a anotação a pôr no `catalog-info.yaml` (undefined se já está lá). */
 export type NewSiteResult = { mkdocs: vscode.Uri; annotation?: string };
 
 const MKDOCS_FILES = ['mkdocs.yml', 'mkdocs.yaml'];
+const README_FILES = ['README.md', 'Readme.md', 'readme.md'];
 /** Pasta das páginas do site novo (o padrão do MkDocs: o `mkdocs.yml` não precisa dizer). */
 const DOCS_DIR = 'docs';
 
 /**
  * "TechDocs: Novo site de documentação…" (spec 04, TP11): escolhe a pasta e o template de site, pergunta o nome
  * e os campos, cria o `mkdocs.yml` e as páginas (nunca por cima de um arquivo), abre a primeira página e mostra a
- * anotação do `catalog-info.yaml` para copiar. Com páginas em `docs/`, pode adotá-las (só o `mkdocs.yml`, 0.4.0).
+ * anotação do `catalog-info.yaml` para copiar. Com páginas em `docs/`, pode adotá-las (só o `mkdocs.yml`); com um
+ * README.md, pode usá-lo como página inicial (0.4.0).
  */
 export class NewSiteCommand {
   constructor(
@@ -77,6 +84,10 @@ export class NewSiteCommand {
       if (adopt === undefined) return undefined;
       if (adopt) return this.adopt(root, docsDir, existing, answers?.values?.site_name);
     }
+    // O README.md vira a página inicial (só sem docs/index.md: nunca por cima de uma página)
+    const readme = existing.some(isHome) ? undefined : await findReadme(root);
+    const readmeUse = !readme ? 'skip' : answers ? (answers.readme ?? 'skip') : await askReadme();
+    if (!readmeUse) return undefined;
 
     const folders = templateFolders(root, root);
     const choice = await this.pickTemplate(folders, root, answers?.template);
@@ -97,6 +108,8 @@ export class NewSiteCommand {
       );
       return undefined;
     }
+    const home = pages.find(page => page.path === 'index.md');
+    if (readme && home && readmeUse !== 'skip') home.content = readmeAsHome(readme.text);
     // TP4: nunca sobrescreve (uma pasta docs/ pode já existir, com outras páginas)
     const taken = [];
     for (const page of pages) if (await exists(vscode.Uri.joinPath(docsDir, page.path))) taken.push(`${DOCS_DIR}/${page.path}`);
@@ -114,6 +127,11 @@ export class NewSiteCommand {
     // Por último: quem acompanha os mkdocs.yml (árvore, lint) já acha as páginas
     const mkdocs = vscode.Uri.joinPath(root, 'mkdocs.yml');
     await vscode.workspace.fs.writeFile(mkdocs, encoder.encode(siteMkdocsYml(values.site_name, pages, template)));
+    if (readme && home && readmeUse === 'move') {
+      const title = pageTitle(readme.text) ?? values.site_name;
+      const pointer = vscode.l10n.t('The documentation of this repository is in [docs/](docs/index.md), published by TechDocs.');
+      await vscode.workspace.fs.writeFile(readme.uri, encoder.encode(`# ${title}\n\n${pointer}\n`));
+    }
 
     await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.joinPath(docsDir, pages[0].path), VisualEditorProvider.viewType);
     const annotation = await this.catalogAnnotation(root);
@@ -355,6 +373,15 @@ async function existingPages(docsDir: vscode.Uri): Promise<string[]> {
   return files.map(uri => uri.path.slice(docsDir.path.length + 1)).sort();
 }
 
+async function findReadme(root: vscode.Uri): Promise<{ uri: vscode.Uri; text: string } | undefined> {
+  for (const name of README_FILES) {
+    const uri = vscode.Uri.joinPath(root, name);
+    const text = await readText(uri);
+    if (text !== undefined) return { uri, text };
+  }
+  return undefined;
+}
+
 /** Usar as páginas de `docs/` (true) ou começar de um template (false); undefined se cancelou. */
 async function askAdopt(count: number, docsDir: vscode.Uri): Promise<boolean | undefined> {
   const folder = relative(docsDir);
@@ -368,6 +395,19 @@ async function askAdopt(count: number, docsDir: vscode.Uri): Promise<boolean | u
     },
   );
   return picked?.adopt;
+}
+
+/** O que fazer com o README.md; undefined se cancelou. */
+async function askReadme(): Promise<ReadmeUse | undefined> {
+  const picked = await vscode.window.showQuickPick(
+    [
+      { label: vscode.l10n.t('Copy to docs/index.md'), description: vscode.l10n.t('the README stays as it is'), use: 'copy' as const },
+      { label: vscode.l10n.t('Move to docs/index.md'), description: vscode.l10n.t('the README keeps only a link to the docs'), use: 'move' as const },
+      { label: vscode.l10n.t('Do not use the README'), description: vscode.l10n.t('the home page comes from the template'), use: 'skip' as const },
+    ],
+    { title: vscode.l10n.t('Use README.md as the home page of the documentation?') },
+  );
+  return picked?.use;
 }
 
 /** Caminho para as mensagens: relativo ao workspace, ou o nome dele para a raiz. */

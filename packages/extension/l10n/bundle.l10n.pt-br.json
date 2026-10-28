@@ -201,5 +201,13 @@
   "Found 1 page in {0} and no mkdocs.yml": "Encontrei 1 página em {0} e nenhum mkdocs.yml",
   "Found {0} pages in {1} and no mkdocs.yml": "Encontrei {0} páginas em {1} e nenhum mkdocs.yml",
   "mkdocs.yml for the pages in {0}: no page is changed": "mkdocs.yml para as páginas de {0}: nenhuma página muda",
-  "create nothing for now": "não criar nada agora"
+  "create nothing for now": "não criar nada agora",
+  "Copy to docs/index.md": "Copiar para docs/index.md",
+  "the README stays as it is": "o README continua como está",
+  "Move to docs/index.md": "Mover para docs/index.md",
+  "the README keeps only a link to the docs": "o README fica só com um link para as docs",
+  "Do not use the README": "Não usar o README",
+  "the home page comes from the template": "a página inicial vem do template",
+  "Use README.md as the home page of the documentation?": "Usar o README.md como página inicial da documentação?",
+  "The documentation of this repository is in [docs/](docs/index.md), published by TechDocs.": "A documentação deste repositório está em [docs/](docs/index.md), publicada pelo TechDocs."
 }

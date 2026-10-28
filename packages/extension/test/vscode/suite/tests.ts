@@ -658,6 +658,27 @@ export function defineTests() {
       }
     });
 
+    test('README.md como página inicial: copiado (o README fica) ou movido (o README vira um link para as docs)', async () => {
+      const { newSite } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const readme = '# Pagamentos\n\nVeja o [deploy](docs/deploy.md) e o [código](src/main.ts).\n';
+      await write('com-readme/README.md', readme);
+      await write('move-readme/README.md', readme);
+      try {
+        ok(await newSite.run(undefined, { template: 'service-docs', folder: file('com-readme'), values: { site_name: 'Pagamentos', owner: 'time-pag' }, readme: 'copy' }), 'não criou (copiar)');
+        equal(await read('com-readme/docs/index.md'), '# Pagamentos\n\nVeja o [deploy](deploy.md) e o [código](src/main.ts).\n', 'página inicial do README');
+        equal(await read('com-readme/README.md'), readme, 'copiar mudou o README');
+        ok((await read('com-readme/docs/architecture.md')).startsWith('# Architecture\n'), 'as outras páginas do template continuam');
+
+        ok(await newSite.run(undefined, { template: 'service-docs', folder: file('move-readme'), values: { site_name: 'Pagamentos', owner: 'time-pag' }, readme: 'move' }), 'não criou (mover)');
+        ok((await read('move-readme/docs/index.md')).includes('[deploy](deploy.md)'), 'página inicial do README');
+        const pointer = await read('move-readme/README.md');
+        ok(pointer.startsWith('# Pagamentos\n\n') && pointer.includes('(docs/index.md)') && !pointer.includes('src/main.ts'), `README movido: ${pointer}`);
+      } finally {
+        for (const path of ['com-readme', 'move-readme']) await remove(path);
+      }
+    });
+
     test('conferir: achados no painel Problemas; preparar: aplica as correções e sobra o que precisa de uma pessoa', async () => {
       const { repoCheck, sites, checkView } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));

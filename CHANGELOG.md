@@ -16,6 +16,9 @@ All notable changes to the TechDocs Editor extension. The format follows
 - Adopt the docs you already have: in a folder with pages in `docs/` and no `mkdocs.yml`, **New documentation
   site** and **Prepare the documentation** offer to use those pages. Only `mkdocs.yml` is created, with the `nav`
   built from the folders and page titles and the `techdocs-core` plugin, shown in a diff first. No page changes.
+- `README.md` as the home page: when creating a site from a template next to a README, copy it to
+  `docs/index.md`, move it there (the README keeps a link to the docs), or leave it out. Links to `docs/…` are
+  made relative to the docs folder.
 
 ### Changed
 

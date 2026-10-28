@@ -133,6 +133,14 @@ export function adoptedMkdocsYml(siteName: string, pages: readonly string[], tit
   return stringify({ site_name: siteName, nav: toNav(docsTree(undefined, pages, titleOf).nodes), plugins: ['techdocs-core'] }, { lineWidth: 0 });
 }
 
+/**
+ * O README como página inicial em `docs/index.md` (0.4.0): links e imagens para `docs/…` passam a ser relativos à
+ * pasta das docs. Os que apontam para fora dela (código, `CONTRIBUTING.md`) ficam como estão: a Verificação acusa.
+ */
+export function readmeAsHome(readme: string): string {
+  return readme.replace(/(\]\(\s*<?)(?:\.\/)?docs\//g, '$1').replace(/^(\[[^\]]+\]:\s*<?)(?:\.\/)?docs\//gm, '$1');
+}
+
 /** Anotação que o TechDocs lê no `catalog-info.yaml`. */
 export const TECHDOCS_REF = 'backstage.io/techdocs-ref';
 

@@ -322,16 +322,23 @@ organização, provedores), e há quem use só MkDocs. A conferência passou a t
   conferência, `setCatalogMode` mantém comentários); integração desktop (só para mim, para o time vence a
   configuração, a correção cria o esqueleto, `askUsage`).
 
-### Como ficou na 0.4.0: adotar a docs/
+### Como ficou na 0.4.0: adotar a docs/ e o README como página inicial
 
 - **Adotar** (`adoptedMkdocsYml` no `core`): numa pasta sem `mkdocs.yml` e com `.md` em `docs/`, "Novo site" e
   "Preparar" perguntam "Usar as páginas que já existem" ou "Começar de um template". Adotar gera só o
   `mkdocs.yml`: o `nav` na ordem da árvore sem `nav` (pastas viram seções, `index.md`/`README.md` primeiro,
   títulos pelo título 1, senão pelo nome do arquivo) e o `techdocs-core`. O nome do site sugerido é o título da
   página inicial. O `mkdocs.yml` aparece num diff antes (Aplicar / Parar); nenhuma página é criada ou alterada.
+- **README como página inicial** (`readmeAsHome`): com um `README.md` na pasta e sem `docs/index.md`, o site de
+  template pergunta: copiar para `docs/index.md` (o README fica), mover (o README fica só com o título e um link
+  para `docs/index.md`) ou não usar. O README entra no lugar do `index.md` do template; as outras páginas
+  continuam. Links e imagens para `docs/…` passam a ser relativos à pasta das docs; os que apontam para fora
+  (código, `CONTRIBUTING.md`) ficam como estão, e a Verificação acusa como links quebrados: só a pessoa sabe se
+  a página deve linkar o GitHub ou trazer o conteúdo.
 - **Diff compartilhado:** o diff com a pergunta saiu do `RepoCheck` para `extension/src/proposedChange.ts`
   (`ProposedChanges.ask`), usado pela conferência e pelo "Novo site".
-- **Testes:** unitários (`nav` pelas pastas, sem título); integração (adotar sem mudar páginas).
+- **Testes:** unitários (`nav` pelas pastas, sem título, README como página inicial, links de `docs/` e de fora);
+  integração (adotar sem mudar páginas; README copiado e movido).
 
 ## Pontos em aberto
 

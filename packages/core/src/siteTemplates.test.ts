@@ -5,6 +5,7 @@ import {
   buildSitePages,
   hasTechdocsRef,
   parseSiteTemplate,
+  readmeAsHome,
   siteMkdocsYml,
   siteUsedFields,
   techdocsRefAnnotation,
@@ -163,3 +164,25 @@ describe('adoptedMkdocsYml', () => {
   });
 });
 
+describe('readmeAsHome', () => {
+  it('links e imagens para docs/ ficam relativos à pasta; o resto fica como está', () => {
+    const readme = [
+      '# Pagamentos',
+      '',
+      'Veja o [deploy](docs/guias/deploy.md) e ![arquitetura](./docs/assets/a.png).',
+      'Código em [src](src/main.ts), regras em [CONTRIBUTING](CONTRIBUTING.md) e [site](https://docs.x).',
+      '',
+      '[ref]: docs/ref.md',
+    ].join('\n');
+    expect(readmeAsHome(readme)).toBe(
+      [
+        '# Pagamentos',
+        '',
+        'Veja o [deploy](guias/deploy.md) e ![arquitetura](assets/a.png).',
+        'Código em [src](src/main.ts), regras em [CONTRIBUTING](CONTRIBUTING.md) e [site](https://docs.x).',
+        '',
+        '[ref]: ref.md',
+      ].join('\n'),
+    );
+  });
+});
