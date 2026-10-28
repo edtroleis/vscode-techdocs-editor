@@ -90,12 +90,19 @@ you clicked in the tree; only that line is added to `mkdocs.yml`.
 |-------|-------|----------------|
 | Built-in | This extension | A new version of the extension, updated automatically by the Marketplace |
 | Your company or team | `.techdocs/templates/` in the docs repository (or in the site folder, which wins) | A pull request in that repository: nothing to publish |
-| Company-wide | One repository of templates for every docs repository *(planned)* | A pull request in that repository |
+| Company-wide | One GitHub repository of templates for every docs repository (`techdocsEditor.templates.repository`) | A pull request in that repository: everyone gets it within an hour |
 
 A template is a Markdown page with a `template:` block in the front matter. Repository templates come first
 in the list and replace a built-in one with the same file name (`runbook.md`). More folders go in
 `techdocsEditor.templates.paths`, and `techdocsEditor.templates.builtIn: false` offers only yours. Pages
 already created never change when a template changes.
+
+Company templates live in a folder of a GitHub repository, in the same format, and come between the
+repository's and the built-in ones. Set `techdocsEditor.templates.repository` to `owner/repo`, optionally with
+the folder and a branch or tag (`acme/docs-templates/templates@v3`; pin a tag to choose when to update), and the
+host for GitHub Enterprise (`ghe.acme.com/acme/docs-templates`). The extension tries without signing in first
+(public repository) and asks for the GitHub sign-in only if needed. It checks at most once an hour, keeps a copy
+for offline use, and **TechDocs: Refresh company templates** checks right away.
 
 ```markdown
 ---
@@ -201,6 +208,7 @@ To always open documentation pages in the visual editor, turn on `techdocsEditor
 | `techdocsEditor.openVisualByDefault` | `false` | Open pages inside a MkDocs `docs_dir` in the visual editor instead of the text |
 | `techdocsEditor.images.maxSizeMB` | `5` | Largest image the visual editor saves to `assets`. Images go into the repository: large files weigh on every clone |
 | `techdocsEditor.templates.paths` | `[]` | More folders with page and site templates, relative to the workspace folder (`.techdocs/templates/` is always read) |
+| `techdocsEditor.templates.repository` | `""` | Company templates in a GitHub repository: `owner/repo[/folder][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Offer the templates that come with the extension |
 | `techdocsEditor.local.publishPanel` | `false` | Show the **Publishing** panel |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch created for a draft when you are on the default branch |
@@ -250,7 +258,9 @@ otherwise). Only pages inside a `docs_dir` are checked.
 - **No telemetry.** The extension collects nothing.
 - **No network in local mode** unless you turn on the publishing panel. Pages are read and written through
   VS Code; the only requests are for images your pages already link with `https://`. The panel talks only to
-  the GitHub of your repository's remote, from the extension host: the token never reaches the webview.
+  the GitHub of your repository's remote, from the extension host: the token never reaches the webview. With
+  `techdocsEditor.templates.repository` set, the extension also reads that repository, at most once an hour;
+  in an untrusted workspace only your user setting counts, never the folder's.
 - The visual editor runs in a webview with a strict content security policy: only the extension's own
   scripts run.
 

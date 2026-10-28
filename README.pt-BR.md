@@ -91,12 +91,19 @@ editor visual sem nenhuma alteração. Num site com `nav`, a página já pode en
 |--------|------|-----------|
 | Da extensão | Esta extensão | Versão nova da extensão, atualizada automaticamente pelo Marketplace |
 | Da empresa ou do time | `.techdocs/templates/` no repositório das docs (ou na pasta do site, que vale mais) | Pull request nesse repositório: nada a publicar |
-| Da empresa inteira | Um repositório de templates para todos os repositórios de docs *(planejado)* | Pull request nesse repositório |
+| Da empresa inteira | Um repositório do GitHub com os templates de todos os repositórios de docs (`techdocsEditor.templates.repository`) | Pull request nesse repositório: chega a todos em até uma hora |
 
 Um template é uma página Markdown com um bloco `template:` no front matter. Os do repositório aparecem
 primeiro na lista e substituem o da extensão de mesmo nome de arquivo (`runbook.md`). Outras pastas vão em
 `techdocsEditor.templates.paths`, e `techdocsEditor.templates.builtIn: false` oferece só os seus. Páginas já
 criadas nunca mudam quando o template muda.
+
+Os templates da empresa ficam numa pasta de um repositório do GitHub, no mesmo formato, e vêm entre os do
+repositório e os da extensão. Aponte `techdocsEditor.templates.repository` para `dono/repo`, com a pasta e uma
+branch ou tag opcionais (`acme/docs-templates/templates@v3`; com tag, você escolhe quando atualizar), e o host no
+GitHub Enterprise (`ghe.acme.com/acme/docs-templates`). A extensão tenta primeiro sem login (repositório
+público) e só pede o login do GitHub se precisar. Confere no máximo uma vez por hora, guarda uma cópia para usar
+sem rede, e **TechDocs: Atualizar os templates da empresa** confere na hora.
 
 ```markdown
 ---
@@ -202,6 +209,7 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 | `techdocsEditor.openVisualByDefault` | `false` | Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto |
 | `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
 | `techdocsEditor.templates.paths` | `[]` | Mais pastas com templates de página e de site, relativas à pasta do workspace (o `.techdocs/templates/` é sempre lido) |
+| `techdocsEditor.templates.repository` | `""` | Templates da empresa num repositório do GitHub: `dono/repo[/pasta][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Oferece os templates que vêm com a extensão |
 | `techdocsEditor.local.publishPanel` | `false` | Mostra o painel **Publicação** |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch criada para o rascunho quando você está na branch principal |
@@ -252,7 +260,8 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 - **Sem rede no modo local**, a não ser que você ligue o painel de publicação. As páginas são lidas e
   gravadas pelo VS Code; os únicos acessos são às imagens que as suas páginas já apontam com `https://`. O
   painel só fala com o GitHub do remote do seu repositório, a partir do host da extensão: o token nunca chega
-  ao webview.
+  ao webview. Com `techdocsEditor.templates.repository` configurado, a extensão também lê esse repositório, no
+  máximo uma vez por hora; em workspace não confiável, só vale a sua configuração de usuário, nunca a da pasta.
 - O editor visual roda num webview com política de segurança de conteúdo restrita: só os scripts da
   própria extensão rodam.
 

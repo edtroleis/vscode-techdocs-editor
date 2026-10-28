@@ -12,6 +12,7 @@ import {
   today,
 } from '@edtroleis/techdocs-editor-core';
 import { VisualEditorProvider } from '../visualEditorProvider';
+import type { CentralTemplates } from './centralTemplates';
 import {
   builtInEnabled,
   builtInPageTemplates,
@@ -42,6 +43,8 @@ const DOCS_DIR = 'docs';
  * anotação do `catalog-info.yaml` para copiar.
  */
 export class NewSiteCommand {
+  constructor(private readonly central?: CentralTemplates) {}
+
   async run(target?: vscode.Uri, answers?: NewSiteAnswers): Promise<NewSiteResult | undefined> {
     const root = await this.resolveFolder(answers?.folder ?? target, Boolean(answers));
     if (!root) return undefined;
@@ -57,7 +60,7 @@ export class NewSiteCommand {
     if (!choice) return undefined;
     const { template } = choice;
 
-    const { sources, pageFields } = await this.sources(choice, folders);
+    const { sources, pageFields } = await this.sources(choice, folders, root);
     const used = siteUsedFields(template, sources);
     const values = await this.fieldValues(choice, used, root, pageFields, answers?.values);
     if (!values) return undefined;
@@ -126,12 +129,17 @@ export class NewSiteCommand {
     return picked?.[0];
   }
 
-  /** Lista dos templates de site: os do repositório primeiro, com a pasta de onde vieram, depois os da extensão. */
+  /** Lista dos templates de site: os do repositório, com a pasta de onde vieram, os da empresa (TA3) e os da extensão. */
   private async pickTemplate(folders: vscode.Uri[], root: vscode.Uri, id: string | undefined): Promise<SiteChoice | undefined> {
     const repository = await repositorySiteTemplates(folders);
     const ids = new Set(repository.map(c => c.template.id));
+    const company = await this.central?.get(root);
+    const central: SiteChoice[] = (company?.sites ?? [])
+      .filter(s => !ids.has(s.template.id))
+      .map(s => ({ ...s, origin: 'central', source: company!.label }));
+    central.forEach(c => ids.add(c.template.id));
     const builtIn = builtInEnabled(root) ? builtInSiteTemplates().filter(c => !ids.has(c.template.id)) : [];
-    const choices = [...repository, ...builtIn];
+    const choices = [...repository, ...central, ...builtIn];
     if (!choices.length) {
       void vscode.window.showWarningMessage(
         vscode.l10n.t('There are no site templates: the built-in ones are turned off and the repository has none.'),
@@ -144,16 +152,20 @@ export class NewSiteCommand {
     } else {
       type Item = vscode.QuickPickItem & { choice?: SiteChoice };
       const items: Item[] = [];
-      if (repository.length) items.push({ label: vscode.l10n.t('This repository'), kind: vscode.QuickPickItemKind.Separator });
+      const groups = [repository, central, builtIn].filter(g => g.length).length;
       for (const c of choices) {
-        if (c === builtIn[0] && repository.length) items.push({ label: vscode.l10n.t('Built in'), kind: vscode.QuickPickItemKind.Separator });
+        if (groups > 1 && c === repository[0]) items.push({ label: vscode.l10n.t('This repository'), kind: vscode.QuickPickItemKind.Separator });
+        if (groups > 1 && c === central[0]) items.push({ label: vscode.l10n.t('Company'), kind: vscode.QuickPickItemKind.Separator });
+        if (groups > 1 && c === builtIn[0]) items.push({ label: vscode.l10n.t('Built in'), kind: vscode.QuickPickItemKind.Separator });
         items.push({
           label: c.template.name,
           description: !isTemplateSupported(c.template)
             ? vscode.l10n.t('needs a newer version of the extension')
             : c.origin === 'repository'
               ? `$(repo) ${c.source}`
-              : undefined,
+              : c.origin === 'central'
+                ? `$(organization) ${c.source}`
+                : undefined,
           detail: c.template.description,
           choice: c,
         });
@@ -175,15 +187,20 @@ export class NewSiteCommand {
   }
 
   /**
-   * Texto de cada arquivo do site: `page` pelo template de página (o do repositório antes do da extensão, mesmo
+   * Texto de cada arquivo do site: `page` pelo template de página (o do repositório, o da empresa, o da extensão, mesmo
    * com `builtIn: false`, que só esconde da lista); `source` da pasta do template. Com os campos que os templates
    * de página usados declaram.
    */
-  private async sources(choice: SiteChoice, folders: vscode.Uri[]): Promise<{ sources: SiteSources; pageFields: TemplateField[] }> {
-    const pages = [...(await repositoryPageTemplates(folders)), ...builtInPageTemplates()];
+  private async sources(choice: SiteChoice, folders: vscode.Uri[], root: vscode.Uri): Promise<{ sources: SiteSources; pageFields: TemplateField[] }> {
+    const company = await this.central?.get(root);
+    const pages = [
+      ...(await repositoryPageTemplates(folders)),
+      ...(company?.pages ?? []).map(template => ({ template })),
+      ...builtInPageTemplates(),
+    ];
     const pageOf = (id: string) => pages.find(p => p.template.id === id)?.template;
     const files: Record<string, string | undefined> = {};
-    if (choice.origin === 'builtIn') {
+    if (choice.origin !== 'repository') {
       Object.assign(files, choice.files);
     } else {
       for (const file of choice.template.files) {

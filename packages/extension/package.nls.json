@@ -22,8 +22,10 @@
   "config.polling.idleIntervalSeconds": "Seconds between queries when nothing is running.",
   "command.newPage": "New page from template…",
   "command.newSite": "New documentation site…",
+  "command.refreshTemplates": "Refresh company templates",
   "command.checkDocs": "Check the documentation of the repository",
   "command.prepareDocs": "Prepare the documentation in this repository",
   "config.templates.paths": "More folders with templates, relative to the workspace folder: page templates (`.md` files with a `template:` block) and site templates (subfolders with a `template.yml`). They come after `.techdocs/templates/` of the site and of the workspace, which are always read.",
+  "config.templates.repository": "Company-wide templates from a GitHub repository: `owner/repo`, optionally with a folder and a branch or tag (`acme/docs-templates/templates@v3`), and the host for GitHub Enterprise (`ghe.acme.com/acme/docs-templates`). Same format as `.techdocs/templates/`. They come after the repository's templates and before the built-in ones. Read when the template list opens, at most once an hour, and kept for offline use. In an untrusted workspace, only the user setting counts.",
   "config.templates.builtIn": "Show the templates that come with the extension. Turn off to offer only the repository templates."
 }

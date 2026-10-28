@@ -1,3 +1,4 @@
+export * from './centralTemplates';
 export * from './checks';
 export * from './docsTree';
 export * from './github';

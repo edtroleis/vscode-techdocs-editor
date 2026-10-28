@@ -134,18 +134,22 @@ export function catalogOwner(catalogInfo: string): string | undefined {
 }
 
 /**
- * Templates na ordem da lista (TP2): os do repositório primeiro (sobrepondo os da extensão de mesmo id),
- * depois os da extensão; dentro de cada origem, por categoria e nome.
+ * Templates na ordem da lista (TP2): por camada, na ordem dada (o repositório, a empresa, a extensão), e o
+ * primeiro de cada id vale (sobrepõe os das camadas seguintes); dentro de cada camada, por categoria e nome.
  */
-export function mergeTemplates<T extends { template: DocTemplate }>(repository: T[], builtIn: T[]): T[] {
-  const ids = new Set(repository.map(t => t.template.id));
+export function mergeTemplates<T extends { template: DocTemplate }>(...layers: T[][]): T[] {
+  const ids = new Set<string>();
   const order = (list: T[]) =>
     [...list].sort(
       (a, b) =>
         TEMPLATE_CATEGORIES.indexOf(a.template.category) - TEMPLATE_CATEGORIES.indexOf(b.template.category) ||
         a.template.name.localeCompare(b.template.name),
     );
-  return [...order(repository), ...order(builtIn.filter(t => !ids.has(t.template.id)))];
+  return layers.flatMap(layer => {
+    const kept = layer.filter(t => !ids.has(t.template.id));
+    kept.forEach(t => ids.add(t.template.id));
+    return order(kept);
+  });
 }
 
 /**

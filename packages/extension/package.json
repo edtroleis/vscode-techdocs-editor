@@ -90,6 +90,12 @@
         "icon": "$(book)"
       },
       {
+        "command": "techdocsEditor.refreshTemplates",
+        "title": "%command.refreshTemplates%",
+        "category": "TechDocs",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "techdocsEditor.checkDocs",
         "title": "%command.checkDocs%",
         "category": "TechDocs",
@@ -201,6 +207,12 @@
           },
           "default": [],
           "markdownDescription": "%config.templates.paths%"
+        },
+        "techdocsEditor.templates.repository": {
+          "type": "string",
+          "default": "",
+          "pattern": "^$|^([\\w.-]+\\.[\\w.-]+/)?[\\w.-]+/[\\w.-]+(/[^@]+)?(@.+)?$",
+          "markdownDescription": "%config.templates.repository%"
         },
         "techdocsEditor.templates.builtIn": {
           "type": "boolean",

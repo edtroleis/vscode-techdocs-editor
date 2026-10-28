@@ -149,5 +149,13 @@
   "There is no markdownlint configuration: the formatting check uses every rule. Suggested: {0}": "Não há configuração do markdownlint: a verificação de formatação usa todas as regras. Sugerido: {0}",
   "Formatting problems on this page: {0}": "Problemas de formatação nesta página: {0}",
   "Link to a file that does not exist: {0}": "Link para um arquivo que não existe: {0}",
-  "Image that does not exist: {0}": "Imagem que não existe: {0}"
+  "Image that does not exist: {0}": "Imagem que não existe: {0}",
+  "not found, or your GitHub account has no access to it": "não encontrado, ou a sua conta do GitHub não tem acesso a ele",
+  "Could not update the company templates from {0} ({1}). Using the copy from {2}.": "Não deu para atualizar os templates da empresa de {0} ({1}). Usando a cópia de {2}.",
+  "Could not read the company templates from {0}: {1}": "Não deu para ler os templates da empresa de {0}: {1}",
+  "{0} · company": "{0} · empresa",
+  "Company": "Empresa",
+  "Open settings": "Abrir as configurações",
+  "No company templates are set. Point techdocsEditor.templates.repository to the repository with them.": "Não há templates da empresa configurados. Aponte techdocsEditor.templates.repository para o repositório deles.",
+  "Company templates from {0}: {1} page templates and {2} site templates.": "Templates da empresa de {0}: {1} de página e {2} de site."
 }

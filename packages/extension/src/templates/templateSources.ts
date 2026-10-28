@@ -3,12 +3,13 @@ import { catalogOwner, DocTemplate, parseSiteTemplate, parseTemplate, SiteTempla
 import { BUILT_IN_SITES, BUILT_IN_TEMPLATES, templateLanguage } from '@edtroleis/techdocs-editor-core/src/builtInTemplates';
 import { gitApi } from '../publish/vscodeGit';
 
-/** Template de página da lista: da extensão ou do repositório (com a pasta de onde veio, TP2). */
-export type PageChoice = { template: DocTemplate; origin: 'builtIn' } | { template: DocTemplate; origin: 'repository'; source: string };
+/** Template de página da lista: da extensão, ou do repositório ou da empresa (TA3), com a origem (TP2). */
+export type PageChoice = { template: DocTemplate; origin: 'builtIn' } | { template: DocTemplate; origin: 'repository' | 'central'; source: string };
 
 /** Template de site: os arquivos vêm do registro da extensão ou da pasta do template no repositório. */
 export type SiteChoice =
   | { template: SiteTemplate; origin: 'builtIn'; files: Record<string, string> }
+  | { template: SiteTemplate; origin: 'central'; source: string; files: Record<string, string> }
   | { template: SiteTemplate; origin: 'repository'; source: string; folder: vscode.Uri };
 
 export const exists = async (uri: vscode.Uri) => {

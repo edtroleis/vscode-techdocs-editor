@@ -193,9 +193,32 @@ Quem é afetado e como, enquanto o alerta está ativo.
   completo, lint dos 6 sites, só campos automáticos); ida e volta das páginas `source` pelo editor; integração
   desktop e web (site da extensão com `catalog-info.yaml` na raiz, recusas sem gravar nada, site do repositório).
 
+### Como ficou na TA3
+
+- **Configuração:** `techdocsEditor.templates.repository: [host/]dono/repo[/pasta][@ref]`; sem host, github.com;
+  sem ref, a branch padrão. Mesmo formato do `.techdocs/templates/` (páginas `.md` no nível da pasta, sites em
+  subpastas com `template.yml`).
+- **Ordem:** repositório (site, workspace, `templates.paths`) → empresa → extensão; o primeiro de cada id vale
+  (`mergeTemplates` passou a aceitar as camadas em ordem). Na lista, o grupo "· empresa" com
+  `$(organization) dono/repo/pasta`.
+- **Leitura** (`core/src/centralTemplates.ts`): `GET /commits/{ref}`, a árvore do commit (`recursive`) e o blob de
+  cada `.md`/`.yml` da pasta (até uma subpasta, até 300 arquivos de 256 KB). Commit igual ao da cópia: nada é
+  baixado. Primeiro sem login; com 401/403/404, com o login do VS Code, e a extensão lembra (no `globalState`)
+  que aquele repositório pede login.
+- **Cópia** no `globalStorage` da extensão pelo commit; conferida no GitHub ao abrir a lista, se tem mais de uma
+  hora, e pelo comando "Atualizar os templates da empresa". Sem rede ou sem acesso: a última cópia, com um aviso
+  por sessão; sem cópia, a lista segue sem os da empresa.
+- **Workspace não confiável:** só a configuração do usuário vale (a da pasta faria a extensão chamar a rede
+  por conta de um repositório não confirmado).
+- **Testes:** unitários (configuração, leitura pela árvore, commit igual, sem login → com login, erro que não é
+  de acesso, páginas e sites dos arquivos); integração desktop e web com um GitHub simulado (privado: sem login e
+  depois com; o da empresa sobrepõe o da extensão; site da empresa; nada consultado antes de uma hora; sem rede,
+  a cópia).
+
 ## Segurança
 
-- Template é texto: nada é executado, nada vem da rede (no modo local).
+- Template é texto: nada é executado. No modo local, só os templates da empresa (TA3) vêm da rede, e só com a
+  configuração definida.
 - Campos entram como texto na página; o caminho do arquivo é validado (TP4).
 - Templates do repositório são lidos também em workspace não confiável (são só Markdown), mas a origem
   aparece na lista (TP2).
@@ -280,5 +303,5 @@ publicação, o modo remoto e o plugin usarem a mesma. Parte **T3b**, logo depoi
 |---|-------|-------------|
 | TA1 | De onde vem `owner` quando não há `catalog-info.yaml`: perguntar, usar o nome do Git ou deixar vazio | **Decidido na T1:** o `spec.owner` do `catalog-info.yaml` da raiz do site ou do workspace; sem ele, perguntado como os outros campos, com o nome do Git (`user.name`) como sugestão quando o `vscode.git` estiver disponível |
 | TA2 | Instruções de preenchimento como comentário HTML (`<!-- -->`, somem na página publicada) em vez de texto de exemplo | **Provado na T2 (2026-10-28): fica com o texto de exemplo.** A ida e volta é idêntica (comentário sozinho, em várias linhas e no fim de um item de lista), mas o editor mostra o comentário como parágrafo comum, com `<!--` e `-->` à mostra e editável como texto: nada discreto, e fácil de quebrar para quem não conhece HTML. Só valeria com um nó próprio no `ui` que o mostrasse como dica (e o lint aceita comentário: o MD033 não o conta como HTML) |
-| TA3 | Templates centrais da empresa num repositório só (`techdocsEditor.templates.repository: owner/repo/pasta`), em vez de copiar `.techdocs/templates/` em cada repositório | Depois da T4 (usa a API do GitHub da fase 4) |
+| TA3 | Templates centrais da empresa num repositório só (`techdocsEditor.templates.repository: owner/repo/pasta`), em vez de copiar `.techdocs/templates/` em cada repositório | **Feito em 2026-10-28, antes da fase 4:** o cliente e o login do GitHub da fase 3 bastam (só a escrita precisa do `FileSystemProvider`). Ver "Como ficou na TA3" |
 | TA4 | Templates vindos do Backstage (uma entidade `Template` ou um endpoint do plugin) | Fase 7, junto com o plugin |

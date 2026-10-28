@@ -194,8 +194,8 @@ O usuário vai liberar a extensão. Ordem das versões (spec 04, "Onde ficam e c
 |--------|----------|
 | 0.1.0 | Modo local: editor visual, lint, imagens, busca, árvore, painel de publicação (fases 0 a 3) e, já pronta, a T1 (nova página a partir de template) |
 | 0.2.0 | T2: `nav` e templates do repositório (`.techdocs/templates/`) |
-| 0.3.0 | T3 e T3b: templates de site, conferir e preparar a documentação do repositório |
-| Depois | Fase 4 (modo remoto) com a T4; templates centrais (TA3); fase 5 (web e Dev Spaces) |
+| 0.3.0 | T3 e T3b: templates de site, conferir e preparar a documentação do repositório; TA3 (templates da empresa) e a barra lateral "TechDocs", adiantados a pedido do usuário |
+| Depois | Fase 4 (modo remoto) com a T4; fase 5 (web e Dev Spaces) |
 
 A T1 entrou antes da fase 4 a pedido do usuário: ela não depende do modo remoto (só a T4 depende). Antes de
 publicar a 0.1.0 (fase 6): conferir à mão o login do GitHub e o push do painel (não cobertos por teste) e o

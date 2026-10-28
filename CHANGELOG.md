@@ -15,6 +15,10 @@ All notable changes to the TechDocs Editor extension. The format follows
 - Site templates of your own: folders with a `template.yml` in `.techdocs/templates/` (and in
   `techdocsEditor.templates.paths`). Each page comes from a page template, yours or a built-in one, or from a
   file in the folder.
+- Company templates: `techdocsEditor.templates.repository` points to a folder of a GitHub repository
+  (`owner/repo[/folder][@ref]`, GitHub Enterprise too) with page and site templates in the same format. They
+  come between the repository's and the built-in ones, are checked at most once an hour, and keep working
+  offline from the last copy. **TechDocs: Refresh company templates** checks right away.
 - **TechDocs: Check the documentation of the repository**: lists in the Problems panel what TechDocs needs
   and is missing or wrong: `site_name` and the `techdocs-core` plugin, the docs folder and its home page, the
   `nav` (missing pages, pages left out), the `catalog-info.yaml` annotation, the markdownlint configuration,

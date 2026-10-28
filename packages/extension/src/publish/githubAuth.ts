@@ -43,6 +43,15 @@ export function clientFor(host: string, slug: string, extraScopes: string[] = []
   return new GitHubClient(transport, slug);
 }
 
+/** Cliente sem login, para ler um repositório público (templates centrais, TA3): nada é pedido à pessoa. */
+export function anonymousClientFor(host: string, slug: string): GitHubClient {
+  const transport = testTransport?.(host);
+  return new GitHubClient(
+    transport ? { ...transport, headers: {} } : { baseUrl: apiBaseUrlFor(host), fetch: (input, init) => fetch(input, init), headers: {} },
+    slug,
+  );
+}
+
 /** O que a pessoa lê quando uma chamada ao GitHub falha (A-5): o que fazer, não o código HTTP. */
 export function gitHubErrorText(error: unknown, l10n: { t: typeof vscode.l10n.t }): string {
   const message = error instanceof Error ? error.message : String(error);

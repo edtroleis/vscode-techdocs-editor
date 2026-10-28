@@ -324,6 +324,27 @@ export class GitHubClient {
     return { content: fromBase64(file.content), sha: file.sha };
   }
 
+  /** Commit de uma branch, tag ou SHA (`GET /commits/{ref}`), com a árvore dele; null se a ref não existe. */
+  async getCommit(ref: string): Promise<{ sha: string; tree: string } | null> {
+    const commit = await this.orNull(this.request<any>('GET', `/repos/${this.slug}/commits/${encodeURIComponent(ref)}`));
+    return commit && { sha: commit.sha, tree: commit.commit.tree.sha };
+  }
+
+  /** Arquivos de uma árvore, com as subpastas (`recursive`); `truncated` quando o GitHub cortou a lista. */
+  async getTree(sha: string): Promise<{ files: Array<{ path: string; sha: string; size: number }>; truncated: boolean }> {
+    const tree = await this.request<any>('GET', `/repos/${this.slug}/git/trees/${sha}?recursive=1`);
+    return {
+      files: (tree.tree as any[]).filter(e => e.type === 'blob').map(e => ({ path: e.path, sha: e.sha, size: e.size ?? 0 })),
+      truncated: Boolean(tree.truncated),
+    };
+  }
+
+  /** Texto de um blob pelo SHA. */
+  async getBlob(sha: string): Promise<string> {
+    const blob = await this.request<any>('GET', `/repos/${this.slug}/git/blobs/${sha}`);
+    return fromBase64(blob.content);
+  }
+
   async getBranchSha(branch: string): Promise<string | null> {
     const ref = await this.orNull(
       this.request<any>('GET', `/repos/${this.slug}/git/ref/heads/${encodePath(branch)}`),

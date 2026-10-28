@@ -11,7 +11,9 @@ import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { NewPageCommand } from '../../../src/templates/newPage';
+import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { RepoCheck } from '../../../src/repoCheck';
+import type { CentralTemplates } from '../../../src/templates/centralTemplates';
 import type { NewSiteCommand } from '../../../src/templates/newSite';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
@@ -44,6 +46,8 @@ type Api = {
   newPage: NewPageCommand;
   newSite: NewSiteCommand;
   repoCheck: RepoCheck;
+  publish: PublishPanel;
+  central: CentralTemplates;
 };
 
 async function api(): Promise<Api> {
@@ -658,6 +662,62 @@ export function defineTests() {
         ok(vscode.languages.getDiagnostics(file('check-site/docs/index.md')).some(d => d.code === 'broken-link'), 'o link quebrado (sem correção) sumiu');
       } finally {
         await remove('check-site');
+      }
+    });
+
+    test('templates da empresa (TA3): lidos do GitHub com login, guardados por uma hora e usados sem rede', async () => {
+      const { newPage, newSite, publish, central } = await api();
+      const config = vscode.workspace.getConfiguration('techdocsEditor.templates');
+      const page = '---\ntemplate:\n  name: Runbook da empresa\n  category: guide\n---\n\n# {{title}}\n\nDa empresa.\n';
+      const site = 'name: Site da empresa\nfiles:\n  - path: index.md\n    title: Início\n    source: inicio.md\n  - path: rb.md\n    title: Runbook\n    page: runbook\n';
+      const files: Record<string, string> = {
+        'templates/runbook.md': page,
+        'templates/site-empresa/template.yml': site,
+        'templates/site-empresa/inicio.md': '# {{site_name}}\n',
+      };
+      // GitHub simulado mínimo (o FakeGitHub do core usa node:crypto, que a suíte web não tem): repositório privado
+      const calls: string[] = [];
+      let offline = false;
+      const reply = (status: number, json: unknown) => new Response(JSON.stringify(json), { status, headers: { 'content-type': 'application/json' } });
+      const fetchFake = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = new URL(String(input)).pathname.replace('/repos/acme/tpl', '');
+        const auth = (init?.headers as Record<string, string> | undefined)?.Authorization;
+        calls.push(`${auth ? 'login' : 'anon'} ${path}`);
+        if (offline) throw new TypeError('fetch failed');
+        if (!auth) return reply(404, { message: 'Not Found' });
+        if (path === '') return reply(200, { default_branch: 'main', permissions: {} });
+        if (path === '/commits/main') return reply(200, { sha: 'c1', commit: { tree: { sha: 't1' } } });
+        if (path === '/git/trees/t1') return reply(200, { tree: Object.keys(files).map((p, i) => ({ path: p, type: 'blob', sha: `b${i}`, size: 10 })), truncated: false });
+        const blob = /^\/git\/blobs\/b(\d+)$/.exec(path);
+        if (blob) return reply(200, { content: btoa(unescape(encodeURIComponent(Object.values(files)[Number(blob[1])]))), encoding: 'base64' });
+        return reply(404, { message: 'Not Found' });
+      };
+      publish.useTestGitHub(() => ({ baseUrl: 'https://api.github.com', headers: { Authorization: 'Bearer token' }, fetch: fetchFake }));
+      await config.update('repository', 'acme/tpl/templates', vscode.ConfigurationTarget.Workspace);
+      try {
+        ok(await central.get(undefined, true), 'templates da empresa não lidos');
+        ok(calls[0].startsWith('anon '), `primeiro sem login: ${calls[0]}`);
+        ok(calls.includes('login /git/blobs/b0'), `com login depois: ${calls}`);
+
+        calls.length = 0;
+        await newPage.run(file('wiki/docs'), { template: 'runbook', title: 'Disco', path: 'disco.md', values: { owner: 'x' } });
+        equal(await read('wiki/docs/disco.md'), '# Disco\n\nDa empresa.\n', 'o da empresa sobrepõe o runbook da extensão');
+        equal(calls.length, 0, 'conferiu o GitHub antes de uma hora');
+        await closeAll();
+
+        const created = await newSite.run(file('site-empresa'), { template: 'site-empresa', values: { site_name: 'Empresa' } });
+        ok(created, 'site da empresa não criado');
+        equal(await read('site-empresa/docs/index.md'), '# Empresa\n', 'arquivo do site da empresa');
+        equal(await read('site-empresa/docs/rb.md'), '# Runbook\n\nDa empresa.\n', 'página do template da empresa');
+
+        // Sem rede: a cópia guardada continua valendo
+        offline = true;
+        const copy = await central.get(undefined, true);
+        equal(copy?.pages.map(p => p.id).join(), 'runbook', 'sem rede, a cópia sumiu');
+      } finally {
+        publish.useTestGitHub(undefined);
+        await config.update('repository', undefined, vscode.ConfigurationTarget.Workspace);
+        for (const path of ['wiki/docs/disco.md', 'site-empresa']) await remove(path);
       }
     });
 

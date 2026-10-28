@@ -18,6 +18,7 @@ import type { DocsSite } from '../docsSite';
 import { DocsItem } from '../docsTreeView';
 import type { LocalSites } from '../localSites';
 import { VisualEditorProvider } from '../visualEditorProvider';
+import type { CentralTemplates } from './centralTemplates';
 import {
   builtInEnabled,
   builtInPageTemplates,
@@ -52,6 +53,7 @@ export class NewPageCommand {
   constructor(
     private readonly sites: LocalSites,
     private readonly provider?: VisualEditorProvider,
+    private readonly central?: CentralTemplates,
   ) {}
 
   async run(target?: vscode.Uri | DocsItem, answers?: NewPageAnswers): Promise<vscode.Uri | undefined> {
@@ -163,12 +165,14 @@ export class NewPageCommand {
 
   /**
    * Templates da lista (TP8): os `.md` com bloco `template:` do `.techdocs/templates/` do site, do workspace e
-   * das pastas de `techdocsEditor.templates.paths`, nessa ordem (o primeiro de cada id vale), e os da extensão,
-   * a não ser com `techdocsEditor.templates.builtIn: false`.
+   * das pastas de `techdocsEditor.templates.paths`, nessa ordem (o primeiro de cada id vale), depois os da empresa
+   * (TA3) e os da extensão, a não ser com `techdocsEditor.templates.builtIn: false`.
    */
   private async templates(site: Site): Promise<PageChoice[]> {
     const repository = await repositoryPageTemplates(templateFolders(site.mkdocs.with({ path: site.site.root }), site.mkdocs));
-    return mergeTemplates<PageChoice>(repository, builtInEnabled(site.mkdocs) ? builtInPageTemplates() : []);
+    const company = await this.central?.get(site.mkdocs);
+    const central = (company?.pages ?? []).map(template => ({ template, origin: 'central' as const, source: company!.label }));
+    return mergeTemplates<PageChoice>(repository, central, builtInEnabled(site.mkdocs) ? builtInPageTemplates() : []);
   }
 
   /**
@@ -194,7 +198,9 @@ export class NewPageCommand {
         const label =
           c.origin === 'repository'
             ? vscode.l10n.t('{0} · this repository', categoryLabel(c.template.category))
-            : categoryLabel(c.template.category);
+            : c.origin === 'central'
+              ? vscode.l10n.t('{0} · company', categoryLabel(c.template.category))
+              : categoryLabel(c.template.category);
         if (label !== group) {
           group = label;
           items.push({ label, kind: vscode.QuickPickItemKind.Separator });
@@ -205,7 +211,9 @@ export class NewPageCommand {
           description: supported
             ? c.origin === 'repository'
               ? `$(repo) ${c.source}`
-              : undefined
+              : c.origin === 'central'
+                ? `$(organization) ${c.source}`
+                : undefined
             : vscode.l10n.t('needs a newer version of the extension'),
           detail: c.template.description,
           choice: c,

@@ -7,6 +7,7 @@ import { openVisualByDefault } from './openByDefault';
 import { PublishPanel } from './publish/publishPanel';
 import { RepoCheck } from './repoCheck';
 import { NewPageCommand } from './templates/newPage';
+import { CentralTemplates } from './templates/centralTemplates';
 import { NewSiteCommand } from './templates/newSite';
 import { VisualEditorProvider } from './visualEditorProvider';
 
@@ -16,8 +17,9 @@ export function activate(context: vscode.ExtensionContext) {
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
   const docs = new DocsTreeView(sites);
   const publish = new PublishPanel(context.extensionUri, sites, lint);
-  const newPage = new NewPageCommand(sites, provider);
-  const newSite = new NewSiteCommand();
+  const central = new CentralTemplates(context);
+  const newPage = new NewPageCommand(sites, provider, central);
+  const newSite = new NewSiteCommand(central);
   const repoCheck = new RepoCheck(sites, lint, newSite);
   context.subscriptions.push(
     publish,
@@ -45,6 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.newSite', (target?: vscode.Uri) =>
       newSite.run(target instanceof vscode.Uri ? target : undefined),
     ),
+    vscode.commands.registerCommand('techdocsEditor.refreshTemplates', () => refreshCentralTemplates(central)),
     vscode.commands.registerCommand('techdocsEditor.checkDocs', () => repoCheck.check()),
     vscode.commands.registerCommand('techdocsEditor.prepareDocs', (target?: vscode.Uri) =>
       repoCheck.prepare(target instanceof vscode.Uri ? target : undefined),
@@ -55,7 +58,26 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, central };
+}
+
+/** "Atualizar os templates da empresa" (TA3): confere no GitHub agora, sem esperar a hora. */
+async function refreshCentralTemplates(central: CentralTemplates) {
+  if (!central.source()) {
+    const open = vscode.l10n.t('Open settings');
+    const answer = await vscode.window.showInformationMessage(
+      vscode.l10n.t('No company templates are set. Point techdocsEditor.templates.repository to the repository with them.'),
+      open,
+    );
+    if (answer === open) await vscode.commands.executeCommand('workbench.action.openSettings', 'techdocsEditor.templates.repository');
+    return;
+  }
+  const result = await central.get(undefined, true);
+  if (result) {
+    void vscode.window.showInformationMessage(
+      vscode.l10n.t('Company templates from {0}: {1} page templates and {2} site templates.', result.label, result.pages.length, result.sites.length),
+    );
+  }
 }
 
 function activeCustomEditorUri(): vscode.Uri | undefined {

@@ -60,6 +60,10 @@ export class FakeGitHub {
   readonly workflowToken = 'token-falso-workflow';
   /** Rulesets criados pela API (setup). */
   readonly rulesets: Array<{ id: number; name: string; rules: any[] }> = [];
+  /** Repositório público: leitura sem login (os templates centrais tentam primeiro assim). */
+  publicRepo = false;
+  /** Blobs pelo SHA (`git/blobs`), preenchidos ao listar uma árvore. */
+  private readonly blobs = new Map<string, string>();
   /** Árvores criadas pela API (`git/trees`), pelo SHA. */
   private readonly trees = new Map<string, Record<string, string>>();
   private auth = '';
@@ -240,6 +244,29 @@ export class FakeGitHub {
       if (content === undefined) return notFound;
       return ok({ content: Buffer.from(content).toString('base64'), sha: sha1(content) });
     }
+    m = rest.match(/^\/commits\/([^/]+)$/);
+    if (m && method === 'GET') {
+      const commit = this.head(decodeURIComponent(m[1])) ?? this.commits.get(m[1]);
+      if (!commit) return notFound;
+      const tree = sha1(JSON.stringify(commit.files));
+      this.trees.set(tree, commit.files);
+      return ok({ sha: commit.sha, commit: { message: commit.message, tree: { sha: tree } } });
+    }
+    m = rest.match(/^\/git\/trees\/(\w+)$/);
+    if (m && method === 'GET') {
+      const files = this.trees.get(m[1]);
+      if (!files) return notFound;
+      const entries = Object.entries(files).map(([path, content]) => {
+        this.blobs.set(sha1(content), content);
+        return { path, type: 'blob', sha: sha1(content), size: Buffer.byteLength(content) };
+      });
+      return ok({ sha: m[1], tree: entries, truncated: false });
+    }
+    m = rest.match(/^\/git\/blobs\/(\w+)$/);
+    if (m && method === 'GET') {
+      const content = this.blobs.get(m[1]);
+      return content === undefined ? notFound : ok({ sha: m[1], content: Buffer.from(content).toString('base64'), encoding: 'base64' });
+    }
     m = rest.match(/^\/git\/ref\/heads\/(.+)$/);
     if (m && method === 'GET') {
       const sha = this.refs.get(m[1]);
@@ -343,7 +370,8 @@ export class FakeGitHub {
     this.calls.push(`${method} ${url.pathname}${url.search}`);
     const auth = headers.Authorization ?? '';
     this.auth = auth;
-    if ((auth !== `Bearer ${this.token}` && auth !== `Bearer ${this.workflowToken}`) || this.revoked.has(auth.slice(7))) {
+    const anonymousRead = this.publicRepo && !auth && method === 'GET';
+    if (!anonymousRead && ((auth !== `Bearer ${this.token}` && auth !== `Bearer ${this.workflowToken}`) || this.revoked.has(auth.slice(7)))) {
       return Response.json({ message: 'Bad credentials' }, { status: 401 });
     }
     const failure = this.failures.findIndex(f => f.method === method && f.path.test(url.pathname));
