@@ -62,6 +62,15 @@ node packages/extension/media/render-icon.mjs  # media/icon.svg → media/icon.p
 The videos are Playwright tests (`packages/extension/e2e/videos/record.spec.ts`) running the real VS Code,
 so they break, and get fixed, like any other test when the UI changes.
 
+### Documentation templates
+
+Built-in templates live in `packages/core/templates/<language>/<id>.md`, one file per language with the same
+`id`, registered in `packages/core/src/builtInTemplates.ts`. A new template needs both languages and passes:
+
+- `npm run test:unit`: the `template:` block, the fields it uses, and a clean formatting check;
+- `npm run test:webview`: the page opens in the visual editor without a single change (tables aligned, short
+  lines, only Markdown the editor edits).
+
 ## Rules of thumb
 
 - **The Markdown file is the source of truth.** Opening a page must not change it, and saving must only

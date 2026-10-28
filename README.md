@@ -66,6 +66,52 @@ the page. Never a temporary `blob:` address, and never larger than you allow
   the `nav`, and `nav` entries pointing to missing pages, are flagged.
 - **Search** with Ctrl+F in the visual editor, with "1 of 3" and Enter / Shift+Enter between matches.
 
+### Start from a template
+
+**TechDocs: New page from template…** (command palette, the **Documentation** tree, or right-click on a docs
+folder) creates a page with the sections that kind of page needs, already filled with the title, the date and
+the owner from `catalog-info.yaml`, and opens it in the visual editor.
+
+| To… | Templates |
+|-----|-----------|
+| Learn | Tutorial, Onboarding, Golden path |
+| Do a task | How-to guide, Runbook, Troubleshooting |
+| Look up | Service home page, Operations and support, API reference, Wiki page |
+| Understand | Architecture, Architecture decision record (numbered: `adr/0001-…`), Postmortem |
+
+The file name comes from the title, never overwrites an existing page and never leaves the docs folder.
+Templates follow the language of VS Code (English or Portuguese), pass the formatting check and open in the
+visual editor without a single change.
+
+#### How templates evolve
+
+| Layer | Where | How it changes |
+|-------|-------|----------------|
+| Built-in | This extension | A new version of the extension, updated automatically by the Marketplace |
+| Your company or team | `.techdocs/templates/` in the docs repository *(next version)* | A pull request in that repository: nothing to publish |
+| Company-wide | One repository of templates for every docs repository *(planned)* | A pull request in that repository |
+
+A template is a Markdown page with a `template:` block in the front matter. Pages already created never
+change when a template changes.
+
+```markdown
+---
+template:
+  version: 1
+  name: Runbook
+  description: Respond to an alert
+  category: guide        # tutorial | guide | reference | explanation
+  folder: runbooks
+  fields:
+    alert:
+      prompt: Alert name
+---
+
+# {{title}}
+
+Alert: {{alert}}. Owner: {{owner}}. Reviewed on {{date}}.
+```
+
 ### Publish without leaving VS Code (optional)
 
 For people who would rather not deal with branches and pull requests: turn on
@@ -132,6 +178,7 @@ Fix formatting on save:
 |---------|--------------|
 | **TechDocs: Open in visual editor** | Opens the current `.md` file in the visual editor |
 | **TechDocs: Open as Markdown text** | Opens the text of the page side by side with the visual editor |
+| **TechDocs: New page from template…** | Creates a documentation page from a template and opens it in the visual editor |
 
 ## How the lint finds its configuration
 
@@ -159,8 +206,8 @@ otherwise). Only pages inside a `docs_dir` are checked.
 - VS Code 1.100 or later.
 - Works on local folders and clones (local mode). Git stays with VS Code's source control.
 - The publishing panel needs a clone with a GitHub remote and VS Code's Git extension.
-- Not yet: the remote mode (edit a repository on GitHub without cloning it), VS Code for the Web, and
-  documentation templates. See the [roadmap](specs/00-visao-geral.md#fases).
+- Not yet: the remote mode (edit a repository on GitHub without cloning it), VS Code for the Web, your own
+  templates in the repository, and templates of whole documentation sites. See the [roadmap](specs/00-visao-geral.md#fases).
 - Math (LaTeX) is off, as in TechDocs' default MkDocs setup.
 - Some advanced Material for MkDocs constructs, such as grid cards and HTML blocks with `markdown`, are still
   being hardened. Review the diff before committing pages that use them.

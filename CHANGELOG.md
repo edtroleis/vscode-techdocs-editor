@@ -27,4 +27,7 @@ First public version: local mode (folders and clones with a `mkdocs.yml`).
   Discard through VS Code's Git and the GitHub API, a draft pull request, the checks of any CI in plain
   language with a link to the line, and **Set up checks** for repository admins. GitHub sign-in through VS
   Code (GitHub Enterprise Server too), with a clear message for SSO and OAuth app restrictions.
+- **TechDocs: New page from template…** with 13 templates (tutorial, onboarding, golden path, how-to guide,
+  runbook, troubleshooting, service home page, operations and support, API reference, wiki page, architecture,
+  ADR and postmortem), in English and Portuguese, filled with the title, date and owner.
 - English and Portuguese (Brazil).

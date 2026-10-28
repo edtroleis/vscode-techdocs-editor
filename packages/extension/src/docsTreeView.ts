@@ -129,7 +129,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       const docsDir = mkdocs.with({ path: site.docsDir });
       const parent = single
         ? undefined
-        : new DocsItem('site', siteName(yml) ?? site.root.split('/').pop()!, undefined, undefined, vscode.workspace.asRelativePath(mkdocs.with({ path: site.root })));
+        : new DocsItem('site', siteName(yml) ?? site.root.split('/').pop()!, undefined, docsDir, vscode.workspace.asRelativePath(mkdocs.with({ path: site.root })));
       const items = await this.siteItems(yml, site, docsDir, parent);
       if (parent) {
         parent.children.push(...items);

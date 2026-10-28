@@ -19,5 +19,6 @@
   "config.verification.startTimeoutSeconds": "Seconds to wait for the first check before warning that nothing started.",
   "config.verification.checkHelp": "Plain-language message shown when a check fails, by check name. Example: `{ \"Links\": \"A link points to a page that does not exist.\" }`",
   "config.polling.intervalSeconds": "Seconds between check queries while something is running. Nothing is queried while the window is in the background.",
-  "config.polling.idleIntervalSeconds": "Seconds between queries when nothing is running."
+  "config.polling.idleIntervalSeconds": "Seconds between queries when nothing is running.",
+  "command.newPage": "New page from template…"
 }

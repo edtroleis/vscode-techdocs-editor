@@ -153,7 +153,7 @@ Implementação depois da fase 4 (ordem pedida em 2026-10-27), salvo decisão co
 
 | Parte | Entrega |
 |-------|---------|
-| T1 | Formato, campos e criação de página no modo local (TP1 a TP5, TP7, TP9) com os 13 templates de página da v1 |
+| T1 ✅ | Formato, campos e criação de página no modo local (TP1 a TP5, TP7, TP9) com os 13 templates de página da v1. Feita em 2026-10-28: `core/src/templates.ts`, `core/templates/<língua>/`, comando `techdocsEditor.newPage` (paleta, árvore, Explorer). Testes: unitários (formato, campos, nome do arquivo, número, caminho), conteúdo (lint dos 26), ida e volta dos 26 pelo editor, integração desktop e web. Pendente do TP7: o cursor no primeiro trecho a preencher (a página abre no visual, com o cursor no início) |
 | T2 | `nav` (TP6) e templates do repositório (TP8) |
 | T3 | Templates de site (TP11) |
 | T3b | Conferir e preparar a documentação do repositório (seção acima) |

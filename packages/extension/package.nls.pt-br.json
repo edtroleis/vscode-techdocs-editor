@@ -19,5 +19,6 @@
   "config.verification.startTimeoutSeconds": "Segundos de espera pela primeira verificação antes de avisar que nada começou.",
   "config.verification.checkHelp": "Mensagem em linguagem simples mostrada quando uma verificação falha, pelo nome do check. Exemplo: `{ \"Links\": \"Um link aponta para uma página que não existe.\" }`",
   "config.polling.intervalSeconds": "Segundos entre as consultas às verificações enquanto algo está rodando. Nada é consultado com a janela em segundo plano.",
-  "config.polling.idleIntervalSeconds": "Segundos entre as consultas quando nada está rodando."
+  "config.polling.idleIntervalSeconds": "Segundos entre as consultas quando nada está rodando.",
+  "command.newPage": "Nova página a partir de template…"
 }

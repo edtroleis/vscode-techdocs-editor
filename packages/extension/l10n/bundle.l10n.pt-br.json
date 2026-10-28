@@ -79,5 +79,19 @@
   "automatic checks on pull requests": "verificações automáticas nos pull requests",
   "file with the formatting rules": "arquivo com as regras de formatação",
   "merge by squash with the pull request message": "merge por squash com a mensagem do pull request",
-  "protection of the main branch (changes only through a checked pull request)": "proteção da branch principal (alterações só por pull request verificado)"
+  "protection of the main branch (changes only through a checked pull request)": "proteção da branch principal (alterações só por pull request verificado)",
+  "Learn (tutorials)": "Aprender (tutoriais)",
+  "Do a task (how-to guides)": "Fazer uma tarefa (guias)",
+  "Look up (reference)": "Consultar (referência)",
+  "Understand (explanation)": "Entender (explicação)",
+  "Title of the new page": "Título da página nova",
+  "Type a title": "Digite um título",
+  "Use a .md file name inside the docs folder": "Use um nome de arquivo .md dentro da pasta das docs",
+  "{0} already exists. Choose another name.": "{0} já existe. Escolha outro nome.",
+  "File of the new page, inside {0}": "Arquivo da página nova, dentro de {0}",
+  "There is no mkdocs.yml in the workspace. Create a documentation site first.": "Não há mkdocs.yml no workspace. Crie um site de documentação primeiro.",
+  "Which documentation site?": "Em qual site de documentação?",
+  "New page from template": "Nova página a partir de template",
+  "Choose the kind of page": "Escolha o tipo de página",
+  "Team or person who owns this page": "Time ou pessoa responsável por esta página"
 }

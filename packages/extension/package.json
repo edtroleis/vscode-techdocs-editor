@@ -76,6 +76,12 @@
         "title": "%command.openText%",
         "category": "TechDocs",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "techdocsEditor.newPage",
+        "title": "%command.newPage%",
+        "category": "TechDocs",
+        "icon": "$(new-file)"
       }
     ],
     "menus": {
@@ -99,6 +105,10 @@
         {
           "command": "techdocsEditor.openText",
           "when": "activeCustomEditorId == techdocsEditor.visual"
+        },
+        {
+          "command": "techdocsEditor.newPage",
+          "when": "techdocsEditor.hasDocs"
         }
       ],
       "view/item/context": [
@@ -111,6 +121,30 @@
           "command": "techdocsEditor.openVisual",
           "when": "view == techdocsEditor.docs && viewItem == page",
           "group": "navigation"
+        },
+        {
+          "command": "techdocsEditor.newPage",
+          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|section)$/",
+          "group": "inline"
+        },
+        {
+          "command": "techdocsEditor.newPage",
+          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|section|page|notInNav)$/",
+          "group": "navigation@1"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "techdocsEditor.newPage",
+          "when": "view == techdocsEditor.docs",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "techdocsEditor.newPage",
+          "when": "explorerResourceIsFolder && techdocsEditor.hasDocs",
+          "group": "navigation@9"
         }
       ]
     },

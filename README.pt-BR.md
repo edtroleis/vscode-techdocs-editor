@@ -67,6 +67,52 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
   `nav` que apontam para páginas que não existem aparecem marcados.
 - **Busca** com Ctrl+F no editor visual, com "1 de 3" e Enter / Shift+Enter entre os resultados.
 
+### Começar de um template
+
+**TechDocs: Nova página a partir de template…** (paleta de comandos, árvore **Documentação** ou clique direito
+numa pasta das docs) cria uma página com as seções que aquele tipo de página precisa, já com o título, a data
+e o dono do `catalog-info.yaml`, e abre no editor visual.
+
+| Para… | Templates |
+|-------|-----------|
+| Aprender | Tutorial, Onboarding, Golden path |
+| Fazer uma tarefa | Guia, Runbook, Solução de problemas |
+| Consultar | Página inicial do serviço, Operação e suporte, Referência de API, Página de wiki |
+| Entender | Arquitetura, Registro de decisão de arquitetura (numerado: `adr/0001-…`), Postmortem |
+
+O nome do arquivo sai do título, nunca sobrescreve uma página existente e nunca sai da pasta das docs. Os
+templates seguem a língua do VS Code (inglês ou português), passam na verificação de formatação e abrem no
+editor visual sem nenhuma alteração.
+
+#### Como os templates evoluem
+
+| Camada | Onde | Como muda |
+|--------|------|-----------|
+| Da extensão | Esta extensão | Versão nova da extensão, atualizada automaticamente pelo Marketplace |
+| Da empresa ou do time | `.techdocs/templates/` no repositório das docs *(próxima versão)* | Pull request nesse repositório: nada a publicar |
+| Da empresa inteira | Um repositório de templates para todos os repositórios de docs *(planejado)* | Pull request nesse repositório |
+
+Um template é uma página Markdown com um bloco `template:` no front matter. Páginas já criadas nunca mudam
+quando o template muda.
+
+```markdown
+---
+template:
+  version: 1
+  name: Runbook
+  description: Responder a um alerta
+  category: guide        # tutorial | guide | reference | explanation
+  folder: runbooks
+  fields:
+    alert:
+      prompt: Nome do alerta
+---
+
+# {{title}}
+
+Alerta: {{alert}}. Dono: {{owner}}. Revisado em {{date}}.
+```
+
 ### Publicar sem sair do VS Code (opcional)
 
 Para quem prefere não lidar com branches e pull requests: ligue `techdocsEditor.local.publishPanel` e um
@@ -133,6 +179,7 @@ Corrigir a formatação ao salvar:
 |---------|-----------|
 | **TechDocs: Abrir no editor visual** | Abre o arquivo `.md` atual no editor visual |
 | **TechDocs: Abrir como texto Markdown** | Abre o texto da página ao lado do editor visual |
+| **TechDocs: Nova página a partir de template…** | Cria uma página de documentação a partir de um template e abre no editor visual |
 
 ## Onde o lint acha a configuração
 
@@ -161,8 +208,8 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 - VS Code 1.100 ou mais novo.
 - Funciona em pastas locais e clones (modo local). O Git continua com o controle de versão do VS Code.
 - O painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
-- Ainda não: o modo remoto (editar um repositório do GitHub sem clonar), o VS Code para a Web e os templates
-  de documentação. Veja o [plano](specs/00-visao-geral.md#fases).
+- Ainda não: o modo remoto (editar um repositório do GitHub sem clonar), o VS Code para a Web, templates
+  próprios no repositório e templates de sites inteiros. Veja o [plano](specs/00-visao-geral.md#fases).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.
 - Algumas construções avançadas do Material for MkDocs, como grid cards e blocos HTML com `markdown`, ainda
   estão sendo reforçadas. Confira o diff antes de commitar páginas que as usam.

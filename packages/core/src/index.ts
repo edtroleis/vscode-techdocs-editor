@@ -10,4 +10,5 @@ export * from './publish';
 export * from './repoConfig';
 export * from './setup';
 export * from './syncMain';
+export * from './templates';
 export * from './verification';

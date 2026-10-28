@@ -9,6 +9,7 @@ import * as vscode from 'vscode';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
+import type { NewPageCommand } from '../../../src/templates/newPage';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
 function equal<T>(actual: T, expected: T, message: string) {
@@ -32,7 +33,7 @@ async function until<T>(read: () => T | Promise<T>, accept: (value: T) => boolea
   return value;
 }
 
-type Api = { provider: VisualEditorProvider; sites: LocalSites; lint: LintService; docs: DocsTreeView };
+type Api = { provider: VisualEditorProvider; sites: LocalSites; lint: LintService; docs: DocsTreeView; newPage: NewPageCommand };
 
 async function api(): Promise<Api> {
   const extension = vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor');
@@ -468,6 +469,54 @@ export function defineTests() {
         await vscode.workspace.fs.delete(file('nav-site'), { recursive: true });
       }
       await until(() => siteItem(docs, 'nav-site') === undefined, gone => gone, 'site removido continuou na árvore');
+    });
+  });
+
+  suite('Templates', function () {
+    this.timeout(60_000);
+    const file = (path: string) => vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, path);
+    const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
+    const remove = (path: string) => vscode.workspace.fs.delete(file(path), { recursive: true }).then(undefined, () => undefined);
+
+    teardown(closeAll);
+
+    test('nova página: campos preenchidos, gravada no docs_dir e aberta no editor visual', async () => {
+      const { newPage, provider } = await api();
+      try {
+        const uri = await newPage.run(file('wiki/docs/guias/imagens.md'), {
+          template: 'runbook',
+          title: 'Latência alta no checkout',
+          values: { alert: 'HighLatency', owner: 'time-checkout' },
+        });
+        equal(uri?.toString(), file('wiki/docs/guias/latencia-alta-no-checkout.md').toString(), 'arquivo na pasta da página clicada');
+        const text = await read('wiki/docs/guias/latencia-alta-no-checkout.md');
+        ok(text.startsWith('# Latência alta no checkout\n'), `título: ${text.slice(0, 60)}`);
+        ok(/HighLatency/.test(text) && /time-checkout/.test(text), 'campos preenchidos');
+        ok(!text.includes('{{') && !text.includes('template:'), 'sobrou marcação do template');
+        await provider.session(uri!);
+      } finally {
+        await remove('wiki/docs/guias/latencia-alta-no-checkout.md');
+      }
+    });
+
+    test('ADR na pasta do template, numerado; arquivo existente não é sobrescrito', async () => {
+      const { newPage } = await api();
+      try {
+        const values = { status: 'Proposed', owner: 'time' };
+        const first = await newPage.run(file('wiki/docs'), { template: 'adr', title: 'Usar PostgreSQL', values });
+        ok(first?.path.endsWith('/wiki/docs/adr/0001-usar-postgresql.md'), `primeiro ADR: ${first?.path}`);
+        await closeAll();
+        const second = await newPage.run(file('wiki/docs'), { template: 'adr', title: 'Usar filas', values });
+        ok(second?.path.endsWith('/adr/0002-usar-filas.md'), `segundo ADR: ${second?.path}`);
+        await closeAll();
+        const before = await read(vscode.workspace.asRelativePath(first!));
+        const again = await newPage.run(file('wiki/docs'), { template: 'wiki-page', title: 'X', path: 'adr/0001-usar-postgresql.md' });
+        equal(again, undefined, 'criou por cima de um arquivo existente');
+        equal(await read(vscode.workspace.asRelativePath(first!)), before, 'o arquivo existente mudou');
+        equal(await newPage.run(file('wiki/docs'), { template: 'wiki-page', title: 'X', path: '../fora.md' }), undefined, 'saiu do docs_dir');
+      } finally {
+        await remove('wiki/docs/adr');
+      }
     });
   });
 }

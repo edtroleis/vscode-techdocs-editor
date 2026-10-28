@@ -2,6 +2,7 @@
 // Uso: node build.mjs [--watch] [--production]
 import * as esbuild from 'esbuild';
 import { rmSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const watch = process.argv.includes('--watch');
@@ -23,6 +24,22 @@ const withoutKatex = {
   },
 };
 
+/** `import texto from './x.md?raw'`: o arquivo como texto (templates do core, spec 04). */
+const rawImports = {
+  name: 'raw-imports',
+  setup(build) {
+    build.onResolve({ filter: /\?raw$/ }, args => ({
+      path: fileURLToPath(new URL(args.path.replace(/\?raw$/, ''), `file://${args.resolveDir}/`)),
+      namespace: 'raw',
+    }));
+    build.onLoad({ filter: /.*/, namespace: 'raw' }, async args => ({
+      contents: await readFile(args.path, 'utf8'),
+      loader: 'text',
+      watchFiles: [args.path],
+    }));
+  },
+};
+
 /** @type {esbuild.BuildOptions[]} */
 const builds = [
   // Host no VS Code desktop
@@ -30,6 +47,7 @@ const builds = [
     ...common,
     entryPoints: ['src/extension.ts'],
     outfile: 'dist/extension.js',
+    plugins: [rawImports],
     platform: 'node',
     format: 'cjs',
     target: 'node20',
@@ -40,6 +58,7 @@ const builds = [
     ...common,
     entryPoints: ['src/extension.ts'],
     outfile: 'dist/web/extension.js',
+    plugins: [rawImports],
     platform: 'browser',
     format: 'cjs',
     target: 'es2022',
@@ -76,6 +95,7 @@ const builds = [
     ...common,
     entryPoints: ['test/vscode/suite/index.ts'],
     outfile: 'out-test/node/index.js',
+    plugins: [rawImports],
     platform: 'node',
     format: 'cjs',
     target: 'node20',
@@ -85,6 +105,7 @@ const builds = [
     ...common,
     entryPoints: ['test/vscode/suite/index.web.ts'],
     outfile: 'out-test/web/index.js',
+    plugins: [rawImports],
     platform: 'browser',
     // O Mocha de navegador é UMD e troca o module.exports do bundle pelo dele (o VS Code chamaria o
     // run do Mocha): IIFE e o module.exports definido no fim, depois do Mocha
