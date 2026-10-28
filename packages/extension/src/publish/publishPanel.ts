@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
-import { DEFAULT_BRANCH_PATTERN, DEFAULT_LINT_CONFIG, parseGitHubRemote, parseRepoConfig, REPO_CONFIG_FILE, RepoConfig, VerificationMode } from '@edtroleis/techdocs-editor-core';
+import { DEFAULT_LINT_CONFIG, parseGitHubRemote, parseRepoConfig, REPO_CONFIG_FILE, RepoConfig } from '@edtroleis/techdocs-editor-core';
 import type { LintService } from '../lintService';
 import type { LocalSites } from '../localSites';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import { GitHubTransport } from '@edtroleis/techdocs-editor-core';
 import { clientFor, gitHubErrorText, hasSession, useTestTransport } from './githubAuth';
-import { LocalPublisher, PublishConfig, PublishView } from './localPublisher';
+import { LocalPublisher, PublishView } from './localPublisher';
+import { publishConfig } from './publishConfig';
 import { DocumentPage, gitApi, VscodeGit } from './vscodeGit';
 
 /** O que o webview do painel desenha. */
@@ -153,7 +154,7 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
         page,
         client: clientFor(remote.host, remote.slug),
         lintConfig: async () => (await this.lint.configFor(document.uri)) ?? DEFAULT_LINT_CONFIG,
-        config: publishConfig(repoConfig),
+        config: publishConfig(vscode.workspace.getConfiguration(CONFIG), repoConfig, vscode.env.language),
         l10n: vscode.l10n,
         confirm: async (message, action) =>
           testConfirm ?? (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
@@ -246,22 +247,6 @@ async function readRepoConfig(root: vscode.Uri): Promise<RepoConfig | undefined>
   } catch {
     return undefined;
   }
-}
-
-/** Settings do painel; `verification.*` do repositório vence as settings (spec 02, Configuração). */
-function publishConfig(repo: RepoConfig | undefined): PublishConfig {
-  const settings = vscode.workspace.getConfiguration(CONFIG);
-  const seconds = (key: string, fallback: number) => Math.max(1, settings.get<number>(key, fallback)) * 1000;
-  return {
-    branchPattern: settings.get<string>('branchPattern') || DEFAULT_BRANCH_PATTERN,
-    skipCi: settings.get<boolean>('drafts.skipCi', true),
-    verificationMode: repo?.verification.mode ?? settings.get<VerificationMode>('verification.mode', 'auto'),
-    startTimeoutMs: (repo?.verification.startTimeoutSeconds ?? settings.get<number>('verification.startTimeoutSeconds', 120)) * 1000,
-    pollMs: seconds('polling.intervalSeconds', 8),
-    idlePollMs: seconds('polling.idleIntervalSeconds', 60),
-    checkHelp: { ...settings.get<Record<string, string>>('verification.checkHelp', {}), ...repo?.verification.checkHelp },
-    language: vscode.env.language,
-  };
 }
 
 /** Textos do webview do painel (o webview não tem `vscode.l10n`). */
