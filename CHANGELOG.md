@@ -13,6 +13,9 @@ All notable changes to the TechDocs Editor extension. The format follows
   is a problem, with a fix that creates a minimal `catalog-info.yaml` with the TechDocs annotation) or **Do not
   use it** (nothing about `catalog-info.yaml`). Saved for the team in `.techdocs-editor.yaml` (`catalog:`, with
   the diff first) or just for you in the `techdocsEditor.catalog` setting; the repository file wins.
+- Adopt the docs you already have: in a folder with pages in `docs/` and no `mkdocs.yml`, **New documentation
+  site** and **Prepare the documentation** offer to use those pages. Only `mkdocs.yml` is created, with the `nav`
+  built from the folders and page titles and the `techdocs-core` plugin, shown in a diff first. No page changes.
 
 ### Changed
 

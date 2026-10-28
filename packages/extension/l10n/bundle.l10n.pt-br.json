@@ -193,5 +193,13 @@
   "in {0}, with the diff first": "no {0}, com o diff antes",
   "Just for me": "Só para mim",
   "in your VS Code settings": "nas suas configurações do VS Code",
-  "Where to save it?": "Onde gravar?"
+  "Where to save it?": "Onde gravar?",
+  "Use the pages that already exist": "Usar as páginas que já existem",
+  "creates only mkdocs.yml; no page is changed": "cria só o mkdocs.yml; nenhuma página muda",
+  "Start from a template": "Começar de um template",
+  "adds the pages of the template next to them": "põe as páginas do template ao lado delas",
+  "Found 1 page in {0} and no mkdocs.yml": "Encontrei 1 página em {0} e nenhum mkdocs.yml",
+  "Found {0} pages in {1} and no mkdocs.yml": "Encontrei {0} páginas em {1} e nenhum mkdocs.yml",
+  "mkdocs.yml for the pages in {0}: no page is changed": "mkdocs.yml para as páginas de {0}: nenhuma página muda",
+  "create nothing for now": "não criar nada agora"
 }

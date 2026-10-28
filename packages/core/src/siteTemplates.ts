@@ -1,4 +1,5 @@
 import { isMap, isScalar, parseDocument, stringify } from 'yaml';
+import { docsTree, DocsNode } from './docsTree';
 import { relativePath } from './mkdocs';
 import { fillTemplate, pagePath, parseFields, TemplateField, usedFields } from './templates';
 
@@ -117,6 +118,19 @@ export function siteMkdocsYml(siteName: string, pages: SitePage[], template: Pic
   const hasTechdocs = pluginList.some(p => p === 'techdocs-core' || (p && typeof p === 'object' && 'techdocs-core' in p));
   config.plugins = hasTechdocs ? pluginList : ['techdocs-core', ...pluginList];
   return stringify({ ...config, ...extra }, { lineWidth: 0 });
+}
+
+/**
+ * `mkdocs.yml` de um site adotado (0.4.0): as páginas que já existem no `docs_dir`, no `nav` na ordem da árvore sem
+ * `nav` (pastas viram seções, `index.md` primeiro, títulos pelo título 1 de cada página), e o plugin `techdocs-core`.
+ * Nenhuma página muda.
+ */
+export function adoptedMkdocsYml(siteName: string, pages: readonly string[], titleOf: (path: string) => string | undefined): string {
+  const toNav = (nodes: DocsNode[]): Record<string, unknown>[] =>
+    nodes.map(node =>
+      node.kind === 'section' ? { [node.title]: toNav(node.children) } : { [node.title]: node.kind === 'page' ? node.path : node.url },
+    );
+  return stringify({ site_name: siteName, nav: toNav(docsTree(undefined, pages, titleOf).nodes), plugins: ['techdocs-core'] }, { lineWidth: 0 });
 }
 
 /** Anotação que o TechDocs lê no `catalog-info.yaml`. */

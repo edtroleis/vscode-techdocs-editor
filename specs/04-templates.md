@@ -322,6 +322,17 @@ organização, provedores), e há quem use só MkDocs. A conferência passou a t
   conferência, `setCatalogMode` mantém comentários); integração desktop (só para mim, para o time vence a
   configuração, a correção cria o esqueleto, `askUsage`).
 
+### Como ficou na 0.4.0: adotar a docs/
+
+- **Adotar** (`adoptedMkdocsYml` no `core`): numa pasta sem `mkdocs.yml` e com `.md` em `docs/`, "Novo site" e
+  "Preparar" perguntam "Usar as páginas que já existem" ou "Começar de um template". Adotar gera só o
+  `mkdocs.yml`: o `nav` na ordem da árvore sem `nav` (pastas viram seções, `index.md`/`README.md` primeiro,
+  títulos pelo título 1, senão pelo nome do arquivo) e o `techdocs-core`. O nome do site sugerido é o título da
+  página inicial. O `mkdocs.yml` aparece num diff antes (Aplicar / Parar); nenhuma página é criada ou alterada.
+- **Diff compartilhado:** o diff com a pergunta saiu do `RepoCheck` para `extension/src/proposedChange.ts`
+  (`ProposedChanges.ask`), usado pela conferência e pelo "Novo site".
+- **Testes:** unitários (`nav` pelas pastas, sem título); integração (adotar sem mudar páginas).
+
 ## Pontos em aberto
 
 | # | Ponto | Como fechar |

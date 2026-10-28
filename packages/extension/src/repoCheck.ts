@@ -5,6 +5,7 @@ import type { DocsSite } from './docsSite';
 import { configDirs } from './lintProblems';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
+import type { ProposedChanges } from './proposedChange';
 import type { NewSiteCommand } from './templates/newSite';
 import { exists, gitUserName, readText } from './templates/templateSources';
 
@@ -16,7 +17,6 @@ export type SiteCheck = { mkdocs: vscode.Uri; base: vscode.Uri; findings: SiteFi
 /** Respostas prontas para "Preparar", nos testes: o site e quais correções aplicar (sem diff nem perguntas). */
 export type PrepareAnswers = { site?: vscode.Uri; apply: (finding: SiteFinding) => boolean };
 
-const PROPOSED_SCHEME = 'techdocs-proposed';
 export const CHECK_VIEW = 'techdocsEditor.check';
 /** Depois de salvar, espera um pouco antes de conferir de novo (salvar vários arquivos dá uma conferência só). */
 const RECHECK_DELAY_MS = 800;
@@ -28,8 +28,6 @@ const RECHECK_DELAY_MS = 800;
  */
 export class RepoCheck implements vscode.Disposable {
   private readonly diagnostics = vscode.languages.createDiagnosticCollection('techdocs-check');
-  /** Texto proposto de cada correção, para o diff (`techdocs-proposed:`). */
-  private readonly proposed = new Map<string, string>();
   private readonly checkedEmitter = new vscode.EventEmitter<SiteCheck[]>();
   /** Uma conferência terminou (a seção Verificação se redesenha). */
   readonly onDidCheck = this.checkedEmitter.event;
@@ -42,11 +40,9 @@ export class RepoCheck implements vscode.Disposable {
     private readonly sites: LocalSites,
     private readonly lint: LintService,
     private readonly newSite: NewSiteCommand,
+    private readonly proposals: ProposedChanges,
   ) {
     this.disposables.push(
-      vscode.workspace.registerTextDocumentContentProvider(PROPOSED_SCHEME, {
-        provideTextDocumentContent: uri => this.proposed.get(uri.toString()) ?? '',
-      }),
       // Depois de conferir uma vez, a conferência acompanha o que a pessoa salva
       vscode.workspace.onDidSaveTextDocument(() => {
         if (!this.last) return;
@@ -150,7 +146,7 @@ export class RepoCheck implements vscode.Disposable {
     const current = await this.currentText(uri);
     const next = change(current);
     if (next === current) return 'unchanged';
-    const decision = decide ? decide() : await this.ask(title, uri, current, next);
+    const decision = decide ? decide() : await this.proposals.ask(uri, current, next, { title });
     if (decision === 'apply') await this.write(uri, current, next);
     return decision;
   }
@@ -242,40 +238,6 @@ export class RepoCheck implements vscode.Disposable {
     const edit = new vscode.WorkspaceEdit();
     edit.replace(uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), next);
     if ((await vscode.workspace.applyEdit(edit)) && !wasDirty) await document.save();
-  }
-
-  /** Mostra o diff da correção e pergunta: aplicar, pular ou parar. */
-  private async ask(title: string, uri: vscode.Uri, current: string | undefined, next: string): Promise<'apply' | 'skip' | 'stop'> {
-    const right = vscode.Uri.from({ scheme: PROPOSED_SCHEME, path: uri.path, query: String(Date.now()) });
-    const left = current === undefined ? right.with({ query: `${right.query}-empty` }) : uri;
-    this.proposed.set(right.toString(), next);
-    if (current === undefined) this.proposed.set(left.toString(), '');
-    const file = vscode.workspace.asRelativePath(uri);
-    await vscode.commands.executeCommand('vscode.diff', left, right, vscode.l10n.t('{0} (proposed fix)', file), { preview: true });
-    // Lista em vez de diálogo: fica aberta enquanto a pessoa rola o diff
-    const picked = await vscode.window.showQuickPick(
-      [
-        {
-          label: vscode.l10n.t('Apply'),
-          description: current === undefined ? vscode.l10n.t('creates {0}', file) : vscode.l10n.t('changes {0}, as in the diff', file),
-          value: 'apply' as const,
-        },
-        { label: vscode.l10n.t('Skip'), description: vscode.l10n.t('go to the next fix'), value: 'skip' as const },
-        { label: vscode.l10n.t('Stop'), description: vscode.l10n.t('leave the other fixes for later'), value: 'stop' as const },
-      ],
-      { title, ignoreFocusOut: true },
-    );
-    await this.closeDiff(right);
-    this.proposed.delete(right.toString());
-    this.proposed.delete(left.toString());
-    return picked?.value ?? 'stop';
-  }
-
-  private async closeDiff(right: vscode.Uri) {
-    const tabs = vscode.window.tabGroups.all
-      .flatMap(group => group.tabs)
-      .filter(tab => tab.input instanceof vscode.TabInputTextDiff && tab.input.modified.toString() === right.toString());
-    if (tabs.length) await vscode.window.tabGroups.close(tabs);
   }
 
   private show(results: SiteCheck[]) {

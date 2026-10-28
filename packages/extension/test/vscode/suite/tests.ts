@@ -634,6 +634,30 @@ export function defineTests() {
       }
     });
 
+    test('adotar a docs/ que já existe: só o mkdocs.yml, com o nav pelas pastas e títulos; nenhuma página muda', async () => {
+      const { newSite } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const pages: Record<string, string> = {
+        'adotar/docs/index.md': '# Pagamentos\n\nComeço.\n',
+        'adotar/docs/arquitetura.md': '# Arquitetura\n',
+        'adotar/docs/guias/deploy.md': '# Deploy\n',
+      };
+      for (const [path, text] of Object.entries(pages)) await write(path, text);
+      try {
+        const result = await newSite.run(undefined, { folder: file('adotar'), adopt: true, values: { site_name: 'Pagamentos' } });
+        ok(result?.mkdocs.path.endsWith('/adotar/mkdocs.yml'), `mkdocs.yml: ${result?.mkdocs.path}`);
+        equal(
+          await read('adotar/mkdocs.yml'),
+          'site_name: Pagamentos\nnav:\n  - Pagamentos: index.md\n  - Arquitetura: arquitetura.md\n  - Guias:\n      - Deploy: guias/deploy.md\nplugins:\n  - techdocs-core\n',
+          'mkdocs.yml',
+        );
+        for (const [path, text] of Object.entries(pages)) equal(await read(path), text, `${path} mudou`);
+        equal(vscode.window.tabGroups.activeTabGroup.activeTab?.label, 'index.md', 'a página inicial abre');
+      } finally {
+        await remove('adotar');
+      }
+    });
+
     test('conferir: achados no painel Problemas; preparar: aplica as correções e sobra o que precisa de uma pessoa', async () => {
       const { repoCheck, sites, checkView } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));

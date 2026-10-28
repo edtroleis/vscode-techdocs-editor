@@ -1,6 +1,14 @@
 import { parseDocument } from 'yaml';
 import { docsTree } from './docsTree';
-import { buildSitePages, hasTechdocsRef, parseSiteTemplate, siteMkdocsYml, siteUsedFields, techdocsRefAnnotation } from './siteTemplates';
+import {
+  adoptedMkdocsYml,
+  buildSitePages,
+  hasTechdocsRef,
+  parseSiteTemplate,
+  siteMkdocsYml,
+  siteUsedFields,
+  techdocsRefAnnotation,
+} from './siteTemplates';
 
 const SITE = `version: 1
 name: Docs de serviço
@@ -126,3 +134,32 @@ describe('catalog-info.yaml', () => {
     expect(hasTechdocsRef(`kind: System\n---\n${component}  annotations:\n    backstage.io/techdocs-ref: dir:.\n`)).toBe(true);
   });
 });
+
+describe('adoptedMkdocsYml', () => {
+  it('nav pelas pastas: index primeiro, títulos do título 1, pastas viram seções; e o techdocs-core', () => {
+    const titles: Record<string, string> = { 'index.md': 'Pagamentos', 'guias/deploy.md': 'Deploy', 'arquitetura.md': 'Arquitetura' };
+    const yml = adoptedMkdocsYml('Pagamentos', ['guias/rollback.md', 'arquitetura.md', 'guias/deploy.md', 'index.md'], p => titles[p]);
+    expect(yml).toBe(
+      [
+        'site_name: Pagamentos',
+        'nav:',
+        '  - Pagamentos: index.md',
+        '  - Arquitetura: arquitetura.md',
+        '  - Guias:',
+        '      - Deploy: guias/deploy.md',
+        '      - Rollback: guias/rollback.md',
+        'plugins:',
+        '  - techdocs-core',
+        '',
+      ].join('\n'),
+    );
+    // O MkDocs monta o menu do jeito que a árvore mostra
+    expect(docsTree(yml, ['index.md', 'arquitetura.md', 'guias/deploy.md', 'guias/rollback.md']).notInNav).toEqual([]);
+  });
+
+  it('sem título 1, o nome do arquivo; README.md conta como página inicial', () => {
+    const yml = adoptedMkdocsYml('X', ['README.md', 'como-usar.md'], () => undefined);
+    expect(parseDocument(yml).toJS().nav).toEqual([{ Home: 'README.md' }, { 'Como usar': 'como-usar.md' }]);
+  });
+});
+

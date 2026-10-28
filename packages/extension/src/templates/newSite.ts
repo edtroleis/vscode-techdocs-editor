@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import {
+  adoptedMkdocsYml,
   buildSitePages,
   hasTechdocsRef,
   isTemplateSupported,
+  pageTitle,
   SitePage,
   SiteSources,
   siteMkdocsYml,
@@ -11,6 +13,7 @@ import {
   TemplateField,
   today,
 } from '@edtroleis/techdocs-editor-core';
+import type { ProposedChanges } from '../proposedChange';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import type { CentralTemplates } from './centralTemplates';
 import {
@@ -27,8 +30,16 @@ import {
   templateFolders,
 } from './templateSources';
 
-/** Respostas prontas, para os testes de integração (sem as caixas de escolha). */
-export type NewSiteAnswers = { template: string; folder?: vscode.Uri; values?: Record<string, string> };
+/**
+ * Respostas prontas, para os testes de integração (sem as caixas de escolha). `adopt`: usar as páginas que já existem
+ * em `docs/` (sem template).
+ */
+export type NewSiteAnswers = {
+  template?: string;
+  folder?: vscode.Uri;
+  values?: Record<string, string>;
+  adopt?: boolean;
+};
 
 /** O que foi criado: o `mkdocs.yml` e a anotação a pôr no `catalog-info.yaml` (undefined se já está lá). */
 export type NewSiteResult = { mkdocs: vscode.Uri; annotation?: string };
@@ -40,10 +51,13 @@ const DOCS_DIR = 'docs';
 /**
  * "TechDocs: Novo site de documentação…" (spec 04, TP11): escolhe a pasta e o template de site, pergunta o nome
  * e os campos, cria o `mkdocs.yml` e as páginas (nunca por cima de um arquivo), abre a primeira página e mostra a
- * anotação do `catalog-info.yaml` para copiar.
+ * anotação do `catalog-info.yaml` para copiar. Com páginas em `docs/`, pode adotá-las (só o `mkdocs.yml`, 0.4.0).
  */
 export class NewSiteCommand {
-  constructor(private readonly central?: CentralTemplates) {}
+  constructor(
+    private readonly central?: CentralTemplates,
+    private readonly proposals?: ProposedChanges,
+  ) {}
 
   async run(target?: vscode.Uri, answers?: NewSiteAnswers): Promise<NewSiteResult | undefined> {
     const root = await this.resolveFolder(answers?.folder ?? target, Boolean(answers));
@@ -53,6 +67,15 @@ export class NewSiteCommand {
         void vscode.window.showErrorMessage(vscode.l10n.t('There is already a {0} in {1}.', name, relative(root)));
         return undefined;
       }
+    }
+
+    // Já há páginas em docs/: usá-las (só falta o mkdocs.yml) ou começar de um template ao lado delas
+    const docsDir = vscode.Uri.joinPath(root, DOCS_DIR);
+    const existing = await existingPages(docsDir);
+    if (existing.length) {
+      const adopt = answers ? Boolean(answers.adopt) : await askAdopt(existing.length, docsDir);
+      if (adopt === undefined) return undefined;
+      if (adopt) return this.adopt(root, docsDir, existing, answers?.values?.site_name);
     }
 
     const folders = templateFolders(root, root);
@@ -75,7 +98,6 @@ export class NewSiteCommand {
       return undefined;
     }
     // TP4: nunca sobrescreve (uma pasta docs/ pode já existir, com outras páginas)
-    const docsDir = vscode.Uri.joinPath(root, DOCS_DIR);
     const taken = [];
     for (const page of pages) if (await exists(vscode.Uri.joinPath(docsDir, page.path))) taken.push(`${DOCS_DIR}/${page.path}`);
     if (taken.length) {
@@ -94,6 +116,42 @@ export class NewSiteCommand {
     await vscode.workspace.fs.writeFile(mkdocs, encoder.encode(siteMkdocsYml(values.site_name, pages, template)));
 
     await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.joinPath(docsDir, pages[0].path), VisualEditorProvider.viewType);
+    const annotation = await this.catalogAnnotation(root);
+    if (annotation) void this.showAnnotation(annotation, root);
+    return { mkdocs, annotation: annotation?.text };
+  }
+
+  /**
+   * Adota as páginas que já existem em `docs/` (0.4.0): só o `mkdocs.yml`, com o `nav` montado pelas pastas e pelos
+   * títulos, depois do diff. Nenhuma página é criada ou alterada. `siteName`: a resposta pronta dos testes.
+   */
+  private async adopt(root: vscode.Uri, docsDir: vscode.Uri, pages: string[], siteName?: string): Promise<NewSiteResult | undefined> {
+    const titles = new Map<string, string | undefined>();
+    for (const page of pages) titles.set(page, pageTitle((await readText(vscode.Uri.joinPath(docsDir, page))) ?? ''));
+    const home = pages.find(isHome);
+    let name = siteName;
+    if (name === undefined) {
+      const typed = await vscode.window.showInputBox({
+        title: vscode.l10n.t('Use the pages that already exist'),
+        prompt: vscode.l10n.t('Name of the site (site_name in mkdocs.yml)'),
+        value: (home && titles.get(home)) ?? folderName(root),
+        validateInput: value => (value.trim() ? undefined : vscode.l10n.t('Type a name')),
+      });
+      if (!typed?.trim()) return undefined;
+      name = typed.trim();
+    }
+    const yml = adoptedMkdocsYml(name, pages, page => titles.get(page));
+    const mkdocs = vscode.Uri.joinPath(root, 'mkdocs.yml');
+    if (siteName === undefined && this.proposals) {
+      const decision = await this.proposals.ask(mkdocs, undefined, yml, {
+        title: vscode.l10n.t('mkdocs.yml for the pages in {0}: no page is changed', relative(docsDir)),
+        skip: false,
+        stop: vscode.l10n.t('create nothing for now'),
+      });
+      if (decision !== 'apply') return undefined;
+    }
+    await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(yml));
+    if (home) await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.joinPath(docsDir, home), VisualEditorProvider.viewType);
     const annotation = await this.catalogAnnotation(root);
     if (annotation) void this.showAnnotation(annotation, root);
     return { mkdocs, annotation: annotation?.text };
@@ -224,7 +282,7 @@ export class NewSiteCommand {
       const name = await vscode.window.showInputBox({
         title: template.name,
         prompt: vscode.l10n.t('Name of the site (site_name in mkdocs.yml)'),
-        value: decodeURIComponent(root.path.split('/').filter(Boolean).pop() ?? ''),
+        value: folderName(root),
         validateInput: value => (value.trim() ? undefined : vscode.l10n.t('Type a name')),
       });
       if (!name?.trim()) return undefined;
@@ -283,6 +341,33 @@ export class NewSiteCommand {
         );
     if ((await vscode.window.showInformationMessage(message, copy)) === copy) await vscode.env.clipboard.writeText(annotation.text);
   }
+}
+
+const isHome = (page: string) => /^(index|readme)\.md$/i.test(page);
+
+const folderName = (uri: vscode.Uri) => decodeURIComponent(uri.path.split('/').filter(Boolean).pop() ?? '');
+
+/** As páginas (`.md`) que já existem na pasta das docs, relativas a ela. */
+async function existingPages(docsDir: vscode.Uri): Promise<string[]> {
+  const isFolder = (await vscode.workspace.fs.stat(docsDir).then(s => s.type, () => 0)) === vscode.FileType.Directory;
+  if (!isFolder) return [];
+  const files = await vscode.workspace.findFiles(new vscode.RelativePattern(docsDir, '**/*.md'));
+  return files.map(uri => uri.path.slice(docsDir.path.length + 1)).sort();
+}
+
+/** Usar as páginas de `docs/` (true) ou começar de um template (false); undefined se cancelou. */
+async function askAdopt(count: number, docsDir: vscode.Uri): Promise<boolean | undefined> {
+  const folder = relative(docsDir);
+  const picked = await vscode.window.showQuickPick(
+    [
+      { label: vscode.l10n.t('Use the pages that already exist'), description: vscode.l10n.t('creates only mkdocs.yml; no page is changed'), adopt: true },
+      { label: vscode.l10n.t('Start from a template'), description: vscode.l10n.t('adds the pages of the template next to them'), adopt: false },
+    ],
+    {
+      title: count === 1 ? vscode.l10n.t('Found 1 page in {0} and no mkdocs.yml', folder) : vscode.l10n.t('Found {0} pages in {1} and no mkdocs.yml', count, folder),
+    },
+  );
+  return picked?.adopt;
 }
 
 /** Caminho para as mensagens: relativo ao workspace, ou o nome dele para a raiz. */

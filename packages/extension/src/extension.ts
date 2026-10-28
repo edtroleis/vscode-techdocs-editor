@@ -6,6 +6,7 @@ import { LintActions } from './lintActions';
 import { LintService } from './lintService';
 import { LocalSites } from './localSites';
 import { openVisualByDefault } from './openByDefault';
+import { ProposedChanges } from './proposedChange';
 import { PublishPanel } from './publish/publishPanel';
 import { RepoCheck } from './repoCheck';
 import { CentralTemplates } from './templates/centralTemplates';
@@ -21,11 +22,13 @@ export function activate(context: vscode.ExtensionContext) {
   const publish = new PublishPanel(context.extensionUri, sites, lint);
   const central = new CentralTemplates(context);
   const newPage = new NewPageCommand(sites, provider, central);
-  const newSite = new NewSiteCommand(central);
-  const repoCheck = new RepoCheck(sites, lint, newSite);
+  const proposals = new ProposedChanges();
+  const newSite = new NewSiteCommand(central, proposals);
+  const repoCheck = new RepoCheck(sites, lint, newSite, proposals);
   const checkView = new CheckView(repoCheck);
   const catalogOptions = new CatalogOptions(repoCheck);
   context.subscriptions.push(
+    proposals,
     publish,
     repoCheck,
     checkView,
