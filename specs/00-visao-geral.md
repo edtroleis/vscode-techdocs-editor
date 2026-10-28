@@ -149,3 +149,26 @@ status mostra outra posição do cursor (esperado `Ln 5, Col 1`). Mesma investig
 Pendente de conferência na 2b: a convivência com a extensão do markdownlint (L-6) e o workspace não confiável
 não têm teste automático. Os dois dependem do ambiente: instalar outra extensão e abrir um workspace sem
 confiança. Ficam para a fase 5, junto com o Dev Spaces.
+
+## Fase 3: plano (2026-10-27)
+
+Painel de publicação do modo local (LC5 e seção Publicação da spec 02). Mesmo jeito da fase 2: cada parte
+com os testes dela e um commit próprio.
+
+Decisões:
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| D3-1 | A lógica do painel fica num controlador sem `vscode` (`extension/src/publish/`), com o Git e o GitHub injetados; o webview do painel só desenha o estado e manda cliques | Os cenários da spec 02 rodam no Vitest em segundos, com um GitHub simulado por `fetch` (sem servidor HTTP) e um Git simulado. O VS Code de verdade entra só num teste de integração com o `vscode.git` |
+| D3-2 | A branch do rascunho é a branch atual quando ela não é a principal. Na principal, "Salvar rascunho" cria `branchPattern` (`docs/{login}/{path}`) a partir do HEAD e troca para ela (as alterações não commitadas vão junto, como no `git switch -c`) | Num clone, trocar de branch a cada página aberta (uma branch por página, como no plugin) mexeria no workspace inteiro. Quem já está numa branch própria continua nela |
+| D3-3 | Os commits do painel levam só a página e as imagens novas de `<docs>/assets/` que ela usa | O resto do que estiver alterado no workspace é da pessoa, não do painel |
+| D3-4 | "Descartar" fecha o PR, apaga a branch remota, volta para a branch principal e apaga a branch local, com confirmação que diz o nome da branch. Só para a branch criada pelo painel (nome do `branchPattern`) | Numa branch própria da pessoa, apagar é decisão dela: o painel só fecha o PR |
+| D3-5 | Verificações (P1 a P6) e o laço de consulta (P8) em `core/src/verification.ts`, sem React | O modo remoto (fase 4) usa o mesmo código |
+
+| Parte | Entrega | Requisitos | Testes |
+|-------|---------|------------|--------|
+| 3a. Base ✅ | `core`: `branchFor`, repositório do GitHub pela URL do remote (`https`, `ssh`, Enterprise), URL da API pelo host; verificações e consulta em `verification.ts`. GitHub simulado por `fetch` (`core/test/fakeGitHub.ts`, a partir do `e2e/portal/fake-github.ts` do plugin) | P1, P2, P3, P4, P5, P8, P9 | unitários |
+| 3b. Autenticação | `vscode.authentication` (`github` ou `github-enterprise` pelo host), token lido a cada chamada, 401 → sessão nova e uma nova tentativa; mensagens de SSO e de restrição de OAuth Apps; settings `github.host`, `github.scopes` | A-1 a A-6 | unitários (renovação, mensagens) |
+| 3c. Painel e ações | `techdocsEditor.local.publishPanel`; `WebviewView` "Publicação" no Explorer; Salvar rascunho, Salvar e verificar, Enviar, Descartar pelo `vscode.git` e pelo `GitHubClient`; `drafts.skipCi`, `branchPattern` | LC5, D3-2 a D3-4 | unitários (cenários do plugin com Git e GitHub simulados); integração (repositório Git de verdade com remote local) |
+| 3d. Verificações no painel | Checks e apontamentos em linguagem simples com "ver linha"; aviso sem check em `startTimeoutSeconds`; erro de consulta; consulta só com a janela em foco; `verification.*` e `.techdocs-editor.yaml` | P1 a P8 | unitários; webview do painel |
+| 3e. Configurar verificações | Para admin sem a configuração mínima: `planSetup`/`applySetup`, pedindo o escopo `workflow` só nessa hora | P7 | unitários |

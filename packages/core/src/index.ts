@@ -6,6 +6,8 @@ export * from './lintRules';
 export * from './merge3';
 export * from './mkdocs';
 export * from './pageDates';
+export * from './publish';
 export * from './repoConfig';
 export * from './setup';
 export * from './syncMain';
+export * from './verification';
