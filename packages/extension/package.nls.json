@@ -6,5 +6,18 @@
   "command.openText": "Open as Markdown text",
   "config.openVisualByDefault": "Open pages of a MkDocs `docs_dir` in the visual editor instead of the Markdown text. Use **Reopen Editor With…** to switch to the text.",
   "config.images.maxSizeMB": "Largest image, in MB, that the visual editor saves to the `assets` folder of the docs. Images go into the repository: large files weigh on every clone and on publishing.",
-  "view.docs": "Documentation"
+  "view.docs": "Documentation",
+  "view.publish": "Publishing",
+  "config.local.publishPanel": "Show the **Publishing** panel in the Explorer: save a draft to a branch, open a pull request, follow the checks and send it, without leaving VS Code. Needs a clone with a GitHub remote.",
+  "config.github.scopes": "Scopes requested when signing in to GitHub. Use `public_repo` for public repositories only.",
+  "config.branchPattern": "Name of the branch created for a draft when you are on the default branch. `{login}` is your GitHub login and `{path}` the page path.",
+  "config.drafts.skipCi": "**Save draft** adds `[skip ci]` to the commit message, so the pipeline only runs on **Save and check**.",
+  "config.verification.mode": "Where the checks come from. The repository `.techdocs-editor.yaml` wins over this setting.",
+  "config.verification.mode.auto": "The pipeline when the repository has one (workflows or required checks), otherwise the formatting check of the editor",
+  "config.verification.mode.pipeline": "Always wait for the checks of the pipeline",
+  "config.verification.mode.editor": "Only the formatting check of the editor",
+  "config.verification.startTimeoutSeconds": "Seconds to wait for the first check before warning that nothing started.",
+  "config.verification.checkHelp": "Plain-language message shown when a check fails, by check name. Example: `{ \"Links\": \"A link points to a page that does not exist.\" }`",
+  "config.polling.intervalSeconds": "Seconds between check queries while something is running. Nothing is queried while the window is in the background.",
+  "config.polling.idleIntervalSeconds": "Seconds between queries when nothing is running."
 }

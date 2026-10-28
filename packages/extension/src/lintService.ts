@@ -121,7 +121,7 @@ export class LintService implements vscode.Disposable {
    * Configuração da pipeline para a página, ou undefined se ela não é página de docs ou o workspace não
    * é confiável (a configuração do repositório só vale depois de confiar, spec 02).
    */
-  private async configFor(uri: vscode.Uri): Promise<Configuration | undefined> {
+  async configFor(uri: vscode.Uri): Promise<Configuration | undefined> {
     if (!vscode.workspace.isTrusted) return undefined;
     const site = this.sites.siteOf(uri);
     if (!site) return undefined;

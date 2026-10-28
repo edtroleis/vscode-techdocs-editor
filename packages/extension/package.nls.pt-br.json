@@ -6,5 +6,18 @@
   "command.openText": "Abrir como texto Markdown",
   "config.openVisualByDefault": "Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto Markdown. Para ver o texto, use **Reabrir Editor com…**.",
   "config.images.maxSizeMB": "Maior imagem, em MB, que o editor visual grava na pasta `assets` das docs. As imagens vão para o repositório: arquivos grandes pesam em todo clone e na publicação.",
-  "view.docs": "Documentação"
+  "view.docs": "Documentação",
+  "view.publish": "Publicação",
+  "config.local.publishPanel": "Mostra o painel **Publicação** no Explorer: salvar um rascunho numa branch, abrir um pull request, acompanhar as verificações e enviar, sem sair do VS Code. Precisa de um clone com remote do GitHub.",
+  "config.github.scopes": "Escopos pedidos no login do GitHub. Use `public_repo` só para repositórios públicos.",
+  "config.branchPattern": "Nome da branch criada para um rascunho quando você está na branch principal. `{login}` é o seu login do GitHub e `{path}` o caminho da página.",
+  "config.drafts.skipCi": "**Salvar rascunho** põe `[skip ci]` na mensagem do commit, para a pipeline rodar só em **Salvar e verificar**.",
+  "config.verification.mode": "De onde vêm as verificações. O `.techdocs-editor.yaml` do repositório vence esta configuração.",
+  "config.verification.mode.auto": "A pipeline, quando o repositório tem uma (workflows ou checks obrigatórios); senão, a verificação de formatação do editor",
+  "config.verification.mode.pipeline": "Sempre esperar as verificações da pipeline",
+  "config.verification.mode.editor": "Só a verificação de formatação do editor",
+  "config.verification.startTimeoutSeconds": "Segundos de espera pela primeira verificação antes de avisar que nada começou.",
+  "config.verification.checkHelp": "Mensagem em linguagem simples mostrada quando uma verificação falha, pelo nome do check. Exemplo: `{ \"Links\": \"Um link aponta para uma página que não existe.\" }`",
+  "config.polling.intervalSeconds": "Segundos entre as consultas às verificações enquanto algo está rodando. Nada é consultado com a janela em segundo plano.",
+  "config.polling.idleIntervalSeconds": "Segundos entre as consultas quando nada está rodando."
 }

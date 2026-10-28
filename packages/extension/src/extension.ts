@@ -4,6 +4,7 @@ import { LintActions } from './lintActions';
 import { LintService } from './lintService';
 import { LocalSites } from './localSites';
 import { openVisualByDefault } from './openByDefault';
+import { PublishPanel } from './publish/publishPanel';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -11,7 +12,10 @@ export function activate(context: vscode.ExtensionContext) {
   const lint = new LintService(sites);
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
   const docs = new DocsTreeView(sites);
+  const publish = new PublishPanel(context.extensionUri, sites, lint);
   context.subscriptions.push(
+    publish,
+    vscode.window.registerWebviewViewProvider(PublishPanel.viewId, publish),
     sites,
     lint,
     docs,
@@ -34,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs };
+  return { provider, sites, lint, docs, publish };
 }
 
 function activeCustomEditorUri(): vscode.Uri | undefined {

@@ -2,9 +2,11 @@
 import { runTests } from '@vscode/test-electron';
 import { join } from 'node:path';
 import workspaceModule from './workspace.cjs';
-const { createWorkspace, extensionRoot } = workspaceModule;
+const { createWorkspace, createPublishRepo, extensionRoot } = workspaceModule;
 
 const workspace = createWorkspace();
+// Lido pela suíte do painel de publicação (test/vscode/suite/publish.ts)
+process.env.TECHDOCS_TEST_REMOTE = createPublishRepo(workspace);
 try {
   await runTests({
     version: process.env.VSCODE_VERSION ?? 'stable',

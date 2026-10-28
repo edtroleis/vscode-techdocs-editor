@@ -62,6 +62,15 @@ const builds = [
     define: { 'process.env.NODE_ENV': production ? '"production"' : '"development"' },
     loader: { '.woff': 'file', '.woff2': 'file', '.ttf': 'file' },
   },
+  // Webview do painel "Publicação": HTML simples, sem React
+  {
+    ...common,
+    entryPoints: { panel: 'webview/panel.ts' },
+    outdir: 'dist/webview',
+    platform: 'browser',
+    format: 'iife',
+    target: 'es2022',
+  },
   // Testes de integração: a mesma suíte no desktop (Node) e no navegador
   {
     ...common,

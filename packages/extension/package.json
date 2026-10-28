@@ -127,6 +127,72 @@
           "default": 5,
           "minimum": 0,
           "markdownDescription": "%config.images.maxSizeMB%"
+        },
+        "techdocsEditor.local.publishPanel": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.local.publishPanel%"
+        },
+        "techdocsEditor.github.scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "repo"
+          ],
+          "markdownDescription": "%config.github.scopes%"
+        },
+        "techdocsEditor.branchPattern": {
+          "type": "string",
+          "default": "docs/{login}/{path}",
+          "markdownDescription": "%config.branchPattern%"
+        },
+        "techdocsEditor.drafts.skipCi": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%config.drafts.skipCi%"
+        },
+        "techdocsEditor.verification.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "pipeline",
+            "editor"
+          ],
+          "default": "auto",
+          "markdownEnumDescriptions": [
+            "%config.verification.mode.auto%",
+            "%config.verification.mode.pipeline%",
+            "%config.verification.mode.editor%"
+          ],
+          "markdownDescription": "%config.verification.mode%"
+        },
+        "techdocsEditor.verification.startTimeoutSeconds": {
+          "type": "number",
+          "default": 120,
+          "minimum": 10,
+          "markdownDescription": "%config.verification.startTimeoutSeconds%"
+        },
+        "techdocsEditor.verification.checkHelp": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "markdownDescription": "%config.verification.checkHelp%"
+        },
+        "techdocsEditor.polling.intervalSeconds": {
+          "type": "number",
+          "default": 8,
+          "minimum": 2,
+          "markdownDescription": "%config.polling.intervalSeconds%"
+        },
+        "techdocsEditor.polling.idleIntervalSeconds": {
+          "type": "number",
+          "default": 60,
+          "minimum": 10,
+          "markdownDescription": "%config.polling.idleIntervalSeconds%"
         }
       }
     },
@@ -137,6 +203,13 @@
           "name": "%view.docs%",
           "when": "techdocsEditor.hasDocs",
           "icon": "$(book)"
+        },
+        {
+          "type": "webview",
+          "id": "techdocsEditor.publish",
+          "name": "%view.publish%",
+          "when": "techdocsEditor.hasDocs && techdocsEditor.publishPanel",
+          "icon": "$(git-pull-request)"
         }
       ]
     }
