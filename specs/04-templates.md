@@ -63,15 +63,15 @@ Criam o `mkdocs.yml`, o `docs/` com as páginas e o `nav`. Para o TechDocs, dize
 
 | # | Requisito |
 |---|-----------|
-| TP1 | Comando "TechDocs: Nova página a partir de template…" na paleta, no menu da árvore "Documentação" (seção ou página: cria na mesma pasta) e no menu do Explorer em pastas dentro de um `docs_dir` |
-| TP2 | Lista de escolha agrupada por categoria, com descrição de cada template; os templates do repositório aparecem primeiro, marcados com a origem |
-| TP3 | Pede o título; o nome do arquivo sai do título (`Guia de deploy` → `guia-de-deploy.md`, sem acento) e pode ser editado; pasta sugerida pelo template (o ADR vai para `adr/` com número: `adr/0007-usar-postgres.md`) |
-| TP4 | Nunca sobrescreve: arquivo existente pede outro nome. A pasta tem de ficar dentro do `docs_dir` (template ou nome com `..` é recusado) |
-| TP5 | Campos `{{nome}}` do template preenchidos na criação: `title` (o título), `date` (hoje, `AAAA-MM-DD`), `site_name` (do `mkdocs.yml`), `owner` (do `spec.owner` do `catalog-info.yaml` da raiz, se houver); os outros campos que o template declarar são perguntados um a um (com valor padrão, se o template der) |
+| TP1 ✅ | Comando "TechDocs: Nova página a partir de template…" na paleta, no menu da árvore "Documentação" (seção ou página: cria na mesma pasta) e no menu do Explorer em pastas dentro de um `docs_dir` |
+| TP2 ✅ | Lista de escolha agrupada por categoria, com descrição de cada template; os templates do repositório aparecem primeiro, marcados com a origem |
+| TP3 ✅ | Pede o título; o nome do arquivo sai do título (`Guia de deploy` → `guia-de-deploy.md`, sem acento) e pode ser editado; pasta sugerida pelo template (o ADR vai para `adr/` com número: `adr/0007-usar-postgres.md`) |
+| TP4 ✅ | Nunca sobrescreve: arquivo existente pede outro nome. A pasta tem de ficar dentro do `docs_dir` (template ou nome com `..` é recusado) |
+| TP5 ✅ | Campos `{{nome}}` do template preenchidos na criação: `title` (o título), `date` (hoje, `AAAA-MM-DD`), `site_name` (do `mkdocs.yml`), `owner` (do `spec.owner` do `catalog-info.yaml` da raiz, se houver); os outros campos que o template declarar são perguntados um a um (com valor padrão, se o template der) |
 | TP6 | Site com `nav`: oferece pôr a página no `nav`, na seção onde ela foi criada (pela árvore) ou no fim; edita o `mkdocs.yml` mantendo comentários e formatação (API `Document` do `yaml`). Sem `nav`, nada a fazer: a pasta já define o menu |
-| TP7 | A página criada abre no editor visual, com o cursor no primeiro trecho a preencher |
+| TP7 (parcial) | A página criada abre no editor visual, com o cursor no primeiro trecho a preencher |
 | TP8 | Templates do repositório: arquivos `.md` em `.techdocs/templates/` (na raiz do workspace ou do site; o do site vale mais) e nas pastas de `techdocsEditor.templates.paths`. Site: uma pasta com `template.yml` e os arquivos. `techdocsEditor.templates.builtIn: false` esconde os da extensão |
-| TP9 | Templates da extensão em inglês e português, pela língua do VS Code; os do repositório como estão |
+| TP9 ✅ | Templates da extensão em inglês e português, pela língua do VS Code; os do repositório como estão |
 | TP10 | Modo remoto (fase 4): o mesmo fluxo, com a página criada por commit na branch do rascunho e os templates do repositório lidos pela API |
 | TP11 | "TechDocs: Novo site de documentação…": escolhe um template de site e a pasta (padrão: raiz do workspace, se não houver `mkdocs.yml`); cria os arquivos e mostra a anotação do `catalog-info.yaml` para copiar |
 
@@ -131,6 +131,25 @@ Quem é afetado e como, enquanto o alerta está ativo.
 - Só Markdown que o editor visual edita: títulos, listas, tabelas, blocos de código com linguagem,
   admonitions do MkDocs (`!!! note`). Sem HTML.
 
+### Como ficou na T1
+
+- **Código:** `core/src/templates.ts` (formato, campos, nome do arquivo, número, caminho, `catalog-info.yaml`,
+  ordem da lista) sem `vscode`; `core/src/builtInTemplates.ts` junta os `.md` como texto (`?raw`: nativo no
+  Vitest, plugin `raw-imports` no `build.mjs`). Fica fora do `index` do `core` para o webview não levar os
+  templates. Comando em `extension/src/templates/newPage.ts`.
+- **Pasta da página:** a pasta clicada (na árvore ou no Explorer) vale mais que a sugerida pelo template; na raiz
+  das docs (ou sem clique), vale a do template (`adr/`, `runbooks/`, `postmortems/`).
+- **Lista:** só os templates da extensão por enquanto (TP2 completo com os do repositório na T2); ordem por
+  categoria do Diátaxis e nome.
+- **Escrita dos templates:** tabelas alinhadas e campos só fora delas (o editor realinha tabelas, e um valor
+  preenchido quebraria a ida e volta); linhas até 80 colunas (MD013); sem admonitions (o conteúdo recuado
+  conflita com blocos de código cercados, MD046); campo no fim de linha evitado (vazio deixaria espaço sobrando,
+  MD009).
+- **TP7:** a página abre no editor visual com o cursor no início. Pôr o cursor no primeiro trecho a preencher
+  precisa de uma mensagem nova do host para o webview; fica para a T2.
+- **TA2** (instruções como comentário HTML) não foi provado na T1: os templates usam texto de exemplo. Fica para
+  a T2.
+
 ## Segurança
 
 - Template é texto: nada é executado, nada vem da rede (no modo local).
@@ -149,12 +168,13 @@ Quem é afetado e como, enquanto o alerta está ativo.
 
 ## Fases
 
-Implementação depois da fase 4 (ordem pedida em 2026-10-27), salvo decisão contrária.
+A ordem pedida em 2026-10-27 punha os templates depois da fase 4. Em 2026-10-28 o usuário pediu a T1 antes:
+T1 a T3b e T5 não dependem do modo remoto; só a T4 espera a fase 4.
 
 | Parte | Entrega |
 |-------|---------|
 | T1 ✅ | Formato, campos e criação de página no modo local (TP1 a TP5, TP7, TP9) com os 13 templates de página da v1. Feita em 2026-10-28: `core/src/templates.ts`, `core/templates/<língua>/`, comando `techdocsEditor.newPage` (paleta, árvore, Explorer). Testes: unitários (formato, campos, nome do arquivo, número, caminho), conteúdo (lint dos 26), ida e volta dos 26 pelo editor, integração desktop e web. Pendente do TP7: o cursor no primeiro trecho a preencher (a página abre no visual, com o cursor no início) |
-| T2 | `nav` (TP6) e templates do repositório (TP8) |
+| T2 | `nav` (TP6), templates do repositório (TP8), cursor no primeiro trecho (resto do TP7) e a prova do TA2 |
 | T3 | Templates de site (TP11) |
 | T3b | Conferir e preparar a documentação do repositório (seção acima) |
 | T4 | Modo remoto (TP10), junto com o que a fase 4 já entregou |
@@ -178,6 +198,6 @@ publicação, o modo remoto e o plugin usarem a mesma. Parte **T3b**, logo depoi
 | # | Ponto | Como fechar |
 |---|-------|-------------|
 | TA1 | De onde vem `owner` quando não há `catalog-info.yaml`: perguntar, usar o nome do Git ou deixar vazio | **Decidido na T1:** o `spec.owner` do `catalog-info.yaml` da raiz do site ou do workspace; sem ele, perguntado como os outros campos, com o nome do Git (`user.name`) como sugestão quando o `vscode.git` estiver disponível |
-| TA2 | Instruções de preenchimento como comentário HTML (`<!-- -->`, somem na página publicada) em vez de texto de exemplo | Prova na T1: se o editor visual mantiver o comentário na ida e volta e o mostrar de forma discreta, pode valer a pena |
+| TA2 | Instruções de preenchimento como comentário HTML (`<!-- -->`, somem na página publicada) em vez de texto de exemplo | Prova na T2 (não feita na T1): se o editor visual mantiver o comentário na ida e volta e o mostrar de forma discreta, pode valer a pena |
 | TA3 | Templates centrais da empresa num repositório só (`techdocsEditor.templates.repository: owner/repo/pasta`), em vez de copiar `.techdocs/templates/` em cada repositório | Depois da T4 (usa a API do GitHub da fase 4) |
 | TA4 | Templates vindos do Backstage (uma entidade `Template` ou um endpoint do plugin) | Fase 7, junto com o plugin |

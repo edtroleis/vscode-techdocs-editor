@@ -73,7 +73,7 @@ até a fase 7.
 | 4. **Modo remoto (desktop)** | `FileSystemProvider` do GitHub, Salvar rascunho / Salvar e verificar / Enviar / Descartar / Histórico, conflitos por SHA | Mesmos cenários do `test:editor:portal` do plugin, com o GitHub simulado |
 | 5. **Web e Dev Spaces** | Build `browser` (vscode.dev), Open VSX, devfile de exemplo | Suíte no `@vscode/test-web`; instalação no Dev Spaces |
 | 6. **Publicar** | Marketplace + Open VSX, README com GIFs, changelog | Release automatizada, pacote verificado |
-| T. **Templates** (depois da fase 4) | Nova página ou site a partir de template, com campos e `nav` (spec 04, T1 a T5) | Testes da spec 04; templates da extensão com lint limpo e ida e volta idêntica |
+| T. **Templates** (T1 adiantada; T4 depois da fase 4) | Nova página ou site a partir de template, com campos e `nav`; conferir e preparar a estrutura do MkDocs no repositório (spec 04, T1 a T5 e T3b). **T1 ✅** (2026-10-28) | Testes da spec 04; templates da extensão com lint limpo e ida e volta idêntica |
 | 7. **Depois: plugin** (fora do foco atual) | Publicar `core`/`ui` no npm, o plugin passa a consumi-los, e "Abrir no VS Code" no lápis do plugin (spec 02, B2) | Suítes do plugin verdes, sem mudança de comportamento |
 
 ## Pontos em aberto
@@ -185,3 +185,18 @@ Decisões:
 Não verificado automaticamente: o login de verdade no GitHub (`vscode.authentication`, inclusive o
 `forceNewSession` do 401) e o `git push` com credenciais. Os dois dependem de uma conta do GitHub; conferir à
 mão antes da fase 6. O GitHub simulado (`core/test/fakeGitHub.ts`) é a base da fase 4.
+
+## Lançamento e templates (2026-10-28)
+
+O usuário vai liberar a extensão. Ordem das versões (spec 04, "Onde ficam e como evoluem"):
+
+| Versão | Conteúdo |
+|--------|----------|
+| 0.1.0 | Modo local: editor visual, lint, imagens, busca, árvore, painel de publicação (fases 0 a 3) e, já pronta, a T1 (nova página a partir de template) |
+| 0.2.0 | T2: `nav` e templates do repositório (`.techdocs/templates/`) |
+| 0.3.0 | T3 e T3b: templates de site, conferir e preparar a documentação do repositório |
+| Depois | Fase 4 (modo remoto) com a T4; templates centrais (TA3); fase 5 (web e Dev Spaces) |
+
+A T1 entrou antes da fase 4 a pedido do usuário: ela não depende do modo remoto (só a T4 depende). Antes de
+publicar a 0.1.0 (fase 6): conferir à mão o login do GitHub e o push do painel (não cobertos por teste) e o
+conteúdo do `.vsix` (R4).
