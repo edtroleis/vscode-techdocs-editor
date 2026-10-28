@@ -6,8 +6,20 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-28
+
+Whole documentation sites from templates, company templates, a check of what TechDocs needs, and a sidebar of
+its own.
+
 ### Added
 
+- **TechDocs in the activity bar**: an icon of its own, shown only in workspaces with a `mkdocs.yml`, with the
+  **Documentation** tree, the **Check** view and the optional **Publishing** panel (which leave the Explorer).
+- **Check** view: what TechDocs needs, grouped by kind, with the number of items on the icon. It checks when it
+  first shows up and after each save; a click opens the file at the line, and **Fix** applies one fix after
+  showing its diff.
+- **Get started with TechDocs Editor** walkthrough (Help → Welcome): creating a site, the sidebar, a new page,
+  the visual editor, the check, publishing and company templates.
 - **TechDocs: New documentation site…**: creates `mkdocs.yml` (with the `nav` and the `techdocs-core` plugin)
   and the pages in `docs/` from a site template: Service docs, Team wiki or Golden path. In the workspace root,
   or in the folder you right-click; never over an existing file. Then it shows the `catalog-info.yaml`
@@ -25,6 +37,11 @@ All notable changes to the TechDocs Editor extension. The format follows
   formatting problems, broken links and missing images.
 - **TechDocs: Prepare the documentation in this repository**: with no `mkdocs.yml`, creates a site from a
   template; otherwise applies the fixes of the check one by one, each with its diff first.
+
+### Changed
+
+- The **Open in visual editor** button and command show up only on pages inside a `docs_dir`, not on every
+  Markdown file.
 
 ## [0.2.0] - 2026-10-28
 
