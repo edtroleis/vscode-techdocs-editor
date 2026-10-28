@@ -56,6 +56,13 @@ export class FakeGitHub {
   prHeadLag = 0;
   /** Token que o login entrega agora (muda com `rotateToken`). */
   token = 'token-falso';
+  /** Token de um login com o escopo `workflow`: só com ele o GitHub aceita mudar `.github/workflows/`. */
+  readonly workflowToken = 'token-falso-workflow';
+  /** Rulesets criados pela API (setup). */
+  readonly rulesets: Array<{ id: number; name: string; rules: any[] }> = [];
+  /** Árvores criadas pela API (`git/trees`), pelo SHA. */
+  private readonly trees = new Map<string, Record<string, string>>();
+  private auth = '';
   private readonly revoked = new Set<string>();
   private readonly outcomes = new Map<string, PipelineOutcome>();
   private readonly pendingStart = new Map<string, number>();
@@ -194,6 +201,26 @@ export class FakeGitHub {
     if (method === 'GET' && rest === '') {
       return ok({ default_branch: 'main', permissions: { push: this.canWrite, admin: this.isAdmin }, html_url: `https://github.com/${this.slug}` });
     }
+    if (method === 'PATCH' && rest === '') {
+      if (!this.isAdmin) return { status: 403, json: { message: 'Must have admin rights to Repository.' } };
+      return ok({});
+    }
+    if (rest === '/rulesets' || rest.startsWith('/rulesets/')) {
+      if (!this.isAdmin) return { status: 403, json: { message: 'Must have admin rights to Repository.' } };
+      if (method === 'GET' && rest === '/rulesets') return ok(this.rulesets.map(({ id, name }) => ({ id, name })));
+      if (method === 'POST') {
+        this.rulesets.push({ id: this.rulesets.length + 1, name: body.name, rules: body.rules });
+        return ok({ id: this.rulesets.length }, 201);
+      }
+      const existing = this.rulesets.find(r => `/rulesets/${r.id}` === rest);
+      if (method === 'PUT' && existing) {
+        existing.rules = body.rules;
+        return ok({ id: existing.id });
+      }
+    }
+    if (method === 'GET' && rest.startsWith('/rules/branches/') && this.rulesets.length) {
+      return ok(this.rulesets.flatMap(r => r.rules));
+    }
     if (method === 'GET' && rest.startsWith('/rules/branches/')) {
       const rules: unknown[] = [{ type: 'pull_request', parameters: { required_approving_review_count: this.requiredApprovals } }];
       if (this.hasPipeline && this.pipelineKind === 'actions') {
@@ -217,6 +244,43 @@ export class FakeGitHub {
     if (m && method === 'GET') {
       const sha = this.refs.get(m[1]);
       return sha ? ok({ object: { sha } }) : notFound;
+    }
+    m = rest.match(/^\/git\/commits\/(\w+)$/);
+    if (m && method === 'GET') {
+      const commit = this.commits.get(m[1]);
+      if (!commit) return notFound;
+      const tree = sha1(JSON.stringify(commit.files));
+      this.trees.set(tree, commit.files);
+      return ok({ sha: commit.sha, message: commit.message, tree: { sha: tree } });
+    }
+    if (method === 'POST' && rest === '/git/trees') {
+      const files = { ...(this.trees.get(body.base_tree) ?? {}) };
+      for (const entry of body.tree) {
+        if (entry.content !== undefined) files[entry.path] = entry.content;
+        else if (entry.sha === null) delete files[entry.path];
+      }
+      const tree = sha1(JSON.stringify(files));
+      this.trees.set(tree, files);
+      return ok({ sha: tree }, 201);
+    }
+    if (method === 'POST' && rest === '/git/commits') {
+      const files = this.trees.get(body.tree);
+      if (!files) return { status: 422, json: { message: 'Tree not found' } };
+      return ok({ sha: this.commit(body.message, files).sha }, 201);
+    }
+    if ((method === 'POST' && rest === '/git/refs') || (method === 'PATCH' && rest.startsWith('/git/refs/heads/'))) {
+      const commit = this.commits.get(body.sha);
+      if (!commit) return { status: 422, json: { message: 'Object does not exist' } };
+      // Como o GitHub: mudar um workflow exige o escopo `workflow` do OAuth
+      const main = this.head('main')!.files;
+      const workflow = Object.keys(commit.files).find(f => f.startsWith('.github/workflows/') && commit.files[f] !== main[f]);
+      if (workflow && this.auth !== `Bearer ${this.workflowToken}`) {
+        return { status: 404, json: { message: `refusing to allow an OAuth App to create or update workflow \`${workflow}\` without \`workflow\` scope` } };
+      }
+      const branch = method === 'POST' ? body.ref.replace('refs/heads/', '') : decodeURIComponent(rest.slice('/git/refs/heads/'.length));
+      if (method === 'POST' && this.refs.has(branch)) return { status: 422, json: { message: 'Reference already exists' } };
+      this.push(branch, commit);
+      return ok({ object: { sha: commit.sha } }, method === 'POST' ? 201 : 200);
     }
     m = rest.match(/^\/git\/refs\/heads\/(.+)$/);
     if (m && method === 'DELETE') {
@@ -278,7 +342,8 @@ export class FakeGitHub {
     const headers = (init.headers ?? {}) as Record<string, string>;
     this.calls.push(`${method} ${url.pathname}${url.search}`);
     const auth = headers.Authorization ?? '';
-    if (auth !== `Bearer ${this.token}` || this.revoked.has(auth.slice(7))) {
+    this.auth = auth;
+    if ((auth !== `Bearer ${this.token}` && auth !== `Bearer ${this.workflowToken}`) || this.revoked.has(auth.slice(7))) {
       return Response.json({ message: 'Bad credentials' }, { status: 401 });
     }
     const failure = this.failures.findIndex(f => f.method === method && f.path.test(url.pathname));

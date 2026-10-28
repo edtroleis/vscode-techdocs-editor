@@ -1,4 +1,6 @@
 import {
+  applicableSteps,
+  applySetup,
   branchFor,
   ChecksSummary,
   ChecksWatcher,
@@ -11,10 +13,12 @@ import {
   pageTitle,
   nameToTitle,
   parseAnnotation,
+  planSetup,
   Poller,
   PullRequest,
   Repo,
   resolvePath,
+  SetupStep,
   SKIP_CI,
   summarize,
   VerificationMode,
@@ -66,12 +70,16 @@ export type PublishView = {
   /** As verificações vêm da pipeline do repositório (P6); sem ela, o lint do editor é a verificação. */
   pipeline: boolean;
   checks: { summary: ChecksSummary; items: CheckView[]; stalled: boolean; pollError?: string };
+  /** "Configurar verificações" (P7, só admin): o que falta no repositório e o PR do que foi aplicado. */
+  setup?: { steps: SetupStep[]; pullRequest?: { number: number; url: string } };
 };
 
 type Options = {
   git: LocalGit;
   page: PageDoc;
   client: GitHubClient;
+  /** Cliente com o escopo `workflow`, pedido só ao configurar as verificações (A-3). */
+  workflowClient: () => Promise<GitHubClient>;
   lintConfig: () => Promise<Configuration>;
   config: PublishConfig;
   l10n: L10n;
@@ -97,6 +105,7 @@ export class LocalPublisher {
   private busy = false;
   private notice: string | undefined;
   private error: string | undefined;
+  private setup: PublishView['setup'];
   private readonly watcher: ChecksWatcher;
   private readonly poller: Poller;
 
@@ -139,6 +148,10 @@ export class LocalPublisher {
     this.pr = branch && branch !== repo.defaultBranch ? await client.findOpenPullRequest(branch) : null;
     // PR aberto cujo último commit pulou a pipeline: falta verificar
     this.unverified = Boolean(this.pr) && (await git.headMessage()).includes(SKIP_CI);
+    // Sem admin, nada a oferecer; erro ao consultar só esconde a oferta
+    const plan = repo.isAdmin ? await planSetup(client).catch(() => undefined) : undefined;
+    const steps = plan ? applicableSteps(plan) : [];
+    this.setup = steps.length ? { steps } : undefined;
     this.track(git.headSha());
   }
 
@@ -181,6 +194,7 @@ export class LocalPublisher {
         stalled: this.pipeline && state.stalled,
         pollError: state.pollError === undefined ? undefined : this.options.errorText(state.pollError),
       },
+      setup: this.setup,
     };
   }
 
@@ -309,6 +323,37 @@ export class LocalPublisher {
       }
       this.track(undefined);
       this.notice = this.l10n.t('Draft discarded.');
+    });
+  }
+
+  /**
+   * "Configurar verificações" (P7): merge por squash e ruleset na hora; workflow e regras do lint num
+   * PR para o time revisar. O escopo `workflow` só é pedido se o workflow vai no PR.
+   */
+  async setUp() {
+    const { client, confirm } = this.options;
+    const ok = await confirm(
+      this.l10n.t('Set up this repository? Merge settings and branch protection change now; the new files go in a pull request for the team to review.'),
+      this.l10n.t('Set up checks'),
+    );
+    if (!ok) return;
+    await this.run(async () => {
+      const plan = await planSetup(client);
+      const writer = applicableSteps(plan).includes('workflow') ? await this.options.workflowClient() : client;
+      const result = await applySetup(writer, plan, {
+        requiredApprovals: this.requiredApprovals,
+        prTitle: this.l10n.t('Set up checks for the docs editor'),
+        prBody: this.l10n.t(
+          'Adds what the docs editor needs to check every change before it is published: automatic checks on pull requests (text formatting, links, sensitive data and the docs build) and the formatting rules the editor shows while people write. After this merge, the main branch can require these checks.',
+        ),
+        commitMessage: this.l10n.t('ci: checks for the docs editor'),
+      });
+      const pr = result.pullRequest;
+      // O que ficou no PR continua faltando até o merge: não oferece de novo
+      this.setup = { steps: [], pullRequest: pr && { number: pr.number, url: pr.htmlUrl } };
+      this.notice = pr
+        ? this.l10n.t('Repository set up. The new files are in pull request #{0}: merge it to turn on the checks.', pr.number)
+        : this.l10n.t('Repository set up.');
     });
   }
 

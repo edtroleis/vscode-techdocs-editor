@@ -37,8 +37,9 @@ export function useTestTransport(factory: ((host: string) => GitHubTransport) | 
   testTransport = factory;
 }
 
-export function clientFor(host: string, slug: string): GitHubClient {
-  const transport = testTransport?.(host) ?? userTransport(sessionTokenSource(host), apiBaseUrlFor(host));
+export function clientFor(host: string, slug: string, extraScopes: string[] = []): GitHubClient {
+  const transport =
+    testTransport?.(host) ?? userTransport(sessionTokenSource(host, [...configuredScopes(), ...extraScopes]), apiBaseUrlFor(host));
   return new GitHubClient(transport, slug);
 }
 

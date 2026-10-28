@@ -18,7 +18,7 @@ export type PanelState =
 
 export type PanelMessage =
   | { type: 'ready' }
-  | { type: 'action'; action: 'saveDraft' | 'saveAndVerify' | 'send' | 'discard' | 'signIn' | 'refresh' }
+  | { type: 'action'; action: 'saveDraft' | 'saveAndVerify' | 'send' | 'discard' | 'signIn' | 'refresh' | 'setUp' }
   | { type: 'openUrl'; url: string }
   | { type: 'showLine'; path: string; line: number };
 
@@ -153,6 +153,12 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
         git,
         page,
         client: clientFor(remote.host, remote.slug),
+        workflowClient: async () => {
+          const client = clientFor(remote.host, remote.slug, ['workflow']);
+          // Pede o login com o escopo agora (A-3), antes de qualquer mudança no repositório
+          await client.getLogin();
+          return client;
+        },
         lintConfig: async () => (await this.lint.configFor(document.uri)) ?? DEFAULT_LINT_CONFIG,
         config: publishConfig(vscode.workspace.getConfiguration(CONFIG), repoConfig, vscode.env.language),
         l10n: vscode.l10n,
@@ -191,6 +197,8 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
         return publisher?.send();
       case 'discard':
         return publisher?.discard();
+      case 'setUp':
+        return publisher?.setUp();
     }
   }
 
@@ -282,6 +290,13 @@ export function panelLabels() {
     line: vscode.l10n.t('Line {0}'),
     refresh: vscode.l10n.t('Refresh'),
     details: vscode.l10n.t('Details'),
+    setupTitle: vscode.l10n.t('Repository setup'),
+    setupMissing: vscode.l10n.t('Missing in this repository, for every change to be checked:'),
+    setupWorkflow: vscode.l10n.t('automatic checks on pull requests'),
+    setupMarkdownlint: vscode.l10n.t('file with the formatting rules'),
+    setupMerge: vscode.l10n.t('merge by squash with the pull request message'),
+    setupRuleset: vscode.l10n.t('protection of the main branch (changes only through a checked pull request)'),
+    setupButton: vscode.l10n.t('Set up checks'),
   };
 }
 

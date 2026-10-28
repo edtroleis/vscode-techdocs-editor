@@ -66,5 +66,18 @@
   "This repository has no pipeline: the formatting check of the editor is the verification.": "Este repositório não tem pipeline: a verificação é a de formatação do editor.",
   "Refresh": "Atualizar",
   "Details": "Detalhes",
-  "Could not save the page.": "Não foi possível salvar a página."
+  "Could not save the page.": "Não foi possível salvar a página.",
+  "Set up this repository? Merge settings and branch protection change now; the new files go in a pull request for the team to review.": "Configurar este repositório? As opções de merge e a proteção da branch mudam agora; os arquivos novos vão num pull request para o time revisar.",
+  "Set up checks": "Configurar verificações",
+  "Set up checks for the docs editor": "Configura as verificações do editor de docs",
+  "Adds what the docs editor needs to check every change before it is published: automatic checks on pull requests (text formatting, links, sensitive data and the docs build) and the formatting rules the editor shows while people write. After this merge, the main branch can require these checks.": "Adiciona o que o editor de docs precisa para verificar cada alteração antes da publicação: verificações automáticas nos pull requests (formatação do texto, links, dados sensíveis e montagem da documentação) e as regras de formatação que o editor mostra enquanto as pessoas escrevem. Depois deste merge, a branch principal pode exigir essas verificações.",
+  "ci: checks for the docs editor": "ci: verificações do editor de docs",
+  "Repository set up. The new files are in pull request #{0}: merge it to turn on the checks.": "Repositório configurado. Os arquivos novos estão no pull request #{0}: faça o merge para ligar as verificações.",
+  "Repository set up.": "Repositório configurado.",
+  "Repository setup": "Configuração do repositório",
+  "Missing in this repository, for every change to be checked:": "Falta neste repositório, para cada alteração ser verificada:",
+  "automatic checks on pull requests": "verificações automáticas nos pull requests",
+  "file with the formatting rules": "arquivo com as regras de formatação",
+  "merge by squash with the pull request message": "merge por squash com a mensagem do pull request",
+  "protection of the main branch (changes only through a checked pull request)": "proteção da branch principal (alterações só por pull request verificado)"
 }

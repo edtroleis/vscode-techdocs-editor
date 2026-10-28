@@ -95,17 +95,24 @@ const CONFIG: PublishConfig = {
 };
 const l10n = { t: (message: string, ...args: unknown[]) => message.replace(/\{(\d+)\}/g, (_, i) => String(args[Number(i)])) };
 
-async function setup({ files = {}, config = {} }: { files?: Record<string, string>; config?: Partial<PublishConfig> } = {}) {
+async function setup({
+  files = {},
+  config = {},
+  prepare,
+}: { files?: Record<string, string>; config?: Partial<PublishConfig>; prepare?: (github: FakeGitHub) => void } = {}) {
   const github = new FakeGitHub({ 'docs/index.md': INDEX, 'docs/outra.md': OTHER, ...files });
+  prepare?.(github);
   const git = new FakeGit(github);
   const page = new FakePage(git);
   const client = new GitHubClient({ ...userTransport(github.token), fetch: github.fetch }, github.slug);
   let view: PublishView | undefined;
   const confirm = vi.fn(async () => true);
+  const workflowClient = vi.fn(async () => new GitHubClient({ ...userTransport(github.workflowToken), fetch: github.fetch }, github.slug));
   const publisher = new LocalPublisher({
     git,
     page,
     client,
+    workflowClient,
     lintConfig: async () => ({ default: true, MD013: false }),
     config: { ...CONFIG, ...config },
     l10n,
@@ -114,7 +121,7 @@ async function setup({ files = {}, config = {} }: { files?: Record<string, strin
     onChange: v => (view = v),
   });
   await publisher.load();
-  return { github, git, page, publisher, confirm, view: () => view! };
+  return { github, git, page, publisher, confirm, workflowClient, view: () => view! };
 }
 
 const BRANCH = 'docs/pessoa-teste/docs-index';
@@ -297,5 +304,43 @@ describe('painel de publicação no modo local', () => {
     await publisher.saveAndVerify();
     expect(view().error).toBe('Resource not accessible by integration');
     expect(view().busy).toBe(false);
+  });
+
+  describe('Configurar verificações (P7)', () => {
+    const adminWithoutPipeline = (github: FakeGitHub) => {
+      github.isAdmin = true;
+      github.hasPipeline = false;
+    };
+
+    it('admin sem pipeline e sem regras do lint: o painel oferece o que falta', async () => {
+      const { view } = await setup({ prepare: adminWithoutPipeline });
+      expect(view().setup).toEqual({ steps: ['workflow', 'markdownlint'] });
+    });
+
+    it('quem não é admin não vê a oferta', async () => {
+      const { view } = await setup({ prepare: github => (github.hasPipeline = false) });
+      expect(view().setup).toBeUndefined();
+    });
+
+    it('aplica num PR, pedindo o escopo workflow só agora', async () => {
+      const { github, publisher, view, workflowClient } = await setup({ prepare: adminWithoutPipeline });
+      expect(workflowClient).not.toHaveBeenCalled();
+      await publisher.setUp();
+      expect(view().error).toBeUndefined();
+      expect(workflowClient).toHaveBeenCalledTimes(1);
+      const pr = github.openPull('techdocs-editor/setup')!;
+      expect(Object.keys(github.head(pr.head)!.files)).toEqual(
+        expect.arrayContaining(['.github/workflows/techdocs-checks.yml', '.markdownlint.yaml']),
+      );
+      expect(view().setup).toEqual({ steps: [], pullRequest: { number: pr.number, url: expect.stringContaining('/pull/') } });
+      expect(view().notice).toContain(`pull request #${pr.number}`);
+    });
+
+    it('cancelar a confirmação não muda nada', async () => {
+      const { github, publisher, confirm } = await setup({ prepare: adminWithoutPipeline });
+      confirm.mockResolvedValueOnce(false);
+      await publisher.setUp();
+      expect(github.pulls).toEqual([]);
+    });
   });
 });

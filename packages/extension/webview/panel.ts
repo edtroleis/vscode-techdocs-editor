@@ -54,7 +54,21 @@ function render(state: PanelState, l: PanelLabels): string {
   if (v.notice) parts.push(`<p class="notice" role="status">${escape(v.notice)}</p>`);
   if (v.unverified && v.pr) parts.push(`<p class="muted">${escape(l.unverified)}</p>`);
   if (v.pr && v.pr.draft !== undefined) parts.push(renderChecks(v, l));
+  if (v.setup?.steps.length) parts.push(renderSetup(v.setup.steps, l, v.busy));
   return parts.join('\n');
+}
+
+function renderSetup(steps: string[], l: PanelLabels, busy: boolean): string {
+  const names: Record<string, string> = {
+    workflow: l.setupWorkflow,
+    markdownlint: l.setupMarkdownlint,
+    merge: l.setupMerge,
+    ruleset: l.setupRuleset,
+  };
+  return `<h3>${escape(l.setupTitle)}</h3>
+    <p>${escape(l.setupMissing)}</p>
+    <ul>${steps.map(step => `<li>• ${escape(names[step] ?? step)}</li>`).join('')}</ul>
+    <div class="actions"><button class="secondary" data-action="setUp"${busy ? ' disabled' : ''}>${escape(l.setupButton)}</button></div>`;
 }
 
 function renderChecks(v: Extract<PanelState, { status: 'ready' }>['view'], l: PanelLabels): string {

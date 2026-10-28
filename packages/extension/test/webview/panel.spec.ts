@@ -120,3 +120,11 @@ test('sem login: botão de entrar', async ({ page }) => {
   await page.getByRole('button', { name: 'Sign in to GitHub' }).click();
   expect((await sent(page)).at(-1)).toEqual({ type: 'action', action: 'signIn' });
 });
+
+test('admin: o que falta no repositório e o botão de configurar (P7)', async ({ page }) => {
+  await show(page, { status: 'ready', view: { ...VIEW, setup: { steps: ['workflow', 'markdownlint'] } } });
+  await expect(page.getByText('automatic checks on pull requests')).toBeVisible();
+  await expect(page.getByText('file with the formatting rules')).toBeVisible();
+  await page.getByRole('button', { name: 'Set up checks' }).click();
+  expect((await sent(page)).at(-1)).toEqual({ type: 'action', action: 'setUp' });
+});
