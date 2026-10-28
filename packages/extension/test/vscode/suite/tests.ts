@@ -5,6 +5,7 @@
  * O workspace é uma cópia de test/fixtures (run.mjs): as páginas das wikis e `crlf/pagina.md`, com
  * fim de linha do Windows. Nada é gravado em disco: cada teste reverte o documento no fim.
  */
+import { firstToFill } from '@edtroleis/techdocs-editor-core';
 import * as vscode from 'vscode';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
@@ -493,7 +494,13 @@ export function defineTests() {
         ok(text.startsWith('# Latência alta no checkout\n'), `título: ${text.slice(0, 60)}`);
         ok(/HighLatency/.test(text) && /time-checkout/.test(text), 'campos preenchidos');
         ok(!text.includes('{{') && !text.includes('template:'), 'sobrou marcação do template');
-        await provider.session(uri!);
+        // TP7: o primeiro trecho a preencher vem selecionado; digitar troca o texto de exemplo
+        const fill = firstToFill(text);
+        ok(fill, 'runbook sem trecho a preencher');
+        const session = await provider.session(uri!);
+        session.insert('Clientes não conseguem pagar.');
+        const saved = await until(() => session.saved(), t => t !== text, 'o texto digitado não chegou');
+        equal(saved, text.replace(fill!, 'Clientes não conseguem pagar.'), 'texto digitado no lugar do exemplo');
       } finally {
         await remove('wiki/docs/guias/latencia-alta-no-checkout.md');
       }

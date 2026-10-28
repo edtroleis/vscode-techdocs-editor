@@ -1,6 +1,7 @@
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
 import { editorViewCtx, parserCtx, remarkCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core';
+import { TextSelection } from '@milkdown/kit/prose/state';
 import { insert } from '@milkdown/kit/utils';
 import { STRINGIFY_OPTIONS, repoLineNumbers } from '@edtroleis/techdocs-editor-core';
 import { defaultCodeLanguagePlugin } from './defaultCodeLanguage';
@@ -53,6 +54,11 @@ export type MarkdownEditorHandle = {
   pendingChange: () => { markdown: string; previous: string } | undefined;
   /** Avisa agora a mudança pendente, se houver (antes de desfazer, por exemplo). */
   flushChange: () => void;
+  /**
+   * Seleciona a primeira ocorrência de `text` dentro de um bloco de texto e põe o foco nela (digitar troca o
+   * trecho). false se o texto não está no editor.
+   */
+  selectText: (text: string) => boolean;
 };
 
 type Props = {
@@ -297,6 +303,21 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
     focus: () => crepeRef.current!.editor.ctx.get(editorViewCtx).focus(),
     getMarkdown: () => crepeRef.current!.getMarkdown(),
     insertMarkdown: markdown => crepeRef.current!.editor.action(insert(markdown)),
+    selectText: text => {
+      const view = crepeRef.current!.editor.ctx.get(editorViewCtx);
+      let from: number | undefined;
+      view.state.doc.descendants((node, pos) => {
+        if (from !== undefined) return false;
+        if (!node.isTextblock) return true;
+        const index = node.textContent.indexOf(text);
+        if (index >= 0) from = pos + 1 + index;
+        return false;
+      });
+      if (from === undefined || !text) return false;
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, from + text.length)).scrollIntoView());
+      view.focus();
+      return true;
+    },
     setMarkdown: markdown => {
       const crepe = crepeRef.current!;
       crepe.editor.action(ctx => {

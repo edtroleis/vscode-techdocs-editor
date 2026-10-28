@@ -109,6 +109,9 @@ function App({ content }: { content: Content }) {
           else pending?.reject(new Error(message.error));
           return;
         }
+        case 'select':
+          editor.current?.selectText(message.text);
+          return;
         case 'test:chooseImage':
           void chooseImage(message.name, message.mime, message.data);
           return;

@@ -5,6 +5,7 @@ import {
   DocTemplate,
   fileNameFor,
   fillTemplate,
+  firstToFill,
   isTemplateSupported,
   mergeTemplates,
   nextNumber,
@@ -59,7 +60,10 @@ const readText = async (uri: vscode.Uri) => {
  * arquivo, preenche os campos, grava no `docs_dir` e abre no editor visual.
  */
 export class NewPageCommand {
-  constructor(private readonly sites: LocalSites) {}
+  constructor(
+    private readonly sites: LocalSites,
+    private readonly provider?: VisualEditorProvider,
+  ) {}
 
   async run(target?: vscode.Uri | DocsItem, answers?: NewPageAnswers): Promise<vscode.Uri | undefined> {
     const where = await this.resolveTarget(target);
@@ -116,9 +120,13 @@ export class NewPageCommand {
     if (nav === null) return undefined;
     const uri = vscode.Uri.joinPath(docsDir, page);
     await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
-    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(fillTemplate(template.body, values)));
+    const content = fillTemplate(template.body, values);
+    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
     if (nav) await nav();
     await vscode.commands.executeCommand('vscode.openWith', uri, VisualEditorProvider.viewType);
+    // TP7: o cursor no primeiro trecho a preencher, selecionado (digitar troca o texto de exemplo)
+    const fill = firstToFill(content);
+    if (fill && this.provider) (await this.provider.session(uri).catch(() => undefined))?.select(fill);
     return uri;
   }
 

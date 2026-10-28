@@ -15,6 +15,8 @@ All notable changes to the TechDocs Editor extension. The format follows
   workspace (the site's win), and in the folders of `techdocsEditor.templates.paths`. They come first in the
   list, with the folder they came from, and replace a built-in template with the same file name.
   `techdocsEditor.templates.builtIn: false` hides the built-in templates.
+- A page created from a template opens with the example text of its first section selected: start typing to
+  replace it.
 
 ### Fixed
 

@@ -1,4 +1,4 @@
-import { catalogOwner, fileNameFor, fillTemplate, mergeTemplates, nextNumber, pagePath, parseTemplate, usedFields } from './templates';
+import { catalogOwner, fileNameFor, fillTemplate, firstToFill, mergeTemplates, nextNumber, pagePath, parseTemplate, usedFields } from './templates';
 
 const RUNBOOK = `---
 template:
@@ -96,5 +96,19 @@ describe('mergeTemplates', () => {
   it('os do repositório primeiro, sobrepondo os da extensão pelo id; por categoria e nome', () => {
     const merged = mergeTemplates([t('runbook', 'guide', 'Runbook da empresa')], [t('runbook', 'guide'), t('guide', 'guide', 'Guia'), t('tutorial', 'tutorial', 'Tutorial')]);
     expect(merged.map(m => m.template.name)).toEqual(['Runbook da empresa', 'Tutorial', 'Guia']);
+  });
+});
+
+describe('firstToFill (TP7)', () => {
+  it('o primeiro parágrafo ou item depois do primeiro título 2, sem o marcador', () => {
+    expect(firstToFill('# T\n\nAlerta: x\n\n## Impacto\n\nQuem é afetado.\n\n## Outro\n\nNão.\n')).toBe('Quem é afetado.');
+    expect(firstToFill('# T\n\n## Passos\n\n1. Abra o painel.\n2. Confira.\n')).toBe('Abra o painel.');
+    expect(firstToFill('# T\n\n## Tarefas\n\n- [ ] Pedir acesso.\n')).toBe('Pedir acesso.');
+  });
+
+  it('pula tabela, código e títulos; texto com marcação no meio não serve', () => {
+    const page = '# T\n\n## Contato\n\n| A | B |\n| - | - |\n\n```bash\n## não é título\nmake\n```\n\n### Sub\n\n**Negrito** aqui.\n\nTexto simples.\n';
+    expect(firstToFill(page)).toBe('Texto simples.');
+    expect(firstToFill('# Só título\n\nTexto.\n')).toBeUndefined();
   });
 });

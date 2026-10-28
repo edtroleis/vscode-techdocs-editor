@@ -145,3 +145,31 @@ export function mergeTemplates<T extends { template: DocTemplate }>(repository: 
     );
   return [...order(repository), ...order(builtIn.filter(t => !ids.has(t.template.id)))];
 }
+
+/**
+ * Primeiro trecho a preencher de uma página criada de template (TP7): o texto de exemplo da primeira seção (o
+ * primeiro parágrafo ou item de lista depois do primeiro título 2), sem o marcador da lista. undefined se a
+ * página não tem seção com texto (só tabela ou código, por exemplo).
+ */
+export function firstToFill(markdown: string): string | undefined {
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+  const start = lines.findIndex(line => /^##\s/.test(line));
+  if (start < 0) return undefined;
+  let fence: string | undefined;
+  for (const line of lines.slice(start + 1)) {
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (fence) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = undefined;
+      continue;
+    }
+    if (marker) {
+      fence = marker[1];
+      continue;
+    }
+    if (!line.trim() || /^#{1,6}\s/.test(line) || /^\s*\|/.test(line)) continue;
+    const text = line.replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/, '').replace(/^>\s?/, '').trim();
+    // Com marcação no meio (negrito, link, código), o texto do editor não é o do arquivo
+    if (text && !/[*_`[\]<>]/.test(text)) return text;
+  }
+  return undefined;
+}

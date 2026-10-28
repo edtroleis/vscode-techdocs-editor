@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
   const docs = new DocsTreeView(sites);
   const publish = new PublishPanel(context.extensionUri, sites, lint);
-  const newPage = new NewPageCommand(sites);
+  const newPage = new NewPageCommand(sites, provider);
   context.subscriptions.push(
     publish,
     vscode.window.registerWebviewViewProvider(PublishPanel.viewId, publish),

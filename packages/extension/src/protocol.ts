@@ -22,6 +22,8 @@ export type HostMessage =
    * Resolvido o conflito, o host manda `init` de novo e o editor volta.
    */
   | { type: 'conflict'; message: string; action: string }
+  /** Seleciona o trecho no editor visual (página nova de template: o primeiro trecho a preencher, TP7). */
+  | { type: 'select'; text: string }
   /** Problemas de formatação da página, a cada lint (lista vazia: sem problemas). */
   | { type: 'lint'; problems: ProblemView[] }
   /** Resposta a `uploadImage`: o link para pôr no Markdown, ou o motivo da recusa (já mostrado ao usuário). */

@@ -111,6 +111,11 @@ export class EditorSession {
 
   private readonly pageDir: vscode.Uri;
 
+  /** Seleciona o trecho no editor visual, com o foco nele. */
+  select(text: string) {
+    this.post({ type: 'select', text });
+  }
+
   /** Testes: o que o editor gravaria agora, no formato do arquivo. */
   saved(): Promise<string> {
     const id = this.nextRequest++;

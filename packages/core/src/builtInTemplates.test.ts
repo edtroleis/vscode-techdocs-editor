@@ -2,7 +2,7 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { BUILT_IN_TEMPLATES, templateLanguage } from './builtInTemplates';
 import { lintFindings } from './lint';
-import { AUTOMATIC_FIELDS, fillTemplate, parseTemplate, usedFields } from './templates';
+import { AUTOMATIC_FIELDS, fillTemplate, firstToFill, parseTemplate, usedFields } from './templates';
 
 /** Valores de exemplo: os automáticos e um texto para cada campo do template. */
 const SAMPLE_VALUES = { title: 'Página de exemplo', date: '2026-10-28', site_name: 'Wiki', owner: 'time-docs' };
@@ -16,6 +16,15 @@ describe('templates da extensão', () => {
       expect(Object.keys(BUILT_IN_TEMPLATES[language]).sort()).toEqual(files);
     }
     expect(Object.keys(BUILT_IN_TEMPLATES.en)).toHaveLength(13);
+  });
+
+  it('toda página criada tem um primeiro trecho a preencher (TP7)', () => {
+    for (const language of ['en', 'pt-br'] as const) {
+      for (const [id, text] of Object.entries(BUILT_IN_TEMPLATES[language])) {
+        const page = fillTemplate(parseTemplate(id, text)!.body, SAMPLE_VALUES);
+        expect(firstToFill(page), `${language}/${id}`).toBeTruthy();
+      }
+    }
   });
 
   for (const language of ['en', 'pt-br'] as const) {
