@@ -6,3 +6,8 @@ dist/
 test-results/
 playwright-report/
 out-test/
+# Copiados da raiz ao empacotar (scripts/prepare-package.mjs)
+packages/extension/README.md
+packages/extension/README.pt-BR.md
+packages/extension/CHANGELOG.md
+packages/extension/LICENSE

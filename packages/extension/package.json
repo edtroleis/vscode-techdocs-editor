@@ -6,6 +6,16 @@
   "private": true,
   "publisher": "edtroleis",
   "license": "Apache-2.0",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0b3d6b",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/edtroleis/vscode-techdocs-editor#readme",
+  "bugs": {
+    "url": "https://github.com/edtroleis/vscode-techdocs-editor/issues"
+  },
+  "qna": false,
   "repository": {
     "type": "git",
     "url": "https://github.com/edtroleis/vscode-techdocs-editor.git"
@@ -14,14 +24,20 @@
     "vscode": "^1.100.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Linters",
+    "Visualization"
   ],
   "keywords": [
     "techdocs",
     "backstage",
     "mkdocs",
     "markdown",
-    "wysiwyg"
+    "wysiwyg",
+    "docs-as-code",
+    "documentation",
+    "visual editor",
+    "markdownlint"
   ],
   "main": "./dist/extension.js",
   "browser": "./dist/web/extension.js",
@@ -127,7 +143,8 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "watch": "node build.mjs --watch"
+    "watch": "node build.mjs --watch",
+    "vscode:prepublish": "node ../../scripts/prepare-package.mjs"
   },
   "dependencies": {
     "@edtroleis/techdocs-editor-core": "0.0.0",

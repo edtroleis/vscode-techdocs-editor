@@ -1,0 +1,16 @@
+# O pacote (.vsix) leva só o que a extensão usa: os bundles, o ícone, as traduções e os documentos.
+# Tudo é empacotado pelo esbuild; nada de node_modules.
+**
+!dist/extension.js
+!dist/web/extension.js
+!dist/webview/**
+dist/**/*.map
+!media/icon.png
+!l10n/**
+!package.json
+!package.nls.json
+!package.nls.pt-br.json
+!README.md
+!README.pt-BR.md
+!CHANGELOG.md
+!LICENSE

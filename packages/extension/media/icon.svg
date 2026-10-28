@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Ícone da extensão: página de documentação com um lápis (editar a doc), nas cores do VS Code -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f6feb"/>
+      <stop offset="1" stop-color="#0a8f86"/>
+    </linearGradient>
+    <linearGradient id="pencil" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffb84d"/>
+      <stop offset="1" stop-color="#f59f00"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#00203f" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#bg)"/>
+  <!-- Página com a dobra no canto -->
+  <g filter="url(#shadow)">
+    <path d="M70 46 H152 L190 84 V206 a8 8 0 0 1 -8 8 H70 a8 8 0 0 1 -8 -8 V54 a8 8 0 0 1 8 -8 Z" fill="#ffffff"/>
+    <path d="M152 46 V76 a8 8 0 0 0 8 8 H190 Z" fill="#cfe0ff"/>
+  </g>
+  <!-- Título e linhas de texto -->
+  <rect x="82" y="78" width="58" height="12" rx="6" fill="#1f6feb"/>
+  <rect x="82" y="106" width="90" height="8" rx="4" fill="#9fb3c8"/>
+  <rect x="82" y="124" width="80" height="8" rx="4" fill="#9fb3c8"/>
+  <rect x="82" y="142" width="88" height="8" rx="4" fill="#9fb3c8"/>
+  <rect x="82" y="160" width="52" height="8" rx="4" fill="#9fb3c8"/>
+  <!-- Lápis na diagonal, por cima da página -->
+  <g transform="translate(176 146) rotate(45)" filter="url(#shadow)">
+    <rect x="-16" y="-62" width="32" height="96" rx="5" fill="url(#pencil)"/>
+    <rect x="-16" y="-62" width="32" height="16" rx="5" fill="#ff7a8a"/>
+    <rect x="-16" y="-48" width="32" height="7" fill="#d0d7de"/>
+    <path d="M-16 34 L16 34 L0 62 Z" fill="#f4d9b0"/>
+    <path d="M-6 52 L6 52 L0 62 Z" fill="#24292f"/>
+  </g>
+</svg>

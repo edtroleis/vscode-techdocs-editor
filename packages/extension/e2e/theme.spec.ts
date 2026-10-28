@@ -9,6 +9,8 @@ const luminance = (rgb: string) => {
 for (const { theme, dark } of [
   { theme: 'Default Dark Modern', dark: true },
   { theme: 'Default Light Modern', dark: false },
+  { theme: 'Default High Contrast', dark: true },
+  { theme: 'Default High Contrast Light', dark: false },
 ]) {
   test.describe(theme, () => {
     test.use({ theme });

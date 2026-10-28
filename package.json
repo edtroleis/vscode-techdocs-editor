@@ -23,7 +23,8 @@
     "test:e2e": "npm run build && playwright test -c packages/extension/e2e/playwright.config.ts",
     "roundtrip": "npm run build && node packages/extension/test/webview/roundtrip.mjs",
     "prepare": "git config core.hooksPath .githooks || true",
-    "test:bundle": "node packages/extension/test/bundle-size.mjs"
+    "test:bundle": "node packages/extension/test/bundle-size.mjs",
+    "record:videos": "node scripts/make-videos.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

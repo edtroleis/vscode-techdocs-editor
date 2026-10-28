@@ -19,13 +19,25 @@ type VsCode = {
   workspace: string;
   /** Conteúdo do arquivo no disco. */
   file: (path: string) => string;
+  /** Quando o VS Code foi aberto (o vídeo começa aí). */
+  startedAt: number;
 };
 
-type Options = { theme: string };
+type Options = {
+  theme: string;
+  /** Configurações a mais do usuário (os vídeos do README ligam `openVisualByDefault`). */
+  settings: Record<string, unknown>;
+  /** Pasta onde gravar o vídeo da janela (e2e/videos); sem ela, não grava. */
+  recordDir: string | undefined;
+  windowSize: { width: number; height: number };
+};
 
 export const test = base.extend<Options & { vscode: VsCode }>({
   theme: ['Default Dark Modern', { option: true }],
-  vscode: async ({ theme }, use, testInfo) => {
+  settings: [{}, { option: true }],
+  recordDir: [undefined, { option: true }],
+  windowSize: [{ width: 1600, height: 1000 }, { option: true }],
+  vscode: async ({ theme, settings, recordDir, windowSize }, use, testInfo) => {
     const executablePath = await downloadAndUnzipVSCode({ cachePath: join(ROOT, '.vscode-test') });
     const workspace: string = createWorkspace();
     const userData = mkdtempSync(join(tmpdir(), 'techdocs-editor-user-'));
@@ -44,8 +56,10 @@ export const test = base.extend<Options & { vscode: VsCode }>({
         'chat.disableAIFeatures': true,
         'window.restoreWindows': 'none',
         'files.autoSave': 'off',
+        ...settings,
       }),
     );
+    const startedAt = Date.now();
     const app = await _electron.launch({
       executablePath,
       args: [
@@ -61,6 +75,7 @@ export const test = base.extend<Options & { vscode: VsCode }>({
         // Sem janela na tela: renderiza fora dela (Chromium ozone headless)
         ...(process.env.HEADED ? [] : ['--ozone-platform=headless']),
       ],
+      ...(recordDir ? { recordVideo: { dir: recordDir, size: windowSize } } : {}),
     });
     const page = await app.firstWindow();
     // E2E_LOG=1: mostra as mensagens da extensão (host e webview) na saída do teste
@@ -73,9 +88,12 @@ export const test = base.extend<Options & { vscode: VsCode }>({
       });
     }
     // A janela sem tela (headless) nasce pequena demais para o editor
-    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.setSize(1600, 1000));
+    await app.evaluate(
+      ({ BrowserWindow }, { width, height }) => BrowserWindow.getAllWindows()[0]?.setSize(width, height),
+      windowSize,
+    );
     await page.locator('.monaco-workbench').waitFor({ timeout: 60_000 });
-    await use({ page, workspace, file: path => readFileSync(join(workspace, path), 'utf8') });
+    await use({ page, workspace, startedAt, file: path => readFileSync(join(workspace, path), 'utf8') });
     if (testInfo.status !== testInfo.expectedStatus) {
       await page.screenshot({ path: testInfo.outputPath('vscode.png') }).catch(() => {});
     }

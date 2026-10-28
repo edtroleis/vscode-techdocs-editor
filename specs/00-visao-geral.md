@@ -143,6 +143,8 @@ e o modo local da spec 02 cobertos pelos testes. O painel de publicação (LC5) 
 Intermitente (visto 2 vezes em ~15 execuções na fase 2): o `test:vscode` desktop às vezes fica lento por
 inteiro (4 a 5 min em vez de ~27 s) e algum teste estoura os 60 s. Rodado de novo, passa. Não está ligado a
 uma parte (falhou em testes de imagens e de lint). Investigar na fase 5 com tempos por passo no log.
+O e2e "Ver linha" (`e2e/lint.spec.ts`) também falha às vezes (2 em 4 execuções em 2026-10-27): a barra de
+status mostra outra posição do cursor (esperado `Ln 5, Col 1`). Mesma investigação.
 
 Pendente de conferência na 2b: a convivência com a extensão do markdownlint (L-6) e o workspace não confiável
 não têm teste automático. Os dois dependem do ambiente: instalar outra extensão e abrir um workspace sem
