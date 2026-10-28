@@ -20,5 +20,7 @@
   "config.verification.checkHelp": "Mensagem em linguagem simples mostrada quando uma verificação falha, pelo nome do check. Exemplo: `{ \"Links\": \"Um link aponta para uma página que não existe.\" }`",
   "config.polling.intervalSeconds": "Segundos entre as consultas às verificações enquanto algo está rodando. Nada é consultado com a janela em segundo plano.",
   "config.polling.idleIntervalSeconds": "Segundos entre as consultas quando nada está rodando.",
-  "command.newPage": "Nova página a partir de template…"
+  "command.newPage": "Nova página a partir de template…",
+  "config.templates.paths": "Mais pastas com templates de página (arquivos `.md` com o bloco `template:`), relativas à pasta do workspace. Vêm depois do `.techdocs/templates/` do site e do workspace, que são sempre lidos.",
+  "config.templates.builtIn": "Mostra os templates que vêm com a extensão. Desligado, oferece só os templates do repositório."
 }

@@ -11,6 +11,10 @@ All notable changes to the TechDocs Editor extension. The format follows
 - New page from template: on a site with a `nav`, offers to add the page to it, in the section clicked in
   the Documentation tree, in the section that already lists pages of the same folder, or at the end. Only
   one line is added to `mkdocs.yml`; comments and formatting stay as they were.
+- Repository templates: `.md` files with a `template:` block in `.techdocs/templates/` of the site or of the
+  workspace (the site's win), and in the folders of `techdocsEditor.templates.paths`. They come first in the
+  list, with the folder they came from, and replace a built-in template with the same file name.
+  `techdocsEditor.templates.builtIn: false` hides the built-in templates.
 
 ### Fixed
 

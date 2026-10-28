@@ -162,6 +162,19 @@
           "minimum": 0,
           "markdownDescription": "%config.images.maxSizeMB%"
         },
+        "techdocsEditor.templates.paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "%config.templates.paths%"
+        },
+        "techdocsEditor.templates.builtIn": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%config.templates.builtIn%"
+        },
         "techdocsEditor.local.publishPanel": {
           "type": "boolean",
           "default": false,

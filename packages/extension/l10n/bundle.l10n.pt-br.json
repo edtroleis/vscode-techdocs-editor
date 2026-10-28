@@ -99,5 +99,9 @@
   "Add to the nav": "Pôr no nav",
   "Do not add": "Não pôr",
   "the page stays out of the site menu": "a página fica fora do menu do site",
-  "Site menu (nav in mkdocs.yml)": "Menu do site (nav do mkdocs.yml)"
+  "Site menu (nav in mkdocs.yml)": "Menu do site (nav do mkdocs.yml)",
+  "There are no page templates: the built-in ones are turned off and the repository has none.": "Não há templates de página: os da extensão estão desligados e o repositório não tem nenhum.",
+  "{0} · this repository": "{0} · este repositório",
+  "needs a newer version of the extension": "precisa de uma versão mais nova da extensão",
+  "The template \"{0}\" uses a newer format. Update the TechDocs Editor extension to use it.": "O template \"{0}\" usa um formato mais novo. Atualize a extensão TechDocs Editor para usá-lo."
 }

@@ -519,6 +519,34 @@ export function defineTests() {
       }
     });
 
+    test('templates do repositório: o do site vale mais que o do workspace, que sobrepõe o da extensão; builtIn: false', async () => {
+      const { newPage } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const template = (name: string, body: string) =>
+        `---\ntemplate:\n  name: ${name}\n  category: guide\n---\n\n# {{title}}\n\n${body}\n`;
+      const config = vscode.workspace.getConfiguration('techdocsEditor.templates');
+      await write('.techdocs/templates/runbook.md', template('Runbook da empresa', 'Do workspace.'));
+      await write('.techdocs/templates/so-workspace.md', template('Só do workspace', 'Workspace.'));
+      await write('.techdocs/templates/README.md', '# Templates da empresa\n');
+      await write('wiki/.techdocs/templates/so-workspace.md', template('Do site', 'Do site.'));
+      try {
+        const runbook = await newPage.run(file('wiki/docs'), { template: 'runbook', title: 'Disco cheio', path: 'disco-cheio.md' });
+        equal(await read('wiki/docs/disco-cheio.md'), '# Disco cheio\n\nDo workspace.\n', 'runbook do workspace sobrepõe o da extensão');
+        await closeAll();
+        await newPage.run(runbook!, { template: 'so-workspace', title: 'Local', path: 'local.md' });
+        equal(await read('wiki/docs/local.md'), '# Local\n\nDo site.\n', 'o do site vale mais que o do workspace');
+        await closeAll();
+        equal(await newPage.run(file('wiki/docs'), { template: 'README', title: 'X', path: 'x.md' }), undefined, 'README sem bloco template virou template');
+
+        await config.update('builtIn', false, vscode.ConfigurationTarget.Workspace);
+        equal(await newPage.run(file('wiki/docs'), { template: 'adr', title: 'Y', path: 'y.md' }), undefined, 'template da extensão com builtIn: false');
+        ok(await newPage.run(file('wiki/docs'), { template: 'runbook', title: 'Z', path: 'z.md' }), 'o do repositório sumiu com builtIn: false');
+      } finally {
+        await config.update('builtIn', undefined, vscode.ConfigurationTarget.Workspace);
+        for (const path of ['.techdocs', 'wiki/.techdocs', 'wiki/docs/disco-cheio.md', 'wiki/docs/local.md', 'wiki/docs/z.md']) await remove(path);
+      }
+    });
+
     test('site com nav: a página entra na seção clicada na árvore, sem mexer no resto do mkdocs.yml', async () => {
       const { newPage, docs } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));

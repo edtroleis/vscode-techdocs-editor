@@ -5,6 +5,7 @@ import {
   DocTemplate,
   fileNameFor,
   fillTemplate,
+  isTemplateSupported,
   mergeTemplates,
   nextNumber,
   pagePath,
@@ -25,7 +26,8 @@ import { VisualEditorProvider } from '../visualEditorProvider';
 export type NewPageAnswers = { template: string; title: string; path?: string; values?: Record<string, string>; nav?: boolean };
 
 type Site = { mkdocs: vscode.Uri; site: DocsSite };
-type Choice = { template: DocTemplate; origin: 'builtIn' };
+/** Template da lista: da extensão ou do repositório (com a pasta de onde veio, TP2). */
+type Choice = { template: DocTemplate; origin: 'builtIn' } | { template: DocTemplate; origin: 'repository'; source: string };
 
 const categoryLabel = (category: TemplateCategory) =>
   ({
@@ -65,7 +67,7 @@ export class NewPageCommand {
     const { site, folder, section } = where;
     const docsDir = site.mkdocs.with({ path: site.site.docsDir });
 
-    const choice = await this.pickTemplate(answers?.template);
+    const choice = await this.pickTemplate(site, answers?.template);
     if (!choice) return undefined;
     const { template } = choice;
 
@@ -162,35 +164,101 @@ export class NewPageCommand {
     return picked && { site: picked.site, folder: '' };
   }
 
-  private templates(): Choice[] {
+  /**
+   * Templates da lista (TP8): os `.md` com bloco `template:` do `.techdocs/templates/` do site, do workspace e
+   * das pastas de `techdocsEditor.templates.paths`, nessa ordem (o primeiro de cada id vale), e os da extensão,
+   * a não ser com `techdocsEditor.templates.builtIn: false`.
+   */
+  private async templates(site: Site): Promise<Choice[]> {
+    const config = vscode.workspace.getConfiguration('techdocsEditor.templates', site.mkdocs);
+    const workspace = vscode.workspace.getWorkspaceFolder(site.mkdocs)?.uri;
+    const folders = [
+      vscode.Uri.joinPath(site.mkdocs.with({ path: site.site.root }), '.techdocs', 'templates'),
+      ...(workspace ? [vscode.Uri.joinPath(workspace, '.techdocs', 'templates')] : []),
+      ...config
+        .get<string[]>('paths', [])
+        .filter(path => typeof path === 'string' && path.trim())
+        .flatMap(path => (path.startsWith('/') ? [site.mkdocs.with({ path })] : workspace ? [vscode.Uri.joinPath(workspace, path)] : [])),
+    ].filter((folder, i, all) => all.findIndex(f => f.toString() === folder.toString()) === i);
+
+    const repository: Choice[] = [];
+    const ids = new Set<string>();
+    for (const folder of folders) {
+      const source = vscode.workspace.asRelativePath(folder);
+      for (const name of (await this.fileNames(folder)).filter(n => n.toLowerCase().endsWith('.md')).sort()) {
+        const id = name.slice(0, -3);
+        if (ids.has(id)) continue;
+        const text = await readText(vscode.Uri.joinPath(folder, name));
+        const template = text === undefined ? undefined : parseTemplate(id, text);
+        if (!template) continue;
+        ids.add(id);
+        repository.push({ template, origin: 'repository', source });
+      }
+    }
     const language = templateLanguage(vscode.env.language);
-    const builtIn = Object.entries(BUILT_IN_TEMPLATES[language])
-      .map(([id, text]) => parseTemplate(id, text))
-      .filter((t): t is DocTemplate => Boolean(t))
-      .map(template => ({ template, origin: 'builtIn' as const }));
-    return mergeTemplates<Choice>([], builtIn);
+    const builtIn = config.get<boolean>('builtIn', true)
+      ? Object.entries(BUILT_IN_TEMPLATES[language])
+          .map(([id, text]) => parseTemplate(id, text))
+          .filter((t): t is DocTemplate => Boolean(t))
+          .map(template => ({ template, origin: 'builtIn' as const }))
+      : [];
+    return mergeTemplates<Choice>(repository, builtIn);
   }
 
-  /** Lista agrupada por categoria (TP2). */
-  private async pickTemplate(id: string | undefined): Promise<Choice | undefined> {
-    const choices = this.templates();
-    if (id) return choices.find(c => c.template.id === id);
-    type Item = vscode.QuickPickItem & { choice?: Choice };
-    const items: Item[] = [];
-    let category: TemplateCategory | undefined;
-    for (const choice of choices) {
-      if (choice.template.category !== category) {
-        category = choice.template.category;
-        items.push({ label: categoryLabel(category), kind: vscode.QuickPickItemKind.Separator });
-      }
-      items.push({ label: choice.template.name, detail: choice.template.description, choice });
+  /**
+   * Lista agrupada por categoria (TP2), com os do repositório primeiro e a pasta de onde vieram. Template de
+   * uma versão do formato mais nova que a extensão aparece, mas não é usado.
+   */
+  private async pickTemplate(site: Site, id: string | undefined): Promise<Choice | undefined> {
+    const choices = await this.templates(site);
+    if (!choices.length) {
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t('There are no page templates: the built-in ones are turned off and the repository has none.'),
+      );
+      return undefined;
     }
-    const picked = await vscode.window.showQuickPick(items, {
-      title: vscode.l10n.t('New page from template'),
-      placeHolder: vscode.l10n.t('Choose the kind of page'),
-      matchOnDetail: true,
-    });
-    return picked?.choice;
+    let choice: Choice | undefined;
+    if (id) {
+      choice = choices.find(c => c.template.id === id);
+    } else {
+      type Item = vscode.QuickPickItem & { choice?: Choice };
+      const items: Item[] = [];
+      let group: string | undefined;
+      for (const c of choices) {
+        const label =
+          c.origin === 'repository'
+            ? vscode.l10n.t('{0} · this repository', categoryLabel(c.template.category))
+            : categoryLabel(c.template.category);
+        if (label !== group) {
+          group = label;
+          items.push({ label, kind: vscode.QuickPickItemKind.Separator });
+        }
+        const supported = isTemplateSupported(c.template);
+        items.push({
+          label: c.template.name,
+          description: supported
+            ? c.origin === 'repository'
+              ? `$(repo) ${c.source}`
+              : undefined
+            : vscode.l10n.t('needs a newer version of the extension'),
+          detail: c.template.description,
+          choice: c,
+        });
+      }
+      const picked = await vscode.window.showQuickPick(items, {
+        title: vscode.l10n.t('New page from template'),
+        placeHolder: vscode.l10n.t('Choose the kind of page'),
+        matchOnDetail: true,
+      });
+      choice = picked?.choice;
+    }
+    if (choice && !isTemplateSupported(choice.template)) {
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t('The template "{0}" uses a newer format. Update the TechDocs Editor extension to use it.', choice.template.name),
+      );
+      return undefined;
+    }
+    return choice;
   }
 
   /** Campos usados na página: os automáticos (TP5) e os do template, perguntados um a um. */

@@ -82,18 +82,21 @@ e o dono do `catalog-info.yaml`, e abre no editor visual.
 
 O nome do arquivo sai do título, nunca sobrescreve uma página existente e nunca sai da pasta das docs. Os
 templates seguem a língua do VS Code (inglês ou português), passam na verificação de formatação e abrem no
-editor visual sem nenhuma alteração.
+editor visual sem nenhuma alteração. Num site com `nav`, a página já pode entrar nele, na seção clicada na
+árvore; só essa linha é acrescentada ao `mkdocs.yml`.
 
 #### Como os templates evoluem
 
 | Camada | Onde | Como muda |
 |--------|------|-----------|
 | Da extensão | Esta extensão | Versão nova da extensão, atualizada automaticamente pelo Marketplace |
-| Da empresa ou do time | `.techdocs/templates/` no repositório das docs *(próxima versão)* | Pull request nesse repositório: nada a publicar |
+| Da empresa ou do time | `.techdocs/templates/` no repositório das docs (ou na pasta do site, que vale mais) | Pull request nesse repositório: nada a publicar |
 | Da empresa inteira | Um repositório de templates para todos os repositórios de docs *(planejado)* | Pull request nesse repositório |
 
-Um template é uma página Markdown com um bloco `template:` no front matter. Páginas já criadas nunca mudam
-quando o template muda.
+Um template é uma página Markdown com um bloco `template:` no front matter. Os do repositório aparecem
+primeiro na lista e substituem o da extensão de mesmo nome de arquivo (`runbook.md`). Outras pastas vão em
+`techdocsEditor.templates.paths`, e `techdocsEditor.templates.builtIn: false` oferece só os seus. Páginas já
+criadas nunca mudam quando o template muda.
 
 ```markdown
 ---
@@ -208,8 +211,8 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 - VS Code 1.100 ou mais novo.
 - Funciona em pastas locais e clones (modo local). O Git continua com o controle de versão do VS Code.
 - O painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
-- Ainda não: o modo remoto (editar um repositório do GitHub sem clonar), o VS Code para a Web, templates
-  próprios no repositório e templates de sites inteiros. Veja o [plano](specs/00-visao-geral.md#fases).
+- Ainda não: o modo remoto (editar um repositório do GitHub sem clonar), o VS Code para a Web e templates
+  de sites inteiros. Veja o [plano](specs/00-visao-geral.md#fases).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.
 - Algumas construções avançadas do Material for MkDocs, como grid cards e blocos HTML com `markdown`, ainda
   estão sendo reforçadas. Confira o diff antes de commitar páginas que as usam.
