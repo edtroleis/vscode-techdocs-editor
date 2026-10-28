@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import {
+  addToNav,
   catalogOwner,
   DocTemplate,
   fileNameFor,
@@ -21,7 +22,7 @@ import { gitApi } from '../publish/vscodeGit';
 import { VisualEditorProvider } from '../visualEditorProvider';
 
 /** Respostas prontas, para os testes de integração (sem as caixas de escolha). */
-export type NewPageAnswers = { template: string; title: string; path?: string; values?: Record<string, string> };
+export type NewPageAnswers = { template: string; title: string; path?: string; values?: Record<string, string>; nav?: boolean };
 
 type Site = { mkdocs: vscode.Uri; site: DocsSite };
 type Choice = { template: DocTemplate; origin: 'builtIn' };
@@ -61,7 +62,7 @@ export class NewPageCommand {
   async run(target?: vscode.Uri | DocsItem, answers?: NewPageAnswers): Promise<vscode.Uri | undefined> {
     const where = await this.resolveTarget(target);
     if (!where) return undefined;
-    const { site, folder } = where;
+    const { site, folder, section } = where;
     const docsDir = site.mkdocs.with({ path: site.site.docsDir });
 
     const choice = await this.pickTemplate(answers?.template);
@@ -108,15 +109,21 @@ export class NewPageCommand {
 
     const values = await this.fieldValues(template, title.trim(), site, answers?.values);
     if (!values) return undefined;
-    const uri = vscode.Uri.joinPath(docsDir, pagePath('', path.trim())!);
+    const page = pagePath('', path.trim())!;
+    const nav = await this.navChange(site, page, title.trim(), section, answers);
+    if (nav === null) return undefined;
+    const uri = vscode.Uri.joinPath(docsDir, page);
     await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(fillTemplate(template.body, values)));
+    if (nav) await nav();
     await vscode.commands.executeCommand('vscode.openWith', uri, VisualEditorProvider.viewType);
     return uri;
   }
 
   /** Site e pasta (relativa ao `docs_dir`) de onde a página vai: o item clicado, a página ativa ou a escolha. */
-  private async resolveTarget(target?: vscode.Uri | DocsItem): Promise<{ site: Site; folder: string } | undefined> {
+  private async resolveTarget(target?: vscode.Uri | DocsItem): Promise<{ site: Site; folder: string; section?: string[] } | undefined> {
+    // Logo depois da ativação, a busca pelos mkdocs.yml ainda pode estar em andamento
+    await this.sites.ready;
     const sites = this.sites.list();
     if (!sites.length) {
       void vscode.window.showWarningMessage(vscode.l10n.t('There is no mkdocs.yml in the workspace. Create a documentation site first.'));
@@ -145,7 +152,7 @@ export class NewPageCommand {
       : undefined;
     if (inSite) {
       const folder = folderPath!.startsWith(`${inSite.site.docsDir}/`) ? folderPath!.slice(inSite.site.docsDir.length + 1) : '';
-      return { site: inSite, folder };
+      return { site: inSite, folder, section: target instanceof DocsItem ? navSection(target) : undefined };
     }
     if (sites.length === 1) return { site: sites[0], folder: '' };
     const picked = await vscode.window.showQuickPick(
@@ -211,6 +218,27 @@ export class NewPageCommand {
     return values;
   }
 
+  /**
+   * TP6: com `nav`, oferece pôr a página nele (na seção da árvore, na das páginas da mesma pasta ou no fim).
+   * Devolve a gravação a fazer depois de criar a página, undefined se não há o que fazer e null se cancelou.
+   * O `mkdocs.yml` é editado pelo documento, que pode ter alterações não salvas.
+   */
+  private async navChange(site: Site, page: string, title: string, section: string[] | undefined, answers?: NewPageAnswers) {
+    const document = await vscode.workspace.openTextDocument(site.mkdocs);
+    const insertion = addToNav(document.getText(), page, title, section);
+    if (!insertion) return undefined;
+    const write = async () => {
+      const wasDirty = document.isDirty;
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), insertion.yml);
+      if ((await vscode.workspace.applyEdit(edit)) && !wasDirty) await document.save();
+    };
+    if (answers) return answers.nav ? write : undefined;
+    const choice = await askNav(insertion.section);
+    if (!choice) return null;
+    return choice === 'add' ? write : undefined;
+  }
+
   /** `spec.owner` do `catalog-info.yaml` da raiz do site ou do workspace (TA1). */
   private async catalogOwner(site: Site) {
     const roots = [site.mkdocs.with({ path: site.site.root }), vscode.workspace.getWorkspaceFolder(site.mkdocs)?.uri];
@@ -230,6 +258,29 @@ export class NewPageCommand {
       return [];
     }
   }
+}
+
+/** Seção do `nav` de um item da árvore (títulos desde a raiz): a própria seção ou a da página. */
+function navSection(item: DocsItem): string[] | undefined {
+  if (item.kind === 'site' || item.kind === 'notInNav' || item.parent?.kind === 'notInNav') return undefined;
+  const trail: string[] = [];
+  for (let at: DocsItem | undefined = item.kind === 'section' ? item : item.parent; at?.kind === 'section'; at = at.parent) {
+    trail.unshift(at.label);
+  }
+  return trail;
+}
+
+/** Pergunta se a página entra no `nav` (TP6); undefined se cancelou. */
+async function askNav(section: string[]): Promise<'add' | 'skip' | undefined> {
+  const where = section.length ? vscode.l10n.t('in the section {0}', section.join(' › ')) : vscode.l10n.t('at the end');
+  const picked = await vscode.window.showQuickPick(
+    [
+      { label: vscode.l10n.t('Add to the nav'), description: where, value: 'add' as const },
+      { label: vscode.l10n.t('Do not add'), description: vscode.l10n.t('the page stays out of the site menu'), value: 'skip' as const },
+    ],
+    { title: vscode.l10n.t('Site menu (nav in mkdocs.yml)') },
+  );
+  return picked?.value;
 }
 
 /** Primeira página de um item da árvore (a pasta da seção é a pasta dela). */

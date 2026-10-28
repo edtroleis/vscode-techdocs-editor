@@ -518,5 +518,37 @@ export function defineTests() {
         await remove('wiki/docs/adr');
       }
     });
+
+    test('site com nav: a página entra na seção clicada na árvore, sem mexer no resto do mkdocs.yml', async () => {
+      const { newPage, docs } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const yml = 'site_name: Nav\nnav:\n  - Início: index.md # capa\n  - Guias:\n      - guias/a.md\n  - GitHub: https://github.com\n';
+      await write('nav-tpl/docs/index.md', '# Início\n');
+      await write('nav-tpl/docs/guias/a.md', '# A\n');
+      await write('nav-tpl/mkdocs.yml', yml);
+      try {
+        const section = await until(
+          async () => {
+            await docs.ready;
+            const site = docs.getChildren().find(item => item.kind === 'site' && item.description === 'nav-tpl');
+            return site && docs.getChildren(site).find(item => item.kind === 'section' && item.label === 'Guias');
+          },
+          Boolean,
+          'seção Guias não apareceu na árvore',
+        );
+        const uri = await newPage.run(section, { template: 'guide', title: 'Fazer deploy', values: { owner: 'time' }, nav: true });
+        ok(uri?.path.endsWith('/nav-tpl/docs/guias/fazer-deploy.md'), `página: ${uri?.path}`);
+        equal(
+          await read('nav-tpl/mkdocs.yml'),
+          yml.replace('      - guias/a.md\n', '      - guias/a.md\n      - Fazer deploy: guias/fazer-deploy.md\n'),
+          'nav',
+        );
+        await closeAll();
+        await newPage.run(file('nav-tpl/docs'), { template: 'wiki-page', title: 'Fora', values: { owner: 'time' } });
+        ok(!(await read('nav-tpl/mkdocs.yml')).includes('fora.md'), 'pôs no nav sem a pessoa pedir');
+      } finally {
+        await remove('nav-tpl');
+      }
+    });
   });
 }

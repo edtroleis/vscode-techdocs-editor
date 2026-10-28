@@ -93,5 +93,11 @@
   "Which documentation site?": "Em qual site de documentação?",
   "New page from template": "Nova página a partir de template",
   "Choose the kind of page": "Escolha o tipo de página",
-  "Team or person who owns this page": "Time ou pessoa responsável por esta página"
+  "Team or person who owns this page": "Time ou pessoa responsável por esta página",
+  "in the section {0}": "na seção {0}",
+  "at the end": "no fim",
+  "Add to the nav": "Pôr no nav",
+  "Do not add": "Não pôr",
+  "the page stays out of the site menu": "a página fica fora do menu do site",
+  "Site menu (nav in mkdocs.yml)": "Menu do site (nav do mkdocs.yml)"
 }

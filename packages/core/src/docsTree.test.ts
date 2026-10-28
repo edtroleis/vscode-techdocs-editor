@@ -1,4 +1,4 @@
-import { docsTree, nameToTitle, pageTitle, siteName } from './docsTree';
+import { addToNav, docsTree, nameToTitle, pageTitle, siteName } from './docsTree';
 
 const PAGES = ['index.md', 'guias/primeiros-passos.md', 'guias/index.md', 'guias/avancado/b.md', 'processos/aprovacao.md', 'sobre.md'];
 
@@ -90,5 +90,50 @@ describe('pageTitle', () => {
   it('nameToTitle como o MkDocs', () => {
     expect(nameToTitle('primeiros-passos.md')).toBe('Primeiros passos');
     expect(nameToTitle('API_Guia')).toBe('API Guia');
+  });
+});
+
+describe('addToNav (TP6)', () => {
+  const yml = `site_name: Wiki
+nav:
+  - Home: index.md   # início
+  - Guias:
+      - guias/index.md
+      - Deploy: guias/deploy.md
+    # mais guias aqui
+  - GitHub: https://github.com
+markdown_extensions:
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+`;
+
+  it('na seção dada, só uma linha nova, com o recuo da lista e o resto intacto', () => {
+    const result = addToNav(yml, 'guias/rollback.md', 'Rollback', ['Guias']);
+    expect(result).toEqual({
+      section: ['Guias'],
+      yml: yml.replace('      - Deploy: guias/deploy.md\n', '      - Deploy: guias/deploy.md\n      - Rollback: guias/rollback.md\n'),
+    });
+  });
+
+  it('sem seção dada: a seção com páginas da mesma pasta; senão, o fim do nav', () => {
+    expect(addToNav(yml, 'guias/rollback.md', 'Rollback')?.section).toEqual(['Guias']);
+    const top = addToNav(yml, 'sobre.md', 'Sobre')!;
+    expect(top.section).toEqual([]);
+    expect(top.yml).toContain('  - GitHub: https://github.com\n  - Sobre: sobre.md\nmarkdown_extensions:');
+  });
+
+  it('seção que não existe mais cai na regra da pasta', () => {
+    expect(addToNav(yml, 'guias/x.md', 'X', ['Sumiu'])?.section).toEqual(['Guias']);
+  });
+
+  it('título com caracteres do YAML vai entre aspas; arquivo sem quebra de linha no fim', () => {
+    const result = addToNav('nav:\n  - index.md', 'faq.md', 'FAQ: dúvidas #1');
+    expect(result?.yml).toBe('nav:\n  - index.md\n  - "FAQ: dúvidas #1": faq.md\n');
+  });
+
+  it('sem nav, nav em fluxo ou página já no nav: nada a fazer', () => {
+    expect(addToNav('site_name: X\n', 'a.md', 'A')).toBeUndefined();
+    expect(addToNav('nav: [index.md]\n', 'a.md', 'A')).toBeUndefined();
+    expect(addToNav(yml, 'guias/deploy.md', 'Deploy')).toBeUndefined();
   });
 });

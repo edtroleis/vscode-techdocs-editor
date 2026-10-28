@@ -1,4 +1,4 @@
-import { parseDocument } from 'yaml';
+import { isMap, isScalar, isSeq, parseDocument, stringify, type YAMLSeq } from 'yaml';
 
 /**
  * Árvore das páginas de um site do MkDocs (spec 02, LC6), como o menu do site publicado: pelo `nav` do
@@ -130,4 +130,61 @@ function folderTree(pages: readonly string[], title: (path: string) => string): 
       .map(([name, sub]): DocsNode => ({ kind: 'section', title: nameToTitle(name), children: build(sub) })),
   ];
   return build(root);
+}
+
+/** Página posta no `nav` (TP6): o `mkdocs.yml` novo e a seção onde ela entrou (títulos, vazio na raiz). */
+export type NavInsertion = { yml: string; section: string[] };
+
+/**
+ * Põe a página no fim de uma seção do `nav`: a seção dada (títulos desde a raiz, como na árvore); sem ela, a
+ * seção com outra página da mesma pasta; senão, o fim do `nav`. Só insere uma linha, com o recuo da lista:
+ * comentários, tags do MkDocs e a formatação do resto do arquivo ficam como estão. Sem `nav` (o menu vem das
+ * pastas), com `nav` em formato de fluxo (`[a, b]`) ou a página já no `nav`: undefined.
+ */
+export function addToNav(yml: string, path: string, title: string, section?: string[]): NavInsertion | undefined {
+  const doc = parseDocument(yml);
+  const nav = doc.get('nav', true);
+  if (!isSeq(nav) || nav.flow || !nav.items.length || !nav.range) return undefined;
+
+  type Section = { seq: YAMLSeq; trail: string[]; folders: Set<string> };
+  const sections: Section[] = [];
+  let inNav = false;
+  const folder = (page: string) => page.slice(0, page.lastIndexOf('/') + 1);
+  const walk = (seq: YAMLSeq, trail: string[]) => {
+    const current: Section = { seq, trail, folders: new Set() };
+    sections.push(current);
+    for (const item of seq.items) {
+      let value: unknown = item;
+      let name: string | undefined;
+      if (isMap(item) && item.items.length === 1) {
+        const [pair] = item.items;
+        name = isScalar(pair.key) ? String(pair.key.value) : undefined;
+        value = pair.value;
+      }
+      if (isSeq(value) && name !== undefined) {
+        if (!value.flow && value.items.length && value.range) walk(value, [...trail, name]);
+      } else if (isScalar(value) && typeof value.value === 'string' && /\.md$/i.test(value.value) && !isUrl(value.value)) {
+        const page = normalize(value.value);
+        if (page === path) inNav = true;
+        current.folders.add(folder(page));
+      }
+    }
+  };
+  walk(nav as YAMLSeq, []);
+  if (inNav) return undefined;
+
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((t, i) => t === b[i]);
+  const target =
+    (section && sections.find(s => same(s.trail, section))) ??
+    sections.filter(s => s.folders.has(folder(path))).sort((a, b) => b.trail.length - a.trail.length)[0] ??
+    sections[0];
+
+  // A lista termina no começo da linha seguinte (com os comentários da última linha); o recuo é o do primeiro `-`
+  const [start, end] = target.seq.range!;
+  const indent = start - (yml.lastIndexOf('\n', start - 1) + 1);
+  const entry = stringify({ [title]: path }, { lineWidth: 0 }).trimEnd();
+  const line = `${' '.repeat(indent)}- ${entry}\n`;
+  const at = yml[end - 1] === '\n' ? end : yml.length;
+  const before = yml.slice(0, at);
+  return { yml: (before.endsWith('\n') ? before : `${before}\n`) + line + yml.slice(at), section: target.trail };
 }

@@ -38,6 +38,7 @@ npm run test:webview   # Playwright: the webview bundle in Chromium (lists, roun
 npm run test:bundle    # webview size in the production build (budget) and lazy-loaded languages
 npm run test:editor    # editor suites inherited from the Backstage plugin
 npm run test:vscode    # integration suite in VS Code desktop (downloads VS Code the first time)
+TEST_GREP=Templates npm run test:vscode   # only the tests whose name contains the text
 npm run test:web       # the same suite in VS Code for the Web
 npm run test:e2e       # Playwright driving VS Code desktop without a window
 npm run roundtrip -- <folder-with-md>   # roundtrip report on real docs

@@ -68,7 +68,7 @@ Criam o `mkdocs.yml`, o `docs/` com as páginas e o `nav`. Para o TechDocs, dize
 | TP3 ✅ | Pede o título; o nome do arquivo sai do título (`Guia de deploy` → `guia-de-deploy.md`, sem acento) e pode ser editado; pasta sugerida pelo template (o ADR vai para `adr/` com número: `adr/0007-usar-postgres.md`) |
 | TP4 ✅ | Nunca sobrescreve: arquivo existente pede outro nome. A pasta tem de ficar dentro do `docs_dir` (template ou nome com `..` é recusado) |
 | TP5 ✅ | Campos `{{nome}}` do template preenchidos na criação: `title` (o título), `date` (hoje, `AAAA-MM-DD`), `site_name` (do `mkdocs.yml`), `owner` (do `spec.owner` do `catalog-info.yaml` da raiz, se houver); os outros campos que o template declarar são perguntados um a um (com valor padrão, se o template der) |
-| TP6 | Site com `nav`: oferece pôr a página no `nav`, na seção onde ela foi criada (pela árvore) ou no fim; edita o `mkdocs.yml` mantendo comentários e formatação (API `Document` do `yaml`). Sem `nav`, nada a fazer: a pasta já define o menu |
+| TP6 ✅ | Site com `nav`: oferece pôr a página no `nav`, na seção onde ela foi criada (pela árvore) ou no fim; edita o `mkdocs.yml` mantendo comentários e formatação (API `Document` do `yaml`). Sem `nav`, nada a fazer: a pasta já define o menu |
 | TP7 (parcial) | A página criada abre no editor visual, com o cursor no primeiro trecho a preencher |
 | TP8 | Templates do repositório: arquivos `.md` em `.techdocs/templates/` (na raiz do workspace ou do site; o do site vale mais) e nas pastas de `techdocsEditor.templates.paths`. Site: uma pasta com `template.yml` e os arquivos. `techdocsEditor.templates.builtIn: false` esconde os da extensão |
 | TP9 ✅ | Templates da extensão em inglês e português, pela língua do VS Code; os do repositório como estão |
@@ -174,7 +174,7 @@ T1 a T3b e T5 não dependem do modo remoto; só a T4 espera a fase 4.
 | Parte | Entrega |
 |-------|---------|
 | T1 ✅ | Formato, campos e criação de página no modo local (TP1 a TP5, TP7, TP9) com os 13 templates de página da v1. Feita em 2026-10-28: `core/src/templates.ts`, `core/templates/<língua>/`, comando `techdocsEditor.newPage` (paleta, árvore, Explorer). Testes: unitários (formato, campos, nome do arquivo, número, caminho), conteúdo (lint dos 26), ida e volta dos 26 pelo editor, integração desktop e web. Pendente do TP7: o cursor no primeiro trecho a preencher (a página abre no visual, com o cursor no início) |
-| T2 | `nav` (TP6), templates do repositório (TP8), cursor no primeiro trecho (resto do TP7) e a prova do TA2 |
+| T2 | `nav` (TP6 ✅: `addToNav` no `core`, insere uma linha só, pelas posições do `yaml`; a seção vem da árvore, senão a das páginas da mesma pasta, senão o fim), templates do repositório (TP8), cursor no primeiro trecho (resto do TP7) e a prova do TA2 |
 | T3 | Templates de site (TP11) |
 | T3b | Conferir e preparar a documentação do repositório (seção acima) |
 | T4 | Modo remoto (TP10), junto com o que a fase 4 já entregou |

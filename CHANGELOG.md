@@ -6,6 +6,17 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- New page from template: on a site with a `nav`, offers to add the page to it, in the section clicked in
+  the Documentation tree, in the section that already lists pages of the same folder, or at the end. Only
+  one line is added to `mkdocs.yml`; comments and formatting stay as they were.
+
+### Fixed
+
+- "New page from template" right after VS Code starts no longer says there is no `mkdocs.yml` while the
+  workspace is still being scanned.
+
 ## [0.1.0] - 2026-10-28
 
 First public version: local mode (folders and clones with a `mkdocs.yml`).
