@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { CheckView } from './checkView';
+import { CatalogOptions, repositoryFolder } from './catalogOptions';
+import { CheckItem, CheckView } from './checkView';
 import { DocsItem, DocsTreeView } from './docsTreeView';
 import { LintActions } from './lintActions';
 import { LintService } from './lintService';
@@ -23,6 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
   const newSite = new NewSiteCommand(central);
   const repoCheck = new RepoCheck(sites, lint, newSite);
   const checkView = new CheckView(repoCheck);
+  const catalogOptions = new CatalogOptions(repoCheck);
   context.subscriptions.push(
     publish,
     repoCheck,
@@ -53,6 +55,10 @@ export function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand('techdocsEditor.refreshTemplates', () => refreshCentralTemplates(central)),
     vscode.commands.registerCommand('techdocsEditor.checkDocs', () => repoCheck.check()),
+    // A engrenagem da seção Verificação e o "Configurar…" do item sem catalog-info.yaml
+    vscode.commands.registerCommand('techdocsEditor.checkOptions', (item?: CheckItem) =>
+      catalogOptions.choose(repositoryFolder(item instanceof CheckItem ? item.base : undefined)),
+    ),
     vscode.commands.registerCommand('techdocsEditor.prepareDocs', (target?: vscode.Uri) =>
       repoCheck.prepare(target instanceof vscode.Uri ? target : undefined),
     ),
@@ -62,7 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions };
 }
 
 /**

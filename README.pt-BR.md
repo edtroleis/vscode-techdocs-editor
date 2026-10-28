@@ -228,6 +228,7 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 | `techdocsEditor.templates.paths` | `[]` | Mais pastas com templates de página e de site, relativas à pasta do workspace (o `.techdocs/templates/` é sempre lido) |
 | `techdocsEditor.templates.repository` | `""` | Templates da empresa num repositório do GitHub: `dono/repo[/pasta][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Oferece os templates que vêm com a extensão |
+| `techdocsEditor.catalog` | `auto` | Como a verificação trata o `catalog-info.yaml`: `auto` (confere só se existir), `required` ou `off`. Também pela engrenagem da seção Verificação; o `catalog:` do `.techdocs-editor.yaml` vale sobre esta |
 | `techdocsEditor.local.publishPanel` | `false` | Mostra o painel **Publicação** |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch criada para o rascunho quando você está na branch principal |
 | `techdocsEditor.drafts.skipCi` | `true` | **Salvar rascunho** põe `[skip ci]`, para a pipeline rodar só em **Salvar e verificar** |

@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import { checkSite, LINT_CONFIG_FILES, SiteFinding, SiteSnapshot } from '@edtroleis/techdocs-editor-core';
+import { catalogModeFor } from './catalogOptions';
 import type { DocsSite } from './docsSite';
 import { configDirs } from './lintProblems';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
 import type { NewSiteCommand } from './templates/newSite';
-import { exists, readText } from './templates/templateSources';
+import { exists, gitUserName, readText } from './templates/templateSources';
 
 type Site = { mkdocs: vscode.Uri; site: DocsSite };
 
@@ -51,6 +52,10 @@ export class RepoCheck implements vscode.Disposable {
         if (!this.last) return;
         clearTimeout(this.recheckTimer);
         this.recheckTimer = setTimeout(() => void this.check(true), RECHECK_DELAY_MS);
+      }),
+      // O modo do catalog-info.yaml mudou na configuração: o que a conferência mostra também muda
+      vscode.workspace.onDidChangeConfiguration(event => {
+        if (this.last && event.affectsConfiguration('techdocsEditor.catalog')) void this.check(true);
       }),
     );
   }
@@ -134,11 +139,18 @@ export class RepoCheck implements vscode.Disposable {
    */
   private async applyFix(finding: SiteFinding, base: vscode.Uri, decide?: () => 'apply' | 'skip') {
     const fix = finding.fix!;
-    const uri = vscode.Uri.joinPath(base, fix.file);
+    return this.proposeChange(vscode.Uri.joinPath(base, fix.file), fix.apply, findingMessage(finding), decide);
+  }
+
+  /**
+   * Mudança num arquivo com o diff antes e a pergunta `title` (ou a resposta pronta dos testes), também fora da
+   * conferência (ex.: o `.techdocs-editor.yaml` das opções da verificação). `change` recebe o texto do momento.
+   */
+  async proposeChange(uri: vscode.Uri, change: (current: string | undefined) => string, title: string, decide?: () => 'apply' | 'skip') {
     const current = await this.currentText(uri);
-    const next = fix.apply(current);
+    const next = change(current);
     if (next === current) return 'unchanged';
-    const decision = decide ? decide() : await this.ask(finding, uri, current, next);
+    const decision = decide ? decide() : await this.ask(title, uri, current, next);
     if (decision === 'apply') await this.write(uri, current, next);
     return decision;
   }
@@ -190,6 +202,9 @@ export class RepoCheck implements vscode.Disposable {
       const text = catalog ? undefined : await this.currentText(uri);
       if (text !== undefined) catalog = { file: rel(uri), text };
     }
+    const { mode: catalogMode } = await catalogModeFor(base);
+    // O dono só entra no catalog-info.yaml novo: o Git só é consultado quando ele pode ser criado
+    const owner = catalogMode === 'required' && !catalog ? await gitUserName(base) : undefined;
     return {
       base,
       snapshot: {
@@ -204,6 +219,8 @@ export class RepoCheck implements vscode.Disposable {
         // Sem confiar no workspace, a configuração do repositório não vale e o lint não é conferido (spec 02)
         lintConfig: await this.lint.configFor(vscode.Uri.joinPath(docsDir, 'index.md')),
         catalog,
+        catalogMode,
+        repository: { name: decodeURIComponent(base.path.split('/').filter(Boolean).pop() ?? ''), owner },
       },
     };
   }
@@ -228,7 +245,7 @@ export class RepoCheck implements vscode.Disposable {
   }
 
   /** Mostra o diff da correção e pergunta: aplicar, pular ou parar. */
-  private async ask(finding: SiteFinding, uri: vscode.Uri, current: string | undefined, next: string): Promise<'apply' | 'skip' | 'stop'> {
+  private async ask(title: string, uri: vscode.Uri, current: string | undefined, next: string): Promise<'apply' | 'skip' | 'stop'> {
     const right = vscode.Uri.from({ scheme: PROPOSED_SCHEME, path: uri.path, query: String(Date.now()) });
     const left = current === undefined ? right.with({ query: `${right.query}-empty` }) : uri;
     this.proposed.set(right.toString(), next);
@@ -246,7 +263,7 @@ export class RepoCheck implements vscode.Disposable {
         { label: vscode.l10n.t('Skip'), description: vscode.l10n.t('go to the next fix'), value: 'skip' as const },
         { label: vscode.l10n.t('Stop'), description: vscode.l10n.t('leave the other fixes for later'), value: 'stop' as const },
       ],
-      { title: findingMessage(finding), ignoreFocusOut: true },
+      { title, ignoreFocusOut: true },
     );
     await this.closeDiff(right);
     this.proposed.delete(right.toString());
@@ -284,6 +301,7 @@ const SEVERITY = {
   error: vscode.DiagnosticSeverity.Error,
   warning: vscode.DiagnosticSeverity.Warning,
   info: vscode.DiagnosticSeverity.Information,
+  hint: vscode.DiagnosticSeverity.Hint,
 };
 
 /** Texto do achado em linguagem simples. */

@@ -12,6 +12,7 @@ import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { NewPageCommand } from '../../../src/templates/newPage';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
+import type { CatalogOptions } from '../../../src/catalogOptions';
 import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
 import type { CentralTemplates } from '../../../src/templates/centralTemplates';
@@ -50,6 +51,7 @@ type Api = {
   checkView: CheckView;
   publish: PublishPanel;
   central: CentralTemplates;
+  catalogOptions: CatalogOptions;
 };
 
 async function api(): Promise<Api> {
@@ -671,6 +673,38 @@ export function defineTests() {
         ok(vscode.languages.getDiagnostics(file('check-site/docs/index.md')).some(d => d.code === 'broken-link'), 'o link quebrado (sem correção) sumiu');
       } finally {
         await remove('check-site');
+      }
+    });
+
+    test('opções da verificação: catalog-info.yaml por modo, para o time ou só para mim', async () => {
+      const { repoCheck, catalogOptions } = await api();
+      const config = () => vscode.workspace.getConfiguration('techdocsEditor');
+      const catalogFindings = async () =>
+        (await repoCheck.check(true)).find(r => r.mkdocs.path.endsWith('/wiki/mkdocs.yml'))!.findings.filter(f => f.code.startsWith('catalog-'));
+      try {
+        // Padrão (auto): sem o arquivo, só uma dica
+        equal((await catalogFindings()).map(f => `${f.code}:${f.severity}`).join(), 'catalog-missing:hint', 'modo auto');
+        // Só para mim: a configuração do VS Code
+        equal(await catalogOptions.choose(undefined, { mode: 'off', scope: 'me' }), 'off', 'escolha só para mim');
+        equal(config().inspect('catalog')?.globalValue, 'off', 'configuração do usuário');
+        equal((await catalogFindings()).length, 0, 'modo off: nada sobre o catálogo');
+        // Para o time: o .techdocs-editor.yaml, que vence a configuração
+        equal(await catalogOptions.choose(undefined, { mode: 'required', scope: 'team' }), 'required', 'escolha para o time');
+        equal(await read('.techdocs-editor.yaml'), 'catalog: required\n', '.techdocs-editor.yaml');
+        const [missing] = await catalogFindings();
+        equal(`${missing?.code}:${missing?.severity}:${Boolean(missing?.fix)}`, 'catalog-missing:warning:true', 'modo required');
+        // A correção cria o esqueleto na raiz do repositório, apontando para o site
+        await repoCheck.prepare(file('wiki'), { apply: f => f.code === 'catalog-missing' });
+        const created = await read('catalog-info.yaml');
+        ok(created.includes('kind: Component') && created.includes('backstage.io/techdocs-ref: dir:./wiki'), `catalog-info.yaml: ${created}`);
+        // A pergunta do "Preparar": não usa catalog-info.yaml
+        equal(await catalogOptions.askUsage(undefined, 'no'), 'off', 'askUsage');
+        equal(await read('.techdocs-editor.yaml'), 'catalog: off\n', 'catalog: off gravado para o time');
+        equal(await catalogOptions.askUsage(undefined, 'unknown'), 'auto', 'não sei: fica o auto, sem gravar');
+        equal(await read('.techdocs-editor.yaml'), 'catalog: off\n', '"não sei" não grava');
+      } finally {
+        await config().update('catalog', undefined, vscode.ConfigurationTarget.Global);
+        for (const path of ['.techdocs-editor.yaml', 'catalog-info.yaml']) await remove(path);
       }
     });
 

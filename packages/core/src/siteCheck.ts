@@ -2,6 +2,7 @@ import type { Configuration } from 'markdownlint';
 import { isMap, isScalar, isSeq, parseAllDocuments, parseDocument, YAMLMap, YAMLSeq } from 'yaml';
 import { addToNav, docsTree, DocsNode, nameToTitle, pageTitle, siteName } from './docsTree';
 import { fixLintProblems, lintMarkdown, LINT_CONFIG_FILES } from './lint';
+import type { CatalogMode } from './repoConfig';
 import { SETUP_MARKDOWNLINT } from './setup';
 import { TECHDOCS_REF, techdocsRefAnnotation } from './siteTemplates';
 
@@ -25,7 +26,8 @@ export type SiteFindingCode =
   | 'broken-link'
   | 'missing-image';
 
-export type SiteFindingSeverity = 'error' | 'warning' | 'info';
+/** `hint`: só uma dica (ex.: sem `catalog-info.yaml` no modo `auto`); não conta como item a revisar. */
+export type SiteFindingSeverity = 'error' | 'warning' | 'info' | 'hint';
 
 /**
  * Correção de um achado: o arquivo (relativo à raiz do repositório) e o texto novo a partir do atual (undefined:
@@ -64,9 +66,13 @@ export type SiteSnapshot = {
   lintConfig?: Configuration;
   /** O `catalog-info.yaml` da pasta do site ou da raiz do repositório. */
   catalog?: { file: string; text: string };
+  /** O `catalog-info.yaml` na conferência (padrão `auto`, ver `CatalogMode`). */
+  catalogMode?: CatalogMode;
+  /** Nome da pasta do repositório e o dono, para o `catalog-info.yaml` novo no modo `required`. */
+  repository?: { name: string; owner?: string };
 };
 
-const SEVERITY_ORDER: SiteFindingSeverity[] = ['error', 'warning', 'info'];
+const SEVERITY_ORDER: SiteFindingSeverity[] = ['error', 'warning', 'info', 'hint'];
 const join = (dir: string, path: string) => (dir ? `${dir}/${path}` : path);
 const isUrl = (path: string) => /^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith('//');
 
@@ -90,8 +96,19 @@ export function checkSite(site: SiteSnapshot): SiteFinding[] {
     checkPages(site, title, createIndex, add);
   }
 
-  if (!site.catalog) {
-    add({ code: 'catalog-missing', severity: 'info', file: site.mkdocsFile, target: 'catalog-info.yaml' });
+  const catalogMode = site.catalogMode ?? 'auto';
+  if (catalogMode === 'off') {
+    // O Backstage registra a documentação de outro jeito: nada sobre o catalog-info.yaml
+  } else if (!site.catalog && catalogMode === 'required') {
+    const file = 'catalog-info.yaml';
+    const skeleton = catalogInfoSkeleton({
+      name: site.repository?.name || site.root.split('/').pop() || title,
+      owner: site.repository?.owner,
+      annotation: techdocsRefAnnotation('', site.root),
+    });
+    add({ code: 'catalog-missing', severity: 'warning', file: site.mkdocsFile, target: file, fix: { file, apply: text => text ?? skeleton } });
+  } else if (!site.catalog) {
+    add({ code: 'catalog-missing', severity: 'hint', file: site.mkdocsFile, target: 'catalog-info.yaml' });
   } else if (!hasRef(site.catalog.text)) {
     const catalogDir = site.catalog.file.split('/').slice(0, -1).join('/');
     const annotation = techdocsRefAnnotation(catalogDir, site.root);
@@ -174,6 +191,40 @@ const flatten = (nodes: DocsNode[]): DocsNode[] => nodes.flatMap(n => (n.kind ==
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Linha (a partir de 1) do primeiro trecho que casa, ou undefined. */
+/** Nome de entidade do Backstage: minúsculas, letras, números e `-`, até 63 caracteres. */
+function entityName(name: string): string {
+  const clean = name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 63)
+    .replace(/-+$/, '');
+  return clean || 'documentation';
+}
+
+/**
+ * `catalog-info.yaml` mínimo de um componente com a documentação no TechDocs (modo `required`). `annotation`:
+ * `backstage.io/techdocs-ref: dir:…`, de `techdocsRefAnnotation`.
+ */
+export function catalogInfoSkeleton(opts: { name: string; owner?: string; annotation: string }): string {
+  const owner = opts.owner?.trim();
+  return [
+    'apiVersion: backstage.io/v1alpha1',
+    'kind: Component',
+    'metadata:',
+    `  name: ${entityName(opts.name)}`,
+    '  annotations:',
+    `    ${opts.annotation}`,
+    'spec:',
+    '  type: service',
+    `  owner: ${owner ? (/^[\w.:/-]+$/.test(owner) ? owner : JSON.stringify(owner)) : 'unknown # the team that owns this component'}`,
+    '  lifecycle: production',
+    '',
+  ].join('\n');
+}
+
 function lineOf(text: string, pattern: RegExp): number | undefined {
   const match = pattern.exec(text);
   return match ? text.slice(0, match.index + (match[0].startsWith('\n') ? 1 : 0)).split('\n').length : undefined;

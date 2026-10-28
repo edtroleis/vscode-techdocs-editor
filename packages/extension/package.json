@@ -112,6 +112,12 @@
         "title": "%command.fixFinding%",
         "category": "TechDocs",
         "icon": "$(wand)"
+      },
+      {
+        "command": "techdocsEditor.checkOptions",
+        "title": "%command.checkOptions%",
+        "category": "TechDocs",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
@@ -175,6 +181,16 @@
           "command": "techdocsEditor.fixFinding",
           "when": "view == techdocsEditor.check && viewItem == fixable",
           "group": "navigation"
+        },
+        {
+          "command": "techdocsEditor.checkOptions",
+          "when": "view == techdocsEditor.check && viewItem == catalogHint",
+          "group": "inline"
+        },
+        {
+          "command": "techdocsEditor.checkOptions",
+          "when": "view == techdocsEditor.check && viewItem == catalogHint",
+          "group": "navigation"
         }
       ],
       "view/title": [
@@ -202,6 +218,11 @@
           "command": "techdocsEditor.prepareDocs",
           "when": "view == techdocsEditor.check",
           "group": "navigation@2"
+        },
+        {
+          "command": "techdocsEditor.checkOptions",
+          "when": "view == techdocsEditor.check",
+          "group": "navigation@3"
         }
       ],
       "explorer/context": [
@@ -249,6 +270,21 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "%config.templates.builtIn%"
+        },
+        "techdocsEditor.catalog": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "required",
+            "off"
+          ],
+          "enumDescriptions": [
+            "%config.catalog.auto%",
+            "%config.catalog.required%",
+            "%config.catalog.off%"
+          ],
+          "default": "auto",
+          "markdownDescription": "%config.catalog%"
         },
         "techdocsEditor.local.publishPanel": {
           "type": "boolean",

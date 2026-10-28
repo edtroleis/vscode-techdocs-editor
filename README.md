@@ -226,6 +226,7 @@ To always open documentation pages in the visual editor, turn on `techdocsEditor
 | `techdocsEditor.templates.paths` | `[]` | More folders with page and site templates, relative to the workspace folder (`.techdocs/templates/` is always read) |
 | `techdocsEditor.templates.repository` | `""` | Company templates in a GitHub repository: `owner/repo[/folder][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Offer the templates that come with the extension |
+| `techdocsEditor.catalog` | `auto` | How the check treats `catalog-info.yaml`: `auto` (check it only if it exists), `required` or `off`. Also the gear in the Check view; `catalog:` in `.techdocs-editor.yaml` wins |
 | `techdocsEditor.local.publishPanel` | `false` | Show the **Publishing** panel |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch created for a draft when you are on the default branch |
 | `techdocsEditor.drafts.skipCi` | `true` | **Save draft** adds `[skip ci]`, so the pipeline only runs on **Save and check** |

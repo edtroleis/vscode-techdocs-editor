@@ -6,6 +6,19 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Check options** (the gear in the Check view): how the check treats `catalog-info.yaml`, since not every
+  Backstage reads it from the repository. **Check only if it exists** (default), **Require it** (a missing file
+  is a problem, with a fix that creates a minimal `catalog-info.yaml` with the TechDocs annotation) or **Do not
+  use it** (nothing about `catalog-info.yaml`). Saved for the team in `.techdocs-editor.yaml` (`catalog:`, with
+  the diff first) or just for you in the `techdocsEditor.catalog` setting; the repository file wins.
+
+### Changed
+
+- Without `catalog-info.yaml`, the check now shows only a hint, which does not count on the TechDocs icon, with
+  **Configure…** to choose the mode.
+
 ## [0.3.0] - 2026-10-28
 
 Whole documentation sites from templates, company templates, a check of what TechDocs needs, and a sidebar of

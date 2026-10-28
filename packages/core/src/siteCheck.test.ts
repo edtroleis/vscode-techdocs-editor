@@ -1,4 +1,4 @@
-import { checkSite, pageRefs, SiteFinding, SiteSnapshot } from './siteCheck';
+import { catalogInfoSkeleton, checkSite, pageRefs, SiteFinding, SiteSnapshot } from './siteCheck';
 
 const MKDOCS = `# Site do time
 site_name: Pagamentos
@@ -109,7 +109,7 @@ describe('checkSite', () => {
     const findings = checkSite(
       site({ mkdocsYml: 'site_name: X\nplugins:\n  - techdocs-core\n', files: ['a.md'], pages: { 'a.md': '# A\n' }, catalog: undefined, lintConfigFile: undefined }),
     );
-    expect(codes(findings)).toEqual(['index-missing:index.md', 'catalog-missing:catalog-info.yaml', 'lint-config-missing:.markdownlint.yaml']);
+    expect(codes(findings)).toEqual(['index-missing:index.md', 'lint-config-missing:.markdownlint.yaml', 'catalog-missing:catalog-info.yaml']);
     expect(fixOf(findings, 'lint-config-missing')).toMatchObject({ file: '.markdownlint.yaml' });
     expect(fixOf(findings, 'lint-config-missing').apply(undefined)).toContain('default: true');
     expect(findings.find(f => f.code === 'catalog-missing')!.fix).toBeUndefined();
@@ -131,6 +131,43 @@ describe('checkSite', () => {
     expect(lint.map(f => `${f.file}:${f.target}:${Boolean(f.fix)}`)).toEqual(['svc/docs/b.md:1:true', 'svc/docs/index.md:1:false']);
     expect(lint[0].fix!.apply(pages['b.md'])).toBe('# B\n\ntexto\n');
     expect(codes(checkSite(site({ lintConfig: undefined, files: Object.keys(pages), pages })))).not.toContain('lint-problems:1');
+  });
+});
+
+describe('catalog-info.yaml por modo', () => {
+  const noCatalog = (over: Partial<SiteSnapshot> = {}) => site({ catalog: undefined, ...over });
+  const catalogFindings = (findings: SiteFinding[]) => findings.filter(f => f.code.startsWith('catalog-'));
+
+  it('auto (padrão): sem o arquivo, só uma dica, por último; com ele, confere a anotação', () => {
+    const findings = checkSite(noCatalog());
+    expect(catalogFindings(findings)).toEqual([{ code: 'catalog-missing', severity: 'hint', file: 'svc/mkdocs.yml', target: 'catalog-info.yaml' }]);
+    expect(findings[findings.length - 1].code).toBe('catalog-missing');
+    expect(codes(checkSite(site({ catalogMode: 'auto' })))).toContain('catalog-ref-missing:backstage.io/techdocs-ref: dir:./svc');
+  });
+
+  it('required: sem o arquivo, aviso com a correção que cria o esqueleto', () => {
+    const [finding] = catalogFindings(checkSite(noCatalog({ catalogMode: 'required', repository: { name: 'Serviço Pagamentos', owner: 'time-pag' } })));
+    expect(finding).toMatchObject({ code: 'catalog-missing', severity: 'warning', fix: { file: 'catalog-info.yaml' } });
+    expect(finding.fix!.apply(undefined)).toBe(
+      'apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: servico-pagamentos\n  annotations:\n    backstage.io/techdocs-ref: dir:./svc\nspec:\n  type: service\n  owner: time-pag\n  lifecycle: production\n',
+    );
+    // Criado por outra correção no meio do caminho: nada a fazer
+    expect(finding.fix!.apply('kind: Component\n')).toBe('kind: Component\n');
+    // O esqueleto já passa na conferência
+    const created = finding.fix!.apply(undefined);
+    expect(catalogFindings(checkSite(site({ catalogMode: 'required', catalog: { file: 'catalog-info.yaml', text: created } })))).toEqual([]);
+  });
+
+  it('required sem dono: placeholder; nome com o que sobrar de válido', () => {
+    const text = catalogInfoSkeleton({ name: '  Ação & Cia!! ', owner: ' Fulano de Tal ', annotation: 'backstage.io/techdocs-ref: dir:.' });
+    expect(text).toContain('  name: acao-cia\n');
+    expect(text).toContain('  owner: "Fulano de Tal"\n');
+    expect(catalogInfoSkeleton({ name: '!!!', annotation: 'x: y' })).toContain('  name: documentation\n  annotations:\n    x: y\nspec:\n  type: service\n  owner: unknown # the team');
+  });
+
+  it('off: nada sobre o catálogo, com ou sem o arquivo', () => {
+    expect(catalogFindings(checkSite(noCatalog({ catalogMode: 'off' })))).toEqual([]);
+    expect(catalogFindings(checkSite(site({ catalogMode: 'off' })))).toEqual([]);
   });
 });
 

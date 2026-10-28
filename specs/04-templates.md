@@ -281,7 +281,7 @@ publicação, o modo remoto e o plugin usarem a mesma. Parte **T3b**, logo depoi
 | `page-not-in-nav` | aviso | `addToNav` (T2), quando há `nav` em lista |
 | `catalog-ref-missing` | aviso | a anotação em `metadata.annotations` do `kind: Component` (ou do primeiro documento) |
 | `lint-problems` | aviso | um achado por página, com o total; correção se algum problema se corrige sozinho |
-| `catalog-missing` | info | nenhuma: criar um componente pede nome, dono e tipo |
+| `catalog-missing` | info | nenhuma: criar um componente pede nome, dono e tipo (na 0.4.0: dica, ou aviso com o esqueleto no modo `required`; ver abaixo) |
 | `lint-config-missing` | info | `.markdownlint.yaml` na raiz com as regras do setup (P7) |
 
 - **Links e imagens:** inline e por referência, fora de código; URLs, âncoras (`#`) e caminhos absolutos ficam
@@ -296,6 +296,31 @@ publicação, o modo remoto e o plugin usarem a mesma. Parte **T3b**, logo depoi
 - **Testes:** unitários (cada código, correções somadas e idempotentes, `plugins` em bloco, na mesma linha e com
   opções, anotação com e sem `annotations`, lint, links); integração desktop e web (achados no painel na linha
   certa, "Preparar" aplica as correções e o painel se atualiza, o link quebrado continua).
+
+### Como ficou o modo do catalog-info.yaml (0.4.0)
+
+Nem todo Backstage lê o `catalog-info.yaml` do repositório (repositório central de entidades, descoberta da
+organização, provedores), e há quem use só MkDocs. A conferência passou a ter um modo:
+
+| Modo | Sem `catalog-info.yaml` | Com ele, sem a anotação |
+|------|-------------------------|-------------------------|
+| `auto` (padrão) | `catalog-missing` como **dica** (`hint`): aparece, mas não conta no ícone e fica como dica no painel Problemas | aviso com a correção, como na T3b |
+| `required` | **aviso** com a correção que cria o esqueleto na raiz do repositório (`catalogInfoSkeleton`: `Component`, nome da pasta do repositório normalizado, a anotação `techdocs-ref` para o site, `type: service`, dono do `git config user.name` ou `unknown`, `lifecycle: production`) | aviso com a correção |
+| `off` | nada | nada |
+
+- **Onde fica:** `catalog: auto | required | off` no `.techdocs-editor.yaml` (`core/src/repoConfig.ts`, valor
+  inválido ignorado; `setCatalogMode` grava sem mexer no resto do arquivo) ou a configuração
+  `techdocsEditor.catalog`. O arquivo do repositório vence; sem confiança no workspace, só a configuração do
+  usuário vale (`extension/src/catalogOptions.ts`, `catalogModeFor`).
+- **Opções da verificação:** a engrenagem no título da seção Verificação (`techdocsEditor.checkOptions`) abre
+  os três modos (o atual marcado, com a origem) e depois "Para o time" (o `.techdocs-editor.yaml`, com o diff
+  antes) ou "Só para mim" (configuração global). A dica "Sem catalog-info.yaml" tem o mesmo comando como ação.
+  Confere de novo ao gravar e quando a configuração muda.
+- **Para o "Preparar":** `CatalogOptions.askUsage()` pergunta uma vez "Seu Backstage usa um catalog-info.yaml
+  no repositório?" (sim grava `required`, não grava `off`, "não sei" não grava nada).
+- **Testes:** unitários (os três modos, esqueleto com e sem dono, nome normalizado, o esqueleto passa na
+  conferência, `setCatalogMode` mantém comentários); integração desktop (só para mim, para o time vence a
+  configuração, a correção cria o esqueleto, `askUsage`).
 
 ## Pontos em aberto
 

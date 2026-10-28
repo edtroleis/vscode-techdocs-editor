@@ -1,4 +1,4 @@
-import { EMPTY_REPO_CONFIG, parseRepoConfig } from './repoConfig';
+import { EMPTY_REPO_CONFIG, parseRepoConfig, setCatalogMode } from './repoConfig';
 
 describe('.techdocs-editor.yaml', () => {
   it('lê o modo, o tempo para começar e as mensagens dos checks', () => {
@@ -39,5 +39,21 @@ verification:
     expect(parseRepoConfig('')).toEqual(EMPTY_REPO_CONFIG);
     expect(parseRepoConfig('outra: coisa')).toEqual(EMPTY_REPO_CONFIG);
     expect(parseRepoConfig('verification: texto')).toEqual(EMPTY_REPO_CONFIG);
+  });
+});
+
+describe('catalog no .techdocs-editor.yaml', () => {
+  it('lê o modo; valor inválido é ignorado', () => {
+    expect(parseRepoConfig('catalog: off\n').catalog).toBe('off');
+    expect(parseRepoConfig('catalog: required\n').catalog).toBe('required');
+    expect(parseRepoConfig('catalog: sim\n').catalog).toBeUndefined();
+    expect(parseRepoConfig('verification:\n  mode: editor\n').catalog).toBeUndefined();
+  });
+
+  it('grava o modo mantendo o resto do arquivo e os comentários', () => {
+    expect(setCatalogMode(undefined, 'off')).toBe('catalog: off\n');
+    const text = '# do time\nverification:\n  mode: editor # sem pipeline\n';
+    expect(setCatalogMode(text, 'required')).toBe(`${text}catalog: required\n`);
+    expect(setCatalogMode('catalog: off # antes\nverification:\n  mode: editor\n', 'auto')).toBe('catalog: auto # antes\nverification:\n  mode: editor\n');
   });
 });

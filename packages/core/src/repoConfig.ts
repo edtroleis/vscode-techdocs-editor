@@ -1,4 +1,4 @@
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml, parseDocument } from 'yaml';
 import type { GitHubClient } from './github';
 
 /**
@@ -12,11 +12,21 @@ import type { GitHubClient } from './github';
  *   startTimeoutSeconds: 600  # fila do CI demora para começar
  *   checkHelp:                # mensagem em linguagem simples por nome de job (somada às do portal)
  *     build: A documentação não pôde ser montada.
+ * catalog: off                # auto | required | off: o catalog-info.yaml na conferência (spec 04)
  * ```
  */
 export const REPO_CONFIG_FILE = '.techdocs-editor.yaml';
 
 export type VerificationMode = 'auto' | 'pipeline' | 'editor';
+
+/**
+ * O `catalog-info.yaml` na conferência do repositório: `auto` confere a anotação se o arquivo existe (sem ele, só
+ * uma dica), `required` exige o arquivo (o Backstage lê o do repositório) e `off` não fala dele (o Backstage
+ * registra a documentação de outro jeito).
+ */
+export type CatalogMode = 'auto' | 'required' | 'off';
+
+export const CATALOG_MODES: CatalogMode[] = ['auto', 'required', 'off'];
 
 export type RepoConfig = {
   verification: {
@@ -24,6 +34,7 @@ export type RepoConfig = {
     startTimeoutSeconds?: number;
     checkHelp: Record<string, string>;
   };
+  catalog?: CatalogMode;
 };
 
 export const EMPTY_REPO_CONFIG: RepoConfig = { verification: { checkHelp: {} } };
@@ -46,7 +57,9 @@ export function parseRepoConfig(text: string): RepoConfig {
   }
   const verification = isRecord(data) && isRecord(data.verification) ? data.verification : {};
   const { mode, startTimeoutSeconds, checkHelp } = verification;
+  const catalog = isRecord(data) ? data.catalog : undefined;
   return {
+    ...(CATALOG_MODES.includes(catalog as CatalogMode) && { catalog: catalog as CatalogMode }),
     verification: {
       mode: MODES.includes(mode as VerificationMode) ? (mode as VerificationMode) : undefined,
       startTimeoutSeconds:
@@ -58,6 +71,18 @@ export function parseRepoConfig(text: string): RepoConfig {
         : {},
     },
   };
+}
+
+/**
+ * O `.techdocs-editor.yaml` com `catalog: <mode>` (undefined: o arquivo ainda não existe). O resto do arquivo,
+ * comentários incluídos, fica como estava.
+ */
+export function setCatalogMode(text: string | undefined, mode: CatalogMode): string {
+  if (!text?.trim()) return `catalog: ${mode}\n`;
+  const doc = parseDocument(text);
+  if (doc.errors.length || !isRecord(doc.toJS())) return `${text.replace(/\n*$/, '\n')}catalog: ${mode}\n`;
+  doc.set('catalog', mode);
+  return doc.toString({ lineWidth: 0 });
 }
 
 /** A configuração do repositório na branch `ref`; sem o arquivo, a vazia. */

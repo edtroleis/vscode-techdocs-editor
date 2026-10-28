@@ -78,7 +78,8 @@ export class CheckView implements vscode.TreeDataProvider<CheckItem>, vscode.Dis
         const finding = item.finding!;
         const uri = vscode.Uri.joinPath(item.base!, finding.file);
         tree.tooltip = findingMessage(finding);
-        tree.contextValue = finding.fix ? 'fixable' : 'finding';
+        // Sem catalog-info.yaml no modo auto: "Configurar…" abre as opções da verificação
+        tree.contextValue = finding.fix ? 'fixable' : finding.code === 'catalog-missing' ? 'catalogHint' : 'finding';
         const line = Math.max(0, (finding.line ?? 1) - 1);
         tree.command = {
           command: 'vscode.open',
@@ -104,11 +105,12 @@ export class CheckView implements vscode.TreeDataProvider<CheckItem>, vscode.Dis
     this.roots = results.flatMap(result => {
       const groups = groupItems(result);
       if (single) return groups.length ? groups : [okItem()];
-      const site = new CheckItem('site', vscode.workspace.asRelativePath(result.mkdocs), undefined, undefined, findingsCount(result.findings.length));
+      const site = new CheckItem('site', vscode.workspace.asRelativePath(result.mkdocs), undefined, undefined, findingsCount(toReview(result.findings)));
       site.children.push(...(groups.length ? groups : [okItem()]));
       return [site];
     });
-    const total = results.reduce((sum, r) => sum + r.findings.length, 0);
+    // Dicas (ex.: sem catalog-info.yaml no modo auto) aparecem, mas não contam como itens a revisar
+    const total = results.reduce((sum, r) => sum + toReview(r.findings), 0);
     this.view.badge = total ? { value: total, tooltip: vscode.l10n.t('Items to review in the documentation: {0}', total) } : undefined;
     this.changeEmitter.fire();
   }
@@ -135,6 +137,8 @@ function groupItems({ base, findings }: SiteCheck): CheckItem[] {
 
 const okItem = () => new CheckItem('ok', vscode.l10n.t('Nothing missing or wrong'));
 
+const toReview = (findings: SiteFinding[]) => findings.filter(f => f.severity !== 'hint').length;
+
 const findingsCount = (count: number) => (count === 1 ? vscode.l10n.t('1 item') : vscode.l10n.t('{0} items', count));
 
 function severityIcon(severity: SiteFinding['severity']) {
@@ -142,7 +146,9 @@ function severityIcon(severity: SiteFinding['severity']) {
     ? new vscode.ThemeIcon('error', new vscode.ThemeColor('list.errorForeground'))
     : severity === 'warning'
       ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground'))
-      : new vscode.ThemeIcon('info');
+      : severity === 'hint'
+        ? new vscode.ThemeIcon('lightbulb')
+        : new vscode.ThemeIcon('info');
 }
 
 /** Título curto de cada tipo de achado (o texto completo fica na dica de cada item). */
