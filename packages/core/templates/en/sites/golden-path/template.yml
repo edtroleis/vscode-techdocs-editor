@@ -1,0 +1,13 @@
+version: 1
+name: Golden path
+description: The recommended path for a kind of service, with a tutorial and troubleshooting
+files:
+  - path: index.md
+    title: "{{site_name}}"
+    page: golden-path
+  - path: tutorial.md
+    title: Getting started
+    page: tutorial
+  - path: troubleshooting.md
+    title: Troubleshooting
+    page: troubleshooting

@@ -6,6 +6,7 @@ import { LocalSites } from './localSites';
 import { openVisualByDefault } from './openByDefault';
 import { PublishPanel } from './publish/publishPanel';
 import { NewPageCommand } from './templates/newPage';
+import { NewSiteCommand } from './templates/newSite';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -15,6 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
   const docs = new DocsTreeView(sites);
   const publish = new PublishPanel(context.extensionUri, sites, lint);
   const newPage = new NewPageCommand(sites, provider);
+  const newSite = new NewSiteCommand();
   context.subscriptions.push(
     publish,
     vscode.window.registerWebviewViewProvider(PublishPanel.viewId, publish),
@@ -37,13 +39,16 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.newPage', (target?: vscode.Uri | DocsItem) =>
       newPage.run(target instanceof vscode.Uri || target instanceof DocsItem ? target : undefined),
     ),
+    vscode.commands.registerCommand('techdocsEditor.newSite', (target?: vscode.Uri) =>
+      newSite.run(target instanceof vscode.Uri ? target : undefined),
+    ),
     vscode.commands.registerCommand('techdocsEditor.openText', (uri?: vscode.Uri) => {
       const target = uri ?? activeCustomEditorUri();
       if (target) return vscode.commands.executeCommand('vscode.openWith', target, 'default', vscode.ViewColumn.Beside);
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage };
+  return { provider, sites, lint, docs, publish, newPage, newSite };
 }
 
 function activeCustomEditorUri(): vscode.Uri | undefined {

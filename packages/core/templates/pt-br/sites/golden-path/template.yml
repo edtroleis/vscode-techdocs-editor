@@ -1,0 +1,13 @@
+version: 1
+name: Golden path
+description: O caminho recomendado para um tipo de serviço, com tutorial e solução de problemas
+files:
+  - path: index.md
+    title: "{{site_name}}"
+    page: golden-path
+  - path: tutorial.md
+    title: Primeiros passos
+    page: tutorial
+  - path: solucao-de-problemas.md
+    title: Solução de problemas
+    page: troubleshooting

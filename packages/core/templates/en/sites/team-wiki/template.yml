@@ -1,0 +1,17 @@
+version: 1
+name: Team wiki
+description: A team wiki, with onboarding, guides and free-form pages
+files:
+  - path: index.md
+    title: Home
+    source: home.md
+  - path: onboarding.md
+    title: Onboarding
+    page: onboarding
+  - path: guides/index.md
+    title: About the guides
+    section: Guides
+    source: guides.md
+  - path: example-page.md
+    title: Example page
+    page: wiki-page

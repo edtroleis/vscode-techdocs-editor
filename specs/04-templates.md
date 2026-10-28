@@ -70,10 +70,10 @@ Criam o `mkdocs.yml`, o `docs/` com as páginas e o `nav`. Para o TechDocs, dize
 | TP5 ✅ | Campos `{{nome}}` do template preenchidos na criação: `title` (o título), `date` (hoje, `AAAA-MM-DD`), `site_name` (do `mkdocs.yml`), `owner` (do `spec.owner` do `catalog-info.yaml` da raiz, se houver); os outros campos que o template declarar são perguntados um a um (com valor padrão, se o template der) |
 | TP6 ✅ | Site com `nav`: oferece pôr a página no `nav`, na seção onde ela foi criada (pela árvore) ou no fim; edita o `mkdocs.yml` mantendo comentários e formatação (API `Document` do `yaml`). Sem `nav`, nada a fazer: a pasta já define o menu |
 | TP7 ✅ | A página criada abre no editor visual, com o cursor no primeiro trecho a preencher (o texto de exemplo da primeira seção, selecionado: digitar o troca) |
-| TP8 ✅ (páginas; sites na T3) | Templates do repositório: arquivos `.md` em `.techdocs/templates/` (na raiz do workspace ou do site; o do site vale mais) e nas pastas de `techdocsEditor.templates.paths`. Site: uma pasta com `template.yml` e os arquivos. `techdocsEditor.templates.builtIn: false` esconde os da extensão |
+| TP8 ✅ | Templates do repositório: arquivos `.md` em `.techdocs/templates/` (na raiz do workspace ou do site; o do site vale mais) e nas pastas de `techdocsEditor.templates.paths`. Site: uma pasta com `template.yml` e os arquivos. `techdocsEditor.templates.builtIn: false` esconde os da extensão |
 | TP9 ✅ | Templates da extensão em inglês e português, pela língua do VS Code; os do repositório como estão |
 | TP10 | Modo remoto (fase 4): o mesmo fluxo, com a página criada por commit na branch do rascunho e os templates do repositório lidos pela API |
-| TP11 | "TechDocs: Novo site de documentação…": escolhe um template de site e a pasta (padrão: raiz do workspace, se não houver `mkdocs.yml`); cria os arquivos e mostra a anotação do `catalog-info.yaml` para copiar |
+| TP11 ✅ | "TechDocs: Novo site de documentação…": escolhe um template de site e a pasta (padrão: raiz do workspace, se não houver `mkdocs.yml`); cria os arquivos e mostra a anotação do `catalog-info.yaml` para copiar |
 
 ## Onde ficam e como evoluem (decidido em 2026-10-28)
 
@@ -120,7 +120,7 @@ Quem é afetado e como, enquanto o alerta está ativo.
 - O bloco `template:` sai da página criada; outras chaves do front matter (ex.: `tags`) ficam.
 - `{{campo}}` sem valor vira texto vazio; `{{` sem `}}` fica como está.
 - Site: `template.yml` com `name`, `description`, `fields` e a lista de arquivos (com `nav` opcional); os
-  arquivos usam os mesmos campos.
+  arquivos usam os mesmos campos. Formato na seção "Como ficou na T3".
 
 ## Conteúdo dos templates da extensão
 
@@ -150,6 +150,49 @@ Quem é afetado e como, enquanto o alerta está ativo.
 - **TA2** (instruções como comentário HTML) não foi provado na T1: os templates usam texto de exemplo. Fica para
   a T2.
 
+### Como ficou na T3
+
+- **Formato do site** (`template.yml`, sem bloco `template:`: a pasta já diz que é template):
+
+  ```yaml
+  version: 1
+  name: Docs de serviço
+  description: Documentação de um serviço do catálogo
+  fields:                  # como os dos templates de página
+    squad:
+      prompt: Squad
+  nav: true                # padrão; false deixa o menu pelas pastas
+  mkdocs:                  # outras chaves do mkdocs.yml (site_name, nav e plugins são da extensão)
+    markdown_extensions:
+      - admonition
+  files:
+    - path: index.md       # relativo ao docs/
+      title: "{{site_name}}"
+      page: service-home   # um template de página: o do repositório antes do da extensão
+    - path: adr/0001-registrar-decisoes-de-arquitetura.md
+      title: Registrar decisões de arquitetura
+      section: Decisões    # grupo no nav, na posição em que aparece primeiro
+      source: adr-0001.md  # arquivo da pasta do template
+  ```
+
+- **Código:** `core/src/siteTemplates.ts` (leitura, campos usados, páginas preenchidas, `mkdocs.yml`, anotação
+  do `catalog-info.yaml`), sem `vscode`. Os sites da extensão em `core/templates/<língua>/sites/<id>/`,
+  registrados em `BUILT_IN_SITES`. Comando em `extension/src/templates/newSite.ts`; a leitura dos templates do
+  repositório, comum aos dois comandos, em `templateSources.ts`.
+- **Pasta:** a clicada no Explorer; senão a raiz do workspace, se não tem `mkdocs.yml`; senão uma caixa de
+  pastas. Pasta com `mkdocs.yml` é recusada; página do site que já existe em `docs/` também (nada é gravado).
+- **Campos:** `site_name` sempre perguntado (sugestão: o nome da pasta); `title` é o de cada arquivo; `date`,
+  `owner` (TA1) e os campos do site e dos templates de página usados, perguntados uma vez para o site todo.
+- **Gravação:** as páginas primeiro, o `mkdocs.yml` por último (a árvore e o lint já acham as páginas); abre a
+  primeira página no editor visual.
+- **`catalog-info.yaml`:** o da pasta do site ou da raiz do workspace; se não tem a anotação, uma mensagem com
+  ela (caminho `dir:` relativo ao arquivo) e o botão "Copiar a anotação". O arquivo nunca é alterado.
+- **`builtIn: false`** esconde os sites da extensão da lista, mas um site do repositório pode usar um template
+  de página da extensão (`page`).
+- **Testes:** unitários (formato, campos, páginas, `mkdocs.yml` lido pela árvore, anotação); conteúdo (registro
+  completo, lint dos 6 sites, só campos automáticos); ida e volta das páginas `source` pelo editor; integração
+  desktop e web (site da extensão com `catalog-info.yaml` na raiz, recusas sem gravar nada, site do repositório).
+
 ## Segurança
 
 - Template é texto: nada é executado, nada vem da rede (no modo local).
@@ -175,7 +218,7 @@ T1 a T3b e T5 não dependem do modo remoto; só a T4 espera a fase 4.
 |-------|---------|
 | T1 ✅ | Formato, campos e criação de página no modo local (TP1 a TP5, TP7, TP9) com os 13 templates de página da v1. Feita em 2026-10-28: `core/src/templates.ts`, `core/templates/<língua>/`, comando `techdocsEditor.newPage` (paleta, árvore, Explorer). Testes: unitários (formato, campos, nome do arquivo, número, caminho), conteúdo (lint dos 26), ida e volta dos 26 pelo editor, integração desktop e web. Pendente do TP7: o cursor no primeiro trecho a preencher (a página abre no visual, com o cursor no início) |
 | T2 ✅ | `nav` (TP6 ✅: `addToNav` no `core`, insere uma linha só, pelas posições do `yaml`; a seção vem da árvore, senão a das páginas da mesma pasta, senão o fim), templates do repositório (TP8 ✅: site, workspace e `templates.paths`, o primeiro de cada id vale; na lista, separados por categoria com "este repositório" e a pasta; versão nova do formato aparece e avisa), cursor no primeiro trecho (TP7 ✅: `firstToFill` no `core` acha o texto de exemplo da primeira seção; o host manda `select` e o editor seleciona o trecho) e a prova do TA2 (feita: fica o texto de exemplo, ver TA2) |
-| T3 | Templates de site (TP11) |
+| T3 ✅ | Templates de site (TP11). Feita em 2026-10-28: comando `techdocsEditor.newSite` (paleta e Explorer), 3 sites da extensão em inglês e português, sites do repositório (`.techdocs/templates/<id>/template.yml`). Ver "Como ficou na T3" |
 | T3b | Conferir e preparar a documentação do repositório (seção acima) |
 | T4 | Modo remoto (TP10), junto com o que a fase 4 já entregou |
 | T5 | Templates de página depois da v1 (RFC, notas de versão, glossário) |

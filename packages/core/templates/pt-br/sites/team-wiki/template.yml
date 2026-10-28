@@ -1,0 +1,17 @@
+version: 1
+name: Wiki de time
+description: Wiki de um time, com onboarding, guias e páginas livres
+files:
+  - path: index.md
+    title: Início
+    source: home.md
+  - path: onboarding.md
+    title: Onboarding
+    page: onboarding
+  - path: guias/index.md
+    title: Sobre os guias
+    section: Guias
+    source: guides.md
+  - path: pagina-de-exemplo.md
+    title: Página de exemplo
+    page: wiki-page

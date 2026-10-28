@@ -116,6 +116,39 @@ template:
 Alerta: {{alert}}. Dono: {{owner}}. Revisado em {{date}}.
 ```
 
+#### Um site de documentação inteiro
+
+**TechDocs: Novo site de documentação…** (paleta de comandos ou clique direito numa pasta) cria o `mkdocs.yml`
+(com o `nav` e o plugin `techdocs-core`) e as páginas em `docs/`, na raiz do workspace ou na pasta escolhida.
+Nunca sobrescreve um arquivo e diz a anotação a pôr no `catalog-info.yaml` (`backstage.io/techdocs-ref: dir:.`)
+sem alterá-lo.
+
+| Site | Páginas |
+|------|---------|
+| Docs de serviço | Página inicial do serviço, Arquitetura, Operação e suporte e o primeiro ADR |
+| Wiki de time | Início (como usar a wiki), Onboarding, Guias, uma página de wiki de exemplo |
+| Golden path | Visão geral, tutorial de primeiros passos, Solução de problemas |
+
+Os seus templates de site são pastas em `.techdocs/templates/` com um `template.yml`: cada arquivo vem de um
+template de página (`page`, seu ou da extensão) ou de um arquivo da pasta (`source`).
+
+```yaml
+version: 1
+name: Serviço da plataforma
+description: Docs de um serviço da nossa plataforma
+fields:
+  squad:
+    prompt: Squad
+files:
+  - path: index.md
+    title: "{{site_name}}"
+    source: inicio.md        # .techdocs/templates/servico-plataforma/inicio.md
+  - path: runbooks/deploy-falhou.md
+    title: Deploy falhou
+    section: Runbooks        # um grupo no nav
+    page: runbook            # um template de página
+```
+
 ### Publicar sem sair do VS Code (opcional)
 
 Para quem prefere não lidar com branches e pull requests: ligue `techdocsEditor.local.publishPanel` e um
@@ -156,7 +189,7 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 |--------------|--------|-----------|
 | `techdocsEditor.openVisualByDefault` | `false` | Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto |
 | `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
-| `techdocsEditor.templates.paths` | `[]` | Mais pastas com templates de página, relativas à pasta do workspace (o `.techdocs/templates/` é sempre lido) |
+| `techdocsEditor.templates.paths` | `[]` | Mais pastas com templates de página e de site, relativas à pasta do workspace (o `.techdocs/templates/` é sempre lido) |
 | `techdocsEditor.templates.builtIn` | `true` | Oferece os templates que vêm com a extensão |
 | `techdocsEditor.local.publishPanel` | `false` | Mostra o painel **Publicação** |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch criada para o rascunho quando você está na branch principal |
@@ -185,6 +218,7 @@ Corrigir a formatação ao salvar:
 | **TechDocs: Abrir no editor visual** | Abre o arquivo `.md` atual no editor visual |
 | **TechDocs: Abrir como texto Markdown** | Abre o texto da página ao lado do editor visual |
 | **TechDocs: Nova página a partir de template…** | Cria uma página de documentação a partir de um template e abre no editor visual |
+| **TechDocs: Novo site de documentação…** | Cria o `mkdocs.yml` e as páginas de um site de documentação a partir de um template |
 
 ## Onde o lint acha a configuração
 
@@ -213,8 +247,8 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 - VS Code 1.100 ou mais novo.
 - Funciona em pastas locais e clones (modo local). O Git continua com o controle de versão do VS Code.
 - O painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
-- Ainda não: o modo remoto (editar um repositório do GitHub sem clonar), o VS Code para a Web e templates
-  de sites inteiros. Veja o [plano](specs/00-visao-geral.md#fases).
+- Ainda não: o modo remoto (editar um repositório do GitHub sem clonar) e o VS Code para a Web. Veja o
+  [plano](specs/00-visao-geral.md#fases).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.
 - Algumas construções avançadas do Material for MkDocs, como grid cards e blocos HTML com `markdown`, ainda
   estão sendo reforçadas. Confira o diff antes de commitar páginas que as usam.

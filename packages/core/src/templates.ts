@@ -33,6 +33,17 @@ const FRONT_MATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 
 const text = (value: unknown, fallback = '') => (typeof value === 'string' ? value : value == null ? fallback : String(value));
 
+/** Campos declarados em `fields:` (os automáticos, menos `owner`, não entram: são preenchidos sem perguntar). */
+export function parseFields(node: unknown): TemplateField[] {
+  if (!node || typeof node !== 'object' || Array.isArray(node)) return [];
+  return Object.entries(node as Record<string, unknown>)
+    .filter(([name]) => !AUTOMATIC_FIELDS.includes(name) || name === 'owner')
+    .map(([name, value]) => {
+      const field = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+      return { name, prompt: text(field.prompt, name), default: text(field.default) };
+    });
+}
+
 /**
  * Lê um template: o bloco `template:` do front matter e o corpo. Arquivo sem o bloco não é template
  * (undefined): numa pasta de templates, um README ao lado não vira opção.
@@ -45,16 +56,7 @@ export function parseTemplate(id: string, source: string): DocTemplate | undefin
   const meta = doc.get('template', true);
   if (!isMap(meta)) return undefined;
   const info = meta.toJSON() as Record<string, unknown>;
-  const fieldsNode = info.fields;
-  const fields: TemplateField[] =
-    fieldsNode && typeof fieldsNode === 'object' && !Array.isArray(fieldsNode)
-      ? Object.entries(fieldsNode as Record<string, unknown>)
-          .filter(([name]) => !AUTOMATIC_FIELDS.includes(name) || name === 'owner')
-          .map(([name, value]) => {
-            const field = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
-            return { name, prompt: text(field.prompt, name), default: text(field.default) };
-          })
-      : [];
+  const fields = parseFields(info.fields);
   const category = TEMPLATE_CATEGORIES.includes(info.category as TemplateCategory) ? (info.category as TemplateCategory) : 'reference';
   const version = typeof info.version === 'number' ? info.version : 1;
 
@@ -76,7 +78,7 @@ export function parseTemplate(id: string, source: string): DocTemplate | undefin
 }
 
 /** O template é de uma versão do formato mais nova que esta extensão: aparece desligado. */
-export const isTemplateSupported = (template: DocTemplate) => template.version <= TEMPLATE_FORMAT_VERSION;
+export const isTemplateSupported = (template: { version: number }) => template.version <= TEMPLATE_FORMAT_VERSION;
 
 /** Troca `{{campo}}` pelo valor; campo sem valor vira vazio; `{{` sem `}}` fica como está. */
 export const fillTemplate = (body: string, values: Record<string, string>) =>

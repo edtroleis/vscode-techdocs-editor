@@ -103,5 +103,22 @@
   "There are no page templates: the built-in ones are turned off and the repository has none.": "Não há templates de página: os da extensão estão desligados e o repositório não tem nenhum.",
   "{0} · this repository": "{0} · este repositório",
   "needs a newer version of the extension": "precisa de uma versão mais nova da extensão",
-  "The template \"{0}\" uses a newer format. Update the TechDocs Editor extension to use it.": "O template \"{0}\" usa um formato mais novo. Atualize a extensão TechDocs Editor para usá-lo."
+  "The template \"{0}\" uses a newer format. Update the TechDocs Editor extension to use it.": "O template \"{0}\" usa um formato mais novo. Atualize a extensão TechDocs Editor para usá-lo.",
+  "There is already a {0} in {1}.": "Já existe um {0} em {1}.",
+  "The site template \"{0}\" is incomplete: {1} not found.": "O template de site \"{0}\" está incompleto: {1} não encontrado.",
+  "These files already exist in {0}: {1}": "Estes arquivos já existem em {0}: {1}",
+  "Open a folder first: the site is created inside it.": "Abra uma pasta primeiro: o site é criado dentro dela.",
+  "The workspace root already has a mkdocs.yml. Choose a folder for the new site": "A raiz do workspace já tem um mkdocs.yml. Escolha uma pasta para o site novo",
+  "Create the site here": "Criar o site aqui",
+  "There are no site templates: the built-in ones are turned off and the repository has none.": "Não há templates de site: os da extensão estão desligados e o repositório não tem nenhum.",
+  "This repository": "Este repositório",
+  "Built in": "Da extensão",
+  "New documentation site": "Novo site de documentação",
+  "Choose the kind of site": "Escolha o tipo de site",
+  "Name of the site (site_name in mkdocs.yml)": "Nome do site (site_name no mkdocs.yml)",
+  "Type a name": "Digite um nome",
+  "Team or person who owns this documentation": "Time ou pessoa dona desta documentação",
+  "Copy annotation": "Copiar a anotação",
+  "Site created. For TechDocs to publish it, add to metadata.annotations in {0}: {1}": "Site criado. Para o TechDocs publicá-lo, adicione em metadata.annotations do {0}: {1}",
+  "Site created in {0}. For TechDocs to publish it, add to metadata.annotations in the catalog-info.yaml of the component: {1}": "Site criado em {0}. Para o TechDocs publicá-lo, adicione em metadata.annotations do catalog-info.yaml do componente: {1}"
 }

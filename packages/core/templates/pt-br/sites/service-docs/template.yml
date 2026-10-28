@@ -1,0 +1,17 @@
+version: 1
+name: Docs de serviço
+description: Documentação de um serviço do catálogo, com arquitetura, operação e decisões
+files:
+  - path: index.md
+    title: "{{site_name}}"
+    page: service-home
+  - path: architecture.md
+    title: Arquitetura
+    page: architecture
+  - path: operations.md
+    title: Operação e suporte
+    page: operations
+  - path: adr/0001-registrar-decisoes-de-arquitetura.md
+    title: Registrar decisões de arquitetura
+    section: Decisões
+    source: adr-0001.md

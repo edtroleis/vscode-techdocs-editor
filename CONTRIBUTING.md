@@ -72,6 +72,10 @@ Built-in templates live in `packages/core/templates/<language>/<id>.md`, one fil
 - `npm run test:webview`: the page opens in the visual editor without a single change (tables aligned, short
   lines, only Markdown the editor edits).
 
+Built-in site templates live in `packages/core/templates/<language>/sites/<id>/` (a `template.yml` and the
+`source` files it lists), registered in `BUILT_IN_SITES` in the same file. The same two suites build each site
+and check every page.
+
 ## Releasing
 
 1. Bump `version` in `packages/extension/package.json` and turn `## [Unreleased]` in `CHANGELOG.md` into

@@ -73,7 +73,7 @@ até a fase 7.
 | 4. **Modo remoto (desktop)** | `FileSystemProvider` do GitHub, Salvar rascunho / Salvar e verificar / Enviar / Descartar / Histórico, conflitos por SHA | Mesmos cenários do `test:editor:portal` do plugin, com o GitHub simulado |
 | 5. **Web e Dev Spaces** | Build `browser` (vscode.dev), Open VSX, devfile de exemplo | Suíte no `@vscode/test-web`; instalação no Dev Spaces |
 | 6. **Publicar** | Marketplace + Open VSX, README com GIFs, changelog | Release automatizada, pacote verificado |
-| T. **Templates** (T1 adiantada; T4 depois da fase 4) | Nova página ou site a partir de template, com campos e `nav`; conferir e preparar a estrutura do MkDocs no repositório (spec 04, T1 a T5 e T3b). **T1 ✅** e **T2 ✅** (2026-10-28) | Testes da spec 04; templates da extensão com lint limpo e ida e volta idêntica |
+| T. **Templates** (T1 adiantada; T4 depois da fase 4) | Nova página ou site a partir de template, com campos e `nav`; conferir e preparar a estrutura do MkDocs no repositório (spec 04, T1 a T5 e T3b). **T1 ✅**, **T2 ✅** e **T3 ✅** (2026-10-28) | Testes da spec 04; templates da extensão com lint limpo e ida e volta idêntica |
 | 7. **Depois: plugin** (fora do foco atual) | Publicar `core`/`ui` no npm, o plugin passa a consumi-los, e "Abrir no VS Code" no lápis do plugin (spec 02, B2) | Suítes do plugin verdes, sem mudança de comportamento |
 
 ## Pontos em aberto

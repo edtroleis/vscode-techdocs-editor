@@ -6,6 +6,16 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **TechDocs: New documentation site…**: creates `mkdocs.yml` (with the `nav` and the `techdocs-core` plugin)
+  and the pages in `docs/` from a site template: Service docs, Team wiki or Golden path. In the workspace root,
+  or in the folder you right-click; never over an existing file. Then it shows the `catalog-info.yaml`
+  annotation for TechDocs, ready to copy, without changing the file.
+- Site templates of your own: folders with a `template.yml` in `.techdocs/templates/` (and in
+  `techdocsEditor.templates.paths`). Each page comes from a page template, yours or a built-in one, or from a
+  file in the folder.
+
 ## [0.2.0] - 2026-10-28
 
 Templates of your own and pages that go straight into the site menu.

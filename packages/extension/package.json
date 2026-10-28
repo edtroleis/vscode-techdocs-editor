@@ -82,6 +82,12 @@
         "title": "%command.newPage%",
         "category": "TechDocs",
         "icon": "$(new-file)"
+      },
+      {
+        "command": "techdocsEditor.newSite",
+        "title": "%command.newSite%",
+        "category": "TechDocs",
+        "icon": "$(book)"
       }
     ],
     "menus": {
@@ -144,6 +150,11 @@
         {
           "command": "techdocsEditor.newPage",
           "when": "explorerResourceIsFolder && techdocsEditor.hasDocs",
+          "group": "navigation@9"
+        },
+        {
+          "command": "techdocsEditor.newSite",
+          "when": "explorerResourceIsFolder",
           "group": "navigation@9"
         }
       ]

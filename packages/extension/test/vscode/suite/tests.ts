@@ -11,6 +11,7 @@ import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { NewPageCommand } from '../../../src/templates/newPage';
+import type { NewSiteCommand } from '../../../src/templates/newSite';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
 function equal<T>(actual: T, expected: T, message: string) {
@@ -34,7 +35,14 @@ async function until<T>(read: () => T | Promise<T>, accept: (value: T) => boolea
   return value;
 }
 
-type Api = { provider: VisualEditorProvider; sites: LocalSites; lint: LintService; docs: DocsTreeView; newPage: NewPageCommand };
+type Api = {
+  provider: VisualEditorProvider;
+  sites: LocalSites;
+  lint: LintService;
+  docs: DocsTreeView;
+  newPage: NewPageCommand;
+  newSite: NewSiteCommand;
+};
 
 async function api(): Promise<Api> {
   const extension = vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor');
@@ -551,6 +559,68 @@ export function defineTests() {
       } finally {
         await config.update('builtIn', undefined, vscode.ConfigurationTarget.Workspace);
         for (const path of ['.techdocs', 'wiki/.techdocs', 'wiki/docs/disco-cheio.md', 'wiki/docs/local.md', 'wiki/docs/z.md']) await remove(path);
+      }
+    });
+
+    test('novo site: mkdocs.yml com nav e techdocs-core, páginas no docs/, site reconhecido e anotação do catalog-info.yaml', async () => {
+      const { newSite, sites, docs } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      await write('catalog-info.yaml', 'apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: pag\nspec:\n  owner: time-pag\n');
+      try {
+        const result = await newSite.run(undefined, { template: 'service-docs', folder: file('site-novo'), values: { site_name: 'Pagamentos' } });
+        ok(result?.mkdocs.path.endsWith('/site-novo/mkdocs.yml'), `mkdocs.yml: ${result?.mkdocs.path}`);
+        equal(result?.annotation, 'backstage.io/techdocs-ref: dir:./site-novo', 'anotação relativa ao catalog-info.yaml da raiz');
+        const yml = await read('site-novo/mkdocs.yml');
+        ok(yml.startsWith('site_name: Pagamentos\nnav:\n'), `mkdocs.yml: ${yml}`);
+        ok(/plugins:\n {2}- techdocs-core\n/.test(yml), `sem techdocs-core: ${yml}`);
+        const home = await read('site-novo/docs/index.md');
+        ok(home.startsWith('# Pagamentos\n') && home.includes('time-pag') && !home.includes('{{'), `index.md: ${home.slice(0, 120)}`);
+        ok((await read('site-novo/docs/adr/0001-record-architecture-decisions.md')).includes('Status: Accepted'), 'primeiro ADR');
+        await until(() => sites.list().some(s => s.mkdocs.path.endsWith('/site-novo/mkdocs.yml')), Boolean, 'site novo não reconhecido');
+        const site = await until(
+          async () => {
+            await docs.ready;
+            return docs.getChildren().find(item => item.kind === 'site' && item.description === 'site-novo');
+          },
+          Boolean,
+          'site novo não apareceu na árvore',
+        );
+        const labels = docs.getChildren(site!).map(item => item.label);
+        equal(labels.join(', '), 'Pagamentos, Architecture, Operations and support, Decisions', 'árvore pelo nav');
+        equal(vscode.window.tabGroups.activeTabGroup.activeTab?.label, 'index.md', 'a primeira página abre');
+
+        // Nunca por cima: mkdocs.yml na pasta ou uma página do site já existente
+        equal(await newSite.run(undefined, { template: 'team-wiki', folder: file('site-novo'), values: { site_name: 'X' } }), undefined, 'criou onde já há mkdocs.yml');
+        await write('outro/docs/index.md', '# Minha\n');
+        equal(await newSite.run(undefined, { template: 'team-wiki', folder: file('outro'), values: { site_name: 'X', owner: 'y' } }), undefined, 'sobrescreveu docs/index.md');
+        equal(await read('outro/docs/index.md'), '# Minha\n', 'a página existente mudou');
+        ok(!(await vscode.workspace.fs.stat(file('outro/mkdocs.yml')).then(() => true, () => false)), 'criou o mkdocs.yml mesmo recusando');
+      } finally {
+        for (const path of ['catalog-info.yaml', 'site-novo', 'outro']) await remove(path);
+      }
+    });
+
+    test('template de site do repositório: arquivos da pasta dele, página do template do repositório e campo do site', async () => {
+      const { newSite } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      await write(
+        '.techdocs/templates/plataforma/template.yml',
+        'name: Site da plataforma\nfields:\n  squad:\n    prompt: Squad\nfiles:\n  - path: index.md\n    title: Início\n    source: inicio.md\n  - path: guias/deploy.md\n    title: Deploy\n    section: Guias\n    page: guide\n',
+      );
+      await write('.techdocs/templates/plataforma/inicio.md', '# {{site_name}}\n\nSquad {{squad}}.\n');
+      await write('.techdocs/templates/guide.md', '---\ntemplate:\n  name: Guia da empresa\n  category: guide\n---\n\n# {{title}}\n\nDo repositório.\n');
+      try {
+        const result = await newSite.run(file('site-repo'), { template: 'plataforma', values: { site_name: 'Plataforma', squad: 'Alfa' } });
+        equal(result?.annotation, 'backstage.io/techdocs-ref: dir:.', 'sem catalog-info.yaml: a anotação para o da própria pasta');
+        equal(await read('site-repo/docs/index.md'), '# Plataforma\n\nSquad Alfa.\n', 'arquivo da pasta do template');
+        equal(await read('site-repo/docs/guias/deploy.md'), '# Deploy\n\nDo repositório.\n', 'template de página do repositório');
+        equal(
+          await read('site-repo/mkdocs.yml'),
+          'site_name: Plataforma\nnav:\n  - Início: index.md\n  - Guias:\n      - Deploy: guias/deploy.md\nplugins:\n  - techdocs-core\n',
+          'mkdocs.yml',
+        );
+      } finally {
+        for (const path of ['.techdocs', 'site-repo']) await remove(path);
       }
     });
 

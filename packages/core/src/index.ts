@@ -9,6 +9,7 @@ export * from './pageDates';
 export * from './publish';
 export * from './repoConfig';
 export * from './setup';
+export * from './siteTemplates';
 export * from './syncMain';
 export * from './templates';
 export * from './verification';

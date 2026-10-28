@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import {
   addToNav,
-  catalogOwner,
   DocTemplate,
   fileNameFor,
   fillTemplate,
@@ -10,25 +9,32 @@ import {
   mergeTemplates,
   nextNumber,
   pagePath,
-  parseTemplate,
   siteName,
   TemplateCategory,
   today,
   usedFields,
 } from '@edtroleis/techdocs-editor-core';
-import { BUILT_IN_TEMPLATES, templateLanguage } from '@edtroleis/techdocs-editor-core/src/builtInTemplates';
 import type { DocsSite } from '../docsSite';
 import { DocsItem } from '../docsTreeView';
 import type { LocalSites } from '../localSites';
-import { gitApi } from '../publish/vscodeGit';
 import { VisualEditorProvider } from '../visualEditorProvider';
+import {
+  builtInEnabled,
+  builtInPageTemplates,
+  exists,
+  fileNames,
+  gitUserName,
+  ownerFromCatalog,
+  PageChoice,
+  readText,
+  repositoryPageTemplates,
+  templateFolders,
+} from './templateSources';
 
 /** Respostas prontas, para os testes de integração (sem as caixas de escolha). */
 export type NewPageAnswers = { template: string; title: string; path?: string; values?: Record<string, string>; nav?: boolean };
 
 type Site = { mkdocs: vscode.Uri; site: DocsSite };
-/** Template da lista: da extensão ou do repositório (com a pasta de onde veio, TP2). */
-type Choice = { template: DocTemplate; origin: 'builtIn' } | { template: DocTemplate; origin: 'repository'; source: string };
 
 const categoryLabel = (category: TemplateCategory) =>
   ({
@@ -37,23 +43,6 @@ const categoryLabel = (category: TemplateCategory) =>
     reference: vscode.l10n.t('Look up (reference)'),
     explanation: vscode.l10n.t('Understand (explanation)'),
   })[category];
-
-const exists = async (uri: vscode.Uri) => {
-  try {
-    await vscode.workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const readText = async (uri: vscode.Uri) => {
-  try {
-    return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
-  } catch {
-    return undefined;
-  }
-};
 
 /**
  * "TechDocs: Nova página a partir de template…" (spec 04, T1): escolhe o template, o título e o
@@ -88,7 +77,7 @@ export class NewPageCommand {
     const base = folder || template.folder || '';
     const baseUri = base ? vscode.Uri.joinPath(docsDir, base) : docsDir;
     let fileName = fileNameFor(title);
-    if (template.numbered) fileName = `${nextNumber(await this.fileNames(baseUri))}-${fileName}`;
+    if (template.numbered) fileName = `${nextNumber(await fileNames(baseUri))}-${fileName}`;
     const suggested = base ? `${base}/${fileName}` : fileName;
     const validate = async (value: string) => {
       const path = pagePath('', value.trim());
@@ -177,47 +166,16 @@ export class NewPageCommand {
    * das pastas de `techdocsEditor.templates.paths`, nessa ordem (o primeiro de cada id vale), e os da extensão,
    * a não ser com `techdocsEditor.templates.builtIn: false`.
    */
-  private async templates(site: Site): Promise<Choice[]> {
-    const config = vscode.workspace.getConfiguration('techdocsEditor.templates', site.mkdocs);
-    const workspace = vscode.workspace.getWorkspaceFolder(site.mkdocs)?.uri;
-    const folders = [
-      vscode.Uri.joinPath(site.mkdocs.with({ path: site.site.root }), '.techdocs', 'templates'),
-      ...(workspace ? [vscode.Uri.joinPath(workspace, '.techdocs', 'templates')] : []),
-      ...config
-        .get<string[]>('paths', [])
-        .filter(path => typeof path === 'string' && path.trim())
-        .flatMap(path => (path.startsWith('/') ? [site.mkdocs.with({ path })] : workspace ? [vscode.Uri.joinPath(workspace, path)] : [])),
-    ].filter((folder, i, all) => all.findIndex(f => f.toString() === folder.toString()) === i);
-
-    const repository: Choice[] = [];
-    const ids = new Set<string>();
-    for (const folder of folders) {
-      const source = vscode.workspace.asRelativePath(folder);
-      for (const name of (await this.fileNames(folder)).filter(n => n.toLowerCase().endsWith('.md')).sort()) {
-        const id = name.slice(0, -3);
-        if (ids.has(id)) continue;
-        const text = await readText(vscode.Uri.joinPath(folder, name));
-        const template = text === undefined ? undefined : parseTemplate(id, text);
-        if (!template) continue;
-        ids.add(id);
-        repository.push({ template, origin: 'repository', source });
-      }
-    }
-    const language = templateLanguage(vscode.env.language);
-    const builtIn = config.get<boolean>('builtIn', true)
-      ? Object.entries(BUILT_IN_TEMPLATES[language])
-          .map(([id, text]) => parseTemplate(id, text))
-          .filter((t): t is DocTemplate => Boolean(t))
-          .map(template => ({ template, origin: 'builtIn' as const }))
-      : [];
-    return mergeTemplates<Choice>(repository, builtIn);
+  private async templates(site: Site): Promise<PageChoice[]> {
+    const repository = await repositoryPageTemplates(templateFolders(site.mkdocs.with({ path: site.site.root }), site.mkdocs));
+    return mergeTemplates<PageChoice>(repository, builtInEnabled(site.mkdocs) ? builtInPageTemplates() : []);
   }
 
   /**
    * Lista agrupada por categoria (TP2), com os do repositório primeiro e a pasta de onde vieram. Template de
    * uma versão do formato mais nova que a extensão aparece, mas não é usado.
    */
-  private async pickTemplate(site: Site, id: string | undefined): Promise<Choice | undefined> {
+  private async pickTemplate(site: Site, id: string | undefined): Promise<PageChoice | undefined> {
     const choices = await this.templates(site);
     if (!choices.length) {
       void vscode.window.showWarningMessage(
@@ -225,11 +183,11 @@ export class NewPageCommand {
       );
       return undefined;
     }
-    let choice: Choice | undefined;
+    let choice: PageChoice | undefined;
     if (id) {
       choice = choices.find(c => c.template.id === id);
     } else {
-      type Item = vscode.QuickPickItem & { choice?: Choice };
+      type Item = vscode.QuickPickItem & { choice?: PageChoice };
       const items: Item[] = [];
       let group: string | undefined;
       for (const c of choices) {
@@ -277,12 +235,12 @@ export class NewPageCommand {
       values.site_name = siteName(await readText(site.mkdocs)) ?? '';
     }
     if (used.includes('owner') && values.owner === undefined) {
-      const owner = await this.catalogOwner(site);
+      const owner = await ownerFromCatalog([site.mkdocs.with({ path: site.site.root }), vscode.workspace.getWorkspaceFolder(site.mkdocs)?.uri]);
       if (owner) values.owner = owner;
     }
     const asked = [
       ...(used.includes('owner') && values.owner === undefined
-        ? [{ name: 'owner', prompt: vscode.l10n.t('Team or person who owns this page'), default: await gitUserName(site) }]
+        ? [{ name: 'owner', prompt: vscode.l10n.t('Team or person who owns this page'), default: await gitUserName(site.mkdocs) }]
         : []),
       ...template.fields.filter(f => f.name !== 'owner' && used.includes(f.name) && values[f.name] === undefined),
     ];
@@ -313,26 +271,6 @@ export class NewPageCommand {
     const choice = await askNav(insertion.section);
     if (!choice) return null;
     return choice === 'add' ? write : undefined;
-  }
-
-  /** `spec.owner` do `catalog-info.yaml` da raiz do site ou do workspace (TA1). */
-  private async catalogOwner(site: Site) {
-    const roots = [site.mkdocs.with({ path: site.site.root }), vscode.workspace.getWorkspaceFolder(site.mkdocs)?.uri];
-    for (const root of roots) {
-      if (!root) continue;
-      const text = await readText(vscode.Uri.joinPath(root, 'catalog-info.yaml'));
-      const owner = text && catalogOwner(text);
-      if (owner) return owner;
-    }
-    return undefined;
-  }
-
-  private async fileNames(folder: vscode.Uri): Promise<string[]> {
-    try {
-      return (await vscode.workspace.fs.readDirectory(folder)).map(([name]) => name);
-    } catch {
-      return [];
-    }
   }
 }
 
@@ -372,14 +310,4 @@ function firstPage(item: DocsItem): DocsItem | undefined {
 function activeCustomEditorUri(): vscode.Uri | undefined {
   const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
   return input instanceof vscode.TabInputCustom ? input.uri : undefined;
-}
-
-/** `user.name` do Git do repositório do site, como sugestão para o dono (TA1). */
-async function gitUserName(site: Site): Promise<string> {
-  try {
-    const repository = (await gitApi())?.getRepository(site.mkdocs) as { getConfig?(key: string): Promise<string> } | null | undefined;
-    return (await repository?.getConfig?.('user.name')) ?? '';
-  } catch {
-    return '';
-  }
 }

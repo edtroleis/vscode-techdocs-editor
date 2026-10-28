@@ -115,6 +115,39 @@ template:
 Alert: {{alert}}. Owner: {{owner}}. Reviewed on {{date}}.
 ```
 
+#### A whole documentation site
+
+**TechDocs: New documentation site…** (command palette, or right-click on a folder) creates `mkdocs.yml`
+(with the `nav` and the `techdocs-core` plugin) and the pages in `docs/`, in the workspace root or in the folder
+you chose. It never overwrites a file, and it tells you the annotation to add to `catalog-info.yaml`
+(`backstage.io/techdocs-ref: dir:.`) without changing it.
+
+| Site | Pages |
+|------|-------|
+| Service docs | Service home page, Architecture, Operations and support, and the first ADR |
+| Team wiki | Home (how to use the wiki), Onboarding, Guides, an example wiki page |
+| Golden path | Overview, Getting started tutorial, Troubleshooting |
+
+Your own site templates are folders in `.techdocs/templates/` with a `template.yml`: each file comes from a
+page template (`page`, yours or a built-in one) or from a file in the folder (`source`).
+
+```yaml
+version: 1
+name: Platform service
+description: Docs of a service on our platform
+fields:
+  squad:
+    prompt: Squad
+files:
+  - path: index.md
+    title: "{{site_name}}"
+    source: home.md          # .techdocs/templates/platform-service/home.md
+  - path: runbooks/deploy-failed.md
+    title: Deploy failed
+    section: Runbooks        # a group in the nav
+    page: runbook            # a page template
+```
+
 ### Publish without leaving VS Code (optional)
 
 For people who would rather not deal with branches and pull requests: turn on
@@ -155,7 +188,7 @@ To always open documentation pages in the visual editor, turn on `techdocsEditor
 |---------|---------|--------------|
 | `techdocsEditor.openVisualByDefault` | `false` | Open pages inside a MkDocs `docs_dir` in the visual editor instead of the text |
 | `techdocsEditor.images.maxSizeMB` | `5` | Largest image the visual editor saves to `assets`. Images go into the repository: large files weigh on every clone |
-| `techdocsEditor.templates.paths` | `[]` | More folders with page templates, relative to the workspace folder (`.techdocs/templates/` is always read) |
+| `techdocsEditor.templates.paths` | `[]` | More folders with page and site templates, relative to the workspace folder (`.techdocs/templates/` is always read) |
 | `techdocsEditor.templates.builtIn` | `true` | Offer the templates that come with the extension |
 | `techdocsEditor.local.publishPanel` | `false` | Show the **Publishing** panel |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch created for a draft when you are on the default branch |
@@ -184,6 +217,7 @@ Fix formatting on save:
 | **TechDocs: Open in visual editor** | Opens the current `.md` file in the visual editor |
 | **TechDocs: Open as Markdown text** | Opens the text of the page side by side with the visual editor |
 | **TechDocs: New page from template…** | Creates a documentation page from a template and opens it in the visual editor |
+| **TechDocs: New documentation site…** | Creates `mkdocs.yml` and the pages of a documentation site from a template |
 
 ## How the lint finds its configuration
 
@@ -211,8 +245,8 @@ otherwise). Only pages inside a `docs_dir` are checked.
 - VS Code 1.100 or later.
 - Works on local folders and clones (local mode). Git stays with VS Code's source control.
 - The publishing panel needs a clone with a GitHub remote and VS Code's Git extension.
-- Not yet: the remote mode (edit a repository on GitHub without cloning it), VS Code for the Web, and
-  templates of whole documentation sites. See the [roadmap](specs/00-visao-geral.md#fases).
+- Not yet: the remote mode (edit a repository on GitHub without cloning it) and VS Code for the Web. See the
+  [roadmap](specs/00-visao-geral.md#fases).
 - Math (LaTeX) is off, as in TechDocs' default MkDocs setup.
 - Some advanced Material for MkDocs constructs, such as grid cards and HTML blocks with `markdown`, are still
   being hardened. Review the diff before committing pages that use them.

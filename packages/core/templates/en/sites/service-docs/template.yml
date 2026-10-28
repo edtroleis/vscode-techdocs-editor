@@ -1,0 +1,17 @@
+version: 1
+name: Service docs
+description: Documentation of a service in the catalog, with architecture, operations and decisions
+files:
+  - path: index.md
+    title: "{{site_name}}"
+    page: service-home
+  - path: architecture.md
+    title: Architecture
+    page: architecture
+  - path: operations.md
+    title: Operations and support
+    page: operations
+  - path: adr/0001-record-architecture-decisions.md
+    title: Record architecture decisions
+    section: Decisions
+    source: adr-0001.md
