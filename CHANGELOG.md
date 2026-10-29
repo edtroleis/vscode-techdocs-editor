@@ -6,6 +6,10 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-29
+
+Conflicts on GitHub pages, and a cleaner sidebar in workspaces with many repositories.
+
 ### Added
 
 - **Conflicts on GitHub pages.** When your draft changed in another window, saving merges the two

@@ -228,6 +228,10 @@ anything opens.
 - **The Publishing panel** appears for pages from GitHub, with the same buttons as in local mode: **Save and
   check** runs the pipeline and opens a draft pull request, **Send** marks it ready, **Discard** deletes the
   draft. When the merge is done on GitHub, the panel says the page is published.
+- **Conflicts:** if your draft changed in another window, saving merges the two versions when they changed
+  different passages. When they changed the same passage, a screen shows both side by side and you choose,
+  passage by passage, which stays (or both). What was published after your draft started comes into it by
+  itself; if it changed the same passage, the panel holds the pull request until you **Resolve conflict**.
 - Without signing in, or without write access, pages are read-only; **Sign in to GitHub** in the panel reopens
   the page from your draft, ready to edit.
 
@@ -346,8 +350,7 @@ otherwise). Only pages inside a `docs_dir` are checked.
 - VS Code 1.100 or later.
 - Works on local folders and clones (local mode). Git stays with VS Code's source control.
 - In local mode, the publishing panel needs a clone with a GitHub remote and VS Code's Git extension.
-- Remote mode, not yet: resolving a page that changed on GitHub while you edited it (for now, close it and open
-  it again), the page history, a warning about someone else's pull request on the same page, new pages from
+- Remote mode, not yet: the page history, a warning about someone else's pull request on the same page, new pages from
   templates, and VS Code for the Web. See the [roadmap](specs/00-visao-geral.md#fases).
 - Math (LaTeX) is off, as in TechDocs' default MkDocs setup.
 - Some advanced Material for MkDocs constructs, such as grid cards and HTML blocks with `markdown`, are still

@@ -230,6 +230,10 @@ de abrir qualquer coisa.
 - **O painel Publicação** aparece nas páginas do GitHub, com os mesmos botões do modo local: **Salvar e
   verificar** roda a pipeline e abre um pull request em rascunho, **Enviar** marca como pronto, **Descartar**
   apaga o rascunho. Quando o merge é feito no GitHub, o painel diz que a página foi publicada.
+- **Conflitos:** se o seu rascunho mudou em outra janela, o salvar junta as duas versões quando elas mudaram
+  trechos diferentes. Quando mudaram o mesmo trecho, uma tela mostra as duas lado a lado e você escolhe, trecho
+  por trecho, qual fica (ou as duas). O que foi publicado depois que o rascunho começou entra nele sozinho; se
+  mudou o mesmo trecho, o painel segura o pull request até você **Resolver conflito**.
 - Sem login, ou sem permissão de escrita, as páginas ficam só leitura; **Entrar no GitHub** no painel reabre a
   página do seu rascunho, pronta para editar.
 
@@ -348,8 +352,7 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 - VS Code 1.100 ou mais novo.
 - Funciona em pastas locais e clones (modo local). O Git continua com o controle de versão do VS Code.
 - No modo local, o painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
-- Modo remoto, ainda não: resolver uma página que mudou no GitHub enquanto você editava (por enquanto, feche e
-  abra de novo), o histórico da página, o aviso de pull request de outra pessoa na mesma página, páginas novas
+- Modo remoto, ainda não: o histórico da página, o aviso de pull request de outra pessoa na mesma página, páginas novas
   por template e o VS Code para a Web. Veja o [plano](specs/00-visao-geral.md#fases).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.
 - Algumas construções avançadas do Material for MkDocs, como grid cards e blocos HTML com `markdown`, ainda

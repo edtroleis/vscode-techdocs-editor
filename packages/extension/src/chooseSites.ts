@@ -91,16 +91,20 @@ function pick(items: SiteChoice[]): Promise<SiteChoice[] | undefined> {
 /** O repositório Git do site (a pasta com `.git` mais próxima, até a do workspace), relativo ao workspace. */
 async function repoOf(root: vscode.Uri): Promise<string> {
   const folder = vscode.workspace.getWorkspaceFolder(root);
-  let dir = root;
-  while (folder && dir.path.length >= folder.uri.path.length) {
+  if (!folder) return '';
+  const top = folder.uri.path.replace(/\/$/, '');
+  for (let dir = root; ; ) {
     try {
       await vscode.workspace.fs.stat(vscode.Uri.joinPath(dir, '.git'));
-      return sitePath(dir);
+      const path = sitePath(dir);
+      return path === '.' ? folder.name : path;
     } catch {
-      dir = vscode.Uri.joinPath(dir, '..');
+      // Até a pasta do workspace (que pode ser a raiz `/`, como no VS Code para a Web)
+      const parent = vscode.Uri.joinPath(dir, '..');
+      if (dir.path.replace(/\/$/, '') === top || parent.path === dir.path) return folder.name;
+      dir = parent;
     }
   }
-  return folder?.name ?? '';
 }
 
 async function readText(uri: vscode.Uri) {
