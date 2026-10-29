@@ -5,7 +5,7 @@
  * O workspace é uma cópia de test/fixtures (run.mjs): as páginas das wikis e `crlf/pagina.md`, com
  * fim de linha do Windows. Nada é gravado em disco: cada teste reverte o documento no fim.
  */
-import { firstToFill } from '@edtroleis/techdocs-editor-core';
+import { firstToFill, readNav, type NavItem } from '@edtroleis/techdocs-editor-core';
 import * as vscode from 'vscode';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
@@ -16,6 +16,7 @@ import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { CatalogOptions } from '../../../src/catalogOptions';
 import type { useTestSiteChoice } from '../../../src/chooseSites';
 import type { useTestSitePick } from '../../../src/docsTreeView';
+import type { useTestAnswers } from '../../../src/treeActions';
 import { foldersWithoutDocs } from '../../../src/sitePicker';
 import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
@@ -68,6 +69,7 @@ type Api = {
   preview: SitePreview;
   useTestSiteChoice: typeof useTestSiteChoice;
   useTestSitePick: typeof useTestSitePick;
+  useTestAnswers: typeof useTestAnswers;
 };
 
 async function api(): Promise<Api> {
@@ -465,7 +467,7 @@ export function defineTests() {
       );
       const page = docs.pageItem(file('wiki/docs/guias/imagens.md'));
       ok(page, 'página sem item');
-      equal(docs.getTreeItem(page!).command?.command, 'vscode.open', 'clicar na página não a abre');
+      equal(docs.getTreeItem(page!).command?.command, 'techdocsEditor.openVisual', 'clicar na página não a abre no editor visual');
     });
 
     test('site com nav: na ordem do nav, página que não existe e páginas fora do nav', async () => {
@@ -485,14 +487,14 @@ export function defineTests() {
           '  Página B',
           '  Some (missing)',
           'GitHub (link)',
-          'Fora do nav (notInNav)',
+          'Fora do menu (notInNav)',
           '  Solta',
         ];
         const actual = () => {
           const site = siteItem(docs, 'nav-site');
           return site ? outline(docs, docs.getChildren(site)).join('\n') : '';
         };
-        const english = expected.map(line => line.replace('Fora do nav', 'Not in the nav')).join('\n');
+        const english = expected.map(line => line.replace('Fora do menu', 'Not in the menu')).join('\n');
         await until(actual, text => text === english || text === expected.join('\n'), 'árvore do site com nav');
         // Título mudou no arquivo: a árvore acompanha
         await write('nav-site/docs/b.md', '# Outro título\n');
@@ -501,6 +503,125 @@ export function defineTests() {
         await vscode.workspace.fs.delete(file('nav-site'), { recursive: true });
       }
       await until(() => siteItem(docs, 'nav-site') === undefined, gone => gone, 'site removido continuou na árvore');
+    });
+
+    test('árvore: renomear, mover, pôr no menu, excluir com desfazer, seções e site sem nav', async () => {
+      const { docs, sites, useTestAnswers } = await api();
+      await sites.ready;
+      const t = (en: string, pt: string) => (vscode.env.language.startsWith('pt') ? pt : en);
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
+      const exists = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
+      /** O menu como texto: `Título[a.md, b.md]`. */
+      const menu = async (site: string) => {
+        const show = (items: NavItem[]): string => items.map(i => (i.kind === 'section' ? `${i.title}[${show(i.children)}]` : i.kind === 'page' ? i.path : i.url)).join(', ');
+        const nav = readNav(await read(`${site}/mkdocs.yml`));
+        return nav ? show(nav) : '(sem nav)';
+      };
+      const find = (label: string) => {
+        const walk = (items: DocsItem[]): DocsItem | undefined => {
+          for (const item of items) {
+            if (item.label === label) return item;
+            const inner = walk(docs.getChildren(item));
+            if (inner) return inner;
+          }
+          return undefined;
+        };
+        return walk(docs.getChildren());
+      };
+      const run = async (command: string, label: string, ...answers: string[]) => {
+        const item = await until(() => find(label), Boolean, `"${label}" não está na árvore`);
+        useTestAnswers(answers);
+        try {
+          await vscode.commands.executeCommand(command, item);
+        } finally {
+          useTestAnswers(undefined);
+        }
+        await docs.ready;
+      };
+      await write('acoes/mkdocs.yml', 'site_name: Ações # o site\nnav:\n  - Início: index.md\n  - Guias:\n      - guias/a.md\n      - guias/b.md\n  - c.md\n');
+      await write('acoes/docs/index.md', '# Início\n\nVeja [A](guias/a.md).\n');
+      await write('acoes/docs/guias/a.md', '# Página A\n\n![só dela](../img/so-a.png)\n');
+      await write('acoes/docs/guias/b.md', '# Página B\n');
+      await write('acoes/docs/c.md', '# Página C\n');
+      await write('acoes/docs/solta.md', '# Solta\n');
+      await vscode.workspace.fs.writeFile(file('acoes/docs/img/so-a.png'), new Uint8Array([0x89, 0x50, 0x4e, 0x47]));
+      await write('semnav/mkdocs.yml', 'site_name: Sem nav\n');
+      await write('semnav/docs/a.md', '# Página A\n');
+      await write('semnav/docs/b.md', '# Página B\n');
+      try {
+        // Gravado de novo a cada tentativa: logo depois de abrir, o observador dos mkdocs.yml pode não estar ativo
+        const yml = await read('acoes/mkdocs.yml');
+        await until(
+          async () => {
+            if (!siteItem(docs, 'acoes')) await write('acoes/mkdocs.yml', yml);
+            await docs.ready;
+            await new Promise(resolve => setTimeout(resolve, 400));
+            return siteItem(docs, 'acoes') ?? `${docs.siteCandidates.map(c => c.description).join(',')} / ${sites.all().map(x => x.site.root.split('/').pop()).join(',')}`;
+          },
+          found => typeof found !== 'string',
+          'site acoes não entrou na árvore',
+          20_000,
+        );
+
+        // Renomear: muda o título 1; o arquivo e o menu (sem título escrito) ficam
+        await run('techdocsEditor.renameItem', 'Página A', 'Página A2');
+        ok((await read('acoes/docs/guias/a.md')).startsWith('# Página A2\n'), 'título não mudou no arquivo');
+        // Mover: um passo, para outra seção e pôr no menu a página de fora
+        await run('techdocsEditor.moveDown', 'Página A2');
+        await run('techdocsEditor.moveItem', 'Página C', 'Guias');
+        await run('techdocsEditor.addToMenu', 'Solta');
+        equal(await menu('acoes'), 'index.md, Guias[guias/b.md, guias/a.md, c.md], solta.md', 'menu depois de mover');
+        ok((await read('acoes/mkdocs.yml')).startsWith('site_name: Ações # o site\n'), 'o resto do mkdocs.yml mudou');
+
+        // Excluir: a página, a imagem só dela e a entrada no menu; desfazer põe tudo de volta
+        await run('techdocsEditor.deleteItem', 'Página A2', t('Delete', 'Excluir'));
+        ok(!(await exists('acoes/docs/guias/a.md')), 'a página ficou');
+        ok(!(await exists('acoes/docs/img/so-a.png')), 'a imagem só dela ficou');
+        equal(await menu('acoes'), 'index.md, Guias[guias/b.md, c.md], solta.md', 'menu depois de excluir');
+        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
+        ok((await exists('acoes/docs/guias/a.md')) && (await exists('acoes/docs/img/so-a.png')), 'desfazer não trouxe de volta');
+        equal(await menu('acoes'), 'index.md, Guias[guias/b.md, guias/a.md, c.md], solta.md', 'menu depois de desfazer');
+        // A página inicial não sai
+        await run('techdocsEditor.deleteItem', 'Início');
+        ok(await exists('acoes/docs/index.md'), 'a página inicial foi excluída');
+
+        // Seções: excluir só a seção (as páginas ficam), nova seção com a primeira página, duplicar
+        await run('techdocsEditor.deleteItem', 'Guias', t('Only the section', 'Só a seção'));
+        equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, solta.md', 'menu depois de excluir a seção');
+        await run('techdocsEditor.newSection', 'Página C', 'Referência');
+        equal(await read('acoes/docs/referencia/index.md'), '# Referência\n\n', 'primeira página da seção');
+        equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, solta.md, Referência[referencia/index.md]', 'menu com a seção nova');
+        await run('techdocsEditor.duplicatePage', 'Página C', 'Página C2');
+        ok((await read('acoes/docs/pagina-c2.md')).startsWith('# Página C2\n'), 'cópia sem o título novo');
+        equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, pagina-c2.md, solta.md, Referência[referencia/index.md]', 'cópia logo depois da original');
+        await run('techdocsEditor.deleteItem', 'Referência', t('Section and pages', 'Seção e páginas'));
+        ok(!(await exists('acoes/docs/referencia')), 'a pasta da seção ficou');
+
+        // Site sem nav: mover pergunta e escreve o menu de hoje (sem páginas do outro site abertas, que puxam a árvore)
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await until(
+          async () => {
+            if (!siteItem(docs, 'semnav')) await write('semnav/mkdocs.yml', 'site_name: Sem nav\n');
+            await docs.ready;
+            await new Promise(resolve => setTimeout(resolve, 400));
+            return siteItem(docs, 'semnav');
+          },
+          Boolean,
+          'site semnav não entrou na árvore',
+          20_000,
+        );
+        await run('techdocsEditor.moveUp', 'Página B', t('Organize the menu', 'Organizar o menu'));
+        equal(await menu('semnav'), 'b.md, a.md', 'menu escrito na ordem nova');
+      } finally {
+        useTestAnswers(undefined);
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await vscode.workspace.fs.delete(file('acoes'), { recursive: true });
+        await vscode.workspace.fs.delete(file('semnav'), { recursive: true });
+      }
+      // O próximo teste conta os sites: espera estes saírem
+      await until(() => sites.all().filter(s => /\/(acoes|semnav)$/.test(s.site.root)).length, n => n === 0, 'os sites do teste não saíram');
+      await docs.refreshNow();
     });
 
     test('vários sites: um de cada vez no seletor; escolher quais aparecem, esconder; cópias e esqueletos ficam de fora', async () => {

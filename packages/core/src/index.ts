@@ -21,3 +21,4 @@ export * from './syncMain';
 export * from './templates';
 export * from './verification';
 export * from './myDrafts';
+export * from './navEdit';

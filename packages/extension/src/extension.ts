@@ -22,6 +22,7 @@ import { CentralTemplates } from './templates/centralTemplates';
 import { NewPageCommand } from './templates/newPage';
 import { NewSiteCommand } from './templates/newSite';
 import { SitePreview } from './templates/sitePreview';
+import { TreeActions, useTestAnswers } from './treeActions';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -31,7 +32,9 @@ export function activate(context: vscode.ExtensionContext) {
   const opener = new RemoteOpener(remotes);
   const lint = new LintService(sites);
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites, remoteFs);
-  const docs = new DocsTreeView(sites, remotes, context.workspaceState);
+  const treeActions = new TreeActions();
+  const docs = new DocsTreeView(sites, remotes, context.workspaceState, treeActions);
+  treeActions.use(docs);
   const conflicts = new ConflictPanel(context.extensionUri);
   const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs, conflicts);
   // A faixa de estado da página (rascunho, em revisão…) no editor visual, e os botões dela
@@ -123,13 +126,29 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.prepareDocs', (target?: vscode.Uri) =>
       repoCheck.prepare(target instanceof vscode.Uri ? target : undefined),
     ),
-    vscode.commands.registerCommand('techdocsEditor.openText', (uri?: vscode.Uri) => {
-      const target = uri ?? activeCustomEditorUri();
-      if (target) return vscode.commands.executeCommand('vscode.openWith', target, 'default', vscode.ViewColumn.Beside);
+    vscode.commands.registerCommand('techdocsEditor.renameItem', (item?: DocsItem) => treeActions.rename(item)),
+    vscode.commands.registerCommand('techdocsEditor.duplicatePage', (item?: DocsItem) => treeActions.duplicate(item)),
+    vscode.commands.registerCommand('techdocsEditor.moveItem', (item?: DocsItem) => treeActions.moveTo(item)),
+    vscode.commands.registerCommand('techdocsEditor.moveUp', (item?: DocsItem) => treeActions.moveUp(item)),
+    vscode.commands.registerCommand('techdocsEditor.moveDown', (item?: DocsItem) => treeActions.moveDown(item)),
+    vscode.commands.registerCommand('techdocsEditor.deleteItem', (item?: DocsItem) => treeActions.delete(item)),
+    vscode.commands.registerCommand('techdocsEditor.newSection', (item?: DocsItem) => treeActions.newSection(item)),
+    vscode.commands.registerCommand('techdocsEditor.addToMenu', (item?: DocsItem) => treeActions.addToMenu(item)),
+    vscode.commands.registerCommand('techdocsEditor.itemActions', (item?: DocsItem) => treeActions.actions(item)),
+    vscode.commands.registerCommand('techdocsEditor.undoTreeEdit', () => treeActions.undo()),
+    vscode.commands.registerCommand('techdocsEditor.filterTree', async () => {
+      // A busca da própria árvore do VS Code (a mesma do Ctrl+F nela)
+      await vscode.commands.executeCommand('techdocsEditor.docs.focus');
+      await vscode.commands.executeCommand('list.find');
+    }),
+    vscode.commands.registerCommand('techdocsEditor.openText', (target?: vscode.Uri | DocsItem) => {
+      const uri = target instanceof DocsItem ? target.uri : target;
+      const file = uri ?? activeCustomEditorUri();
+      if (file) return vscode.commands.executeCommand('vscode.openWith', file, 'default', vscode.ViewColumn.Beside);
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick };
+  return { provider, treeActions, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick, useTestAnswers };
 }
 
 /**

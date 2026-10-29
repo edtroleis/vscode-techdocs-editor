@@ -34,8 +34,20 @@ All notable changes to the TechDocs Editor extension. The format follows
   documentation. Your drafts show on the row (*1 draft*, *1 in review*); the × hides a site, with *Undo*.
   Opening from GitHub, opening another folder and choosing which sites appear are buttons in the title. Sites
   named with a template placeholder (`CHANGE-ME`) show the folder name.
+- **Organize the documentation from the tree.** The **⋯** on a page or section lists what you can do with it
+  (also on right click): *Rename*, *Duplicate*, *Move to…*, *Move up/down* (`Alt+↑`/`Alt+↓`), *Delete* and
+  *New section*. Pages and sections can also be dragged. Deleting a page says which pages link to it and
+  removes the images only it used; deleting a section asks whether the pages go too. Every action shows a
+  notice with **Undo** (also `Ctrl+Z` in the tree). `F2` renames and `Delete` deletes.
+- **Pages outside the menu.** The group of pages in `docs_dir` that the `nav` does not list is now **Not in
+  the menu**, and each page has a **+** to add it. On a site without `nav`, the first change to the order
+  offers to write one with the current menu.
+- **Filter** button in the tree title, and a ⚠ on pages with formatting fixes (the tip says what to do).
 
 ### Changed
+
+- A click on a page in the tree opens it in the visual editor; *Open as Markdown* is in the **⋯**.
+- Moving, deleting and sections on GitHub sites are not available yet; renaming a page and new pages work there.
 
 - The **Check** section is now **Maintenance**, shown only with `techdocsEditor.maintainer` (people who only
   write pages do not need it). The **Publishing** panel is now **Publishing details** and starts collapsed.
