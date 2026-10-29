@@ -48,7 +48,7 @@ When they run:
 
 | When | What | Where |
 |------|------|-------|
-| Every commit | `test:fast` | `.githooks/pre-commit` (skip: `git commit --no-verify`) |
+| Every commit | `typecheck` and `test:unit` | `.githooks/pre-commit` (skip: `git commit --no-verify`) |
 | Every push | `test:all` | `.githooks/pre-push` (skip: `git push --no-verify`) |
 | Every Claude Code edit in `packages/` | `test:fast` in the background; on failure, Claude gets the output | `.claude/hooks/test-after-edit.sh` |
 | Push and pull request on GitHub | all suites | `.github/workflows/ci.yml` |
