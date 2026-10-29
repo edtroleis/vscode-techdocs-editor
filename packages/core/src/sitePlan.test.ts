@@ -66,6 +66,14 @@ describe('planSite', () => {
     expect(moveNavEntry(plan.nav, 'index.md', { delta: 1 })).toEqual(['section:Decisões', 'architecture.md', 'index.md']);
   });
 
+  it('sem configuração do lint no repositório: .markdownlint.yaml novo, marcado e que dá para desmarcar', () => {
+    expect(file(planSite(input()), '.markdownlint.yaml')).toBeUndefined();
+    const plan = planSite(input({ lint: 'default: true\n' }));
+    expect(file(plan, '.markdownlint.yaml')).toMatchObject({ status: 'new', origin: 'lint', content: 'default: true\n', optional: true, included: true });
+    const off = planSite(input({ lint: 'default: true\n', edits: { ...emptyEdits(), off: ['.markdownlint.yaml'] } }));
+    expect(file(off, '.markdownlint.yaml')!.included).toBe(false);
+  });
+
   it('dono: obrigatório só com o catalog-info.yaml marcado; o nome do site, sempre', () => {
     const noOwner = input({ catalog: { name: 'x', owner: '', annotation: 'a' } });
     expect(planSite(noOwner).missing).toEqual(['owner']);

@@ -975,6 +975,7 @@ export function defineTests() {
         equal(view.siteName, 'Pagamentos', 'nome do título do README');
         equal(`${view.owner} (${view.ownerFrom})`, 'time-pagamentos (CODEOWNERS)', 'dono do CODEOWNERS');
         ok(plan!.files.some(f => f.path === 'catalog-info.yaml' && f.included), 'sem catalog-info.yaml na prévia');
+        ok(plan!.files.some(f => f.path === '.markdownlint.yaml' && f.included), 'sem .markdownlint.yaml na prévia (o repositório não tem um)');
         ok(!(await exists('previa/mkdocs.yml')), 'gravou antes do Criar');
 
         const optional = plan!.files.find(f => f.origin === 'template' && f.optional && !f.path.endsWith('index.md'))!;
@@ -991,6 +992,7 @@ export function defineTests() {
         equal(await read('previa/docs/index.md'), '# Pagamentos\n\nServiço de cobrança.\n', 'página inicial do README');
         ok((await read('previa/README.md')).includes('(docs/index.md)'), 'README movido não virou link');
         ok((await read('previa/catalog-info.yaml')).includes('owner: time-pagamentos'), 'catalog-info.yaml sem o dono');
+        ok((await read('previa/.markdownlint.yaml')).includes('MD013: false'), '.markdownlint.yaml não foi para a pasta do site');
         equal(preview.current, undefined, 'a prévia não fechou');
         await until(() => sites.list().some(s => s.mkdocs.path.endsWith('/previa/mkdocs.yml')), Boolean, 'site novo não reconhecido');
       } finally {

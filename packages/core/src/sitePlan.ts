@@ -44,6 +44,8 @@ export type PlanInput = {
   readme?: { path: string; text: string; use: ReadmeUse; pointer: string };
   /** O `catalog-info.yaml` a criar (só quando a pasta não tem um). */
   catalog?: { name: string; owner: string; annotation: string };
+  /** O texto do `.markdownlint.yaml` a criar na pasta do site (só quando o repositório não tem um). */
+  lint?: string;
   /** Templates de página, para o texto das páginas acrescentadas. */
   pageTemplates: Pick<DocTemplate, 'id' | 'body' | 'fields'>[];
   /** Campos automáticos das páginas acrescentadas (`date`, `owner`, `site_name`). */
@@ -52,7 +54,7 @@ export type PlanInput = {
 };
 
 export type PlanFileStatus = 'new' | 'modified' | 'unchanged';
-export type PlanOrigin = 'mkdocs' | 'catalog' | 'readme' | 'template' | 'added' | 'existing';
+export type PlanOrigin = 'mkdocs' | 'catalog' | 'lint' | 'readme' | 'template' | 'added' | 'existing';
 
 export type PlanFile = {
   /** Relativo à pasta do site. */
@@ -83,6 +85,7 @@ export type SitePlan = {
 };
 
 const CATALOG = 'catalog-info.yaml';
+const LINT = '.markdownlint.yaml';
 const isHome = (path: string) => /^(index|readme)\.md$/i.test(path);
 
 type Page = PlanNavPage & { section?: string; content?: string; readme?: ReadmeUse };
@@ -148,6 +151,8 @@ export function planSite(input: PlanInput): SitePlan {
     const { name, owner, annotation } = input.catalog;
     files.push({ path: CATALOG, status: 'new', origin: 'catalog', content: catalogInfoSkeleton({ name, owner, annotation }), optional: true, included: catalogOn });
   }
+  // As regras do lint ficam no repositório: a pipeline e quem edita sem a extensão usam as mesmas
+  if (input.lint !== undefined) files.push({ path: LINT, status: 'new', origin: 'lint', content: input.lint, optional: true, included: !off.has(LINT) });
   for (const page of [...pages].sort((a, b) => a.path.localeCompare(b.path))) {
     files.push({
       path: docs(page.path),

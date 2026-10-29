@@ -4,6 +4,7 @@ import {
   codeownersOwner,
   emptyEdits,
   isTemplateSupported,
+  LINT_CONFIG_FILES,
   moveNavEntry,
   newPagePath,
   newSectionPage,
@@ -16,10 +17,12 @@ import {
   ReadmeUse,
   SitePage,
   SitePlan,
+  SETUP_MARKDOWNLINT,
   techdocsRefAnnotation,
   today,
 } from '@edtroleis/techdocs-editor-core';
 import { catalogModeFor, repositoryFolder } from '../catalogOptions';
+import { configDirs } from '../lintProblems';
 import { existingPages, findReadme, folderName, isHome, NewSiteCommand, relative } from './newSite';
 import { exists, ownerFromCatalog, PageChoice, readText, SiteChoice, templateFolders } from './templateSources';
 
@@ -75,11 +78,14 @@ type Context = {
   readme?: { uri: vscode.Uri; text: string };
   /** O `catalog-info.yaml` a criar (a pasta não tem um e o modo não é `off`). */
   catalogName?: string;
+  /** Nenhum `.markdownlint.*` na pasta do site nem acima dela: a prévia cria um. */
+  lint: boolean;
   siteNameFrom: string;
   ownerFrom?: string;
 };
 
 const CATALOG_FILE = 'catalog-info.yaml';
+const LINT_FILE = '.markdownlint.yaml';
 
 /**
  * Prévia da documentação nova (layout validado em 2026-10-29), na barra lateral TechDocs: template, nome, dono e
@@ -155,6 +161,13 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
       }
     }
 
+    // Como o lint da extensão e o markdownlint-cli2 da pipeline: a pasta do site e as de cima
+    const lintDirs = configDirs(root.path, (workspace ?? root).path);
+    let lintFound = false;
+    for (const dir of lintDirs) {
+      for (const name of LINT_CONFIG_FILES) lintFound ||= await exists(root.with({ path: `${dir}/${name}` }));
+    }
+
     this.context = {
       root,
       choices,
@@ -162,6 +175,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
       existing,
       readme,
       catalogName: hasCatalog || catalogMode === 'off' ? undefined : folderName(repository ?? root),
+      lint: !lintFound,
       siteNameFrom: readmeTitle ? 'README.md' : vscode.l10n.t('folder name'),
       ownerFrom,
     };
@@ -206,7 +220,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
         if (message.field === 'template') {
           // Outro template: o que foi mexido nas páginas dele não vale mais; as páginas acrescentadas e o catálogo ficam
           this.template = message.value;
-          this.edits = { ...emptyEdits(), added: edits.added, off: edits.off.filter(p => p === CATALOG_FILE) };
+          this.edits = { ...emptyEdits(), added: edits.added, off: edits.off.filter(p => p === CATALOG_FILE || p === LINT_FILE) };
         } else if (message.field === 'siteName') this.siteName = message.value;
         else if (message.field === 'owner') this.owner = message.value;
         else this.readmeUse = message.value as ReadmeUse;
@@ -285,6 +299,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
         pointer: vscode.l10n.t('The documentation of this repository is in [docs/](docs/index.md), published by TechDocs.'),
       },
       catalog: context.catalogName !== undefined ? { name: context.catalogName, owner: this.owner, annotation: techdocsRefAnnotation('', '') } : undefined,
+      lint: context.lint ? SETUP_MARKDOWNLINT : undefined,
       pageTemplates: context.pageTemplates.map(p => p.template),
       values: this.values(),
       edits: this.edits,
@@ -498,6 +513,7 @@ export function previewLabels() {
     readmeStays: vscode.l10n.t('stays as it is'),
     readmeLink: vscode.l10n.t('becomes a link to the docs'),
     addedByYou: vscode.l10n.t('added by you'),
+    lintRules: vscode.l10n.t('Markdown rules, used here and in the pipeline'),
     newFile: vscode.l10n.t('New'),
     modifiedFile: vscode.l10n.t('Modified'),
     fillSiteName: vscode.l10n.t('Fill in the site name.'),

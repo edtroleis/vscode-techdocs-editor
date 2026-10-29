@@ -474,5 +474,6 @@
   "create the section \"{0}\"": "criar a seção \"{0}\"",
   "Section \"{0}\" created, with a page of the same name open for you to write.": "Seção \"{0}\" criada, com uma página de mesmo nome já aberta para você escrever.",
   "The home page always stays first.": "A página inicial fica sempre no topo.",
-  "{0} and {1}": "{0} e {1}"
+  "{0} and {1}": "{0} e {1}",
+  "Markdown rules, used here and in the pipeline": "regras do Markdown, usadas aqui e na pipeline"
 }

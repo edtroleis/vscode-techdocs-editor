@@ -84,6 +84,7 @@ function note(f: FileView) {
   if (f.origin === 'readme' && !f.path.startsWith(DOCS)) return f.readme === 'move' ? l.readmeLink : l.readmeStays;
   if (f.readme) return f.readme === 'move' ? l.fromReadmeMove : l.fromReadmeCopy;
   if (f.origin === 'added') return l.addedByYou;
+  if (f.origin === 'lint') return l.lintRules;
   return '';
 }
 

@@ -8,6 +8,9 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ### Added
 
+- **New documentation** also creates `.markdownlint.yaml` in the site folder when the repository has none, like
+  **Prepare the documentation** does: the Markdown rules go in the commit, so the pipeline and the editor agree.
+  It can be unchecked in the preview.
 - **Page History…** on GitHub pages: the published versions of the page, and **Restore** to put the text of one
   back in the editor. Saving it goes through the draft and the pull request like any other change.
 - **New page from template on GitHub sites:** the page, and its `nav` entry if you choose, is committed to the
