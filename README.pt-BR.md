@@ -68,8 +68,13 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
   páginas ou um `catalog-info.yaml`, o ícone abre uma tela de boas-vindas que diz o que achou, com **Preparar a
   documentação**.
 - **Árvore Documentação:** as páginas de cada site do MkDocs do workspace, na ordem do `nav` do `mkdocs.yml`
-  (ou das pastas, sem `nav`), com o título de cada página. Páginas fora do `nav` e itens do `nav` que apontam
-  para páginas que não existem aparecem marcados.
+  (ou das pastas, sem `nav`), com o título de cada página. Um clique abre a página no editor visual. As páginas
+  fora do `nav` ficam em **Fora do menu**, cada uma com um **+** para entrar nele, e os itens do `nav` que
+  apontam para páginas que não existem aparecem marcados. **Filtrar** acha uma página pelo título.
+- **Organize pela árvore:** o **⋯** de uma página ou seção abre um menu com *Renomear* (`F2`), *Duplicar*,
+  *Mover para…*, *Mover para cima/baixo* (`Alt+↑`/`Alt+↓`), *Excluir* e *Nova seção*; páginas e seções também
+  podem ser arrastadas. Excluir uma página diz quais páginas apontam para ela. Toda mudança mostra **Desfazer**
+  (também `Ctrl+Z` na árvore).
 - **Só nas páginas das docs:** o botão e o comando **Abrir no editor visual** aparecem para páginas dentro de um
   `docs_dir`, não para todo arquivo Markdown (READMEs, changelogs).
 - **Busca** com Ctrl+F no editor visual, com "1 de 3" e Enter / Shift+Enter entre os resultados.
@@ -141,15 +146,16 @@ pasta) e **Criar a documentação** na barra lateral abrem uma **prévia** na ba
 gravar qualquer coisa:
 
 - **No topo:** o template, o nome do site (sugerido pelo título do README) e o dono (do `catalog-info.yaml` ou
-  do `CODEOWNERS`), cada um dizendo de onde veio a sugestão. O dono só é obrigatório enquanto o
-  `catalog-info.yaml` vai ser criado.
+  do `CODEOWNERS`), cada um dizendo de onde veio a sugestão. Sem dono achado, o `catalog-info.yaml` começa
+  desmarcado; o dono só é obrigatório enquanto ele está marcado.
 - **Arquivos ou Menu:** desmarque o que não quer; em **Menu**, arraste (ou use as setas ou Alt+↑/↓) para mudar
   a ordem e dê dois cliques (ou F2) para renomear. **+ Página** pede o caminho em Arquivos e o título em Menu,
   com o tipo da página (tutorial, guia prático, ADR…); **+ Seção** cria um grupo no menu.
 - **O que já existe:** uma página de `docs/` que o template também traz pede **Manter o atual** ou **Usar o do
   template**; o README pode ser copiado, movido ou não usado.
 - Clique num arquivo para ver o texto. **Criar** grava o `mkdocs.yml` (com o `nav` e o plugin
-  `techdocs-core`), as páginas e o `catalog-info.yaml` com a anotação do TechDocs; nunca sobrescreve um arquivo.
+  `techdocs-core`), as páginas, o `catalog-info.yaml` com a anotação do TechDocs e, quando o repositório não
+  tem um, o `.markdownlint.yaml` com as regras do Markdown, para elas irem no commit; nunca sobrescreve um arquivo.
 
 ![Repositório só com README: a tela de boas-vindas, o README como página inicial e a pergunta do catalog-info.yaml](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/prepare-readme.gif)
 

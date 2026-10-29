@@ -67,8 +67,12 @@ the page. Never a temporary `blob:` address, and never larger than you allow
   folder with pages or a `catalog-info.yaml`, the icon opens a welcome screen that says what was found, with
   **Prepare the documentation**.
 - **Documentation tree:** the pages of each MkDocs site in the workspace, in the order of the `nav` in
-  `mkdocs.yml` (or of the folders, without a `nav`), with the page titles. Pages missing from the `nav`, and
-  `nav` entries pointing to missing pages, are flagged.
+  `mkdocs.yml` (or of the folders, without a `nav`), with the page titles. A click opens the page in the visual
+  editor. Pages missing from the `nav` are grouped under **Not in the menu**, each with a **+** to add it, and
+  `nav` entries pointing to missing pages are flagged. **Filter** finds a page by its title.
+- **Organize from the tree:** the **⋯** on a page or section opens a menu with *Rename* (`F2`), *Duplicate*,
+  *Move to…*, *Move up/down* (`Alt+↑`/`Alt+↓`), *Delete* and *New section*; pages and sections can also be
+  dragged. Deleting a page says which pages link to it. Every change shows **Undo** (also `Ctrl+Z` in the tree).
 - **Only on docs pages:** the **Open in visual editor** button and command show up for pages inside a
   `docs_dir`, not for every Markdown file (READMEs, changelogs).
 - **Search** with Ctrl+F in the visual editor, with "1 of 3" and Enter / Shift+Enter between matches.
@@ -140,15 +144,16 @@ and **Create the documentation** in the sidebar open a **preview** in the TechDo
 written:
 
 - **On top:** the template, the site name (suggested from the README title) and the owner (from
-  `catalog-info.yaml` or `CODEOWNERS`), each saying where the suggestion came from. The owner is required only
-  while `catalog-info.yaml` is going to be created.
+  `catalog-info.yaml` or `CODEOWNERS`), each saying where the suggestion came from. With no owner found,
+  `catalog-info.yaml` starts unchecked; the owner is required only while it is checked.
 - **Files or Menu:** uncheck what you do not want; in **Menu**, drag (or use the arrows or Alt+↑/↓) to reorder
   and double-click (or F2) to rename. **+ Page** asks for a path in Files and a title in Menu, with the kind of
   page (tutorial, how-to guide, ADR…); **+ Section** adds a group to the menu.
 - **What already exists:** a page in `docs/` that the template also brings asks **Keep current** or **Use the
   template one**; the README can be copied, moved or left out.
 - Click a file to see its text. **Create** writes `mkdocs.yml` (with the `nav` and the `techdocs-core`
-  plugin), the pages and `catalog-info.yaml` with the TechDocs annotation; it never overwrites a file.
+  plugin), the pages, `catalog-info.yaml` with the TechDocs annotation and, when the repository has none,
+  `.markdownlint.yaml` with the Markdown rules, so they go in the commit; it never overwrites a file.
 
 ![A repository with only a README: the welcome screen, the README as the home page, and the catalog-info.yaml question](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/prepare-readme.gif)
 

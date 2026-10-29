@@ -6,6 +6,10 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-29
+
+Organize the documentation from the tree, a status strip on every page, and send for review in one step.
+
 ### Added
 
 - **New documentation** also creates `.markdownlint.yaml` in the site folder when the repository has none, like
