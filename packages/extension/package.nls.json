@@ -30,6 +30,8 @@
   "config.templates.builtIn": "Show the templates that come with the extension. Turn off to offer only the repository templates.",
   "viewContainer.techdocs": "TechDocs",
   "view.check": "Check",
+  "viewsWelcome.noFolder": "Open a folder to write its TechDocs documentation.\n[Open Folder](command:workbench.action.files.openFolder)",
+  "viewsWelcome.empty": "No TechDocs documentation in this workspace yet.\n[Create the documentation](command:techdocsEditor.prepareDocs)\nCreates mkdocs.yml and the docs folder from a template.\n[Get started](command:workbench.action.openWalkthrough?%5B%22edtroleis.techdocs-editor%23getStarted%22%2Cfalse%5D) · [What is TechDocs](https://backstage.io/docs/features/techdocs/)",
   "viewsWelcome.prepare.intro": "This repository has no TechDocs documentation yet.",
   "viewsWelcome.prepare.readme": "Found: README.md",
   "viewsWelcome.prepare.docs": "Found: Markdown pages in docs/",

@@ -16,8 +16,9 @@ export const canPrepare = (found: Found, hasSites: boolean) => !hasSites && (fou
 
 /**
  * `techdocsEditor.canPrepare` (spec 00, BL6): o workspace não tem `mkdocs.yml`, mas tem README, uma pasta `docs/`
- * com páginas ou um `catalog-info.yaml`. Com ela, o ícone TechDocs aparece com a tela "Preparar a documentação";
+ * com páginas ou um `catalog-info.yaml`. Com ela, a seção Documentação mostra a tela "Preparar a documentação";
  * `techdocsEditor.found.*` dizem o que foi encontrado. Quando o site é criado, a árvore toma o lugar da tela.
+ * Sem nada disso, depois da procura (`techdocsEditor.scanned`), a tela é a de "Criar a documentação" (BL7).
  */
 export class PrepareContext implements vscode.Disposable {
   found: Found = { readme: false, docs: false, catalog: false };
@@ -66,5 +67,7 @@ export class PrepareContext implements vscode.Disposable {
       set('found.docs', this.found.docs),
       set('found.catalog', this.found.catalog),
     ]);
+    // Só depois da primeira procura a tela "Criar a documentação" pode aparecer (antes, a árvore ainda vai carregar)
+    await set('scanned', true);
   }
 }

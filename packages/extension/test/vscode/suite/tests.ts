@@ -493,11 +493,26 @@ export function defineTests() {
     });
 
     test('sem mkdocs.yml: README, docs/ ou catalog-info.yaml ligam a tela "Preparar"; o site criado a desliga', async () => {
-      const { prepare, sites } = await api();
+      const { prepare, sites, docs } = await api();
       await prepare.ready;
       equal(prepare.active, false, 'com site, a tela de preparar apareceu');
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
       const remove = (path: string) => vscode.workspace.fs.delete(file(path), { recursive: true }).then(undefined, () => undefined);
+      // Apagar antes de o observador dos mkdocs.yml estar ativo deixava os sites na lista: espera ele ver um site
+      // novo (gravado de novo a cada tentativa, porque o aviso dado antes de ele estar ativo se perde) e a remoção dele
+      const count = sites.list().length;
+      let probe = 0;
+      await until(
+        async () => {
+          await write('sonda/mkdocs.yml', `site_name: Sonda ${++probe}\n`);
+          await new Promise(resolve => setTimeout(resolve, 400));
+          return sites.list().length;
+        },
+        n => n === count + 1,
+        'o site de sonda não apareceu',
+      );
+      await remove('sonda');
+      await until(() => sites.list().length, n => n === count, 'o site de sonda continuou');
       const mkdocs = sites.list().map(s => s.mkdocs);
       const saved = await Promise.all(mkdocs.map(uri => vscode.workspace.fs.readFile(uri)));
       try {
@@ -506,6 +521,9 @@ export function defineTests() {
         // Sem nada do que se procura na raiz (as páginas das wikis não estão em docs/): nada aparece
         await new Promise(resolve => setTimeout(resolve, 1_000));
         equal(prepare.active, false, 'sem README, docs/ nem catalog-info.yaml, a tela apareceu');
+        // O ícone continua (BL7): a seção Documentação abre com a tela "Criar a documentação"
+        await vscode.commands.executeCommand('workbench.view.extension.techdocs');
+        await until(() => docs.visible, Boolean, 'sem nada no workspace, a seção Documentação não abriu');
 
         await write('README.md', '# Repositório\n');
         await until(() => prepare.active && prepare.found.readme, Boolean, 'o README.md não ligou a tela');

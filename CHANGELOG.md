@@ -4,6 +4,15 @@ All notable changes to the TechDocs Editor extension. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-10-28
+
+### Changed
+
+- The **TechDocs** icon is always in the activity bar, so the extension is easy to find right after installing it.
+  In a workspace with no documentation (no `mkdocs.yml`, `README.md`, `docs/` pages or `catalog-info.yaml`), the
+  Documentation view says so and offers **Create the documentation**; with no folder open, it offers to open one.
+  Right-click the activity bar to hide the icon if you do not need it.
+
 ## [0.4.0] - 2026-10-28
 
 Whole documentation sites from templates or from the docs you already have, company templates, a check of what

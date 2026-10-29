@@ -103,6 +103,11 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     return item.parent;
   }
 
+  /** A seção está aberta na barra lateral (testes). */
+  get visible(): boolean {
+    return this.view.visible;
+  }
+
   /** Item da página na árvore (testes e "revelar a página aberta"). */
   pageItem(uri: vscode.Uri): DocsItem | undefined {
     return this.pages.get(uri.toString());
