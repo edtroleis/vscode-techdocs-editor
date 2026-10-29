@@ -135,10 +135,20 @@ Alert: {{alert}}. Owner: {{owner}}. Reviewed on {{date}}.
 
 ![New documentation site from a template: name it, answer its questions, and mkdocs.yml and the pages are ready](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-site.gif)
 
-**TechDocs: New documentation site…** (command palette, the Documentation view menu, or right-click on a folder) creates `mkdocs.yml`
-(with the `nav` and the `techdocs-core` plugin) and the pages in `docs/`, in the workspace root or in the folder
-you chose. It never overwrites a file, and it tells you the annotation to add to `catalog-info.yaml`
-(`backstage.io/techdocs-ref: dir:.`) without changing it.
+**TechDocs: New documentation site…** (command palette, the Documentation view menu, or right-click on a folder)
+and **Create the documentation** in the sidebar open a **preview** in the TechDocs sidebar before anything is
+written:
+
+- **On top:** the template, the site name (suggested from the README title) and the owner (from
+  `catalog-info.yaml` or `CODEOWNERS`), each saying where the suggestion came from. The owner is required only
+  while `catalog-info.yaml` is going to be created.
+- **Files or Menu:** uncheck what you do not want; in **Menu**, drag (or use the arrows or Alt+↑/↓) to reorder
+  and double-click (or F2) to rename. **+ Page** asks for a path in Files and a title in Menu, with the kind of
+  page (tutorial, how-to guide, ADR…); **+ Section** adds a group to the menu.
+- **What already exists:** a page in `docs/` that the template also brings asks **Keep current** or **Use the
+  template one**; the README can be copied, moved or left out.
+- Click a file to see its text. **Create** writes `mkdocs.yml` (with the `nav` and the `techdocs-core`
+  plugin), the pages and `catalog-info.yaml` with the TechDocs annotation; it never overwrites a file.
 
 ![A repository with only a README: the welcome screen, the README as the home page, and the catalog-info.yaml question](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/prepare-readme.gif)
 
@@ -204,6 +214,23 @@ not counted on the icon), **Require it** (a missing file is a problem, with a fi
 
 ![The gear of the Check view: do not use catalog-info.yaml, saved for the team, and the hint goes away](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/check-options.gif)
 
+### Edit documentation on GitHub without cloning
+
+**TechDocs: Open documentation from GitHub…** takes a URL or `owner/repo` (GitHub Enterprise Server too, with
+`techdocsEditor.github.host`) and opens the site in the Documentation tree and its home page in the visual
+editor, read through the GitHub API. Public repositories open without signing in; links like
+`vscode://edtroleis.techdocs-editor/open?host=github.com&repo=acme/wiki&path=docs/index.md` are checked before
+anything opens.
+
+- **Ctrl+S saves your draft:** a commit on your own branch for the page (`docs/<login>/<page>`), created on the
+  first save from the version you opened, with `[skip ci]` where there is a pipeline. Someone publishing
+  before you is never overwritten. Images you add go to `<docs>/assets/` on that branch and show in the editor.
+- **The Publishing panel** appears for pages from GitHub, with the same buttons as in local mode: **Save and
+  check** runs the pipeline and opens a draft pull request, **Send** marks it ready, **Discard** deletes the
+  draft. When the merge is done on GitHub, the panel says the page is published.
+- Without signing in, or without write access, pages are read-only; **Sign in to GitHub** in the panel reopens
+  the page from your draft, ready to edit.
+
 ### Publish without leaving VS Code (optional)
 
 For people who would rather not deal with branches and pull requests: turn on
@@ -260,6 +287,8 @@ To always open documentation pages in the visual editor, turn on `techdocsEditor
 | `techdocsEditor.verification.startTimeoutSeconds` | `120` | Wait for the first check before warning that nothing started |
 | `techdocsEditor.verification.checkHelp` | `{}` | Plain-language message per check name, shown when it fails |
 | `techdocsEditor.polling.intervalSeconds` / `idleIntervalSeconds` | `8` / `60` | Check queries while something runs / when idle. Nothing is queried while the window is in the background |
+| `techdocsEditor.mode` | `auto` | Where documentation from a GitHub repository opens: `auto` (you choose when it is also in the workspace), `local` or `remote` |
+| `techdocsEditor.github.host` | `""` | Your GitHub Enterprise Server, e.g. `github.example.com`, besides `github.com` |
 | `techdocsEditor.github.scopes` | `["repo"]` | Scopes asked when signing in to GitHub (`public_repo` for public repositories) |
 
 A `.techdocs-editor.yaml` at the repository root (`verification.mode`, `startTimeoutSeconds`, `checkHelp`)
@@ -283,6 +312,7 @@ Fix formatting on save:
 | **TechDocs: New documentation site…** | Creates `mkdocs.yml` and the pages of a documentation site from a template |
 | **TechDocs: Check the documentation of the repository** | Lists what is missing or wrong for TechDocs in the Check view and the Problems panel |
 | **TechDocs: Prepare the documentation in this repository** | Creates a site, or applies the fixes of the check one by one with the diff first |
+| **TechDocs: Open documentation from GitHub…** | Opens a site from a GitHub repository without cloning it (URL or `owner/repo`) |
 | **TechDocs: Refresh company templates** | Checks the company templates repository right away instead of waiting for the hourly check |
 
 ## How the lint finds its configuration
@@ -305,6 +335,8 @@ otherwise). Only pages inside a `docs_dir` are checked.
   the GitHub of your repository's remote, from the extension host: the token never reaches the webview. With
   `techdocsEditor.templates.repository` set, the extension also reads that repository, at most once an hour;
   in an untrusted workspace only your user setting counts, never the folder's.
+- **Remote mode** talks only to the GitHub host of the repository you opened. The list of open sites keeps only
+  the host, `owner/repo` and the folder of `mkdocs.yml`, never a token.
 - The visual editor runs in a webview with a strict content security policy: only the extension's own
   scripts run.
 
@@ -312,9 +344,10 @@ otherwise). Only pages inside a `docs_dir` are checked.
 
 - VS Code 1.100 or later.
 - Works on local folders and clones (local mode). Git stays with VS Code's source control.
-- The publishing panel needs a clone with a GitHub remote and VS Code's Git extension.
-- Not yet: the remote mode (edit a repository on GitHub without cloning it) and VS Code for the Web. See the
-  [roadmap](specs/00-visao-geral.md#fases).
+- In local mode, the publishing panel needs a clone with a GitHub remote and VS Code's Git extension.
+- Remote mode, not yet: resolving a page that changed on GitHub while you edited it (for now, close it and open
+  it again), the page history, a warning about someone else's pull request on the same page, new pages from
+  templates, and VS Code for the Web. See the [roadmap](specs/00-visao-geral.md#fases).
 - Math (LaTeX) is off, as in TechDocs' default MkDocs setup.
 - Some advanced Material for MkDocs constructs, such as grid cards and HTML blocks with `markdown`, are still
   being hardened. Review the diff before committing pages that use them.

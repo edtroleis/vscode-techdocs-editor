@@ -4,6 +4,31 @@ All notable changes to the TechDocs Editor extension. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-10-29
+
+A preview before creating the documentation, and the first part of the remote mode: edit and publish
+documentation on GitHub without cloning the repository.
+
+### Added
+
+- **Preview before creating the documentation**: **Create the documentation** and **TechDocs: New documentation
+  site…** open a preview in the TechDocs sidebar, and nothing is written until **Create**. Pick the template,
+  the site name (suggested from the README) and the owner (from `catalog-info.yaml` or `CODEOWNERS`); see the
+  files or the menu; uncheck pages, reorder and rename them, add pages (with the kind of page) and sections;
+  keep or replace a page that already exists; copy, move or leave out the README; and click a file to read
+  it. The owner is required only while `catalog-info.yaml` is going to be created.
+- **TechDocs: Open documentation from GitHub…**: opens a site from a GitHub repository (URL or `owner/repo`,
+  GitHub Enterprise Server with `techdocsEditor.github.host`) without cloning it, in the Documentation tree and
+  the visual editor. Public repositories open without signing in. `vscode://edtroleis.techdocs-editor/open`
+  links, checked before opening. `techdocsEditor.mode` chooses between GitHub and the local copy when the
+  repository is also in the workspace.
+- **Ctrl+S saves the draft on GitHub**: a commit on your branch for the page, created on the first save from
+  the version you opened, with `[skip ci]` where there is a pipeline. Images you add go to `<docs>/assets/` on
+  that branch and show in the editor.
+- **Publishing panel for pages from GitHub**: Save and check (runs the pipeline and opens a draft pull
+  request), Send, Discard, the checks in plain language and Set up checks, as in local mode.
+- The Publishing panel says when the page is published (the merge was done on GitHub), in both modes.
+
 ## [0.4.1] - 2026-10-28
 
 ### Changed
