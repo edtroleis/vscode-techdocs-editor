@@ -82,7 +82,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   private readonly disposables: vscode.Disposable[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
   private diagnosticsTimer: ReturnType<typeof setTimeout> | undefined;
-  private creating = false;
   private readonly diagnosed = new Set<string>();
   private runs = 0;
   private latest: Promise<void> = Promise.resolve();
@@ -205,16 +204,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   }
 
   getChildren(item?: DocsItem): DocsItem[] {
-    if (!item && this.creating) return [];
     return item ? item.children : this.roots;
-  }
-
-  /** Com a prévia da documentação nova aberta, a árvore fica vazia (a mensagem diz que o site novo aparece no Criar). */
-  setCreating(creating: boolean) {
-    if (this.creating === creating) return;
-    this.creating = creating;
-    this.changeEmitter.fire();
-    if (!creating) this.revealActive();
   }
 
   getParent(item: DocsItem): DocsItem | undefined {

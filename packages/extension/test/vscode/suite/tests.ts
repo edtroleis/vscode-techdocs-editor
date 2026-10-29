@@ -999,23 +999,17 @@ export function defineTests() {
       }
     });
 
-    test('prévia sem dono achado: árvore vazia enquanto cria; catalog-info.yaml começa desmarcado e continua ao trocar de template', async () => {
-      const { preview, docs } = await api();
+    test('prévia sem dono achado: catalog-info.yaml começa desmarcado e continua ao trocar de template', async () => {
+      const { preview } = await api();
       await vscode.workspace.fs.writeFile(file('sem-dono/README.md'), new TextEncoder().encode('# Sem dono\n'));
       try {
-        await docs.ready;
-        const before = docs.getChildren().length;
         await preview.open(file('sem-dono'));
-        // Enquanto cria, a árvore fica vazia (a mensagem diz que o site novo aparece no Criar)
-        equal(docs.getChildren().length, 0, 'a árvore mostra outro site durante a criação');
         const catalog = () => preview.current?.files.find(f => f.path === 'catalog-info.yaml');
         await until(catalog, Boolean, 'prévia sem o catalog-info.yaml');
         equal(catalog()!.included, false, 'catalog-info.yaml marcado sem dono');
         await preview.send({ type: 'set', field: 'template', value: 'golden-path' });
         await until(() => preview.current, p => (p?.files.filter(f => f.origin === 'template').length ?? 0) > 1, 'prévia sem as páginas do golden path');
         equal(catalog()!.included, false, 'trocar de template marcou o catalog-info.yaml');
-        await preview.send({ type: 'cancel' });
-        equal(docs.getChildren().length, before, 'a árvore não voltou ao cancelar');
       } finally {
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         await remove('sem-dono');

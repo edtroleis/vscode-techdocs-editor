@@ -46,8 +46,8 @@ All notable changes to the TechDocs Editor extension. The format follows
   templates: only `mkdocs.yml` and a home page with the site name.
 - **New documentation:** with no owner found (`CODEOWNERS`, `catalog-info.yaml`), `catalog-info.yaml` starts
   unchecked, so **Create** works right away. Check it and fill in the owner to create it too.
-- While **New documentation** is open, the Documentation tree is empty and says the new site appears there
-  after **Create**, instead of showing the site chosen before. Cancel brings that site back.
+- While **New documentation** is open, the Documentation section is hidden so the new site has the whole
+  height; it comes back on **Create** (with the new site) or **Cancel**.
 - **Filter** button in the tree title, and a ⚠ on pages with formatting fixes (the tip says what to do).
 
 ### Changed

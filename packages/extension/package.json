@@ -749,6 +749,7 @@
         {
           "id": "techdocsEditor.docs",
           "name": "%view.docs%",
+          "when": "!techdocsEditor.preview",
           "icon": "$(book)"
         },
         {
@@ -781,43 +782,38 @@
       },
       {
         "view": "techdocsEditor.docs",
-        "contents": "%viewsWelcome.creating%",
-        "when": "techdocsEditor.preview"
-      },
-      {
-        "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.empty%",
-        "when": "workbenchState != empty && techdocsEditor.scanned && !techdocsEditor.hasDocs && !techdocsEditor.canPrepare && !techdocsEditor.hasRemote && !techdocsEditor.preview"
+        "when": "workbenchState != empty && techdocsEditor.scanned && !techdocsEditor.hasDocs && !techdocsEditor.canPrepare && !techdocsEditor.hasRemote"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.chooseSite%",
-        "when": "techdocsEditor.needsSite && !techdocsEditor.preview"
+        "when": "techdocsEditor.needsSite"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.intro%",
-        "when": "techdocsEditor.canPrepare && !techdocsEditor.preview"
+        "when": "techdocsEditor.canPrepare"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.readme%",
-        "when": "techdocsEditor.canPrepare && techdocsEditor.found.readme && !techdocsEditor.preview"
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.readme"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.docs%",
-        "when": "techdocsEditor.canPrepare && techdocsEditor.found.docs && !techdocsEditor.preview"
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.docs"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.catalog%",
-        "when": "techdocsEditor.canPrepare && techdocsEditor.found.catalog && !techdocsEditor.preview"
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.catalog"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.action%",
-        "when": "techdocsEditor.canPrepare && !techdocsEditor.preview"
+        "when": "techdocsEditor.canPrepare"
       },
       {
         "view": "techdocsEditor.check",
