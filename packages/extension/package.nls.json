@@ -93,10 +93,15 @@
   "command.moveItem": "Move to…",
   "command.moveUp": "Move Up",
   "command.moveDown": "Move Down",
-  "command.deleteItem": "Delete…",
+  "command.deleteItem": "Delete",
   "command.newSection": "New Section",
   "command.addToMenu": "Add to the Menu",
-  "command.itemActions": "More Actions…",
   "command.undoTreeEdit": "Undo Last Change in the Documentation Tree",
-  "command.filterTree": "Filter Pages"
+  "command.filterTree": "Filter Pages",
+  "command.treeOpenVisual": "Open in the Visual Editor",
+  "command.treeOpenText": "Open as Markdown",
+  "command.treeNewPage": "New Page in This Section",
+  "command.treeNewSection": "New Section Below",
+  "command.treeDeleteSection": "Delete Section",
+  "submenu.itemMenu": "More Actions"
 }

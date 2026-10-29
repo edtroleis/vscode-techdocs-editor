@@ -93,10 +93,15 @@
   "command.moveItem": "Mover para…",
   "command.moveUp": "Mover para cima",
   "command.moveDown": "Mover para baixo",
-  "command.deleteItem": "Excluir…",
+  "command.deleteItem": "Excluir",
   "command.newSection": "Nova seção",
   "command.addToMenu": "Adicionar ao menu",
-  "command.itemActions": "Mais ações…",
   "command.undoTreeEdit": "Desfazer a última alteração na árvore da documentação",
-  "command.filterTree": "Filtrar páginas"
+  "command.filterTree": "Filtrar páginas",
+  "command.treeOpenVisual": "Abrir no editor visual",
+  "command.treeOpenText": "Abrir como Markdown",
+  "command.treeNewPage": "Nova página nesta seção",
+  "command.treeNewSection": "Nova seção abaixo",
+  "command.treeDeleteSection": "Excluir seção",
+  "submenu.itemMenu": "Mais ações"
 }

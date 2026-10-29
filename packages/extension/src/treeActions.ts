@@ -543,44 +543,6 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     this.done(vscode.l10n.t('Section "{0}" created, with a page of the same name open for you to write.', title), undo);
   }
 
-  // ---------- ⋯ ----------
-
-  /** O ⋯ da linha: as mesmas ações do botão direito, numa lista. */
-  async actions(target?: unknown) {
-    const item = this.itemOf(target);
-    if (!item) return;
-    type Choice = vscode.QuickPickItem & { command?: string };
-    const local = item.local;
-    const choices: Choice[] =
-      item.kind === 'page'
-        ? [
-            { label: `$(preview) ${vscode.l10n.t('Open in the visual editor')}`, command: 'techdocsEditor.openVisual' },
-            { label: `$(markdown) ${vscode.l10n.t('Open as Markdown')}`, command: 'techdocsEditor.openText' },
-            { label: '', kind: vscode.QuickPickItemKind.Separator },
-            { label: `$(edit) ${vscode.l10n.t('Rename')}`, description: 'F2', command: 'techdocsEditor.renameItem' },
-            ...(local ? [{ label: `$(copy) ${vscode.l10n.t('Duplicate')}`, command: 'techdocsEditor.duplicatePage' }] : []),
-            ...(local && item.outside ? [{ label: `$(add) ${vscode.l10n.t('Add to the menu')}`, command: 'techdocsEditor.addToMenu' }] : []),
-            ...(local && !item.home && !item.outside ? [{ label: `$(arrow-swap) ${vscode.l10n.t('Move to…')}`, command: 'techdocsEditor.moveItem' }] : []),
-            ...(local && !item.home ? [{ label: '', kind: vscode.QuickPickItemKind.Separator }, { label: `$(trash) ${vscode.l10n.t('Delete')}`, description: 'Delete', command: 'techdocsEditor.deleteItem' }] : []),
-          ]
-        : item.kind === 'section' && local
-          ? [
-              { label: `$(new-file) ${vscode.l10n.t('New page in this section')}`, command: 'techdocsEditor.newPage' },
-              { label: `$(new-folder) ${vscode.l10n.t('New section below')}`, command: 'techdocsEditor.newSection' },
-              { label: '', kind: vscode.QuickPickItemKind.Separator },
-              { label: `$(edit) ${vscode.l10n.t('Rename')}`, description: 'F2', command: 'techdocsEditor.renameItem' },
-              { label: `$(arrow-up) ${vscode.l10n.t('Move up')}`, description: 'Alt+↑', command: 'techdocsEditor.moveUp' },
-              { label: `$(arrow-down) ${vscode.l10n.t('Move down')}`, description: 'Alt+↓', command: 'techdocsEditor.moveDown' },
-              { label: '', kind: vscode.QuickPickItemKind.Separator },
-              { label: `$(trash) ${vscode.l10n.t('Delete section')}`, description: 'Delete', command: 'techdocsEditor.deleteItem' },
-            ]
-          : [{ label: `$(new-file) ${vscode.l10n.t('New page')}`, command: 'techdocsEditor.newPage' }];
-    const choice = await this.pick(choices, { title: item.label });
-    if (!choice?.command) return;
-    const argument = choice.command === 'techdocsEditor.openVisual' || choice.command === 'techdocsEditor.openText' ? item.uri : item;
-    await vscode.commands.executeCommand(choice.command, argument);
-  }
-
   // ---------- arrastar ----------
 
   handleDrag(source: readonly DocsItem[], data: vscode.DataTransfer) {

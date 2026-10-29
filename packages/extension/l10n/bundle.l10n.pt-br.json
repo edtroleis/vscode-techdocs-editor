@@ -473,16 +473,6 @@
   "There is already a folder {0} with a page.": "Já existe a pasta {0} com uma página.",
   "create the section \"{0}\"": "criar a seção \"{0}\"",
   "Section \"{0}\" created, with a page of the same name open for you to write.": "Seção \"{0}\" criada, com uma página de mesmo nome já aberta para você escrever.",
-  "Open in the visual editor": "Abrir no editor visual",
-  "Open as Markdown": "Abrir como Markdown",
-  "Rename": "Renomear",
-  "Duplicate": "Duplicar",
-  "Add to the menu": "Adicionar ao menu",
-  "Move to…": "Mover para…",
-  "New page in this section": "Nova página nesta seção",
-  "New section below": "Nova seção abaixo",
-  "Delete section": "Excluir seção",
-  "New page": "Nova página",
   "The home page always stays first.": "A página inicial fica sempre no topo.",
   "{0} and {1}": "{0} e {1}"
 }

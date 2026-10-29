@@ -134,7 +134,15 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.deleteItem', (item?: DocsItem) => treeActions.delete(item)),
     vscode.commands.registerCommand('techdocsEditor.newSection', (item?: DocsItem) => treeActions.newSection(item)),
     vscode.commands.registerCommand('techdocsEditor.addToMenu', (item?: DocsItem) => treeActions.addToMenu(item)),
-    vscode.commands.registerCommand('techdocsEditor.itemActions', (item?: DocsItem) => treeActions.actions(item)),
+    // Os mesmos comandos com os nomes do menu ⋯ da árvore ("Nova página nesta seção", "Excluir seção"…)
+    vscode.commands.registerCommand('techdocsEditor.tree.openVisual', (item?: DocsItem) => {
+      const page = item ?? docs.selected();
+      if (page?.kind === 'page') return vscode.commands.executeCommand('techdocsEditor.openVisual', page);
+    }),
+    vscode.commands.registerCommand('techdocsEditor.tree.openText', (item?: DocsItem) => vscode.commands.executeCommand('techdocsEditor.openText', item ?? docs.selected())),
+    vscode.commands.registerCommand('techdocsEditor.tree.newPage', (item?: DocsItem) => vscode.commands.executeCommand('techdocsEditor.newPage', item ?? docs.selected())),
+    vscode.commands.registerCommand('techdocsEditor.tree.newSection', (item?: DocsItem) => treeActions.newSection(item)),
+    vscode.commands.registerCommand('techdocsEditor.tree.deleteSection', (item?: DocsItem) => treeActions.delete(item)),
     vscode.commands.registerCommand('techdocsEditor.undoTreeEdit', () => treeActions.undo()),
     vscode.commands.registerCommand('techdocsEditor.filterTree', async () => {
       // A busca da própria árvore do VS Code (a mesma do Ctrl+F nela)
