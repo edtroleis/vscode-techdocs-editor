@@ -86,6 +86,7 @@
   "command.openMine": "Abrir Página",
   "command.openMinePr": "Abrir Pedido de Revisão no GitHub",
   "command.signIn": "Entrar no GitHub",
+  "viewsWelcome.creating": "A nova documentação aparece aqui depois de Criar.",
   "viewsWelcome.chooseSite": "Escolha a documentação que você quer editar.\n[Escolher a documentação…](command:techdocsEditor.chooseSite)\n[Abrir do GitHub pelo link…](command:techdocsEditor.openRemote)\n[Abrir outra pasta…](command:workbench.action.files.openFolder)",
   "config.maintainer": "Mostra a seção **Manutenção** na barra lateral TechDocs: conferir a documentação (mkdocs.yml, nav, catalog-info.yaml, links e imagens), preparar o repositório e as opções. Para quem mantém a documentação; quem só escreve páginas não precisa.",
   "command.renameItem": "Renomear",

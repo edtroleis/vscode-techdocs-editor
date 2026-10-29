@@ -61,6 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
   newSite.usePreview(preview);
   const prepare = new PrepareContext(sites);
   context.subscriptions.push(
+    preview.onDidChangeOpen(open => docs.setCreating(open)),
     remotes,
     vscode.workspace.registerFileSystemProvider(REMOTE_SCHEME, remoteFs, { isCaseSensitive: true }),
     resolveSaveConflicts(remoteFs, conflicts),

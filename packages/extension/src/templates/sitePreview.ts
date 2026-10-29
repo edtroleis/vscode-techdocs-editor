@@ -104,13 +104,16 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
   private templatePages = new Map<string, SitePage[] | Error>();
   private readonly changed = new vscode.EventEmitter<vscode.Uri>();
   readonly onDidChange = this.changed.event;
+  private readonly openChanged = new vscode.EventEmitter<boolean>();
+  /** A prévia abriu ou fechou: a árvore da documentação fica vazia enquanto ela está aberta. */
+  readonly onDidChangeOpen = this.openChanged.event;
   private readonly disposables: vscode.Disposable[] = [this.changed];
 
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly newSite: NewSiteCommand,
   ) {
-    this.disposables.push(vscode.workspace.registerTextDocumentContentProvider(PREVIEW_SCHEME, this));
+    this.disposables.push(vscode.workspace.registerTextDocumentContentProvider(PREVIEW_SCHEME, this), this.openChanged);
     void this.setOpen(false);
   }
 
@@ -393,6 +396,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
   }
 
   private async setOpen(open: boolean) {
+    this.openChanged.fire(open);
     await vscode.commands.executeCommand('setContext', 'techdocsEditor.preview', open);
   }
 
