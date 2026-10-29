@@ -22,13 +22,16 @@ All notable changes to the TechDocs Editor extension. The format follows
   for the review. If a check fails, it stops and points to the line. *Only check*, *Discard draft*, *Page
   history* and *Publishing details* are in the **⋯** menu of the strip.
 - **My changes:** a sidebar section with the pages you are changing in every repository the extension knows,
-  each marked *Draft* or *In review*. A click opens the page from your draft. It only lists when you are
-  signed in to GitHub, and it never asks you to sign in.
+  each marked *Draft* or *In review*. A click opens the page from your draft. It appears only when there is
+  something in progress (signed in to GitHub), and it never asks you to sign in.
 - **One documentation site at a time.** With several sites in the workspace or opened from GitHub, the
-  sidebar shows one, with **Switch documentation…** next to its name. The list is grouped by repository and
-  also offers creating documentation in a folder (an empty one, say), opening from GitHub and opening
-  another folder. Opening a page from another site switches by
-  itself. With none chosen, the sidebar asks for a choice.
+  sidebar shows one, with **Switch documentation…** next to its name and in the status bar. Opening a page from
+  another site switches by itself; with none chosen, the sidebar asks for a choice.
+- **A short list to switch.** It opens with your recent sites and *See all sites*. Typing searches every site,
+  the pages of all of them (a click opens the page) and the folders of the workspace without documentation yet
+  (Git repositories and empty folders), where a click creates it. Each site shows only its name, with the folder
+  on the folder button and your drafts on the row (*1 draft*, *1 in review*); the × hides it, with *Undo*.
+  Opening from GitHub, opening another folder and choosing which sites appear are buttons in the title.
 
 ### Changed
 

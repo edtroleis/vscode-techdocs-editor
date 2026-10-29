@@ -32,6 +32,12 @@ test('barra lateral TechDocs: escolher o site; árvore e manutenção; clicar ab
   await openFile(page, 'wiki/docs/processos/aprovacao.md');
   await expect(rows.filter({ hasText: /^Processo de aprovação$/ }).first()).toHaveClass(/selected/);
 
+  // O site atual na barra de status abre a lista; a busca acha as páginas de todos os sites
+  await page.locator('.statusbar-item', { hasText: 'Wiki de Demonstração' }).first().click();
+  await page.locator('.quick-input-widget input').fill('imagens');
+  await page.locator('.quick-input-widget').getByRole('option', { name: /^file Imagens/ }).first().click();
+  await expect(page.locator('.tab.active', { hasText: 'imagens.md' })).toBeVisible();
+
   // Manutenção: confere sozinha e agrupa por tipo (as wikis de teste não têm catalog-info.yaml)
   const check = pane(/^Maintenance/i);
   if ((await check.locator('.pane-header').getAttribute('aria-expanded')) === 'false') await check.locator('.pane-header').click();

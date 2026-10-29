@@ -87,7 +87,5 @@
   "command.openMinePr": "Open Review Request on GitHub",
   "command.signIn": "Sign In to GitHub",
   "viewsWelcome.chooseSite": "Choose the documentation you want to edit.\n[Choose documentation…](command:techdocsEditor.chooseSite)\n[Open from GitHub by link…](command:techdocsEditor.openRemote)\n[Open another folder…](command:workbench.action.files.openFolder)",
-  "viewsWelcome.mine.signedOut": "The pages you are changing appear here, with their state: draft or in review.\n[Sign in to GitHub](command:techdocsEditor.signIn)",
-  "viewsWelcome.mine.empty": "Nothing in progress. When you save a page, it appears here as a draft until it is published.",
   "config.maintainer": "Show the **Maintenance** section in the TechDocs sidebar: checking the documentation (mkdocs.yml, nav, catalog-info.yaml, links and images), preparing the repository and its options. For whoever maintains the documentation; people who only write pages do not need it."
 }

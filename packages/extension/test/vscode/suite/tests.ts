@@ -16,6 +16,7 @@ import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { CatalogOptions } from '../../../src/catalogOptions';
 import type { useTestSiteChoice } from '../../../src/chooseSites';
 import type { useTestSitePick } from '../../../src/docsTreeView';
+import { foldersWithoutDocs } from '../../../src/sitePicker';
 import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
 import type { CentralTemplates } from '../../../src/templates/centralTemplates';
@@ -572,6 +573,21 @@ export function defineTests() {
         'a árvore não seguiu a página aberta',
       );
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    });
+
+    test('pastas sem documentação: repositórios Git e pastas vazias, sem entrar nos sites nem nos repositórios', async () => {
+      const { docs } = await api();
+      await docs.ready;
+      await vscode.workspace.fs.createDirectory(file('vazia'));
+      await vscode.workspace.fs.writeFile(file('repo-sem-docs/.git/HEAD'), new TextEncoder().encode('ref: refs/heads/main\n'));
+      await vscode.workspace.fs.writeFile(file('repo-sem-docs/vazia-dentro/.keep'), new Uint8Array());
+      try {
+        const found = (await foldersWithoutDocs(docs.siteCandidates)).map(uri => vscode.workspace.asRelativePath(uri, false));
+        ok(found.includes('vazia') && found.includes('repo-sem-docs'), `pastas achadas: ${found.join(', ')}`);
+        ok(!found.some(path => path.startsWith('wiki') || path.includes('vazia-dentro')), `entrou num site ou num repositório: ${found.join(', ')}`);
+      } finally {
+        for (const folder of ['vazia', 'repo-sem-docs']) await vscode.workspace.fs.delete(file(folder), { recursive: true }).then(undefined, () => undefined);
+      }
     });
 
     test('sem mkdocs.yml: README, docs/ ou catalog-info.yaml ligam a tela "Preparar"; o site criado a desliga', async () => {

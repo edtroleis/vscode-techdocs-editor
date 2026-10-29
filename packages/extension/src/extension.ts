@@ -38,6 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
   publish.onDidChangeStrip(({ uri, strip }) => provider.setStrip(uri, strip));
   provider.onStripAction(({ uri, action }) => publish.runStripAction(uri, action));
   const mine = new MineView(sites, remotes, opener);
+  docs.useDrafts(() => mine.draftRefs());
   // "Minhas alterações" acompanha quando a página muda de estado (salvou, enviou, publicou)
   let lastState = '';
   publish.onDidChangeStrip(({ strip }) => {

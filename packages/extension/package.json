@@ -589,7 +589,7 @@
         {
           "id": "techdocsEditor.mine",
           "name": "%view.mine%",
-          "when": "techdocsEditor.hasDocs || techdocsEditor.hasRemote",
+          "when": "techdocsEditor.hasMine",
           "icon": "$(git-pull-request-draft)"
         },
         {
@@ -652,16 +652,6 @@
       {
         "view": "techdocsEditor.check",
         "contents": "%viewsWelcome.check%"
-      },
-      {
-        "view": "techdocsEditor.mine",
-        "contents": "%viewsWelcome.mine.signedOut%",
-        "when": "techdocsEditor.mineSignedOut"
-      },
-      {
-        "view": "techdocsEditor.mine",
-        "contents": "%viewsWelcome.mine.empty%",
-        "when": "!techdocsEditor.mineSignedOut"
       }
     ],
     "walkthroughs": [

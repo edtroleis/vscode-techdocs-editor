@@ -3,6 +3,7 @@ import { DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, parseRemot
 import { repoOf } from './chooseSites';
 import type { DocsSite } from './docsSite';
 import type { LocalSites } from './localSites';
+import { invalidatePages, pickSite, RECENT_COUNT } from './sitePicker';
 import { remoteUri } from './remote/remoteFs';
 import { type RemoteEntry, type RemoteRepos, SignInRequiredError } from './remote/remoteRepos';
 
@@ -10,6 +11,11 @@ export const DOCS_VIEW = 'techdocsEditor.docs';
 const REFRESH_DELAY_MS = 300;
 /** Site escolhido no seletor, por workspace. */
 const CURRENT_KEY = 'techdocsEditor.currentSite';
+/** Os últimos sites mostrados, o mais recente primeiro. */
+const RECENT_KEY = 'techdocsEditor.recentSites';
+
+/** Um rascunho de "Minhas alterações", para marcar o site dele na lista. */
+export type DraftRef = { state: 'draft' | 'review'; uris: vscode.Uri[] };
 
 /** Um site que o seletor oferece: do workspace (`local`) ou aberto do GitHub (`remote`). */
 export type SiteCandidate = {
@@ -72,6 +78,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   /** Os sites do seletor, da última montagem. */
   private candidates: SiteCandidate[] = [];
   private currentKey: string | undefined;
+  private readonly statusItem = vscode.window.createStatusBarItem('techdocsEditor.currentSite', vscode.StatusBarAlignment.Left, 49);
+  private drafts: () => readonly DraftRef[] = () => [];
   /** Página aberta de outro site, ainda por seguir (o site dela pode entrar na lista só na próxima montagem). */
   private follow: vscode.Uri | undefined;
 
@@ -88,8 +96,11 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     // Pasta apagada (ou renomeada): o VS Code avisa só a pasta, não os `.md` de dentro
     const deletions = vscode.workspace.createFileSystemWatcher('**/*', true, true, false);
     const later = () => this.refreshLater();
+    this.statusItem.name = vscode.l10n.t('Current documentation');
+    this.statusItem.command = 'techdocsEditor.chooseSite';
     this.disposables.push(
       this.view,
+      this.statusItem,
       this.changeEmitter,
       watcher,
       watcher.onDidCreate(later),
@@ -187,56 +198,41 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     return this.ready;
   }
 
-  /**
-   * "Trocar documentação": a lista dos sites agrupada pelo repositório, mais abrir do GitHub, abrir outra pasta
-   * e escolher quais sites do workspace aparecem.
-   */
+  /** Os rascunhos de "Minhas alterações" (com o arquivo local e o do GitHub), para marcar os sites na lista. */
+  useDrafts(drafts: () => readonly DraftRef[]) {
+    this.drafts = drafts;
+  }
+
+  /** "Trocar documentação" (ver sitePicker.ts). */
   async chooseSite() {
     await this.ready;
-    const candidates = [...this.candidates].sort((a, b) => a.repo.localeCompare(b.repo) || a.label.localeCompare(b.label));
     if (testSitePick) {
-      const key = testSitePick(candidates);
+      const key = testSitePick([...this.candidates].sort((a, b) => a.repo.localeCompare(b.repo) || a.label.localeCompare(b.label)));
       if (key) await this.select(key);
       return;
     }
-    type Item = vscode.QuickPickItem & { key?: string; command?: string };
-    const items: Item[] = [];
-    let repo: string | undefined;
-    for (const candidate of candidates) {
-      if (candidate.repo !== repo) items.push({ label: candidate.repo, kind: vscode.QuickPickItemKind.Separator });
-      repo = candidate.repo;
-      // O repositório já está no separador: só a pasta dentro dele
-      const folder = !candidate.local
-        ? candidate.description
-        : candidate.description.startsWith(`${candidate.repo}/`)
-          ? candidate.description.slice(candidate.repo.length + 1)
-          : candidate.description === candidate.repo
-            ? ''
-            : candidate.description;
-      const showing = candidate.key === this.currentKey;
-      items.push({
-        label: `$(${showing ? 'check' : candidate.remote ? 'github' : 'book'}) ${candidate.label}`,
-        description: [folder, showing ? vscode.l10n.t('showing now') : ''].filter(Boolean).join(' · '),
-        key: candidate.key,
-      });
-    }
-    items.push(
-      { label: vscode.l10n.t('More'), kind: vscode.QuickPickItemKind.Separator },
-      { label: `$(new-folder) ${vscode.l10n.t('Create documentation in a folder…')}`, command: 'newSiteInFolder' },
-      { label: `$(github) ${vscode.l10n.t('Open from GitHub by link…')}`, command: 'techdocsEditor.openRemote' },
-      { label: `$(folder-opened) ${vscode.l10n.t('Open another folder…')}`, command: 'workbench.action.files.openFolder' },
-    );
-    if (this.sites.all().length > 1) {
-      items.push({ label: `$(list-filter) ${vscode.l10n.t('Choose which sites of this workspace appear…')}`, command: 'techdocsEditor.chooseSites' });
-    }
-    const chosen = await vscode.window.showQuickPick(items, {
-      title: vscode.l10n.t('Documentation to edit'),
-      placeHolder: vscode.l10n.t('Filter by name or folder'),
-      matchOnDescription: true,
+    await pickSite({
+      candidates: this.candidates,
+      currentKey: this.currentKey,
+      recents: this.state?.get<string[]>(RECENT_KEY) ?? [],
+      select: key => this.select(key),
+      drafts: () => this.draftsBySite(),
+      sites: this.sites,
+      remotes: this.remotes,
     });
-    if (chosen?.key) await this.select(chosen.key);
-    else if (chosen?.command === 'newSiteInFolder') await newSiteInFolder();
-    else if (chosen?.command) await vscode.commands.executeCommand(chosen.command);
+  }
+
+  /** Quantos rascunhos e pedidos em revisão a pessoa tem em cada site. */
+  private draftsBySite() {
+    const counts = new Map<string, { draft: number; review: number }>();
+    for (const draft of this.drafts()) {
+      const key = draft.uris.map(uri => keyOf(this.candidates, this.sites, uri)).find(Boolean);
+      if (!key) continue;
+      const count = counts.get(key) ?? { draft: 0, review: 0 };
+      count[draft.state]++;
+      counts.set(key, count);
+    }
+    return counts;
   }
 
   /** Item da página na árvore (testes e "revelar a página aberta"). */
@@ -250,6 +246,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   }
 
   private refreshLater() {
+    invalidatePages();
     clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.ready = this.refresh();
@@ -299,6 +296,12 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.manySites', candidates.length > 1);
     this.roots = roots;
     this.pages = pages;
+    // O site atual na barra de status: um clique troca (com mais de um)
+    if (current && candidates.length > 1) {
+      this.statusItem.text = `$(book) ${current.label}`;
+      this.statusItem.tooltip = vscode.l10n.t('Documentation shown in the TechDocs sidebar. Click to switch.');
+      this.statusItem.show();
+    } else this.statusItem.hide();
     this.changeEmitter.fire();
     this.revealActive();
   }
@@ -331,6 +334,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   private setCurrent(key: string) {
     this.currentKey = key;
     void this.state?.update(CURRENT_KEY, key);
+    const recents = this.state?.get<string[]>(RECENT_KEY) ?? [];
+    void this.state?.update(RECENT_KEY, [key, ...recents.filter(k => k !== key)].slice(0, RECENT_COUNT * 2));
   }
 
   /** Página de outro site no editor: o seletor troca para ele (na próxima montagem, que já conhece o site). */
@@ -389,32 +394,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     const item = uri && this.pageItem(uri);
     if (item) void this.view.reveal(item, { select: true, focus: false, expand: true }).then(undefined, () => {});
   }
-}
-
-/**
- * "Criar documentação numa pasta…": a pasta (uma vazia, por exemplo) e o "Novo site de documentação" nela; o
- * site criado entra na lista e a página inicial aberta o mostra na árvore.
- */
-async function newSiteInFolder() {
-  const picked = await vscode.window.showOpenDialog({
-    title: vscode.l10n.t('Choose the folder for the new documentation'),
-    defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
-    canSelectFiles: false,
-    canSelectFolders: true,
-    canSelectMany: false,
-    openLabel: vscode.l10n.t('Create the documentation here'),
-  });
-  const folder = picked?.[0];
-  if (!folder) return;
-  const created = await vscode.commands.executeCommand<{ mkdocs: vscode.Uri } | undefined>('techdocsEditor.newSite', folder);
-  // Fora do workspace a extensão não vê o site: oferece abrir a pasta
-  if (!created || vscode.workspace.getWorkspaceFolder(folder)) return;
-  const open = vscode.l10n.t('Open the folder');
-  const answer = await vscode.window.showInformationMessage(
-    vscode.l10n.t('The documentation was created in {0}, outside this workspace. Open that folder to edit it.', folder.fsPath),
-    open,
-  );
-  if (answer === open) await vscode.commands.executeCommand('vscode.openFolder', folder, { forceNewWindow: true });
 }
 
 /** O arquivo da aba ativa (texto ou editor visual). */

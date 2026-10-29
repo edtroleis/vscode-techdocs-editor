@@ -5,6 +5,7 @@ import { authProviderFor, configuredScopes, gitHubErrorText, hasSession, usingTe
 import { publishConfig } from './publish/publishConfig';
 import { gitApi } from './publish/vscodeGit';
 import type { RemoteOpener } from './remote/openRemote';
+import { remoteUri } from './remote/remoteFs';
 import type { RemoteRepos } from './remote/remoteRepos';
 
 export const MINE_VIEW = 'techdocsEditor.mine';
@@ -16,6 +17,8 @@ export class MineItem {
     readonly draft: MyDraft,
     readonly host: string,
     readonly slug: string,
+    /** O clone do repositório no workspace, se houver. */
+    readonly root?: vscode.Uri,
   ) {}
 
   /** Endereço da página no rascunho (abrir: o clone do workspace, se houver, ou o GitHub). */
@@ -33,6 +36,9 @@ export class MineView implements vscode.TreeDataProvider<MineItem>, vscode.Dispo
   private items: MineItem[] = [];
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.changeEmitter.event;
+  private readonly onDidLoadEmitter = new vscode.EventEmitter<void>();
+  /** A lista foi lida de novo. */
+  readonly onDidLoad = this.onDidLoadEmitter.event;
   private readonly view: vscode.TreeView<MineItem>;
   private readonly disposables: vscode.Disposable[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -49,6 +55,7 @@ export class MineView implements vscode.TreeDataProvider<MineItem>, vscode.Dispo
     this.disposables.push(
       this.view,
       this.changeEmitter,
+      this.onDidLoadEmitter,
       remotes.onDidChange(() => this.refreshLater()),
       sites.onDidChange(() => this.refreshLater()),
       this.view.onDidChangeVisibility(() => this.view.visible && this.refreshLater()),
@@ -74,6 +81,14 @@ export class MineView implements vscode.TreeDataProvider<MineItem>, vscode.Dispo
 
   getChildren(item?: MineItem): MineItem[] {
     return item ? [] : this.items;
+  }
+
+  /** Os rascunhos com o arquivo de cada um: no clone do workspace e no GitHub (para marcar os sites na lista). */
+  draftRefs() {
+    return this.items.map(item => ({
+      state: item.draft.state,
+      uris: [...(item.root ? [vscode.Uri.joinPath(item.root, item.draft.page)] : []), remoteUri(item.host, item.slug, item.draft.page)],
+    }));
   }
 
   /** A lista (testes). */
@@ -119,11 +134,10 @@ export class MineView implements vscode.TreeDataProvider<MineItem>, vscode.Dispo
 
   private async load(run: number) {
     const repos = await this.repositories();
-    const signedIn = (await Promise.all([...new Set(repos.map(r => r.host))].map(host => usingTestTransport() || hasSession(host)))).some(Boolean);
     const config = publishConfig(vscode.workspace.getConfiguration('techdocsEditor'), undefined, vscode.env.language);
     const errors: string[] = [];
     const lists = await Promise.all(
-      repos.map(async ({ host, slug }) => {
+      repos.map(async ({ host, slug, root }) => {
         if (!usingTestTransport() && !(await hasSession(host))) return [];
         try {
           const access = await this.remotes.access(host, slug);
@@ -134,7 +148,7 @@ export class MineView implements vscode.TreeDataProvider<MineItem>, vscode.Dispo
             pattern: config.branchPattern,
             isPage: path => /\.md$/i.test(path),
           });
-          return drafts.map(draft => new MineItem(draft, host, slug));
+          return drafts.map(draft => new MineItem(draft, host, slug, root));
         } catch (error) {
           errors.push(`${slug}: ${gitHubErrorText(error, vscode.l10n)}`);
           return [];
@@ -145,22 +159,26 @@ export class MineView implements vscode.TreeDataProvider<MineItem>, vscode.Dispo
     this.items = lists.flat();
     this.view.badge = this.items.length ? { value: this.items.length, tooltip: vscode.l10n.t('{0} pages being changed', this.items.length) } : undefined;
     this.view.message = errors.length ? vscode.l10n.t('Could not read: {0}', errors.join('; ')) : undefined;
-    void vscode.commands.executeCommand('setContext', 'techdocsEditor.mineSignedOut', repos.length > 0 && !signedIn);
-    void vscode.commands.executeCommand('setContext', 'techdocsEditor.mineNoRepo', repos.length === 0);
+    // A seção só aparece quando há o que mostrar
+    void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasMine', this.items.length > 0);
+    this.onDidLoadEmitter.fire();
     this.changeEmitter.fire();
   }
 
   /** Os repositórios do GitHub conhecidos: os dos sites abertos e os remotes dos clones com sites. */
-  private async repositories(): Promise<Array<{ host: string; slug: string }>> {
-    const found = new Map<string, { host: string; slug: string }>();
-    const add = (host: string, slug: string) => found.set(`${host}/${slug.toLowerCase()}`, { host, slug });
+  private async repositories(): Promise<Array<{ host: string; slug: string; root?: vscode.Uri }>> {
+    const found = new Map<string, { host: string; slug: string; root?: vscode.Uri }>();
+    const add = (host: string, slug: string, root?: vscode.Uri) => {
+      const key = `${host}/${slug.toLowerCase()}`;
+      found.set(key, { host, slug, root: root ?? found.get(key)?.root });
+    };
     for (const entry of this.remotes.list()) add(entry.host, entry.slug);
     const api = await gitApi().catch(() => undefined);
     for (const { mkdocs } of this.sites.list()) {
       const repository = api?.getRepository(mkdocs);
       const url = repository?.state.remotes.find(r => r.name === 'origin')?.fetchUrl ?? repository?.state.remotes[0]?.fetchUrl;
       const remote = url ? parseGitHubRemote(url) : undefined;
-      if (remote) add(remote.host, remote.slug);
+      if (remote) add(remote.host, remote.slug, repository?.rootUri);
     }
     return [...found.values()];
   }
