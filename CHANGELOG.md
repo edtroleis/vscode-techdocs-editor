@@ -4,52 +4,43 @@ All notable changes to the TechDocs Editor extension. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] - 2026-10-28
+
+Whole documentation sites from templates or from the docs you already have, company templates, a check of what
+TechDocs needs, and a sidebar of its own. Version 0.3.0 was tagged but never published: its changes are here.
 
 ### Added
 
-- **Check options** (the gear in the Check view): how the check treats `catalog-info.yaml`, since not every
-  Backstage reads it from the repository. **Check only if it exists** (default), **Require it** (a missing file
-  is a problem, with a fix that creates a minimal `catalog-info.yaml` with the TechDocs annotation) or **Do not
-  use it** (nothing about `catalog-info.yaml`). Saved for the team in `.techdocs-editor.yaml` (`catalog:`, with
-  the diff first) or just for you in the `techdocsEditor.catalog` setting; the repository file wins.
-- Adopt the docs you already have: in a folder with pages in `docs/` and no `mkdocs.yml`, **New documentation
-  site** and **Prepare the documentation** offer to use those pages. Only `mkdocs.yml` is created, with the `nav`
-  built from the folders and page titles and the `techdocs-core` plugin, shown in a diff first. No page changes.
-- At the end of **New documentation site** and **Prepare the documentation**, without a `catalog-info.yaml`:
-  "Does your Backstage use a catalog-info.yaml in the repository?" **No** stops all talk of it (`catalog: off`),
-  **Yes** leads to the Check view, which offers to create it. Asked once: the answer goes to `.techdocs-editor.yaml`.
-- `README.md` as the home page: when creating a site from a template next to a README, copy it to
-  `docs/index.md`, move it there (the README keeps a link to the docs), or leave it out. Links to `docs/…` are
-  made relative to the docs folder.
-- The TechDocs icon also shows up in repositories without a `mkdocs.yml` that have a `README.md`, a `docs/`
-  folder with pages or a `catalog-info.yaml`. It opens a welcome screen that says what was found, with
-  **Prepare the documentation** and links to the walkthrough and to the TechDocs docs. Once the site exists, the
+- **TechDocs in the activity bar**: an icon of its own, with the **Documentation** tree, the **Check** view and
+  the optional **Publishing** panel (which leave the Explorer). It shows up in workspaces with a `mkdocs.yml`,
+  and also in repositories without one that have a `README.md`, a `docs/` folder with pages or a
+  `catalog-info.yaml`: there it opens a welcome screen that says what was found, with **Prepare the
+  documentation** and links to the walkthrough and to the TechDocs docs. Once the site exists, the
   Documentation tree takes its place.
-
-### Changed
-
-- Without `catalog-info.yaml`, the check now shows only a hint, which does not count on the TechDocs icon, with
-  **Configure…** to choose the mode.
-
-## [0.3.0] - 2026-10-28
-
-Whole documentation sites from templates, company templates, a check of what TechDocs needs, and a sidebar of
-its own.
-
-### Added
-
-- **TechDocs in the activity bar**: an icon of its own, shown only in workspaces with a `mkdocs.yml`, with the
-  **Documentation** tree, the **Check** view and the optional **Publishing** panel (which leave the Explorer).
 - **Check** view: what TechDocs needs, grouped by kind, with the number of items on the icon. It checks when it
   first shows up and after each save; a click opens the file at the line, and **Fix** applies one fix after
   showing its diff.
+- **Check options** (the gear in the Check view): how the check treats `catalog-info.yaml`, since not every
+  Backstage reads it from the repository. **Check only if it exists** (default: a missing file is only a hint,
+  not counted on the icon, with **Configure…**), **Require it** (a missing file is a problem, with a fix that
+  creates a minimal `catalog-info.yaml` with the TechDocs annotation) or **Do not use it** (nothing about
+  `catalog-info.yaml`). Saved for the team in `.techdocs-editor.yaml` (`catalog:`, with the diff first) or just
+  for you in the `techdocsEditor.catalog` setting; the repository file wins.
 - **Get started with TechDocs Editor** walkthrough (Help → Welcome): creating a site, the sidebar, a new page,
   the visual editor, the check, publishing and company templates.
 - **TechDocs: New documentation site…**: creates `mkdocs.yml` (with the `nav` and the `techdocs-core` plugin)
   and the pages in `docs/` from a site template: Service docs, Team wiki or Golden path. In the workspace root,
   or in the folder you right-click; never over an existing file. Then it shows the `catalog-info.yaml`
   annotation for TechDocs, ready to copy, without changing the file.
+- `README.md` as the home page: when creating a site from a template next to a README, copy it to
+  `docs/index.md`, move it there (the README keeps a link to the docs), or leave it out. Links to `docs/…` are
+  made relative to the docs folder.
+- Adopt the docs you already have: in a folder with pages in `docs/` and no `mkdocs.yml`, **New documentation
+  site** and **Prepare the documentation** offer to use those pages. Only `mkdocs.yml` is created, with the `nav`
+  built from the folders and page titles and the `techdocs-core` plugin, shown in a diff first. No page changes.
+- At the end of **New documentation site** and **Prepare the documentation**, without a `catalog-info.yaml`:
+  "Does your Backstage use a catalog-info.yaml in the repository?" **No** stops all talk of it (`catalog: off`),
+  **Yes** leads to the Check view, which offers to create it. Asked once: the answer goes to `.techdocs-editor.yaml`.
 - Site templates of your own: folders with a `template.yml` in `.techdocs/templates/` (and in
   `techdocsEditor.templates.paths`). Each page comes from a page template, yours or a built-in one, or from a
   file in the folder.
@@ -62,7 +53,8 @@ its own.
   `nav` (missing pages, pages left out), the `catalog-info.yaml` annotation, the markdownlint configuration,
   formatting problems, broken links and missing images.
 - **TechDocs: Prepare the documentation in this repository**: with no `mkdocs.yml`, creates a site from a
-  template; otherwise applies the fixes of the check one by one, each with its diff first.
+  template or from the pages already in `docs/`; otherwise applies the fixes of the check one by one, each with
+  its diff first.
 
 ### Changed
 
