@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import { FakeGitHub } from '../../../../core/test/fakeGitHub';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
+import type { MineView } from '../../../src/mineView';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { NewPageCommand } from '../../../src/templates/newPage';
 import type { ConflictPanel } from '../../../src/remote/conflictPanel';
@@ -14,7 +15,7 @@ import type { RemoteFileSystem } from '../../../src/remote/remoteFs';
 import type { RemoteRepos } from '../../../src/remote/remoteRepos';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
-type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel; conflicts: ConflictPanel; useTestHistoryPick: typeof useTestHistoryPick; newPage: NewPageCommand };
+type Api = { mine: MineView; remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel; conflicts: ConflictPanel; useTestHistoryPick: typeof useTestHistoryPick; newPage: NewPageCommand };
 
 const FILES = {
   'README.md': '# Wiki\n',
@@ -117,11 +118,13 @@ export function defineRemoteTests() {
       equal(uri?.path, '/acme/wiki/servico/paginas/index.md', 'página inicial do site da pasta');
       await opener.fromInput('acme/wiki', sites => sites.find(site => site.root === ''));
       equal(remotes.list().length, 2, 'os dois sites na lista');
+      // Um de cada vez na árvore: o da página aberta; os dois no seletor
       await until(
-        () => labels(docs.getChildren()).filter(line => !line.startsWith(' ')),
-        roots => roots.includes('Wiki da Acme') && roots.includes('Pagamentos'),
-        'os dois sites não estão na árvore',
+        () => docs.ready.then(() => docs.siteCandidates.filter(c => c.remote).map(c => c.description).sort().join()),
+        found => found === 'acme/wiki,acme/wiki/servico',
+        'os dois sites não estão no seletor',
       );
+      await until(() => labels(docs.getChildren()).filter(line => !line.startsWith(' ')).join(), roots => roots === 'Wiki da Acme', 'a árvore não mostra o site da página aberta');
     });
 
     test('link vscode://…/open: validado antes de abrir (B1, B3)', async () => {
@@ -223,6 +226,40 @@ export function defineRemoteTests() {
         equal(publisher!.view().error, undefined, 'erro ao descartar');
         ok(!github.refs.has(branch), 'a branch do rascunho continuou');
         await until(() => document.getText(), t => t === FILES['docs/guias/deploy.md'], 'a página não voltou ao texto da principal');
+      } finally {
+        publish.useTestGitHub(undefined);
+      }
+    });
+
+    test('faixa de estado e Minhas alterações: publicada, rascunho ao salvar, em revisão depois de Enviar para revisão', async () => {
+      const { opener, publish, mine } = await api();
+      const transport = () => ({ baseUrl: 'https://api.github.com', headers: { Authorization: `Bearer ${github.token}` }, fetch: github.fetch });
+      publish.useTestGitHub(transport, true);
+      try {
+        const uri = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/guias/deploy.md');
+        const state = () => publish.pageStrip?.state;
+        await until(state, s => s === 'Published', 'faixa da página publicada');
+        await mine.refresh();
+        equal(mine.list.length, 0, 'lista com rascunho antes de salvar');
+
+        const document = await vscode.workspace.openTextDocument(uri!);
+        const change = new vscode.WorkspaceEdit();
+        change.insert(uri!, new vscode.Position(document.lineCount, 0), '\nMais um passo.\n');
+        await vscode.workspace.applyEdit(change);
+        ok(await document.save(), 'Ctrl+S falhou');
+        // O painel lê o rascunho de novo depois de salvar
+        await until(state, s => s === 'Draft', 'faixa do rascunho');
+        equal(publish.pageStrip?.actions[0]?.action, 'submit', 'próxima ação');
+        await mine.refresh();
+        equal(mine.list.map(item => `${item.draft.page} ${item.draft.state}`).join(), 'docs/guias/deploy.md draft', 'Minhas alterações com o rascunho');
+
+        await publish.runStripAction(uri!, 'submit');
+        // A pipeline simulada termina na próxima leitura das verificações
+        await (await publish.current())!.refreshChecks();
+        await until(state, s => s === 'In review', 'faixa em revisão', 20_000).catch(e => { throw new Error(`${e.message} ${JSON.stringify(publish.pageStrip)}`); });
+        equal(github.openPull('docs/pessoa-teste/docs-guias-deploy')?.draft, false, 'o pedido de revisão continuou em rascunho');
+        await mine.refresh();
+        equal(mine.list.map(item => item.draft.state).join(), 'review', 'Minhas alterações em revisão');
       } finally {
         publish.useTestGitHub(undefined);
       }

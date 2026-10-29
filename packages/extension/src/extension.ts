@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
-import { chooseSites, dismissChooseSites, hideSite, useTestSiteChoice } from './chooseSites';
+import { chooseSites, hideSite, useTestSiteChoice } from './chooseSites';
 import { REMOTE_SCHEME } from '@edtroleis/techdocs-editor-core';
 import { CatalogOptions, repositoryFolder } from './catalogOptions';
 import { CheckItem, CheckView } from './checkView';
-import { DocsItem, DocsTreeView } from './docsTreeView';
+import { DocsItem, DocsTreeView, useTestSitePick } from './docsTreeView';
 import { LintActions } from './lintActions';
 import { LintService } from './lintService';
 import { LocalSites } from './localSites';
+import { MineItem, MineView } from './mineView';
 import { openVisualByDefault } from './openByDefault';
 import { ProposedChanges } from './proposedChange';
 import { PrepareContext } from './prepareContext';
@@ -30,9 +31,20 @@ export function activate(context: vscode.ExtensionContext) {
   const opener = new RemoteOpener(remotes);
   const lint = new LintService(sites);
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites, remoteFs);
-  const docs = new DocsTreeView(sites, remotes);
+  const docs = new DocsTreeView(sites, remotes, context.workspaceState);
   const conflicts = new ConflictPanel(context.extensionUri);
   const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs, conflicts);
+  // A faixa de estado da página (rascunho, em revisão…) no editor visual, e os botões dela
+  publish.onDidChangeStrip(({ uri, strip }) => provider.setStrip(uri, strip));
+  provider.onStripAction(({ uri, action }) => publish.runStripAction(uri, action));
+  const mine = new MineView(sites, remotes, opener);
+  // "Minhas alterações" acompanha quando a página muda de estado (salvou, enviou, publicou)
+  let lastState = '';
+  publish.onDidChangeStrip(({ strip }) => {
+    const state = strip ? `${strip.tone}:${strip.state}` : '';
+    if (state !== lastState && strip?.tone !== undefined) mine.refreshLater();
+    lastState = state;
+  });
   const central = new CentralTemplates(context);
   const newPage = new NewPageCommand(sites, provider, central, remotes);
   const proposals = new ProposedChanges();
@@ -59,13 +71,18 @@ export function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand('techdocsEditor.chooseSites', () => chooseSites(sites)),
     vscode.commands.registerCommand('techdocsEditor.hideSite', (item?: DocsItem) => hideSite(sites, item?.siteRoot)),
-    vscode.commands.registerCommand('techdocsEditor.dismissChooseSites', () => dismissChooseSites()),
+    vscode.commands.registerCommand('techdocsEditor.chooseSite', () => docs.chooseSite()),
     vscode.commands.registerCommand('techdocsEditor.closeRemote', (item?: DocsItem) => item?.remote && remotes.remove(item.remote)),
     vscode.commands.registerCommand('techdocsEditor.refreshRemote', (item?: DocsItem) =>
       item?.remote ? remotes.refresh(item.remote.host, item.remote.slug) : remotes.refresh(),
     ),
     proposals,
     publish,
+    mine,
+    vscode.commands.registerCommand('techdocsEditor.openMine', (item?: MineItem) => item && mine.open(item)),
+    vscode.commands.registerCommand('techdocsEditor.openMinePr', (item?: MineItem) => item && mine.openPr(item)),
+    vscode.commands.registerCommand('techdocsEditor.refreshMine', () => mine.refresh()),
+    vscode.commands.registerCommand('techdocsEditor.signIn', () => mine.signIn()),
     repoCheck,
     checkView,
     prepare,
@@ -110,7 +127,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick };
+  return { provider, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick };
 }
 
 /**

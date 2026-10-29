@@ -324,6 +324,11 @@ export class FakeGitHub {
       const content = this.blobs.get(m[1]);
       return content === undefined ? notFound : ok({ sha: m[1], content: Buffer.from(content).toString('base64'), encoding: 'base64' });
     }
+    m = rest.match(/^\/git\/matching-refs\/heads\/(.*)$/);
+    if (m && method === 'GET') {
+      const prefix = m[1];
+      return ok([...this.refs].filter(([name]) => name.startsWith(prefix)).map(([name, sha]) => ({ ref: `refs/heads/${name}`, object: { sha } })));
+    }
     m = rest.match(/^\/git\/ref\/heads\/(.+)$/);
     if (m && method === 'GET') {
       const sha = this.refs.get(m[1]);

@@ -159,7 +159,7 @@ written:
   creates only `mkdocs.yml`, with the `nav` built from the folders and page titles and the `techdocs-core`
   plugin, shown in a diff first. No page changes.
 - **Asked once:** without a `catalog-info.yaml`, it asks whether your Backstage uses one in the repository.
-  **No** stops all talk of it; **Yes** leads to the Check view, which offers to create it. The answer goes to
+  **No** stops all talk of it; **Yes** leads to the Maintenance view, which offers to create it. The answer goes to
   `.techdocs-editor.yaml`, for the whole team.
 
 ![Pages in docs/ with no mkdocs.yml: use them, and only mkdocs.yml is created, with the nav from folders and titles](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/adopt-docs.gif)
@@ -194,7 +194,7 @@ files:
 
 ![The Check view groups what TechDocs needs by kind; a click goes to the line; Fix shows the diff before applying](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/check-and-fix.gif)
 
-The **Check** section of the TechDocs sidebar lists, grouped by kind, what is missing or wrong for TechDocs to
+The **Maintenance** section of the TechDocs sidebar (turn on `techdocsEditor.maintainer` to see it) lists, grouped by kind, what is missing or wrong for TechDocs to
 build each site: `site_name` and the `techdocs-core` plugin in `mkdocs.yml`, the docs folder
 and its `index.md`, `nav` entries pointing to missing pages and pages left out of the `nav`, the
 `backstage.io/techdocs-ref` annotation in `catalog-info.yaml`, the markdownlint configuration, formatting
@@ -225,7 +225,13 @@ anything opens.
 - **Ctrl+S saves your draft:** a commit on your own branch for the page (`docs/<login>/<page>`), created on the
   first save from the version you opened, with `[skip ci]` where there is a pipeline. Someone publishing
   before you is never overwritten. Images you add go to `<docs>/assets/` on that branch and show in the editor.
-- **The Publishing panel** appears for pages from GitHub, with the same buttons as in local mode: **Save and
+- **The status strip** at the top of the page says where it stands (published, draft, in review, something to
+  fix) and offers the next step. **Send for review** fixes the formatting, saves, waits for the checks and asks
+  for the review in one step; a failing check stops it and points to the line. In the text editor, the same
+  shows in the status bar.
+- **My changes** in the sidebar lists the pages you are changing in every repository the extension knows, as
+  *Draft* or *In review* (only when you are signed in to GitHub).
+- **Publishing details** (collapsed under the pages) has the same buttons as in local mode: **Save and
   check** runs the pipeline and opens a draft pull request, **Send** marks it ready, **Discard** deletes the
   draft. When the merge is done on GitHub, the panel says the page is published.
 - **Page History…** (the clock in the editor title) lists the published versions of the page. **Restore** puts
@@ -286,12 +292,13 @@ To always open documentation pages in the visual editor, turn on `techdocsEditor
 | Setting | Default | What it does |
 |---------|---------|--------------|
 | `techdocsEditor.openVisualByDefault` | `false` | Open pages inside a MkDocs `docs_dir` in the visual editor instead of the text |
-| `techdocsEditor.sites` | all | Documentation sites shown in the TechDocs view and checked: folders of a `mkdocs.yml` (or a folder above them). Set it with **Choose Documentation to Show…** in the view |
+| `techdocsEditor.sites` | all | Documentation sites offered by **Switch documentation…** and checked: folders of a `mkdocs.yml` (or a folder above them). Set it with **Choose Which Sites Appear…** in the view's `…` menu |
+| `techdocsEditor.maintainer` | `false` | Show the **Maintenance** section (checking the documentation, preparing the repository and its options), for whoever maintains the documentation |
 | `techdocsEditor.images.maxSizeMB` | `5` | Largest image the visual editor saves to `assets`. Images go into the repository: large files weigh on every clone |
 | `techdocsEditor.templates.paths` | `[]` | More folders with page and site templates, relative to the workspace folder (`.techdocs/templates/` is always read) |
 | `techdocsEditor.templates.repository` | `""` | Company templates in a GitHub repository: `owner/repo[/folder][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Offer the templates that come with the extension |
-| `techdocsEditor.catalog` | `auto` | How the check treats `catalog-info.yaml`: `auto` (check it only if it exists), `required` or `off`. Also the gear in the Check view; `catalog:` in `.techdocs-editor.yaml` wins |
+| `techdocsEditor.catalog` | `auto` | How the check treats `catalog-info.yaml`: `auto` (check it only if it exists), `required` or `off`. Also the gear in the Maintenance view; `catalog:` in `.techdocs-editor.yaml` wins |
 | `techdocsEditor.local.publishPanel` | `false` | Show the **Publishing** panel |
 | `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch created for a draft when you are on the default branch |
 | `techdocsEditor.drafts.skipCi` | `true` | **Save draft** adds `[skip ci]`, so the pipeline only runs on **Save and check** |
@@ -322,7 +329,7 @@ Fix formatting on save:
 | **TechDocs: Open as Markdown text** | Opens the text of the page side by side with the visual editor |
 | **TechDocs: New page from template…** | Creates a documentation page from a template and opens it in the visual editor |
 | **TechDocs: New documentation site…** | Creates `mkdocs.yml` and the pages of a documentation site from a template |
-| **TechDocs: Check the documentation of the repository** | Lists what is missing or wrong for TechDocs in the Check view and the Problems panel |
+| **TechDocs: Check the documentation of the repository** | Lists what is missing or wrong for TechDocs in the Maintenance view and the Problems panel |
 | **TechDocs: Prepare the documentation in this repository** | Creates a site, or applies the fixes of the check one by one with the diff first |
 | **TechDocs: Open documentation from GitHub…** | Opens a site from a GitHub repository without cloning it (URL or `owner/repo`) |
 | **TechDocs: Refresh company templates** | Checks the company templates repository right away instead of waiting for the hourly check |

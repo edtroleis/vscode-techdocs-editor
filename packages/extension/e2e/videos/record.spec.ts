@@ -79,11 +79,12 @@ function markStart(name: string, startedAt: number) {
   writeFileSync(path, JSON.stringify(starts, null, 2));
 }
 
-const scene = (name: string) => ({ recordDir: join(OUT, name), windowSize: SIZE });
+// A seção Manutenção aparece só para quem mantém a documentação
+const scene = (name: string) => ({ recordDir: join(OUT, name), windowSize: SIZE, settings: { 'techdocsEditor.maintainer': true } });
 
 const pane = (page: Page, title: RegExp) => page.locator('.pane', { has: page.locator('.pane-header', { hasText: title }) });
 const docsView = (page: Page) => pane(page, /^Documentation/i);
-const checkView = (page: Page) => pane(page, /^Check/i);
+const checkView = (page: Page) => pane(page, /^Maintenance/i);
 
 /** O ícone TechDocs na barra de atividades, clicado como uma pessoa. */
 async function openSidebar(page: Page) {
@@ -143,7 +144,7 @@ async function answer(page: Page, text?: string) {
 }
 
 test.describe('visual-editor', () => {
-  test.use({ ...scene('visual-editor'), settings: { 'techdocsEditor.openVisualByDefault': true } });
+  test.use({ ...scene('visual-editor'), settings: { 'techdocsEditor.maintainer': true, 'techdocsEditor.openVisualByDefault': true } });
   test('editar no visual, com o texto ao lado', async ({ vscode: { page, startedAt } }) => {
     await overlay(page);
     markStart('visual-editor', startedAt);

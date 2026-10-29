@@ -204,3 +204,143 @@ body .docs-editor {
 .docs-search-bar button:focus-visible {
   outline: 1px solid var(--vscode-focusBorder);
 }
+
+/* Faixa de estado da página (rascunho, em revisão, publicada…), com a próxima ação */
+.status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--vscode-editorWidget-border, var(--vscode-widget-border, #8884));
+  border-left: 4px solid var(--vscode-notificationsInfoIcon-foreground);
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.status-strip.done {
+  border-left-color: var(--vscode-testing-iconPassed, var(--vscode-notificationsInfoIcon-foreground));
+}
+
+.status-strip.review {
+  border-left-color: var(--vscode-editorWarning-foreground);
+}
+
+.status-strip.problem {
+  border-left-color: var(--vscode-errorForeground);
+}
+
+.status-state {
+  font-weight: 600;
+}
+
+.status-message,
+.status-steps {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.status-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.status-step.todo {
+  color: var(--vscode-descriptionForeground);
+}
+
+.status-step.done {
+  color: var(--vscode-testing-iconPassed, inherit);
+}
+
+.status-spin {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: status-spin 0.8s linear infinite;
+}
+
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-spin {
+    animation: none;
+  }
+}
+
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-strip button {
+  padding: 3px 10px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.status-strip button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.status-strip button.secondary {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.status-strip button.secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.status-strip button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.status-more {
+  position: relative;
+}
+
+.status-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 2px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: 4px 0;
+  border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, #8884));
+  background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, #0004);
+}
+
+.status-strip .status-menu button {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--vscode-menu-foreground, var(--vscode-foreground));
+  text-align: left;
+}
+
+.status-strip .status-menu button:hover,
+.status-strip .status-menu button:focus-visible {
+  background: var(--vscode-menu-selectionBackground, var(--vscode-list-hoverBackground));
+  color: var(--vscode-menu-selectionForeground, inherit);
+}

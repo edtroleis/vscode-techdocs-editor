@@ -15,6 +15,7 @@ import type { PrepareContext } from '../../../src/prepareContext';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { CatalogOptions } from '../../../src/catalogOptions';
 import type { useTestSiteChoice } from '../../../src/chooseSites';
+import type { useTestSitePick } from '../../../src/docsTreeView';
 import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
 import type { CentralTemplates } from '../../../src/templates/centralTemplates';
@@ -43,6 +44,13 @@ async function until<T>(read: () => T | Promise<T>, accept: (value: T) => boolea
   return value;
 }
 
+/** O nó do site na árvore, escolhendo o site no seletor (um de cada vez). */
+function siteItem(docs: DocsTreeView, folder: string) {
+  const candidate = docs.siteCandidates.find(c => c.description === folder);
+  if (candidate && docs.current !== candidate.key) void docs.select(candidate.key);
+  return docs.getChildren().find(item => item.kind === 'site' && item.description === folder);
+}
+
 type Api = {
   provider: VisualEditorProvider;
   sites: LocalSites;
@@ -58,6 +66,7 @@ type Api = {
   prepare: PrepareContext;
   preview: SitePreview;
   useTestSiteChoice: typeof useTestSiteChoice;
+  useTestSitePick: typeof useTestSitePick;
 };
 
 async function api(): Promise<Api> {
@@ -443,14 +452,11 @@ export function defineTests() {
         `${'  '.repeat(depth)}${item.label}${item.kind === 'page' ? '' : ` (${item.kind})`}`,
         ...outline(docs, docs.getChildren(item), depth + 1),
       ]);
-    const siteItem = (docs: DocsTreeView, folder: string) =>
-      docs.getChildren().find(item => item.kind === 'site' && item.description === folder);
 
     test('site sem nav: pelas pastas, com o título 1 de cada página', async () => {
       const { docs } = await api();
       await docs.ready;
-      const wiki = siteItem(docs, 'wiki');
-      ok(wiki, `site wiki não está na árvore: ${outline(docs, docs.getChildren()).join(' | ')}`);
+      const wiki = await until(() => siteItem(docs, 'wiki'), Boolean, 'site wiki não está na árvore');
       equal(
         outline(docs, docs.getChildren(wiki)).join('\n'),
         ['Wiki de Demonstração', 'Guias (section)', '  Imagens', '  Primeiros passos', 'Processos (section)', '  Processo de aprovação'].join('\n'),
@@ -496,13 +502,14 @@ export function defineTests() {
       await until(() => siteItem(docs, 'nav-site') === undefined, gone => gone, 'site removido continuou na árvore');
     });
 
-    test('muitos sites: aviso para escolher; escolher, esconder e mostrar todos; cópias e esqueletos ficam de fora', async () => {
-      const { docs, sites, repoCheck, useTestSiteChoice } = await api();
+    test('vários sites: um de cada vez no seletor; escolher quais aparecem, esconder; cópias e esqueletos ficam de fora', async () => {
+      const { docs, sites, repoCheck, useTestSiteChoice, useTestSitePick } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
       const extra = ['outro-1', 'outro-2', 'outro-3', 'outro-4'];
       const ignored = ['.copia/wiki', 'app/test/fixtures/wiki', 'template/skeleton'];
       const config = () => vscode.workspace.getConfiguration('techdocsEditor');
       const roots = () => docs.getChildren().map(item => `${item.description ?? item.label} (${item.kind})`);
+      const offered = () => docs.siteCandidates.map(c => c.description).sort().join(',');
       await sites.ready;
       const before = sites.all().map(s => vscode.workspace.asRelativePath(s.mkdocs.with({ path: s.site.root }), false));
       try {
@@ -518,34 +525,53 @@ export function defineTests() {
           r => r.length === before.length + extra.length,
           'os sites novos não apareceram (ou as cópias entraram)',
         );
-        // Mais de 5 e nada escolhido: o aviso no topo
-        await until(() => (docs.ready.then(() => roots())), r => r[0]?.endsWith('(chooseSites)'), 'sem o aviso de escolher');
+        await until(() => docs.ready.then(offered), r => r === [...before, ...extra].sort().join(','), 'o seletor não oferece todos');
 
-        // Escolher: só a wiki e a wiki-demo
-        let offered: string[] = [];
+        // Trocar pelo seletor: só o site escolhido na árvore
+        useTestSitePick(candidates => candidates.find(c => c.description === 'outro-2')?.key);
+        await vscode.commands.executeCommand('techdocsEditor.chooseSite');
+        equal(roots().join(' | '), 'outro-2 (site)', 'árvore do site escolhido');
+
+        // Escolher quais aparecem: só a wiki e a wiki-demo
+        let choices: string[] = [];
         useTestSiteChoice(items => {
-          offered = items.map(item => item.path);
+          choices = items.map(item => item.path);
           return items.filter(item => item.path.startsWith('wiki'));
         });
         await vscode.commands.executeCommand('techdocsEditor.chooseSites');
-        equal(offered.sort().join(','), [...before, ...extra].sort().join(','), 'sites oferecidos');
+        equal(choices.sort().join(','), [...before, ...extra].sort().join(','), 'sites oferecidos');
         equal(JSON.stringify(config().get('sites')), JSON.stringify(['wiki', 'wiki-demo']), 'escolha gravada');
-        await until(() => docs.ready.then(() => roots().join(' | ')), r => r === 'wiki (site) | wiki-demo (site) | Choose documentation… (hiddenSites)', 'árvore com os escolhidos');
+        await until(() => docs.ready.then(offered), r => r === 'wiki,wiki-demo', 'seletor com os escolhidos');
         equal((await repoCheck.check(true)).length, 2, 'a verificação conferiu os escondidos');
 
         // Esconder a wiki-demo pelo menu do site
-        await vscode.commands.executeCommand('techdocsEditor.hideSite', siteItem(docs, 'wiki-demo'));
+        const demo = await until(() => siteItem(docs, 'wiki-demo'), Boolean, 'wiki-demo não entrou na árvore');
+        await vscode.commands.executeCommand('techdocsEditor.hideSite', demo);
         equal(JSON.stringify(config().get('sites')), JSON.stringify(['wiki']), 'esconder não tirou da escolha');
 
-        // Mostrar todos e não perguntar mais
-        await vscode.commands.executeCommand('techdocsEditor.dismissChooseSites');
-        await until(() => docs.ready.then(() => roots()), r => r.length === before.length + extra.length && r.every(item => item.endsWith('(site)')), 'todos os sites, sem o aviso');
+        // Marcar todos: todos de volta
+        useTestSiteChoice(items => items);
+        await vscode.commands.executeCommand('techdocsEditor.chooseSites');
+        await until(() => docs.ready.then(offered), r => r === [...before, ...extra].sort().join(','), 'todos os sites de volta');
       } finally {
         useTestSiteChoice(undefined);
+        useTestSitePick(undefined);
         await config().update('sites', undefined, vscode.ConfigurationTarget.Workspace);
         for (const folder of [...extra, '.copia', 'app', 'template']) await vscode.workspace.fs.delete(file(folder), { recursive: true }).then(undefined, () => undefined);
       }
       await until(() => sites.all().length, n => n === before.length, 'os sites de teste continuaram');
+    });
+
+    test('abrir uma página de outro site troca o site da árvore', async () => {
+      const { docs } = await api();
+      await until(() => siteItem(docs, 'wiki'), Boolean, 'wiki não entrou na árvore');
+      await vscode.window.showTextDocument(file('wiki-demo/docs/index.md'));
+      await until(
+        () => docs.ready.then(() => docs.getChildren().map(item => item.description).join()),
+        r => r === 'wiki-demo',
+        'a árvore não seguiu a página aberta',
+      );
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
     });
 
     test('sem mkdocs.yml: README, docs/ ou catalog-info.yaml ligam a tela "Preparar"; o site criado a desliga', async () => {
@@ -706,7 +732,7 @@ export function defineTests() {
         const site = await until(
           async () => {
             await docs.ready;
-            return docs.getChildren().find(item => item.kind === 'site' && item.description === 'site-novo');
+            return siteItem(docs, 'site-novo');
           },
           Boolean,
           'site novo não apareceu na árvore',
@@ -992,7 +1018,7 @@ export function defineTests() {
         const section = await until(
           async () => {
             await docs.ready;
-            const site = docs.getChildren().find(item => item.kind === 'site' && item.description === 'nav-tpl');
+            const site = siteItem(docs, 'nav-tpl');
             return site && docs.getChildren(site).find(item => item.kind === 'section' && item.label === 'Guias');
           },
           Boolean,

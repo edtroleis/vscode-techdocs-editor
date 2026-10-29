@@ -239,3 +239,28 @@ describe('outros PRs na mesma página (M9)', () => {
     expect(view().ownPrs).toEqual([{ number: 2, url: 'https://github.com/acme/wiki/pull/2' }]);
   });
 });
+
+describe('Enviar para revisão em um passo', () => {
+  it('salva, verifica e, quando as verificações passam, marca o pedido como pronto', async () => {
+    const { github, page, publisher, view } = await setup();
+    page.edit(`${INDEX}\nMais texto.\n`);
+    await publisher.submit();
+    expect(view().error).toBeUndefined();
+    expect(github.openPull(BRANCH)).toMatchObject({ draft: true });
+    expect(view().submitting).toBe('checking');
+    await publisher.refreshChecks();
+    await vi.waitFor(() => expect(view()).toMatchObject({ submitting: undefined, pr: { draft: false } }));
+    expect(github.openPull(BRANCH)!.draft).toBe(false);
+  });
+
+  it('verificação que falha: para, com o pedido ainda em rascunho', async () => {
+    const { github, page, publisher, view } = await setup();
+    github.nextOutcome = { 'Links': { conclusion: 'failure' } };
+    page.edit(`${INDEX}\nMais texto.\n`);
+    await publisher.submit();
+    await publisher.refreshChecks();
+    await vi.waitFor(() => expect(view().checks.summary).toBe('failed'));
+    expect(view().submitting).toBeUndefined();
+    expect(github.openPull(BRANCH)!.draft).toBe(true);
+  });
+});

@@ -48,9 +48,6 @@ export function isIgnoredMkdocs(path: string, text: string): boolean {
   return /\$\{\{|\{\{\s*cookiecutter\./.test(text);
 }
 
-/** Com mais sites que isso e nada escolhido, a árvore sugere escolher quais mostrar. */
-export const CHOOSE_SITES_THRESHOLD = 5;
-
 /**
  * O site (pasta do `mkdocs.yml`, relativa ao workspace; `.` na raiz) está entre os escolhidos em
  * `techdocsEditor.sites`: a própria pasta ou uma pasta acima dela. Sem escolha (ou lista vazia), todos.

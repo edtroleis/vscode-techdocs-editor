@@ -1,4 +1,5 @@
 /** Mensagens entre o host da extensão e o webview do editor visual. */
+import type { Strip, StripAction } from './publish/strip';
 
 /** Problema de formatação mostrado no editor visual (spec 01, L-3). */
 export type ProblemView = { line: number; message: string; fixable: boolean };
@@ -10,6 +11,8 @@ export type WebviewLabels = {
   fixAll: string;
   line: string;
   showLine: string;
+  /** O botão "⋯" da faixa de estado. */
+  more: string;
 };
 
 export type HostMessage =
@@ -24,6 +27,8 @@ export type HostMessage =
   | { type: 'conflict'; message: string; action: string }
   /** Seleciona o trecho no editor visual (página nova de template: o primeiro trecho a preencher, TP7). */
   | { type: 'select'; text: string }
+  /** Faixa de estado da página (rascunho, em revisão…), a cada mudança no painel de publicação; sem `strip`, some. */
+  | { type: 'status'; strip?: Strip }
   /** Problemas de formatação da página, a cada lint (lista vazia: sem problemas). */
   | { type: 'lint'; problems: ProblemView[] }
   /** Resposta a `uploadImage`: o link para pôr no Markdown, ou o motivo da recusa (já mostrado ao usuário). */
@@ -57,6 +62,8 @@ export type WebviewMessage =
    * com `\n`). O host aplica só essa diferença ao documento como ele está (ver rebase.ts).
    */
   | { type: 'edit'; before: string; after: string }
+  /** Botão ou menu da faixa de estado. */
+  | { type: 'statusAction'; action: StripAction }
   /** Desfazer ou refazer no documento (o histórico é um só: o do VS Code). */
   | { type: 'undo' }
   | { type: 'redo' }

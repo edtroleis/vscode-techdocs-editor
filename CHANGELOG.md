@@ -15,6 +15,27 @@ All notable changes to the TechDocs Editor extension. The format follows
   that exists on the main branch or in a draft.
 - **Other pull requests on the page:** the Publishing panel warns about open pull requests by other people that
   change the same page, with the author and a link, and about your own opened outside the editor.
+- **Status strip on the page.** The top of the visual editor says where the page stands (published, draft,
+  sending, in review, something to fix) and offers the next step. In the text editor, the same shows in the
+  status bar.
+- **Send for review in one step.** It fixes the formatting, saves the draft, waits for the checks and asks
+  for the review. If a check fails, it stops and points to the line. *Only check*, *Discard draft*, *Page
+  history* and *Publishing details* are in the **⋯** menu of the strip.
+- **My changes:** a sidebar section with the pages you are changing in every repository the extension knows,
+  each marked *Draft* or *In review*. A click opens the page from your draft. It only lists when you are
+  signed in to GitHub, and it never asks you to sign in.
+- **One documentation site at a time.** With several sites in the workspace or opened from GitHub, the
+  sidebar shows one, with **Switch documentation…** next to its name. The list is grouped by repository and
+  also offers opening from GitHub and opening another folder. Opening a page from another site switches by
+  itself. With none chosen, the sidebar asks for a choice.
+
+### Changed
+
+- The **Check** section is now **Maintenance**, shown only with `techdocsEditor.maintainer` (people who only
+  write pages do not need it). The **Publishing** panel is now **Publishing details** and starts collapsed.
+- **Choose Documentation to Show…** is now **Choose Which Sites Appear…**, in the view's `…` menu. The
+  "Choose which documentation to show" notice and the hidden-sites item are gone.
+- Plainer words in Portuguese: *pedido de revisão* instead of *pull request*, *rascunho* instead of *branch*.
 
 ## [0.6.0] - 2026-10-29
 

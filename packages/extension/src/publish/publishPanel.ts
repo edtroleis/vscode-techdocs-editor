@@ -24,6 +24,7 @@ import { clientFor, gitHubErrorText, hasSession, useTestTransport } from './gith
 import { LocalPublisher, LocalPublisherOptions, PublishView } from './localPublisher';
 import { publishConfig } from './publishConfig';
 import { RemoteGit } from './remoteGit';
+import { type Strip, type StripAction, stripFor } from './strip';
 import type { LocalGit, PageDoc } from './types';
 import { DocumentPage, gitApi, VscodeGit } from './vscodeGit';
 
@@ -36,7 +37,7 @@ export type PanelState =
 
 export type PanelMessage =
   | { type: 'ready' }
-  | { type: 'action'; action: 'saveDraft' | 'saveAndVerify' | 'send' | 'discard' | 'signIn' | 'refresh' | 'setUp' | 'resolve' }
+  | { type: 'action'; action: 'submit' | 'saveDraft' | 'saveAndVerify' | 'send' | 'discard' | 'signIn' | 'refresh' | 'setUp' | 'resolve' }
   | { type: 'openUrl'; url: string }
   | { type: 'showLine'; path: string; line: number };
 
@@ -57,6 +58,12 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
   private state: PanelState = { status: 'noPage' };
   private readonly disposables: vscode.Disposable[] = [];
   private loading: Promise<void> = Promise.resolve();
+  /** Faixa de estado da página atual (editor visual e barra de status). */
+  private strip: Strip | undefined;
+  private readonly statusItem = vscode.window.createStatusBarItem('techdocsEditor.pageStatus', vscode.StatusBarAlignment.Left, 50);
+  private readonly onDidChangeStripEmitter = new vscode.EventEmitter<{ uri: vscode.Uri; strip: Strip | undefined }>();
+  /** A faixa de estado de uma página mudou (o editor visual dela mostra). */
+  readonly onDidChangeStrip = this.onDidChangeStripEmitter.event;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -67,13 +74,23 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
     private readonly conflicts: ConflictPanel,
   ) {
     this.updateContext();
+    this.statusItem.name = vscode.l10n.t('Page status');
     this.disposables.push(
+      this.statusItem,
+      this.onDidChangeStripEmitter,
+      vscode.commands.registerCommand('techdocsEditor.pageAction', (action: StripAction) => this.key && this.runStripAction(vscode.Uri.parse(this.key), action)),
       remotes.onDidChange(() => this.updateContext()),
-      vscode.window.onDidChangeActiveTextEditor(() => this.follow()),
+      vscode.window.onDidChangeActiveTextEditor(() => {
+        this.follow();
+        this.updateStatusItem();
+      }),
       vscode.window.tabGroups.onDidChangeTabs(() => this.follow()),
       // A página do GitHub abre a aba antes de o texto chegar: o documento aparece depois
       vscode.workspace.onDidOpenTextDocument(() => this.follow()),
       vscode.window.onDidChangeWindowState(state => this.publisher?.setFocused(state.focused)),
+      vscode.workspace.onDidSaveTextDocument(document => {
+        if (document.uri.toString() === this.key) void this.publisher?.pageSaved();
+      }),
       vscode.workspace.onDidChangeConfiguration(e => {
         if (!e.affectsConfiguration(CONFIG)) return;
         this.updateContext();
@@ -100,6 +117,11 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
 
   get panelState(): PanelState {
     return this.state;
+  }
+
+  /** A faixa de estado da página atual (testes). */
+  get pageStrip(): Strip | undefined {
+    return this.strip;
   }
 
   resolveWebviewView(view: vscode.WebviewView) {
@@ -149,11 +171,13 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
       return;
     }
     if (document.uri.toString() === this.key) return;
+    this.clearStrip();
     this.key = document.uri.toString();
     this.loading = this.open(document, false);
   }
 
   private reset() {
+    this.clearStrip();
     this.publisher?.dispose();
     this.publisher = undefined;
     this.key = undefined;
@@ -294,6 +318,8 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
     if (message.type === 'showLine') return this.showLine(message.path, message.line);
     const publisher = this.publisher;
     switch (message.action) {
+      case 'submit':
+        return publisher?.submit();
       case 'signIn': {
         const document = this.activeDocument() ?? vscode.workspace.textDocuments.find(d => d.uri.toString() === this.key);
         if (document) this.loading = this.open(document, true);
@@ -313,6 +339,32 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
         return publisher?.setUp();
       case 'resolve':
         return publisher?.resolveConflict();
+    }
+  }
+
+  /** Botão da faixa de estado (editor visual) ou da barra de status, na página atual. */
+  async runStripAction(uri: vscode.Uri, action: StripAction) {
+    if (uri.toString() !== this.key) return;
+    const publisher = this.publisher;
+    switch (action) {
+      case 'submit':
+        return publisher?.submit();
+      case 'check':
+        return publisher?.saveAndVerify();
+      case 'discard':
+        return publisher?.discard();
+      case 'resolve':
+        return publisher?.resolveConflict();
+      case 'signIn':
+        return this.onMessage({ type: 'action', action: 'signIn' });
+      case 'history':
+        return vscode.commands.executeCommand('techdocsEditor.pageHistory', uri);
+      case 'details':
+        return vscode.commands.executeCommand(`${PublishPanel.viewId}.focus`);
+      case 'openPr':
+        return this.strip?.url && vscode.env.openExternal(vscode.Uri.parse(this.strip.url));
+      case 'showLine':
+        return this.strip?.line && this.showLine(this.strip.line.path, this.strip.line.line);
     }
   }
 
@@ -341,6 +393,31 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
   private setState(state: PanelState) {
     this.state = state;
     this.post();
+    const uri = this.key && vscode.Uri.parse(this.key);
+    if (!uri) return;
+    this.strip = stripFor(state, vscode.l10n, uri.scheme === REMOTE_SCHEME);
+    this.onDidChangeStripEmitter.fire({ uri, strip: this.strip });
+    this.updateStatusItem();
+  }
+
+  /** A página deixou de ser acompanhada: a faixa dela some. */
+  private clearStrip() {
+    if (this.key) this.onDidChangeStripEmitter.fire({ uri: vscode.Uri.parse(this.key), strip: undefined });
+    this.strip = undefined;
+    this.updateStatusItem();
+  }
+
+  /** No editor de texto da página, a faixa vira um item da barra de status (o editor visual tem a faixa). */
+  private updateStatusItem() {
+    const strip = this.strip;
+    if (!strip || vscode.window.activeTextEditor?.document.uri.toString() !== this.key) return this.statusItem.hide();
+    const icon = strip.steps ? '$(sync~spin)' : { done: '$(check)', draft: '$(edit)', review: '$(eye)', problem: '$(warning)' }[strip.tone];
+    const primary = strip.actions.find(a => a.primary) ?? strip.actions[0];
+    this.statusItem.text = `${icon} ${strip.state}`;
+    this.statusItem.tooltip = [strip.message, primary?.label].filter(Boolean).join('\n\n');
+    this.statusItem.command = { title: primary?.label ?? strip.state, command: 'techdocsEditor.pageAction', arguments: [primary?.action ?? 'details'] };
+    this.statusItem.backgroundColor = strip.tone === 'problem' ? new vscode.ThemeColor('statusBarItem.errorBackground') : undefined;
+    this.statusItem.show();
   }
 
   private post() {

@@ -65,6 +65,11 @@ export type PublishView = {
   conflict?: boolean;
   /** O PR desta página teve o merge feito no GitHub: a página está publicada. */
   published?: { number: number; url: string };
+  /**
+   * "Enviar para revisão" em um passo: `saving` (formatação, commit, PR em rascunho), `checking` (esperando
+   * as verificações passarem) e `sending` (marcando o PR como pronto). Undefined fora do envio.
+   */
+  submitting?: 'saving' | 'checking' | 'sending';
   /** PRs abertos de outras pessoas que mudam esta página (M9). */
   othersPrs: Array<{ number: number; url: string; author: string }>;
   /** PRs da própria pessoa que mudam esta página, abertos fora do painel (outra branch). */
@@ -123,6 +128,7 @@ export class LocalPublisher {
   private setup: PublishView['setup'];
   private conflict: MainConflict | undefined;
   private otherPrs: OpenPullRequest[] = [];
+  private submitting: PublishView['submitting'];
   private readonly watcher: ChecksWatcher;
   private readonly poller: Poller;
 
@@ -133,6 +139,7 @@ export class LocalPublisher {
       onChange: state => {
         if (state.pr) this.pr = state.pr;
         this.emit();
+        void this.sendWhenChecked();
       },
     });
     this.poller = new Poller({
@@ -192,6 +199,7 @@ export class LocalPublisher {
       pr: this.pr?.state === 'open' ? { number: this.pr.number, url: this.pr.htmlUrl, draft: this.pr.draft } : undefined,
       published: this.pr?.merged ? { number: this.pr.number, url: this.pr.htmlUrl } : undefined,
       conflict: Boolean(this.conflict),
+      submitting: this.submitting,
       othersPrs: this.otherPrs.filter(p => p.author !== this.login).map(p => ({ number: p.number, url: p.htmlUrl, author: p.author })),
       ownPrs: this.otherPrs.filter(p => p.author === this.login).map(p => ({ number: p.number, url: p.htmlUrl })),
       unverified: this.unverified,
@@ -227,6 +235,16 @@ export class LocalPublisher {
 
   setFocused(focused: boolean) {
     this.poller.setFocused(focused);
+  }
+
+  /**
+   * A página foi salva fora do painel (Ctrl+S): na página do GitHub, o salvar grava o rascunho (cria a branch na
+   * primeira vez); lê de novo para a faixa dizer "Rascunho".
+   */
+  async pageSaved() {
+    if (this.busy) return;
+    await this.options.git.refresh();
+    this.emit();
   }
 
   /** Consulta as verificações agora (testes e botão "Atualizar"). */
@@ -327,6 +345,44 @@ export class LocalPublisher {
           ? this.l10n.t('Pull request #{0} is ready for review. The page is published when it is approved and merged on GitHub.', this.pr.number)
           : this.l10n.t('Pull request #{0} is open. The page is published when the merge is done on GitHub.', this.pr.number);
     });
+  }
+
+  /**
+   * "Enviar para revisão" (um passo só, para quem escreve): salva e verifica e, quando as verificações passam,
+   * marca o PR como pronto. Sem pipeline, o lint do editor é a verificação e o envio é na hora.
+   */
+  async submit() {
+    this.submitting = 'saving';
+    await this.saveAndVerify();
+    if (this.error || this.conflict || this.unverified || this.pr?.state !== 'open') {
+      this.submitting = undefined;
+      this.emit();
+      return;
+    }
+    this.submitting = 'checking';
+    this.emit();
+    await this.sendWhenChecked();
+  }
+
+  /** No envio em um passo: verificações passaram, marca como pronto; falharam, para (a faixa mostra o motivo). */
+  private async sendWhenChecked() {
+    if (this.submitting !== 'checking' || this.busy) return;
+    if (!this.pr?.draft) {
+      this.submitting = undefined;
+      return this.emit();
+    }
+    const summary = summarize(this.watcher.current.checks);
+    if (this.pipeline && summary !== 'passed') {
+      if (summary === 'failed') {
+        this.submitting = undefined;
+        this.emit();
+      }
+      return;
+    }
+    this.submitting = 'sending';
+    await this.send();
+    this.submitting = undefined;
+    this.emit();
   }
 
   /**

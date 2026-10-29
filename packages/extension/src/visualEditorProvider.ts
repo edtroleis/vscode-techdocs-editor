@@ -5,6 +5,7 @@ import type { LocalSites } from './localSites';
 import type { RemoteFileSystem } from './remote/remoteFs';
 import { DEFAULT_MAX_IMAGE_MB, imageProblem, imageTarget } from './imageUpload';
 import type { HostMessage, WebviewLabels, WebviewMessage } from './protocol';
+import type { Strip, StripAction } from './publish/strip';
 import { hasConflictMarkers } from './docsSite';
 import { rebase } from './rebase';
 import { minimalEdit, toEol, toLf } from './textSync';
@@ -19,6 +20,11 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   private readonly sessions = new Map<string, EditorSession>();
   private readonly onDidOpenEmitter = new vscode.EventEmitter<string>();
+  /** Faixa de estado de cada página, vinda do painel de publicação. */
+  private readonly strips = new Map<string, Strip | undefined>();
+  private readonly onStripActionEmitter = new vscode.EventEmitter<{ uri: vscode.Uri; action: StripAction }>();
+  /** Clique num botão da faixa de estado. */
+  readonly onStripAction = this.onStripActionEmitter.event;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -29,13 +35,23 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
-    const session = new EditorSession(document, panel, this.extensionUri, this.lint, this.sites, this.remoteFs);
+    const session = new EditorSession(document, panel, this.extensionUri, this.lint, this.sites, this.remoteFs, {
+      strip: () => this.strips.get(key),
+      action: action => this.onStripActionEmitter.fire({ uri: document.uri, action }),
+    });
     this.sessions.set(key, session);
     panel.onDidDispose(() => {
       if (this.sessions.get(key) === session) this.sessions.delete(key);
       session.dispose();
     });
     this.onDidOpenEmitter.fire(key);
+  }
+
+  /** Mostra a faixa de estado no editor visual da página (se aberto, e quando abrir). */
+  setStrip(uri: vscode.Uri, strip: Strip | undefined) {
+    const key = uri.toString();
+    this.strips.set(key, strip);
+    this.sessions.get(key)?.showStrip(strip);
   }
 
   /** Para os testes: a sessão do arquivo, quando o editor visual dele terminou de carregar. */
@@ -77,6 +93,7 @@ export class EditorSession {
     private readonly lint: LintService,
     private readonly sites: LocalSites,
     private readonly remoteFs?: RemoteFileSystem,
+    private readonly status?: { strip(): Strip | undefined; action(action: StripAction): void },
   ) {
     this.ready = new Promise(resolve => (this.markReady = resolve));
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
@@ -119,6 +136,11 @@ export class EditorSession {
   }
 
   private readonly pageDir: vscode.Uri;
+
+  /** A faixa de estado da página (rascunho, em revisão…); undefined esconde. */
+  showStrip(strip: Strip | undefined) {
+    this.post({ type: 'status', strip });
+  }
 
   /** Seleciona o trecho no editor visual, com o foco nele. */
   select(text: string) {
@@ -184,7 +206,11 @@ export class EditorSession {
         return;
       case 'ready':
         this.post({ type: 'lint', problems: this.lint.problems(this.document.uri) });
+        this.post({ type: 'status', strip: this.status?.strip() });
         this.markReady();
+        return;
+      case 'statusAction':
+        this.status?.action(message.action);
         return;
       case 'fixLint':
         // Na fila: a última edição do webview chega ao documento antes da correção
@@ -357,6 +383,7 @@ function webviewLabels(): WebviewLabels {
     fixAll: vscode.l10n.t('Fix automatically'),
     line: vscode.l10n.t('Line {0}'),
     showLine: vscode.l10n.t('Show line {0} in the Markdown text'),
+    more: vscode.l10n.t('More actions'),
   };
 }
 

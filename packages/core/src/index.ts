@@ -20,3 +20,4 @@ export * from './siteTemplates';
 export * from './syncMain';
 export * from './templates';
 export * from './verification';
+export * from './myDrafts';

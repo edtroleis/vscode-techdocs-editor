@@ -14,8 +14,8 @@ export function useTestSiteChoice(choose: typeof testChoice) {
 export type SiteChoice = vscode.QuickPickItem & { path: string; repo: string };
 
 /**
- * "Escolher documentação…" (workspaces com muitos sites): a lista dos sites achados, agrupada pelo repositório
- * Git, com os mostrados marcados. Guarda em `techdocsEditor.sites` do workspace; tudo ou nada marcado = todos.
+ * "Escolher quais sites aparecem…" (workspaces com muitos sites): a lista dos sites achados, agrupada pelo
+ * repositório Git, com os que o seletor oferece marcados. Guarda em `techdocsEditor.sites` do workspace; tudo ou nada marcado = todos.
  */
 export async function chooseSites(sites: LocalSites) {
   await sites.ready;
@@ -52,11 +52,6 @@ export async function hideSite(sites: LocalSites, root: vscode.Uri | undefined) 
   await save(shown.length ? shown : []);
 }
 
-/** "Não mostrar de novo" no aviso: todos os sites, sem perguntar. */
-export function dismissChooseSites() {
-  return save([]);
-}
-
 function save(paths: string[]) {
   return vscode.workspace.getConfiguration('techdocsEditor').update(SETTING, paths, vscode.ConfigurationTarget.Workspace);
 }
@@ -89,7 +84,7 @@ function pick(items: SiteChoice[]): Promise<SiteChoice[] | undefined> {
 }
 
 /** O repositório Git do site (a pasta com `.git` mais próxima, até a do workspace), relativo ao workspace. */
-async function repoOf(root: vscode.Uri): Promise<string> {
+export async function repoOf(root: vscode.Uri): Promise<string> {
   const folder = vscode.workspace.getWorkspaceFolder(root);
   if (!folder) return '';
   const top = folder.uri.path.replace(/\/$/, '');

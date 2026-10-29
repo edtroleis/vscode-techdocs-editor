@@ -23,6 +23,7 @@ export const LABELS = {
   fixAll: 'Fix automatically',
   line: 'Line {0}',
   showLine: 'Show line {0} in the Markdown text',
+  more: 'More actions',
 };
 
 export const sent = (page: Page) => page.evaluate(() => (window as unknown as { sent: Sent[] }).sent);

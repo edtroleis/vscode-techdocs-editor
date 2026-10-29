@@ -155,16 +155,38 @@
         "icon": "$(eye-closed)"
       },
       {
-        "command": "techdocsEditor.dismissChooseSites",
-        "title": "%command.dismissChooseSites%",
-        "category": "TechDocs",
-        "icon": "$(close)"
-      },
-      {
         "command": "techdocsEditor.pageHistory",
         "title": "%command.pageHistory%",
         "category": "TechDocs",
         "icon": "$(history)"
+      },
+      {
+        "command": "techdocsEditor.chooseSite",
+        "title": "%command.chooseSite%",
+        "category": "TechDocs",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "techdocsEditor.refreshMine",
+        "title": "%command.refreshMine%",
+        "category": "TechDocs",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "techdocsEditor.openMine",
+        "title": "%command.openMine%",
+        "category": "TechDocs"
+      },
+      {
+        "command": "techdocsEditor.openMinePr",
+        "title": "%command.openMinePr%",
+        "category": "TechDocs",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "techdocsEditor.signIn",
+        "title": "%command.signIn%",
+        "category": "TechDocs"
       }
     ],
     "menus": {
@@ -219,15 +241,24 @@
           "when": "false"
         },
         {
-          "command": "techdocsEditor.dismissChooseSites",
+          "command": "techdocsEditor.pageHistory",
+          "when": "techdocsEditor.hasRemote"
+        },
+        {
+          "command": "techdocsEditor.openMine",
           "when": "false"
         },
         {
-          "command": "techdocsEditor.pageHistory",
-          "when": "techdocsEditor.hasRemote"
+          "command": "techdocsEditor.openMinePr",
+          "when": "false"
         }
       ],
       "view/item/context": [
+        {
+          "command": "techdocsEditor.chooseSite",
+          "when": "view == techdocsEditor.docs && techdocsEditor.manySites && viewItem =~ /^(site|remote)$/",
+          "group": "inline@0"
+        },
         {
           "command": "techdocsEditor.openVisual",
           "when": "view == techdocsEditor.docs && viewItem == page",
@@ -299,17 +330,27 @@
           "group": "navigation"
         },
         {
-          "command": "techdocsEditor.dismissChooseSites",
-          "when": "view == techdocsEditor.docs && viewItem == chooseSites",
-          "group": "inline"
-        },
-        {
           "command": "techdocsEditor.pageHistory",
           "when": "view == techdocsEditor.docs && viewItem == page && techdocsEditor.hasRemote",
           "group": "navigation@9"
+        },
+        {
+          "command": "techdocsEditor.openMinePr",
+          "when": "view == techdocsEditor.mine && viewItem == mineWithPr",
+          "group": "inline"
+        },
+        {
+          "command": "techdocsEditor.openMinePr",
+          "when": "view == techdocsEditor.mine && viewItem == mineWithPr",
+          "group": "navigation"
         }
       ],
       "view/title": [
+        {
+          "command": "techdocsEditor.chooseSite",
+          "when": "view == techdocsEditor.docs && (techdocsEditor.hasDocs || techdocsEditor.hasRemote)",
+          "group": "navigation@0"
+        },
         {
           "command": "techdocsEditor.newPage",
           "when": "view == techdocsEditor.docs",
@@ -318,7 +359,7 @@
         {
           "command": "techdocsEditor.chooseSites",
           "when": "view == techdocsEditor.docs && techdocsEditor.hasDocs",
-          "group": "navigation@2"
+          "group": "2_sites@1"
         },
         {
           "command": "techdocsEditor.newSite",
@@ -349,6 +390,11 @@
           "command": "techdocsEditor.checkOptions",
           "when": "view == techdocsEditor.check",
           "group": "navigation@3"
+        },
+        {
+          "command": "techdocsEditor.refreshMine",
+          "when": "view == techdocsEditor.mine",
+          "group": "navigation"
         }
       ],
       "explorer/context": [
@@ -509,6 +555,11 @@
           "default": null,
           "scope": "resource",
           "markdownDescription": "%config.sites%"
+        },
+        "techdocsEditor.maintainer": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.maintainer%"
         }
       }
     },
@@ -536,17 +587,24 @@
           "icon": "$(book)"
         },
         {
-          "id": "techdocsEditor.check",
-          "name": "%view.check%",
-          "when": "techdocsEditor.hasDocs",
-          "icon": "$(checklist)"
+          "id": "techdocsEditor.mine",
+          "name": "%view.mine%",
+          "when": "techdocsEditor.hasDocs || techdocsEditor.hasRemote",
+          "icon": "$(git-pull-request-draft)"
         },
         {
           "type": "webview",
           "id": "techdocsEditor.publish",
           "name": "%view.publish%",
           "when": "techdocsEditor.hasDocs && techdocsEditor.publishPanel || techdocsEditor.remoteDocs",
-          "icon": "$(git-pull-request)"
+          "icon": "$(git-pull-request)",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "techdocsEditor.check",
+          "name": "%view.maintenance%",
+          "when": "techdocsEditor.hasDocs && config.techdocsEditor.maintainer",
+          "icon": "$(tools)"
         }
       ]
     },
@@ -559,7 +617,12 @@
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.empty%",
-        "when": "workbenchState != empty && techdocsEditor.scanned && !techdocsEditor.hasDocs && !techdocsEditor.canPrepare"
+        "when": "workbenchState != empty && techdocsEditor.scanned && !techdocsEditor.hasDocs && !techdocsEditor.canPrepare && !techdocsEditor.hasRemote"
+      },
+      {
+        "view": "techdocsEditor.docs",
+        "contents": "%viewsWelcome.chooseSite%",
+        "when": "techdocsEditor.needsSite"
       },
       {
         "view": "techdocsEditor.docs",
@@ -589,6 +652,16 @@
       {
         "view": "techdocsEditor.check",
         "contents": "%viewsWelcome.check%"
+      },
+      {
+        "view": "techdocsEditor.mine",
+        "contents": "%viewsWelcome.mine.signedOut%",
+        "when": "techdocsEditor.mineSignedOut"
+      },
+      {
+        "view": "techdocsEditor.mine",
+        "contents": "%viewsWelcome.mine.empty%",
+        "when": "!techdocsEditor.mineSignedOut"
       }
     ],
     "walkthroughs": [

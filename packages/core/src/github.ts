@@ -447,6 +447,12 @@ export class GitHubClient {
     return res?.sha ?? null;
   }
 
+  /** Branches que começam com `prefix` (ex.: os rascunhos de uma pessoa, `docs/ana/`). */
+  async listBranches(prefix: string): Promise<string[]> {
+    const refs = await this.request<any[]>('GET', `/repos/${this.slug}/git/matching-refs/heads/${encodePath(prefix)}`);
+    return refs.map(r => String(r.ref).replace(/^refs\/heads\//, ''));
+  }
+
   async findOpenPullRequest(branch: string): Promise<PullRequest | null> {
     const owner = this.slug.split('/')[0];
     const prs = await this.request<any[]>(

@@ -16,6 +16,7 @@ import {
   useVisualSearch,
 } from '@edtroleis/techdocs-editor-ui';
 import type { HostMessage, ProblemView, WebviewLabels, WebviewMessage } from '../src/protocol';
+import type { Strip } from '../src/publish/strip';
 import { rebase } from '../src/rebase';
 import './webview.css';
 
@@ -172,6 +173,7 @@ function App({ content }: { content: Content }) {
 
   return (
     <>
+    <StatusStrip labels={content.labels} />
     {search.open && <SearchBar text={searchText} {...search} />}
     <MarkdownEditor
       ref={editor}
@@ -233,6 +235,87 @@ function Problems({ problems, labels }: { problems: ProblemView[]; labels: Webvi
   );
 }
 
+/** Última faixa de estado vinda do host (pode chegar antes do editor montar). */
+let lastStrip: Strip | undefined;
+
+/**
+ * Faixa de estado no topo da página: rascunho, enviando (com os passos), em revisão, publicada ou o que
+ * corrigir, com a próxima ação. O resto fica no menu "⋯" e no painel de detalhes da publicação.
+ */
+function StatusStrip({ labels }: { labels: WebviewLabels }) {
+  const [strip, setStrip] = useState(lastStrip);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    const listener = (event: MessageEvent<HostMessage>) => {
+      if (event.data.type !== 'status') return;
+      setStrip(event.data.strip);
+      setMenuOpen(false);
+    };
+    window.addEventListener('message', listener);
+    return () => window.removeEventListener('message', listener);
+  }, []);
+  if (!strip) return null;
+  return (
+    <div className={`status-strip ${strip.tone}`} role={strip.tone === 'problem' ? 'alert' : 'status'}>
+      <span className="status-state">{strip.state}</span>
+      {strip.steps ? (
+        <span className="status-steps">
+          {strip.steps.map(step => (
+            <span key={step.label} className={`status-step ${step.status}`}>
+              {step.status === 'done' ? '✓' : step.status === 'now' ? <span className="status-spin" aria-hidden="true" /> : '○'} {step.label}
+            </span>
+          ))}
+        </span>
+      ) : (
+        <span className="status-message">{strip.message}</span>
+      )}
+      <span className="status-actions">
+        {strip.actions.map(action => (
+          <button
+            key={action.action}
+            type="button"
+            className={action.primary ? '' : 'secondary'}
+            onClick={() => post({ type: 'statusAction', action: action.action })}
+          >
+            {action.label}
+          </button>
+        ))}
+        {strip.menu.length > 0 && (
+          <span className="status-more">
+            <button
+              type="button"
+              className="secondary"
+              aria-label={labels.more}
+              title={labels.more}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(open => !open)}
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <span className="status-menu" role="menu">
+                {strip.menu.map(item => (
+                  <button
+                    key={item.action}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      post({ type: 'statusAction', action: item.action });
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </span>
+            )}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
 /** No lugar do editor quando o arquivo tem marcadores de conflito do Git (spec 02, LC4). */
 function Conflict({ message, action }: { message: string; action: string }) {
   useEffect(() => post({ type: 'ready' }), []);
@@ -251,6 +334,7 @@ const root = createRoot(document.getElementById('root')!);
 let generation = 0;
 window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
   const message = event.data;
+  if (message.type === 'status') lastStrip = message.strip;
   if (message.type === 'init') root.render(<App key={++generation} content={message} />);
   else if (message.type === 'conflict') root.render(<Conflict key={++generation} {...message} />);
 });
