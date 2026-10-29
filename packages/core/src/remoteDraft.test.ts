@@ -56,12 +56,31 @@ describe('saveRemoteDraft', () => {
     expect(other.head('docs/pessoa-teste/docs-guias-deploy')!.message).toBe('docs: rascunho');
   });
 
-  it('a página mudou no rascunho depois da leitura: RemoteDraftChangedError, nada gravado', async () => {
+  it('a página mudou no rascunho depois da leitura, em outro trecho: junta sozinho (M5)', async () => {
+    const github = new FakeGitHub({ ...FILES, 'docs/guias/deploy.md': '# Deploy\n\nUm.\n\nDois.\n\nTrês.\n' });
+    const session = await open(github);
+    // Outra janela salvou antes, mudando o fim
+    const { session: other } = await saveRemoteDraft(client(github), session, '# Deploy\n\nUm.\n\nDois.\n\nTrês, de outra janela.\n', { message: 'a' });
+    expect(other.hasBranch).toBe(true);
+    // Esta janela ainda tem a leitura antiga e muda o começo
+    const saved = await saveRemoteDraft(client(github), { ...session, hasBranch: true }, '# Deploy\n\nUm, desta janela.\n\nDois.\n\nTrês.\n', { message: 'b' });
+    expect(saved.merged).toBe(true);
+    const merged = '# Deploy\n\nUm, desta janela.\n\nDois.\n\nTrês, de outra janela.\n';
+    expect(saved.session.content).toBe(merged);
+    expect(github.head('docs/pessoa-teste/docs-guias-deploy')!.files['docs/guias/deploy.md']).toBe(merged);
+  });
+
+  it('no mesmo trecho: RemoteDraftChangedError com os trechos e a versão de agora; nada gravado', async () => {
     const github = new FakeGitHub(FILES);
     const session = await open(github);
     const { session: saved } = await saveRemoteDraft(client(github), session, '# Deploy\n\nA.\n', { message: 'a' });
-    const stale = { ...saved, contentSha: session.contentSha, content: session.content };
-    await expect(saveRemoteDraft(client(github), stale, '# Deploy\n\nB.\n', { message: 'b' })).rejects.toBeInstanceOf(RemoteDraftChangedError);
+    const error = await saveRemoteDraft(client(github), { ...session, hasBranch: true }, '# Deploy\n\nB.\n', { message: 'b' }).catch(e => e);
+    expect(error).toBeInstanceOf(RemoteDraftChangedError);
+    const conflicts = error.chunks.filter((c: { kind: string }) => c.kind === 'conflict');
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].mine.join('\n')).toContain('B.');
+    expect(conflicts[0].theirs.join('\n')).toContain('A.');
+    expect(error.latest).toMatchObject({ content: '# Deploy\n\nA.\n', contentSha: saved.contentSha });
     expect(github.head('docs/pessoa-teste/docs-guias-deploy')!.files['docs/guias/deploy.md']).toBe('# Deploy\n\nA.\n');
   });
 

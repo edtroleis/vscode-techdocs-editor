@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import {
   branchFor,
+  commitResolution,
   DEFAULT_LINT_CONFIG,
   GitHubClient,
   parseGitHubRemote,
@@ -9,16 +10,18 @@ import {
   REMOTE_SCHEME,
   REPO_CONFIG_FILE,
   RepoConfig,
+  syncWithMain,
 } from '@edtroleis/techdocs-editor-core';
 import type { Configuration } from 'markdownlint';
 import type { LintService } from '../lintService';
 import type { LocalSites } from '../localSites';
+import { conflictTitle, type ConflictPanel } from '../remote/conflictPanel';
 import { remoteUri, type RemoteFileSystem } from '../remote/remoteFs';
 import type { RemoteRepos } from '../remote/remoteRepos';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import { GitHubTransport } from '@edtroleis/techdocs-editor-core';
 import { clientFor, gitHubErrorText, hasSession, useTestTransport } from './githubAuth';
-import { LocalPublisher, PublishView } from './localPublisher';
+import { LocalPublisher, LocalPublisherOptions, PublishView } from './localPublisher';
 import { publishConfig } from './publishConfig';
 import { RemoteGit } from './remoteGit';
 import type { LocalGit, PageDoc } from './types';
@@ -33,7 +36,7 @@ export type PanelState =
 
 export type PanelMessage =
   | { type: 'ready' }
-  | { type: 'action'; action: 'saveDraft' | 'saveAndVerify' | 'send' | 'discard' | 'signIn' | 'refresh' | 'setUp' }
+  | { type: 'action'; action: 'saveDraft' | 'saveAndVerify' | 'send' | 'discard' | 'signIn' | 'refresh' | 'setUp' | 'resolve' }
   | { type: 'openUrl'; url: string }
   | { type: 'showLine'; path: string; line: number };
 
@@ -61,6 +64,7 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
     private readonly lint: LintService,
     private readonly remotes: RemoteRepos,
     private readonly remoteFs: RemoteFileSystem,
+    private readonly conflicts: ConflictPanel,
   ) {
     this.updateContext();
     this.disposables.push(
@@ -208,10 +212,11 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
       const session = this.remoteFs.session(uri);
       if (!session) return this.setState({ status: 'noPage' });
       const config = publishConfig(vscode.workspace.getConfiguration(CONFIG), session.repoConfig, vscode.env.language);
+      const draft = { branch: branchFor(access.login, session.filePath, config.branchPattern), base: access.repo.defaultBranch, filePath: session.filePath };
       const git = new RemoteGit({
         client: access.client,
         defaultBranch: access.repo.defaultBranch,
-        draftBranch: branchFor(access.login, session.filePath, config.branchPattern),
+        draftBranch: draft.branch,
         remoteUrl: `https://${target.host}/${target.slug}.git`,
         session: () => this.remoteFs.session(uri)!,
         reload: () => this.remoteFs.reload(uri),
@@ -225,6 +230,21 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
         client: access.client,
         lintConfig: async () => this.remoteFs.session(uri)?.lintConfig ?? DEFAULT_LINT_CONFIG,
         repoConfig: session.repoConfig,
+        // 4e: o que foi publicado depois do rascunho entra nele; se mudou o mesmo trecho, a tela de conflito
+        sync: async () => {
+          const synced = await syncWithMain(access.client, draft);
+          if (synced.kind === 'updated' && synced.pageChanged && !document.isDirty) await this.remoteFs.reload(uri);
+          return synced;
+        },
+        resolve: async conflict => {
+          if (document.isDirty) throw new Error(vscode.l10n.t('Save the page before resolving the conflict.'));
+          const title = conflictTitle(document);
+          const text = await this.conflicts.resolve(title, conflict.chunks, vscode.l10n.t('Published version'));
+          if (text === undefined) return false;
+          await commitResolution(access.client, draft, conflict, text, vscode.l10n.t('docs: merge the published version into "{0}"', title));
+          await this.remoteFs.reload(uri);
+          return true;
+        },
       });
     } catch (error) {
       this.setState({ status: 'error', message: gitHubErrorText(error, vscode.l10n) });
@@ -239,6 +259,8 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
     client: GitHubClient;
     lintConfig: () => Promise<Configuration>;
     repoConfig: RepoConfig | undefined;
+    sync?: LocalPublisherOptions['sync'];
+    resolve?: LocalPublisherOptions['resolve'];
   }) {
     const publisher = new LocalPublisher({
       git: o.git,
@@ -257,6 +279,8 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
         testConfirm ?? (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
       errorText: error => gitHubErrorText(error, vscode.l10n),
       onChange: view => this.publisher === publisher && this.setState({ status: 'ready', view }),
+      sync: o.sync,
+      resolve: o.resolve,
     });
     this.publisher = publisher;
     await publisher.load();
@@ -287,6 +311,8 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
         return publisher?.discard();
       case 'setUp':
         return publisher?.setUp();
+      case 'resolve':
+        return publisher?.resolveConflict();
     }
   }
 
@@ -387,6 +413,8 @@ export function panelLabels() {
     pullRequest: vscode.l10n.t('Pull request #{0}'),
     draftPr: vscode.l10n.t('draft'),
     published: vscode.l10n.t('Published: pull request #{0} was merged on GitHub.'),
+    conflict: vscode.l10n.t('The published version of this page changed the same passages as your draft.'),
+    resolve: vscode.l10n.t('Resolve conflict'),
     readyPr: vscode.l10n.t('ready'),
     unverified: vscode.l10n.t('Saved without checking. Save and check before sending.'),
     checks: vscode.l10n.t('Checks'),

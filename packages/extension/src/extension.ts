@@ -11,6 +11,7 @@ import { ProposedChanges } from './proposedChange';
 import { PrepareContext } from './prepareContext';
 import { PublishPanel } from './publish/publishPanel';
 import { RemoteOpener } from './remote/openRemote';
+import { ConflictPanel, resolveSaveConflicts } from './remote/conflictPanel';
 import { RemoteFileSystem } from './remote/remoteFs';
 import { RemoteRepos } from './remote/remoteRepos';
 import { RepoCheck } from './repoCheck';
@@ -28,7 +29,8 @@ export function activate(context: vscode.ExtensionContext) {
   const lint = new LintService(sites);
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites, remoteFs);
   const docs = new DocsTreeView(sites, remotes);
-  const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs);
+  const conflicts = new ConflictPanel(context.extensionUri);
+  const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs, conflicts);
   const central = new CentralTemplates(context);
   const newPage = new NewPageCommand(sites, provider, central);
   const proposals = new ProposedChanges();
@@ -43,6 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     remotes,
     vscode.workspace.registerFileSystemProvider(REMOTE_SCHEME, remoteFs, { isCaseSensitive: true }),
+    resolveSaveConflicts(remoteFs, conflicts),
     vscode.window.registerUriHandler({
       handleUri: async uri => {
         await opener.fromLink(uri);
@@ -99,7 +102,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts };
 }
 
 /**

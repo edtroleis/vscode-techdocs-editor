@@ -99,6 +99,15 @@ const builds = [
     format: 'iife',
     target: 'es2022',
   },
+  // Webview da resolução de conflito (modo remoto)
+  {
+    ...common,
+    entryPoints: { conflict: 'webview/conflict.ts' },
+    outdir: 'dist/webview',
+    platform: 'browser',
+    format: 'iife',
+    target: 'es2022',
+  },
   // Testes de integração: a mesma suíte no desktop (Node) e no navegador
   {
     ...common,

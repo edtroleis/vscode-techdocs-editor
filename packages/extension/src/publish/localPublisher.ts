@@ -10,6 +10,8 @@ import {
   GitHubClient,
   lintFindings,
   lintRuleText,
+  MainConflict,
+  MainSync,
   pageTitle,
   nameToTitle,
   parseAnnotation,
@@ -58,6 +60,8 @@ export type PublishView = {
   onDefaultBranch: boolean;
   defaultBranch: string;
   pr?: { number: number; url: string; draft: boolean };
+  /** O rascunho e a versão publicada mudaram o mesmo trecho (modo remoto, 4e): falta resolver. */
+  conflict?: boolean;
   /** O PR desta página teve o merge feito no GitHub: a página está publicada. */
   published?: { number: number; url: string };
   /** O texto foi salvo depois da última verificação ("Salvar rascunho" pula a pipeline). */
@@ -76,7 +80,7 @@ export type PublishView = {
   setup?: { steps: SetupStep[]; pullRequest?: { number: number; url: string } };
 };
 
-type Options = {
+export type LocalPublisherOptions = {
   git: LocalGit;
   page: PageDoc;
   client: GitHubClient;
@@ -88,6 +92,10 @@ type Options = {
   confirm: (message: string, action: string) => Promise<boolean>;
   errorText: (error: unknown) => string;
   onChange: (view: PublishView) => void;
+  /** Modo remoto (4e): traz para o rascunho o que foi publicado depois que ele começou (`syncWithMain`). */
+  sync?: () => Promise<MainSync>;
+  /** Abre a tela de conflito com a versão publicada e grava a escolha; false se a pessoa cancelou. */
+  resolve?: (conflict: MainConflict) => Promise<boolean>;
 };
 
 /** Links do Markdown e `src` de HTML. */
@@ -108,10 +116,11 @@ export class LocalPublisher {
   private notice: string | undefined;
   private error: string | undefined;
   private setup: PublishView['setup'];
+  private conflict: MainConflict | undefined;
   private readonly watcher: ChecksWatcher;
   private readonly poller: Poller;
 
-  constructor(private readonly options: Options) {
+  constructor(private readonly options: LocalPublisherOptions) {
     this.watcher = new ChecksWatcher({
       client: options.client,
       startTimeoutMs: options.config.startTimeoutMs,
@@ -154,6 +163,8 @@ export class LocalPublisher {
     const plan = repo.isAdmin ? await planSetup(client).catch(() => undefined) : undefined;
     const steps = plan ? applicableSteps(plan) : [];
     this.setup = steps.length ? { steps } : undefined;
+    // O que foi publicado enquanto o rascunho existia: entra sozinho, ou o conflito aparece no painel
+    if (branch && branch !== repo.defaultBranch) await this.syncMain().catch(() => false);
     this.track(git.headSha());
   }
 
@@ -170,6 +181,7 @@ export class LocalPublisher {
       defaultBranch: this.repo.defaultBranch,
       pr: this.pr?.state === 'open' ? { number: this.pr.number, url: this.pr.htmlUrl, draft: this.pr.draft } : undefined,
       published: this.pr?.merged ? { number: this.pr.number, url: this.pr.htmlUrl } : undefined,
+      conflict: Boolean(this.conflict),
       unverified: this.unverified,
       busy: this.busy,
       notice: this.notice,
@@ -232,6 +244,7 @@ export class LocalPublisher {
       }
       await git.push(this.branch());
       this.notice = this.l10n.t('Draft saved to branch {0}. It has not been checked yet.', this.branch());
+      if (await this.syncMain()) this.notice += ` ${this.conflictText()}`;
     });
   }
 
@@ -266,6 +279,12 @@ export class LocalPublisher {
         await git.commitEmpty(message);
       }
       await git.push(this.branch());
+      // Com conflito, a pipeline não rodaria (o GitHub Actions não roda em PR com conflito): resolver antes
+      if (await this.syncMain()) {
+        this.unverified = true;
+        this.notice = `${this.l10n.t('Saved.')} ${this.conflictText()}`;
+        return;
+      }
       if (this.pr?.state !== 'open') {
         this.pr = await client.createDraftPullRequest({
           branch: this.branch(),
@@ -287,7 +306,7 @@ export class LocalPublisher {
   send() {
     return this.run(async () => {
       const { client, page } = this.options;
-      if (!this.pr?.draft || page.dirty || this.unverified) throw new Error(this.l10n.t('Save and check before sending.'));
+      if (!this.pr?.draft || page.dirty || this.unverified || this.conflict) throw new Error(this.l10n.t('Save and check before sending.'));
       await client.markReadyForReview(this.pr.nodeId);
       this.pr = await client.getPullRequest(this.pr.number);
       this.track(this.options.git.headSha());
@@ -329,6 +348,24 @@ export class LocalPublisher {
     });
   }
 
+  /** "Resolver conflito" (4e): a tela de escolha e o commit de merge do rascunho com a versão publicada. */
+  resolveConflict() {
+    return this.run(async () => {
+      const conflict = this.conflict;
+      if (!conflict || !this.options.resolve) return;
+      if (!(await this.options.resolve(conflict))) return;
+      this.conflict = undefined;
+      await this.options.git.refresh();
+      // O commit de merge mantém o [skip ci] de um rascunho não verificado; sem ele, a pipeline roda de novo
+      const verified = this.pr?.state === 'open' && !this.unverified;
+      if (verified) this.track(this.options.git.headSha());
+      else this.unverified = true;
+      this.notice = verified
+          ? this.l10n.t('Conflict resolved. The automatic checks have started again.')
+          : this.l10n.t('Conflict resolved. Save and check to send the page.');
+    });
+  }
+
   /**
    * "Configurar verificações" (P7): merge por squash e ruleset na hora; workflow e regras do lint num
    * PR para o time revisar. O escopo `workflow` só é pedido se o workflow vai no PR.
@@ -361,6 +398,19 @@ export class LocalPublisher {
   }
 
   // ------------------------------------------------------------ apoio
+
+  /** Traz a versão publicada para o rascunho (só no modo remoto). Devolve se ficou um conflito para resolver. */
+  private async syncMain(): Promise<boolean> {
+    if (!this.options.sync) return false;
+    const synced = await this.options.sync();
+    this.conflict = synced.kind === 'conflict' ? synced.conflict : undefined;
+    if (synced.kind === 'updated') await this.options.git.refresh();
+    return Boolean(this.conflict);
+  }
+
+  private conflictText() {
+    return this.l10n.t('But another change to this page was published and changed the same passage: resolve the conflict to continue.');
+  }
 
   /** Branch que o painel cria para a página quando a pessoa está na principal. */
   private get draftBranch() {

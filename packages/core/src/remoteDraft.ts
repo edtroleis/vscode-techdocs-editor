@@ -1,11 +1,13 @@
 import { GitHubClient, GitHubError } from './github';
+import { conflictCount, merge3, MergeChunk, resolveChunks } from './merge3';
 import type { RemoteSession } from './remoteSession';
 import { SKIP_CI } from './syncMain';
 
 /**
  * Salvar no modo remoto (fase 4c, M3 e M6): Ctrl+S grava o rascunho da página, um commit na branch da pessoa
  * (D4-3), criada na primeira vez a partir do commit da branch principal em que o texto foi lido. O commit vai
- * sobre o SHA lido: se a página mudou no rascunho por outro caminho, o GitHub recusa (a 4e resolve).
+ * sobre o SHA lido: se a página mudou no rascunho por outro caminho, o GitHub recusa (409) e o salvar junta
+ * as duas versões (`merge3`, M5): sozinho o que não se sobrepõe; o resto, a pessoa escolhe (4e).
  */
 
 /** Sem login não há rascunho: a página está aberta só para leitura. */
@@ -16,9 +18,18 @@ export class RemoteReadOnlyError extends Error {
   }
 }
 
-/** A página mudou no rascunho depois que foi lida (outra janela, outra pessoa com o mesmo login). */
+/**
+ * A página mudou no rascunho depois que foi lida (outra janela, outra pessoa com o mesmo login) e as duas
+ * versões mudaram o mesmo trecho. `chunks`: o que juntar (`mine` é o texto sendo salvo, `theirs` o do
+ * rascunho agora); `latest`: a sessão sobre a versão de agora, para gravar a resolução por cima dela.
+ */
 export class RemoteDraftChangedError extends Error {
-  constructor(readonly filePath: string, readonly branch: string) {
+  constructor(
+    readonly filePath: string,
+    readonly branch: string,
+    readonly chunks: MergeChunk[],
+    readonly latest: RemoteSession,
+  ) {
     super(`${filePath} changed in ${branch} after it was read`);
     this.name = 'RemoteDraftChangedError';
   }
@@ -49,7 +60,7 @@ export async function saveRemoteDraft(
   session: RemoteSession,
   content: string,
   { message, skipCi = true }: { message: string; skipCi?: boolean },
-): Promise<{ session: RemoteSession; commitSha?: string }> {
+): Promise<{ session: RemoteSession; commitSha?: string; merged?: boolean }> {
   if (content === session.content) return { session };
   const draft = await ensureDraftBranch(client, session);
   const marker = skipCi && session.hasWorkflows ? ` ${SKIP_CI}` : '';
@@ -57,9 +68,17 @@ export async function saveRemoteDraft(
     const saved = await client.putFile(session.filePath, draft.branch, content, session.contentSha, message + marker);
     return { session: { ...draft, content, contentSha: saved.sha }, commitSha: saved.commitSha };
   } catch (error) {
-    if (error instanceof GitHubError && error.status === 409) throw new RemoteDraftChangedError(session.filePath, draft.branch);
-    throw error;
+    if (!(error instanceof GitHubError && error.status === 409)) throw error;
   }
+  // Mudou no rascunho depois da leitura: junta a versão lida, a desta pessoa e a de agora
+  const theirs = await client.getFile(session.filePath, draft.branch);
+  if (!theirs) throw new RemoteDraftChangedError(session.filePath, draft.branch, [], draft);
+  const latest = { ...draft, content: theirs.content, contentSha: theirs.sha };
+  const chunks = merge3(session.content, content, theirs.content);
+  if (conflictCount(chunks)) throw new RemoteDraftChangedError(session.filePath, draft.branch, chunks, latest);
+  const merged = resolveChunks(chunks, []);
+  const saved = await client.putFile(session.filePath, draft.branch, merged, theirs.sha, message + marker);
+  return { session: { ...latest, content: merged, contentSha: saved.sha }, commitSha: saved.commitSha, merged: true };
 }
 
 /** Grava uma imagem (em base64) em `path` no rascunho da página (M6). Devolve a sessão com a branch. */

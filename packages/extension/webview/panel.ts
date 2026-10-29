@@ -43,7 +43,7 @@ function render(state: PanelState, l: PanelLabels): string {
     );
   }
   const disabled = v.busy ? ' disabled' : '';
-  const canSend = Boolean(v.pr?.draft) && !v.unverified;
+  const canSend = Boolean(v.pr?.draft) && !v.unverified && !v.conflict;
   parts.push(`<div class="actions">
     <button class="secondary" data-action="saveDraft" title="${escape(l.saveDraftHint)}"${disabled}>${escape(l.saveDraft)}</button>
     <button data-action="saveAndVerify" title="${escape(l.saveAndVerifyHint)}"${disabled}>${escape(l.saveAndVerify)}</button>
@@ -52,6 +52,10 @@ function render(state: PanelState, l: PanelLabels): string {
   </div>`);
   if (v.published) {
     parts.push(`<p class="notice" role="status"><a data-url="${escape(v.published.url)}" href="#">${format(l.published, v.published.number)}</a></p>`);
+  }
+  if (v.conflict) {
+    parts.push(`<p class="error" role="alert">${escape(l.conflict)}</p>
+    <div class="actions"><button data-action="resolve"${disabled}>${escape(l.resolve)}</button></div>`);
   }
   if (v.error) parts.push(`<p class="error" role="alert">${escape(v.error)}</p>`);
   if (v.notice) parts.push(`<p class="notice" role="status">${escape(v.notice)}</p>`);

@@ -4,6 +4,17 @@ All notable changes to the TechDocs Editor extension. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Conflicts on GitHub pages.** When your draft changed in another window, saving merges the two
+  versions by itself if they changed different passages; if they changed the same passage, a screen opens
+  to choose, passage by passage, which version stays (or both).
+- **Published version in the draft.** Before checking, the Publishing panel brings into the draft what was
+  published after it started. If the published version changed the same passages, the panel shows the
+  conflict, holds the pull request and *Send*, and **Resolve conflict** opens the same screen.
+
 ## [0.5.0] - 2026-10-29
 
 A preview before creating the documentation, and the first part of the remote mode: edit and publish

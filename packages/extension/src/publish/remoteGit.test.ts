@@ -1,4 +1,14 @@
-import { GitHubClient, loadRemoteSession, RemoteSession, saveRemoteDraft, userTransport } from '@edtroleis/techdocs-editor-core';
+import {
+  commitResolution,
+  GitHubClient,
+  loadRemoteSession,
+  MainConflict,
+  RemoteSession,
+  resolveChunks,
+  saveRemoteDraft,
+  syncWithMain,
+  userTransport,
+} from '@edtroleis/techdocs-editor-core';
 import { FakeGitHub } from '../../../core/test/fakeGitHub';
 import { LocalPublisher, PublishConfig, PublishView } from './localPublisher';
 import { RemoteGit } from './remoteGit';
@@ -49,7 +59,7 @@ class RemotePage implements PageDoc {
   }
 }
 
-async function setup() {
+async function setup(choose?: (conflict: MainConflict) => 'mine' | 'theirs' | undefined) {
   const github = new FakeGitHub({ 'docs/index.md': INDEX });
   const client = new GitHubClient({ ...userTransport(github.token), fetch: github.fetch }, github.slug);
   const load = () => loadRemoteSession(client, { filePath: 'docs/index.md', docsDir: 'docs' }, { login: github.login });
@@ -78,6 +88,19 @@ async function setup() {
     confirm: async () => true,
     errorText: e => (e instanceof Error ? e.message : String(e)),
     onChange: v => (view = v),
+    sync: async () => {
+      const synced = await syncWithMain(client, { branch: BRANCH, base: 'main', filePath: 'docs/index.md' });
+      if (synced.kind === 'updated') holder.session = await load();
+      return synced;
+    },
+    resolve: async conflict => {
+      const choice = choose?.(conflict);
+      if (!choice) return false;
+      const text = resolveChunks(conflict.chunks, [choice]);
+      await commitResolution(client, { branch: BRANCH, base: 'main', filePath: 'docs/index.md' }, conflict, text, 'docs: merge');
+      holder.session = await load();
+      return true;
+    },
   });
   await publisher.load();
   return { github, page, publisher, holder, view: () => view! };
@@ -146,5 +169,55 @@ describe('merge feito no GitHub', () => {
     Object.assign(github.openPull(BRANCH)!, { state: 'closed', merged: true });
     await publisher.refreshChecks();
     expect(view()).toMatchObject({ pr: undefined, published: { number: 1 } });
+  });
+});
+
+describe('versão publicada mudou depois do rascunho (4e)', () => {
+  const publish = (github: FakeGitHub, text: string) => github.push('main', github.commit('docs: publicado', { ...github.head('main')!.files, 'docs/index.md': text }));
+
+  it('outro trecho: Salvar e verificar traz a versão publicada para o rascunho e segue', async () => {
+    const { github, page, publisher, holder, view } = await setup();
+    page.edit(`${INDEX}\nMais texto.\n`);
+    await publisher.saveDraft();
+    publish(github, INDEX.replace('# Início', '# Começo'));
+    await publisher.saveAndVerify();
+    expect(view()).toMatchObject({ error: undefined, conflict: false, pr: { draft: true } });
+    expect(github.head(BRANCH)!.files['docs/index.md']).toBe('# Começo\n\nTexto da página.\n\nMais texto.\n');
+    expect(holder.session.content).toBe('# Começo\n\nTexto da página.\n\nMais texto.\n');
+  });
+
+  it('mesmo trecho: sem PR e Enviar travado até resolver; resolver grava o merge e libera', async () => {
+    let choice: 'mine' | undefined;
+    const { github, page, publisher, view } = await setup(() => choice);
+    page.edit(INDEX.replace('Texto da página.', 'Meu texto.'));
+    await publisher.saveDraft();
+    publish(github, INDEX.replace('Texto da página.', 'Texto publicado.'));
+    await publisher.saveAndVerify();
+    expect(view()).toMatchObject({ conflict: true, unverified: true, pr: undefined });
+    expect(view().notice).toContain('resolve the conflict');
+    expect(github.pulls).toEqual([]);
+
+    // Cancelar a tela não muda nada
+    await publisher.resolveConflict();
+    expect(view().conflict).toBe(true);
+
+    choice = 'mine';
+    await publisher.resolveConflict();
+    expect(view()).toMatchObject({ error: undefined, conflict: false });
+    const head = github.head(BRANCH)!;
+    expect(head.files['docs/index.md']).toBe('# Início\n\nMeu texto.\n');
+    expect(head.parents).toHaveLength(2);
+
+    await publisher.saveAndVerify();
+    expect(view()).toMatchObject({ error: undefined, conflict: false, pr: { draft: true } });
+  });
+
+  it('ao abrir o painel com o rascunho já em conflito, o painel mostra o conflito', async () => {
+    const first = await setup();
+    first.page.edit(INDEX.replace('Texto da página.', 'Meu texto.'));
+    await first.publisher.saveDraft();
+    publish(first.github, INDEX.replace('Texto da página.', 'Texto publicado.'));
+    await first.publisher.load();
+    expect(first.view().conflict).toBe(true);
   });
 });

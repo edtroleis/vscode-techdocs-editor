@@ -32,6 +32,9 @@ export const remoteUri = (host: string, slug: string, path: string) =>
 export class RemoteFileSystem implements vscode.FileSystemProvider {
   private readonly changeEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   readonly onDidChangeFile = this.changeEmitter.event;
+  private readonly conflictEmitter = new vscode.EventEmitter<{ uri: vscode.Uri; error: RemoteDraftChangedError }>();
+  /** O Ctrl+S achou a página mudada no rascunho, no mesmo trecho: a pessoa escolhe (`resolveSave`). */
+  readonly onDidConflict = this.conflictEmitter.event;
   /** A última leitura (ou gravação) de cada página: de que branch e de que SHA veio o texto; o salvar parte dela. */
   private readonly sessions = new Map<string, RemoteSession>();
   /** Arquivos que não estão na branch principal, lidos de um rascunho ou enviados agora (imagens). */
@@ -110,9 +113,18 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
     try {
       const saved = await saveRemoteDraft(access.client, session, text, { message: vscode.l10n.t('docs: draft of "{0}"', title), skipCi: this.skipCi(uri) });
       this.sessions.set(uri.toString(), saved.session);
+      // Juntado com o que mudou no rascunho (outro trecho): o editor passa a mostrar o texto gravado, depois
+      // que o VS Code terminar o salvar
+      if (saved.merged) setTimeout(() => void this.reload(uri), 200);
     } catch (error) {
+      if (error instanceof RemoteDraftChangedError && error.chunks.length) this.conflictEmitter.fire({ uri, error });
       throw this.saveError(uri, error);
     }
+  }
+
+  /** Depois de resolver um conflito do salvar: a página passa a partir da versão de agora do rascunho. */
+  rebase(uri: vscode.Uri, latest: RemoteSession) {
+    this.sessions.set(uri.toString(), latest);
   }
 
   /**
@@ -189,7 +201,7 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
   private saveError(uri: vscode.Uri, error: unknown) {
     if (error instanceof RemoteReadOnlyError) return this.readOnly(uri);
     if (error instanceof RemoteDraftChangedError) {
-      return new Error(vscode.l10n.t('This page changed in your draft ({0}) after it was opened. Close it and open it again.', error.branch));
+      return new Error(vscode.l10n.t('This page changed in your draft ({0}) while you were editing it. Choose what stays in the passages that both versions changed.', error.branch));
     }
     return error;
   }

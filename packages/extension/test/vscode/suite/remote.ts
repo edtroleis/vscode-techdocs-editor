@@ -6,12 +6,13 @@ import * as vscode from 'vscode';
 import { FakeGitHub } from '../../../../core/test/fakeGitHub';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
+import type { ConflictPanel } from '../../../src/remote/conflictPanel';
 import type { RemoteOpener } from '../../../src/remote/openRemote';
 import type { RemoteFileSystem } from '../../../src/remote/remoteFs';
 import type { RemoteRepos } from '../../../src/remote/remoteRepos';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
-type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel };
+type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel; conflicts: ConflictPanel };
 
 const FILES = {
   'README.md': '# Wiki\n',
@@ -221,6 +222,82 @@ export function defineRemoteTests() {
         ok(!github.refs.has(branch), 'a branch do rascunho continuou');
         await until(() => document.getText(), t => t === FILES['docs/guias/deploy.md'], 'a página não voltou ao texto da principal');
       } finally {
+        publish.useTestGitHub(undefined);
+      }
+    });
+
+    test('rascunho mudado em outra janela (4e): outro trecho é juntado; o mesmo trecho abre a tela de conflito', async () => {
+      const { opener, conflicts } = await api();
+      const uri = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/guias/deploy.md');
+      const document = await vscode.workspace.openTextDocument(uri!);
+      const edit = (text: string) => {
+        const change = new vscode.WorkspaceEdit();
+        change.replace(uri!, new vscode.Range(0, 0, document.lineCount, 0), text);
+        return vscode.workspace.applyEdit(change);
+      };
+      const branch = 'docs/pessoa-teste/docs-guias-deploy';
+      const other = (text: string) => github.push(branch, github.commit('outra janela [skip ci]', { ...github.head(branch)!.files, 'docs/guias/deploy.md': text }));
+      await edit('# Deploy\n\nPasso a passo.\n\nFim.\n');
+      ok(await document.save(), 'o primeiro salvar falhou');
+
+      // Outro trecho: o salvar junta as duas versões e o editor passa a mostrar o texto gravado
+      other('# Deploy em produção\n\nPasso a passo.\n\nFim.\n');
+      await edit('# Deploy\n\nPasso a passo.\n\nFim, com mais.\n');
+      ok(await document.save(), 'o salvar com outro trecho mudado falhou');
+      const merged = '# Deploy em produção\n\nPasso a passo.\n\nFim, com mais.\n';
+      equal(github.head(branch)?.files['docs/guias/deploy.md'], merged, 'texto juntado no rascunho');
+      await until(() => document.getText(), t => t === merged, 'o editor não mostrou o texto juntado');
+
+      // Mesmo trecho: o salvar é recusado, a tela de conflito abre e o texto escolhido é salvo
+      let shown: string[][] = [];
+      conflicts.testChoices = chunks => {
+        shown = chunks.flatMap(c => (c.kind === 'conflict' ? [c.theirs, c.mine] : []));
+        return ['both'];
+      };
+      try {
+        other('# Deploy em produção\n\nPasso a passo.\n\nFim da outra janela.\n');
+        await edit('# Deploy em produção\n\nPasso a passo.\n\nFim desta janela.\n');
+        equal(await document.save(), false, 'o salvar por cima da outra janela foi aceito');
+        const saved = await until(() => github.head(branch)?.files['docs/guias/deploy.md'], t => Boolean(t?.includes('desta janela')), 'o texto escolhido não foi salvo');
+        ok(saved!.includes('Fim da outra janela.') && saved!.includes('Fim desta janela.'), `as duas versões: ${saved}`);
+        equal(JSON.stringify(shown), JSON.stringify([['Fim da outra janela.'], ['Fim desta janela.']]), 'trechos da tela');
+        await until(() => document.isDirty, dirty => !dirty, 'a página ficou com alteração não salva');
+      } finally {
+        conflicts.testChoices = undefined;
+      }
+    });
+
+    test('versão publicada mudou o mesmo trecho (4e): o painel trava o envio até resolver', async () => {
+      const { opener, publish, conflicts } = await api();
+      const transport = () => ({ baseUrl: 'https://api.github.com', headers: { Authorization: `Bearer ${github.token}` }, fetch: github.fetch });
+      publish.useTestGitHub(transport, true);
+      conflicts.testChoices = () => ['mine'];
+      try {
+        const uri = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/guias/deploy.md');
+        const publisher = await until(() => publish.current(), Boolean, 'o painel não acompanhou a página do GitHub');
+        const branch = 'docs/pessoa-teste/docs-guias-deploy';
+        const document = await vscode.workspace.openTextDocument(uri!);
+        const change = new vscode.WorkspaceEdit();
+        change.replace(uri!, new vscode.Range(0, 0, document.lineCount, 0), '# Deploy\n\nMeu passo a passo.\n');
+        await vscode.workspace.applyEdit(change);
+        ok(await document.save(), 'Ctrl+S falhou');
+        github.push('main', github.commit('docs: publicado', { ...github.head('main')!.files, 'docs/guias/deploy.md': '# Deploy\n\nPasso publicado.\n' }));
+
+        await publisher!.saveAndVerify();
+        equal(publisher!.view().conflict, true, 'o painel não mostrou o conflito');
+        ok(!github.openPull(branch), 'abriu o PR com conflito');
+
+        await publisher!.resolveConflict();
+        equal(publisher!.view().error, undefined, 'erro ao resolver');
+        equal(publisher!.view().conflict, false, 'o conflito continuou');
+        equal(github.head(branch)?.parents?.length, 2, 'a resolução não é um commit de merge');
+        equal(github.head(branch)?.files['docs/guias/deploy.md'], '# Deploy\n\nMeu passo a passo.\n', 'texto escolhido');
+
+        await publisher!.saveAndVerify();
+        equal(publisher!.view().error, undefined, 'erro ao salvar e verificar depois de resolver');
+        ok(github.openPull(branch)?.draft, 'o PR não foi aberto depois de resolver');
+      } finally {
+        conflicts.testChoices = undefined;
         publish.useTestGitHub(undefined);
       }
     });

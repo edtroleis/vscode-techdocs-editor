@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { conflictCount, merge3, resolveChunks } from '../src/merge3';
 
 /**
  * GitHub simulado para os testes da publicação, como uma função `fetch` (sem servidor HTTP): branches,
@@ -13,7 +14,13 @@ export const CHECK_NAMES = ['Formatação do texto', 'Links', 'Dados sensíveis'
 /** O que um CI de fora do GitHub Actions (Jenkins) reporta como commit status. */
 export const EXTERNAL_CHECK_NAMES = ['continuous-integration/jenkins/pr-merge'];
 
-export type FakeCommit = { sha: string; message: string; files: Record<string, string> };
+export type FakeCommit = {
+  sha: string;
+  message: string;
+  files: Record<string, string>;
+  /** Commits pais (o `push` preenche com a ponta anterior da branch, se o commit não tiver). */
+  parents?: string[];
+};
 export type FakePull = {
   number: number;
   head: string;
@@ -84,8 +91,8 @@ export class FakeGitHub {
   // ------------------------------------------------------------ estado (para os testes)
 
   /** Um commit novo (ainda sem branch). */
-  commit(message: string, files: Record<string, string>): FakeCommit {
-    const commit = { sha: sha1(`${message}${JSON.stringify(files)}${this.counter++}`), message, files };
+  commit(message: string, files: Record<string, string>, parents?: string[]): FakeCommit {
+    const commit = { sha: sha1(`${message}${JSON.stringify(files)}${this.counter++}`), message, files, parents };
     this.commits.set(commit.sha, commit);
     return commit;
   }
@@ -94,6 +101,9 @@ export class FakeGitHub {
   push(branch: string, commit: FakeCommit) {
     this.commits.set(commit.sha, commit);
     const previous = this.refs.get(branch);
+    // Sem pais: sobre a ponta anterior da branch; uma branch nova nasce da principal
+    const from = previous ?? this.refs.get('main');
+    if (!commit.parents) commit.parents = from && from !== commit.sha ? [from] : [];
     if (previous && this.prHeadLag) this.staleHead.set(branch, { sha: previous, remaining: this.prHeadLag });
     this.refs.set(branch, commit.sha);
     if (this.openPull(branch)) this.runPipeline(commit.sha);
@@ -106,6 +116,24 @@ export class FakeGitHub {
 
   openPull(branch?: string): FakePull | undefined {
     return this.pulls.find(p => p.state === 'open' && (branch === undefined || p.head === branch));
+  }
+
+  /** O commit e todos os seus ancestrais, do mais novo para o mais antigo. */
+  private ancestors(sha: string): string[] {
+    const seen: string[] = [];
+    const queue = [sha];
+    while (queue.length) {
+      const next = queue.shift()!;
+      if (seen.includes(next)) continue;
+      seen.push(next);
+      queue.push(...(this.commits.get(next)?.parents ?? []));
+    }
+    return seen;
+  }
+
+  private mergeBase(a: string, b: string) {
+    const ofA = this.ancestors(a);
+    return this.ancestors(b).find(sha => ofA.includes(sha)) ?? ofA[ofA.length - 1];
   }
 
   /** O GitHub troca o token da pessoa: o antigo passa a dar 401. */
@@ -185,6 +213,16 @@ export class FakeGitHub {
     };
   }
 
+  /** Conteúdo de um blob pelo SHA, procurado nos commits. */
+  private blobContent(sha: string) {
+    if (this.blobs.has(sha)) return this.blobs.get(sha);
+    for (const commit of this.commits.values()) {
+      const content = Object.values(commit.files).find(c => sha1(c) === sha);
+      if (content !== undefined) return content;
+    }
+    return undefined;
+  }
+
   // ------------------------------------------------------------ API
 
   /** Responde uma chamada; `undefined` = rota desconhecida (501). */
@@ -258,7 +296,7 @@ export class FakeGitHub {
       if (content === undefined) return notFound;
       return ok({ content: Buffer.from(content).toString('base64'), sha: sha1(content) });
     }
-    m = rest.match(/^\/commits\/([^/]+)$/);
+    m = rest.match(/^\/commits\/(?!\w+\/(?:check-runs|status)$)(.+)$/);
     if (m && method === 'GET') {
       const commit = this.head(decodeURIComponent(m[1])) ?? this.commits.get(m[1]);
       if (!commit) return notFound;
@@ -294,11 +332,50 @@ export class FakeGitHub {
       this.trees.set(tree, commit.files);
       return ok({ sha: commit.sha, message: commit.message, tree: { sha: tree } });
     }
+    m = rest.match(/^\/compare\/(.+)\.\.\.(.+)$/);
+    if (m && method === 'GET') {
+      const [base, head] = [this.refs.get(m[1]) ?? m[1], this.refs.get(m[2]) ?? m[2]];
+      if (!this.commits.has(base) || !this.commits.has(head)) return notFound;
+      const mergeBase = this.mergeBase(base, head);
+      const ofHead = this.ancestors(head);
+      const [from, to] = [this.commits.get(mergeBase)!.files, this.commits.get(head)!.files];
+      const files = [...new Set([...Object.keys(from), ...Object.keys(to)])]
+        .filter(f => from[f] !== to[f])
+        .map(f => ({ filename: f, status: to[f] === undefined ? 'removed' : from[f] === undefined ? 'added' : 'modified', sha: to[f] === undefined ? undefined : sha1(to[f]) }));
+      return ok({
+        behind_by: this.ancestors(base).filter(sha => !ofHead.includes(sha)).length,
+        merge_base_commit: { sha: mergeBase },
+        files,
+      });
+    }
+    if (method === 'POST' && rest === '/merges') {
+      // Merge do GitHub: arquivo a arquivo; os dois lados mudaram o mesmo arquivo = conflito (409)
+      const [ours, theirs] = [this.head(body.base), this.head(body.head)];
+      if (!ours || !theirs) return notFound;
+      if (this.ancestors(ours.sha).includes(theirs.sha)) return { status: 204 };
+      const base = this.commits.get(this.mergeBase(ours.sha, theirs.sha))!.files;
+      const files: Record<string, string> = {};
+      for (const f of new Set([...Object.keys(base), ...Object.keys(ours.files), ...Object.keys(theirs.files)])) {
+        const [b, o, t] = [base[f], ours.files[f], theirs.files[f]];
+        let merged = o === t || t === b ? o : o === b ? t : null;
+        // Os dois lados mudaram o arquivo: como o git, linha a linha
+        if (merged === null && b !== undefined && o !== undefined && t !== undefined) {
+          const chunks = merge3(b, o, t);
+          if (!conflictCount(chunks)) merged = resolveChunks(chunks, []);
+        }
+        if (merged === null) return { status: 409, json: { message: 'Merge conflict' } };
+        if (merged !== undefined) files[f] = merged;
+      }
+      const commit = this.commit(body.commit_message, files, [ours.sha, theirs.sha]);
+      this.push(body.base, commit);
+      return ok({ sha: commit.sha }, 201);
+    }
     if (method === 'POST' && rest === '/git/trees') {
       const files = { ...(this.trees.get(body.base_tree) ?? {}) };
       for (const entry of body.tree) {
         if (entry.content !== undefined) files[entry.path] = entry.content;
         else if (entry.sha === null) delete files[entry.path];
+        else if (entry.sha) files[entry.path] = this.blobContent(entry.sha) ?? '';
       }
       const tree = sha1(JSON.stringify(files));
       this.trees.set(tree, files);
@@ -307,7 +384,7 @@ export class FakeGitHub {
     if (method === 'POST' && rest === '/git/commits') {
       const files = this.trees.get(body.tree);
       if (!files) return { status: 422, json: { message: 'Tree not found' } };
-      return ok({ sha: this.commit(body.message, files).sha }, 201);
+      return ok({ sha: this.commit(body.message, files, body.parents).sha }, 201);
     }
     if ((method === 'POST' && rest === '/git/refs') || (method === 'PATCH' && rest.startsWith('/git/refs/heads/'))) {
       const commit = this.commits.get(body.sha);

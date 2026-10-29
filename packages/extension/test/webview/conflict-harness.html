@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Bundle da tela de conflito fora do VS Code (ver harness.html): as mensagens da tela ficam em
+       window.sent; os testes mandam os trechos com window.postMessage. -->
+  <script>
+    window.sent = [];
+    window.acquireVsCodeApi = () => ({ postMessage: message => window.sent.push(message) });
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="../../dist/webview/conflict.js"></script>
+</body>
+</html>

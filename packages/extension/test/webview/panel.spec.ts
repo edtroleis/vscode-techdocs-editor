@@ -134,3 +134,11 @@ test('merge feito no GitHub: "Publicado" com o link do PR', async ({ page }) => 
   await page.getByRole('link', { name: 'Published: pull request #7 was merged on GitHub.' }).click();
   expect((await sent(page)).at(-1)).toEqual({ type: 'openUrl', url: 'https://github.com/acme/wiki/pull/7' });
 });
+
+test('versão publicada mudou o mesmo trecho: aviso, "Resolver conflito" e Enviar travado', async ({ page }) => {
+  await show(page, { status: 'ready', view: { ...VIEW, conflict: true } });
+  await expect(page.getByRole('alert')).toHaveText(LABELS.conflict);
+  await expect(page.getByRole('button', { name: LABELS.sendForPublication })).toBeDisabled();
+  await page.getByRole('button', { name: LABELS.resolve }).click();
+  expect((await sent(page)).at(-1)).toEqual({ type: 'action', action: 'resolve' });
+});
