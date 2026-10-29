@@ -404,7 +404,17 @@ async function newSiteInFolder() {
     canSelectMany: false,
     openLabel: vscode.l10n.t('Create the documentation here'),
   });
-  if (picked?.[0]) await vscode.commands.executeCommand('techdocsEditor.newSite', picked[0]);
+  const folder = picked?.[0];
+  if (!folder) return;
+  const created = await vscode.commands.executeCommand<{ mkdocs: vscode.Uri } | undefined>('techdocsEditor.newSite', folder);
+  // Fora do workspace a extensão não vê o site: oferece abrir a pasta
+  if (!created || vscode.workspace.getWorkspaceFolder(folder)) return;
+  const open = vscode.l10n.t('Open the folder');
+  const answer = await vscode.window.showInformationMessage(
+    vscode.l10n.t('The documentation was created in {0}, outside this workspace. Open that folder to edit it.', folder.fsPath),
+    open,
+  );
+  if (answer === open) await vscode.commands.executeCommand('vscode.openFolder', folder, { forceNewWindow: true });
 }
 
 /** O arquivo da aba ativa (texto ou editor visual). */

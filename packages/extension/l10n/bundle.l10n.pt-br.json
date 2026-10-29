@@ -376,5 +376,7 @@
   "showing now": "mostrando agora",
   "Create documentation in a folder…": "Criar documentação numa pasta…",
   "Choose the folder for the new documentation": "Escolha a pasta da documentação nova",
-  "Create the documentation here": "Criar a documentação aqui"
+  "Create the documentation here": "Criar a documentação aqui",
+  "Open the folder": "Abrir a pasta",
+  "The documentation was created in {0}, outside this workspace. Open that folder to edit it.": "A documentação foi criada em {0}, fora deste workspace. Abra a pasta para editá-la."
 }
