@@ -50,9 +50,10 @@ export class PrepareContext implements vscode.Disposable {
 
   private async update() {
     const folders = vscode.workspace.workspaceFolders ?? [];
+    // Sem maxResults: no VS Code para navegador, findFiles com maxResults 1 não acha nada
     const has = async (pattern: string) => {
       for (const folder of folders) {
-        if ((await vscode.workspace.findFiles(new vscode.RelativePattern(folder, pattern), '**/node_modules/**', 1)).length) return true;
+        if ((await vscode.workspace.findFiles(new vscode.RelativePattern(folder, pattern), '**/node_modules/**')).length) return true;
       }
       return false;
     };

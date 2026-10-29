@@ -112,6 +112,8 @@ const builds = [
     format: 'iife',
     globalName: 'techdocsEditorTests',
     footer: { js: 'module.exports = techdocsEditorTests;' },
+    // TEST_GREP=Templates também no navegador, onde não há process.env
+    define: { 'process.env.TEST_GREP': JSON.stringify(process.env.TEST_GREP ?? '') },
     target: 'es2022',
     external: ['vscode'],
   },
