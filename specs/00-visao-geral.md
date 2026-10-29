@@ -186,6 +186,37 @@ Não verificado automaticamente: o login de verdade no GitHub (`vscode.authentic
 `forceNewSession` do 401) e o `git push` com credenciais. Os dois dependem de uma conta do GitHub; conferir à
 mão antes da fase 6. O GitHub simulado (`core/test/fakeGitHub.ts`) é a base da fase 4.
 
+## Fase 4: plano (2026-10-28)
+
+Modo remoto no desktop (seção "Modo remoto" da spec 02, M1 a M9, e B1/B3), com a T4 (TP10) no fim. Mesmo jeito
+das fases 2 e 3: cada parte com os testes dela e um commit próprio. O vscode.dev é a fase 5.
+
+Decisões:
+
+| # | Decisão | Por quê |
+|---|---------|---------|
+| D4-1 | A documentação remota **não vira pasta do workspace**: cada repositório aberto é um nó "GitHub" na seção Documentação (lista em `globalState`, só host, `dono/repo` e pasta do `mkdocs.yml`; nunca token) | Pôr a primeira pasta no workspace reinicia o host da extensão; e o `findFiles` não procura num esquema próprio sem `FileSearchProvider` (API proposta), do qual a árvore, a Verificação e a tela de boas-vindas dependem |
+| D4-2 | Lógica sem `vscode` em `core/src/remote/` (sessão da página, rascunho, conflito, histórico), com o `GitHubClient` injetado; o `FileSystemProvider` (`techdocs:`) e o painel só a chamam | Como a D3-1: os cenários do `test:editor:portal` do plugin rodam no Vitest com o `fakeGitHub.ts` |
+| D4-3 | Uma branch por página (`branchPattern`, como no plugin), criada no primeiro Salvar rascunho a partir do commit da `main` em que o texto foi lido | Sem clone não há checkout: cada página tem o próprio rascunho, como no portal, e quem publicar antes não é sobrescrito (o editor junta depois) |
+| D4-4 | **Ctrl+S = Salvar rascunho** (o `writeFile` do provider faz o commit sobre o SHA lido, com `[skip ci]` onde há pipeline); o hot exit do VS Code guarda o texto não salvo | M3 e M4: no portal, salvar já era guardar o rascunho |
+| D4-5 | O painel Publicação é o mesmo webview da fase 3, com um `RemotePublisher` que entrega o mesmo `PublishView` | Uma tela só para os dois modos; os testes do webview do painel continuam valendo |
+| D4-6 | Conflito (M5): a tela de resolução do plugin (`ConflictResolver`) vem para o `ui` e abre no editor visual; o `merge3` do `core` aplica sozinho o que não se sobrepõe | O editor de merge do VS Code não tem API pública para extensões |
+| D4-7 | Leitura de repositório público sem login (A-1); o login só no primeiro salvar | Quem só quer ler não precisa de conta |
+
+| Parte | Entrega | Requisitos | Testes |
+|-------|---------|------------|--------|
+| 4a. Sessão remota | `core/src/remote/`: a página no repositório (o `loadSession` do plugin sem a entidade do Backstage: host, `dono/repo`, pasta do `mkdocs.yml`, caminho), rascunho ou `main`, SHA, PR, regras, lint e `.techdocs-editor.yaml` pela API; a árvore do site (`getTree` + `docsTree`); permissão de escrita | M1, M2, M8, A-1 | unitários com o GitHub simulado |
+| 4b. Abrir | Provider `techdocs:` (ler, listar, `stat`; só leitura sem `push`); **TechDocs: Abrir documentação do GitHub…** (URL ou `dono/repo`, escolhe o site se houver vários `mkdocs.yml`); link `vscode://edtroleis.techdocs-editor/open?…` validado; nó "GitHub" na árvore; o editor visual nas páginas `techdocs:`; "Abrir a cópia local" quando o repositório está no workspace; `techdocsEditor.mode` | M2, M8, B1, B3 | unitários (link, validação); integração (abrir, árvore, só leitura) |
+| 4c. Salvar | Ctrl+S = Salvar rascunho (branch criada na primeira vez, commit sobre o SHA); imagens com commit em `<docs>/assets/` na branch, mostradas lendo da branch; hot exit | M3, M4, M6 | unitários; integração (commit no GitHub simulado, imagem) |
+| 4d. Painel remoto | Salvar e verificar, Enviar, Descartar, checks e consulta (`ChecksWatcher`, `Poller`), Configurar verificações, rótulo pelo ruleset, merge feito no GitHub = Publicado | Publicação, P1 a P9 | unitários (os cenários do `panel.spec.ts` do plugin); webview do painel |
+| 4e. Conflitos | Página mudou no GitHub: "Esta página mudou enquanto você editava", tela de resolução; outro arquivo publicado: rascunho atualizado sozinho (`syncWithMain`) | M5 | unitários (os cenários do `conflict.spec.ts`); webview (a tela) |
+| 4f. Avisos e histórico | PR de outra pessoa na mesma página e PR próprio feito fora; Histórico da página e Restaurar | M7, M9 | unitários; integração |
+| 4g. Templates no remoto (T4) | Nova página por commit na branch do rascunho; templates do repositório lidos pela API | TP10 | unitários; integração |
+
+Critério da fase: os cenários do `test:editor:portal` do plugin que valem para o VS Code (sem os do lápis e da
+página do TechDocs no Backstage) com o GitHub simulado. O login de verdade e um repositório de verdade, à mão,
+como na fase 3. Versão: sai na 0.5.0, com o ícone novo.
+
 ## Barra lateral TechDocs e primeiros passos (2026-10-28)
 
 Pedido do usuário, para a extensão não parecer "mais um editor de Markdown" e para as features serem achadas:
