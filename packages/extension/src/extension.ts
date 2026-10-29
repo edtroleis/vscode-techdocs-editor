@@ -103,9 +103,10 @@ export function activate(context: vscode.ExtensionContext) {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false,
     }),
-    vscode.commands.registerCommand('techdocsEditor.openVisual', (uri?: vscode.Uri) => {
-      const target = uri ?? vscode.window.activeTextEditor?.document.uri;
-      if (target) return vscode.commands.executeCommand('vscode.openWith', target, VisualEditorProvider.viewType);
+    vscode.commands.registerCommand('techdocsEditor.openVisual', (target?: vscode.Uri | DocsItem) => {
+      // Do botão da árvore chega o item da página, não o arquivo
+      const uri = (target instanceof DocsItem ? target.uri : target) ?? vscode.window.activeTextEditor?.document.uri;
+      if (uri) return vscode.commands.executeCommand('vscode.openWith', uri, VisualEditorProvider.viewType);
     }),
     vscode.commands.registerCommand('techdocsEditor.newPage', (target?: vscode.Uri | DocsItem) =>
       newPage.run(target instanceof vscode.Uri || target instanceof DocsItem ? target : undefined),

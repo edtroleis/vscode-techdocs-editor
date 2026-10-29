@@ -41,6 +41,11 @@ All notable changes to the TechDocs Editor extension. The format follows
   "Choose which documentation to show" notice and the hidden-sites item are gone.
 - Plainer words in Portuguese: *pedido de revisão* instead of *pull request*, *rascunho* instead of *branch*.
 
+### Fixed
+
+- The visual editor button on a page in the documentation tree failed with "Converting circular structure to
+  JSON".
+
 ## [0.6.0] - 2026-10-29
 
 Conflicts on GitHub pages, and a cleaner sidebar in workspaces with many repositories.
