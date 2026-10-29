@@ -196,7 +196,7 @@
         },
         {
           "command": "techdocsEditor.newPage",
-          "when": "techdocsEditor.hasDocs"
+          "when": "techdocsEditor.hasDocs || techdocsEditor.hasRemote"
         },
         {
           "command": "techdocsEditor.fixFinding",
@@ -240,12 +240,12 @@
         },
         {
           "command": "techdocsEditor.newPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|section)$/",
+          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|section|remote)$/",
           "group": "inline"
         },
         {
           "command": "techdocsEditor.newPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|section|page|notInNav)$/",
+          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|section|page|notInNav|remote)$/",
           "group": "navigation@1"
         },
         {

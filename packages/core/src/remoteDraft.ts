@@ -93,3 +93,36 @@ export async function saveRemoteImage(
   await client.putBinary(path, draft.branch, base64, message + (skipCi && session.hasWorkflows ? ` ${SKIP_CI}` : ''));
   return draft;
 }
+
+/** A página nova já existe na principal ou no rascunho dela (TP4: nunca sobrescreve). */
+export class RemotePageExistsError extends Error {
+  constructor(readonly filePath: string) {
+    super(`${filePath} already exists`);
+    this.name = 'RemotePageExistsError';
+  }
+}
+
+/**
+ * Página nova no modo remoto (TP10): um commit na branch do rascunho da página (`branch`, criada do commit
+ * `mainSha` da principal) com a página e, se for o caso, o `mkdocs.yml` com ela no `nav` (`files`, caminho no
+ * repositório → texto). Devolve o SHA do commit.
+ */
+export async function createRemotePage(
+  client: GitHubClient,
+  { branch, mainSha, filePath, files, message, skipCi }: { branch: string; mainSha: string; filePath: string; files: Record<string, string>; message: string; skipCi: boolean },
+): Promise<string> {
+  if (await client.getFile(filePath, mainSha)) throw new RemotePageExistsError(filePath);
+  let head = await client.getBranchSha(branch);
+  if (head && (await client.getFile(filePath, branch))) throw new RemotePageExistsError(filePath);
+  if (!head) {
+    await client.createBranch(branch, mainSha);
+    head = mainSha;
+  }
+  const tree = await client.createTree(
+    await client.getCommitTree(head),
+    Object.entries(files).map(([path, content]) => ({ path, content })),
+  );
+  const commitSha = await client.createCommit(message + (skipCi ? ` ${SKIP_CI}` : ''), tree, [head]);
+  await client.updateBranch(branch, commitSha);
+  return commitSha;
+}

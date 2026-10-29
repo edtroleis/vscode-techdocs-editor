@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { FakeGitHub } from '../../../../core/test/fakeGitHub';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
+import type { NewPageCommand } from '../../../src/templates/newPage';
 import type { ConflictPanel } from '../../../src/remote/conflictPanel';
 import type { RemoteOpener } from '../../../src/remote/openRemote';
 import type { useTestHistoryPick } from '../../../src/remote/pageHistory';
@@ -13,7 +14,7 @@ import type { RemoteFileSystem } from '../../../src/remote/remoteFs';
 import type { RemoteRepos } from '../../../src/remote/remoteRepos';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
-type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel; conflicts: ConflictPanel; useTestHistoryPick: typeof useTestHistoryPick };
+type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel; conflicts: ConflictPanel; useTestHistoryPick: typeof useTestHistoryPick; newPage: NewPageCommand };
 
 const FILES = {
   'README.md': '# Wiki\n',
@@ -327,6 +328,39 @@ export function defineRemoteTests() {
       } finally {
         useTestHistoryPick(undefined);
       }
+    });
+
+    test('nova página por template (TP10): commit na branch do rascunho dela, com o nav; abre do rascunho', async () => {
+      const { opener, newPage } = await api();
+      const deploy = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/guias/deploy.md');
+      await vscode.workspace.openTextDocument(deploy!);
+      const uri = await newPage.run(deploy, { template: 'wiki-page', title: 'Nova página', nav: true });
+      equal(uri?.toString(), 'techdocs://github.com/acme/wiki/docs/guias/nova-pagina.md', 'endereço da página nova');
+      const branch = 'docs/pessoa-teste/docs-guias-nova-pagina';
+      const head = github.head(branch);
+      ok(head, 'a branch do rascunho da página nova não foi criada');
+      ok(head!.files['docs/guias/nova-pagina.md']?.startsWith('# Nova página'), `página no rascunho: ${head!.files['docs/guias/nova-pagina.md']}`);
+      ok(head!.files['mkdocs.yml'].includes('guias/nova-pagina.md'), `nav no rascunho: ${head!.files['mkdocs.yml']}`);
+      equal(head!.message, 'docs: new page "Nova página" [skip ci]', 'mensagem do commit');
+      equal(github.head('main')!.files['docs/guias/nova-pagina.md'], undefined, 'a principal mudou');
+      const document = await vscode.workspace.openTextDocument(uri!);
+      equal(document.getText(), head!.files['docs/guias/nova-pagina.md'], 'a página aberta não veio do rascunho');
+
+      // TP4: nunca sobrescreve
+      equal(await newPage.run(deploy, { template: 'wiki-page', title: 'Deploy', path: 'guias/deploy.md' }), undefined, 'sobrescreveu a página da principal');
+      equal(await newPage.run(deploy, { template: 'wiki-page', title: 'Nova página' }), undefined, 'sobrescreveu o rascunho');
+    });
+
+    test('nova página por template (TP10): os templates do repositório vêm do GitHub', async () => {
+      github.push('main', github.commit('templates', {
+        ...github.head('main')!.files,
+        '.techdocs/templates/reuniao.md': '---\ntemplate:\n  name: Ata de reunião\n  category: reference\n---\n\n# {{title}}\n\nAta do repositório.\n',
+      }));
+      const { opener, newPage } = await api();
+      const index = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/index.md');
+      const uri = await newPage.run(index, { template: 'reuniao', title: 'Ata de outubro', path: 'atas/outubro.md' });
+      equal(uri?.path, '/acme/wiki/docs/atas/outubro.md', 'página nova');
+      equal(github.head('docs/pessoa-teste/docs-atas-outubro')?.files['docs/atas/outubro.md'], '# Ata de outubro\n\nAta do repositório.\n', 'texto do template do repositório');
     });
 
     test('imagens (M6): o envio vai para o rascunho e é lido de lá; a de um rascunho salvo antes também', async () => {

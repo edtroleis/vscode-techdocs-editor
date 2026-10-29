@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import {
   addToNav,
+  branchFor,
+  createRemotePage,
   DocTemplate,
   fileNameFor,
   fillTemplate,
@@ -9,6 +11,10 @@ import {
   mergeTemplates,
   nextNumber,
   pagePath,
+  parseRemoteUri,
+  REMOTE_SCHEME,
+  RemotePageExistsError,
+  RemoteSite,
   siteName,
   TemplateCategory,
   today,
@@ -17,6 +23,10 @@ import {
 import type { DocsSite } from '../docsSite';
 import { DocsItem } from '../docsTreeView';
 import type { LocalSites } from '../localSites';
+import { gitHubErrorText } from '../publish/githubAuth';
+import { publishConfig } from '../publish/publishConfig';
+import { remoteUri } from '../remote/remoteFs';
+import type { RemoteRepos, RepoAccess } from '../remote/remoteRepos';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import type { CentralTemplates } from './centralTemplates';
 import {
@@ -37,6 +47,32 @@ export type NewPageAnswers = { template: string; title: string; path?: string; v
 
 type Site = { mkdocs: vscode.Uri; site: DocsSite };
 
+/**
+ * Onde a página nova vai: um site do workspace (o arquivo gravado no disco) ou um site do GitHub (TP10: um
+ * commit na branch do rascunho da página nova). O resto do fluxo (template, título, arquivo, campos, `nav`) é
+ * o mesmo.
+ */
+type Destination = {
+  /** O `docs_dir` (as páginas são relativas a ele). */
+  docsDir: vscode.Uri;
+  /** Pasta (relativa ao `docs_dir`) de onde a página vai, e a seção do `nav` clicada na árvore. */
+  folder: string;
+  section?: string[];
+  /** Como mostrar o `docs_dir` na pergunta do arquivo. */
+  where: string;
+  /** Escopo das configurações (`templates.*`) e da empresa (TA3). */
+  scope: vscode.Uri;
+  templateFolders: vscode.Uri[];
+  exists(page: string): Promise<boolean>;
+  siteName(): Promise<string | undefined>;
+  owner(): Promise<string | undefined>;
+  defaultOwner(): Promise<string>;
+  /** O `mkdocs.yml` de agora (para o TP6). */
+  mkdocs(): Promise<string | undefined>;
+  /** Grava a página e, com `nav`, o `mkdocs.yml` novo. Devolve o endereço da página, ou undefined se falhou. */
+  create(page: string, content: string, nav: string | undefined, title: string): Promise<vscode.Uri | undefined>;
+};
+
 const categoryLabel = (category: TemplateCategory) =>
   ({
     tutorial: vscode.l10n.t('Learn (tutorials)'),
@@ -54,15 +90,15 @@ export class NewPageCommand {
     private readonly sites: LocalSites,
     private readonly provider?: VisualEditorProvider,
     private readonly central?: CentralTemplates,
+    private readonly remotes?: RemoteRepos,
   ) {}
 
   async run(target?: vscode.Uri | DocsItem, answers?: NewPageAnswers): Promise<vscode.Uri | undefined> {
-    const where = await this.resolveTarget(target);
-    if (!where) return undefined;
-    const { site, folder, section } = where;
-    const docsDir = site.mkdocs.with({ path: site.site.docsDir });
+    const destination = isRemoteTarget(target) ? await this.remoteDestination(target) : await this.localDestination(target);
+    if (!destination) return undefined;
+    const { docsDir, folder, section } = destination;
 
-    const choice = await this.pickTemplate(site, answers?.template);
+    const choice = await this.pickTemplate(destination, answers?.template);
     if (!choice) return undefined;
     const { template } = choice;
 
@@ -79,19 +115,19 @@ export class NewPageCommand {
     const base = folder || template.folder || '';
     const baseUri = base ? vscode.Uri.joinPath(docsDir, base) : docsDir;
     let fileName = fileNameFor(title);
-    if (template.numbered) fileName = `${nextNumber(await fileNames(baseUri))}-${fileName}`;
+    if (template.numbered) fileName = `${nextNumber(await fileNames(baseUri).catch(() => []))}-${fileName}`;
     const suggested = base ? `${base}/${fileName}` : fileName;
     const validate = async (value: string) => {
       const path = pagePath('', value.trim());
       if (!path) return vscode.l10n.t('Use a .md file name inside the docs folder');
-      if (await exists(vscode.Uri.joinPath(docsDir, path))) return vscode.l10n.t('{0} already exists. Choose another name.', path);
+      if (await destination.exists(path)) return vscode.l10n.t('{0} already exists. Choose another name.', path);
       return undefined;
     };
     const path = answers
       ? (answers.path ?? suggested)
       : await vscode.window.showInputBox({
           title: template.name,
-          prompt: vscode.l10n.t('File of the new page, inside {0}', vscode.workspace.asRelativePath(docsDir)),
+          prompt: vscode.l10n.t('File of the new page, inside {0}', destination.where),
           value: suggested,
           valueSelection: [suggested.length - fileName.length, suggested.length - 3],
           validateInput: validate,
@@ -104,16 +140,14 @@ export class NewPageCommand {
       return undefined;
     }
 
-    const values = await this.fieldValues(template, title.trim(), site, answers?.values);
+    const values = await this.fieldValues(template, title.trim(), destination, answers?.values);
     if (!values) return undefined;
     const page = pagePath('', path.trim())!;
-    const nav = await this.navChange(site, page, title.trim(), section, answers);
+    const nav = await this.navChange(destination, page, title.trim(), section, answers);
     if (nav === null) return undefined;
-    const uri = vscode.Uri.joinPath(docsDir, page);
-    await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
     const content = fillTemplate(template.body, values);
-    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
-    if (nav) await nav();
+    const uri = await destination.create(page, content, nav, title.trim());
+    if (!uri) return undefined;
     await vscode.commands.executeCommand('vscode.openWith', uri, VisualEditorProvider.viewType);
     // TP7: o cursor no primeiro trecho a preencher, selecionado (digitar troca o texto de exemplo)
     const fill = firstToFill(content);
@@ -121,7 +155,125 @@ export class NewPageCommand {
     return uri;
   }
 
-  /** Site e pasta (relativa ao `docs_dir`) de onde a página vai: o item clicado, a página ativa ou a escolha. */
+  /** Site do workspace e pasta (relativa ao `docs_dir`) de onde a página vai: o item clicado, a página ativa ou a escolha. */
+  private async localDestination(target?: vscode.Uri | DocsItem): Promise<Destination | undefined> {
+    const where = await this.resolveTarget(target);
+    if (!where) return undefined;
+    const { site } = where;
+    const docsDir = site.mkdocs.with({ path: site.site.docsDir });
+    const root = site.mkdocs.with({ path: site.site.root });
+    let mkdocsDocument: vscode.TextDocument | undefined;
+    return {
+      docsDir,
+      folder: where.folder,
+      section: where.section,
+      where: vscode.workspace.asRelativePath(docsDir),
+      scope: site.mkdocs,
+      templateFolders: templateFolders(root, site.mkdocs),
+      exists: page => exists(vscode.Uri.joinPath(docsDir, page)),
+      siteName: async () => siteName(await readText(site.mkdocs)),
+      owner: () => ownerFromCatalog([root, vscode.workspace.getWorkspaceFolder(site.mkdocs)?.uri]),
+      defaultOwner: () => gitUserName(site.mkdocs),
+      // O `mkdocs.yml` é editado pelo documento, que pode ter alterações não salvas
+      mkdocs: async () => (mkdocsDocument = await vscode.workspace.openTextDocument(site.mkdocs)).getText(),
+      create: async (page, content, nav) => {
+        const uri = vscode.Uri.joinPath(docsDir, page);
+        await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
+        await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
+        const document = mkdocsDocument;
+        if (nav !== undefined && document) {
+          const wasDirty = document.isDirty;
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), nav);
+          if ((await vscode.workspace.applyEdit(edit)) && !wasDirty) await document.save();
+        }
+        return uri;
+      },
+    };
+  }
+
+  /**
+   * Site do GitHub (TP10): o da página do GitHub ativa ou do item clicado na árvore. A página nova vai num commit na
+   * branch do rascunho dela (D4-3), com o `mkdocs.yml` junto se ela entra no `nav`; a principal não muda.
+   */
+  private async remoteDestination(target: vscode.Uri | DocsItem | undefined): Promise<Destination | undefined> {
+    const uri = target instanceof DocsItem ? remoteItemUri(target) : (target ?? activeRemotePage());
+    const ref = uri && parseRemoteUri(uri.authority, uri.path);
+    if (!ref || !this.remotes) return undefined;
+    let access: RepoAccess;
+    try {
+      access = await this.remotes.access(ref.host, ref.slug, { signIn: true });
+    } catch (error) {
+      void vscode.window.showErrorMessage(gitHubErrorText(error, vscode.l10n));
+      return undefined;
+    }
+    if (!access.login || !access.repo.canWrite) {
+      void vscode.window.showWarningMessage(vscode.l10n.t('You need write access to {0} to create pages in it.', ref.slug));
+      return undefined;
+    }
+    const entryRoot = target instanceof DocsItem ? rootItem(target).remote?.root : undefined;
+    const site = remoteSiteOf(access.sites, ref.path, entryRoot);
+    if (!site) {
+      void vscode.window.showWarningMessage(vscode.l10n.t('There is no documentation site (mkdocs.yml) for {0} in {1}.', ref.path || '/', ref.slug));
+      return undefined;
+    }
+    const at = (path: string) => remoteUri(ref.host, ref.slug, path);
+    const inDocs = (path: string) => (site.docsDir ? `${site.docsDir}/${path}` : path);
+    // Pasta clicada (ou da página ativa) dentro do docs_dir
+    const isFolder = target instanceof DocsItem && (target.kind === 'remote' || target.kind === 'section');
+    const folderPath = isFolder && target.kind === 'remote' ? site.docsDir : isFolder ? ref.path : ref.path.replace(/\/?[^/]*$/, '');
+    const folder = folderPath.startsWith(`${site.docsDir}/`) ? folderPath.slice(site.docsDir.length + 1) : '';
+    const mkdocsPath = site.root ? `${site.root}/mkdocs.yml` : 'mkdocs.yml';
+    const mkdocs = access.files.some(f => f.path === mkdocsPath) ? mkdocsPath : mkdocsPath.replace(/yml$/, 'yaml');
+    return {
+      docsDir: at(site.docsDir),
+      folder,
+      section: target instanceof DocsItem ? navSection(target) : undefined,
+      where: `${ref.slug}/${site.docsDir}`,
+      scope: vscode.workspace.workspaceFolders?.[0]?.uri ?? at(site.root),
+      templateFolders: [at(site.root ? `${site.root}/.techdocs/templates` : '.techdocs/templates'), at('.techdocs/templates')].filter(
+        (folder, i, all) => all.findIndex(f => f.toString() === folder.toString()) === i,
+      ),
+      // Na principal; o rascunho de mesmo nome é conferido ao gravar (RemotePageExistsError)
+      exists: async page => access.files.some(f => f.path === inDocs(page)),
+      siteName: async () => site.name,
+      owner: () => ownerFromCatalog([at(site.root), at('')]),
+      defaultOwner: async () => access.login!,
+      mkdocs: async () => site.yml,
+      create: async (page, content, nav, title) => {
+        const filePath = inDocs(page);
+        const config = publishConfig(vscode.workspace.getConfiguration('techdocsEditor'), undefined, vscode.env.language);
+        try {
+          const [mainSha, hasWorkflows] = await Promise.all([
+            access.client.getBranchSha(access.repo.defaultBranch),
+            access.client.hasWorkflows().catch(() => true),
+          ]);
+          await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Creating {0} on GitHub…', filePath) }, () =>
+            createRemotePage(access.client, {
+              branch: branchFor(access.login!, filePath, config.branchPattern),
+              mainSha: mainSha!,
+              filePath,
+              files: { [filePath]: content, ...(nav !== undefined ? { [mkdocs]: nav } : {}) },
+              message: vscode.l10n.t('docs: new page "{0}"', title),
+              skipCi: config.skipCi && hasWorkflows,
+            }),
+          );
+        } catch (error) {
+          void vscode.window.showErrorMessage(
+            error instanceof RemotePageExistsError
+              ? vscode.l10n.t('{0} already exists. Choose another name.', page)
+              : gitHubErrorText(error, vscode.l10n),
+          );
+          return undefined;
+        }
+        void vscode.window.showInformationMessage(
+          vscode.l10n.t('Page created in your draft. Use the Publishing panel to check it and send it for publication.'),
+        );
+        return at(filePath);
+      },
+    };
+  }
+
   private async resolveTarget(target?: vscode.Uri | DocsItem): Promise<{ site: Site; folder: string; section?: string[] } | undefined> {
     // Logo depois da ativação, a busca pelos mkdocs.yml ainda pode estar em andamento
     await this.sites.ready;
@@ -168,19 +320,19 @@ export class NewPageCommand {
    * das pastas de `techdocsEditor.templates.paths`, nessa ordem (o primeiro de cada id vale), depois os da empresa
    * (TA3) e os da extensão, a não ser com `techdocsEditor.templates.builtIn: false`.
    */
-  private async templates(site: Site): Promise<PageChoice[]> {
-    const repository = await repositoryPageTemplates(templateFolders(site.mkdocs.with({ path: site.site.root }), site.mkdocs));
-    const company = await this.central?.get(site.mkdocs);
+  private async templates(destination: Destination): Promise<PageChoice[]> {
+    const repository = await repositoryPageTemplates(destination.templateFolders);
+    const company = await this.central?.get(destination.scope);
     const central = (company?.pages ?? []).map(template => ({ template, origin: 'central' as const, source: company!.label }));
-    return mergeTemplates<PageChoice>(repository, central, builtInEnabled(site.mkdocs) ? builtInPageTemplates() : []);
+    return mergeTemplates<PageChoice>(repository, central, builtInEnabled(destination.scope) ? builtInPageTemplates() : []);
   }
 
   /**
    * Lista agrupada por categoria (TP2), com os do repositório primeiro e a pasta de onde vieram. Template de
    * uma versão do formato mais nova que a extensão aparece, mas não é usado.
    */
-  private async pickTemplate(site: Site, id: string | undefined): Promise<PageChoice | undefined> {
-    const choices = await this.templates(site);
+  private async pickTemplate(destination: Destination, id: string | undefined): Promise<PageChoice | undefined> {
+    const choices = await this.templates(destination);
     if (!choices.length) {
       void vscode.window.showWarningMessage(
         vscode.l10n.t('There are no page templates: the built-in ones are turned off and the repository has none.'),
@@ -236,19 +388,19 @@ export class NewPageCommand {
   }
 
   /** Campos usados na página: os automáticos (TP5) e os do template, perguntados um a um. */
-  private async fieldValues(template: DocTemplate, title: string, site: Site, given: Record<string, string> = {}) {
+  private async fieldValues(template: DocTemplate, title: string, destination: Destination, given: Record<string, string> = {}) {
     const used = usedFields(template.body);
     const values: Record<string, string> = { title, date: today(), ...given };
     if (used.includes('site_name') && values.site_name === undefined) {
-      values.site_name = siteName(await readText(site.mkdocs)) ?? '';
+      values.site_name = (await destination.siteName()) ?? '';
     }
     if (used.includes('owner') && values.owner === undefined) {
-      const owner = await ownerFromCatalog([site.mkdocs.with({ path: site.site.root }), vscode.workspace.getWorkspaceFolder(site.mkdocs)?.uri]);
+      const owner = await destination.owner();
       if (owner) values.owner = owner;
     }
     const asked = [
       ...(used.includes('owner') && values.owner === undefined
-        ? [{ name: 'owner', prompt: vscode.l10n.t('Team or person who owns this page'), default: await gitUserName(site.mkdocs) }]
+        ? [{ name: 'owner', prompt: vscode.l10n.t('Team or person who owns this page'), default: await destination.defaultOwner() }]
         : []),
       ...template.fields.filter(f => f.name !== 'owner' && used.includes(f.name) && values[f.name] === undefined),
     ];
@@ -262,23 +414,16 @@ export class NewPageCommand {
 
   /**
    * TP6: com `nav`, oferece pôr a página nele (na seção da árvore, na das páginas da mesma pasta ou no fim).
-   * Devolve a gravação a fazer depois de criar a página, undefined se não há o que fazer e null se cancelou.
-   * O `mkdocs.yml` é editado pelo documento, que pode ter alterações não salvas.
+   * Devolve o `mkdocs.yml` novo, undefined se a página fica fora do `nav` e null se cancelou.
    */
-  private async navChange(site: Site, page: string, title: string, section: string[] | undefined, answers?: NewPageAnswers) {
-    const document = await vscode.workspace.openTextDocument(site.mkdocs);
-    const insertion = addToNav(document.getText(), page, title, section);
+  private async navChange(destination: Destination, page: string, title: string, section: string[] | undefined, answers?: NewPageAnswers) {
+    const yml = await destination.mkdocs();
+    const insertion = yml === undefined ? undefined : addToNav(yml, page, title, section);
     if (!insertion) return undefined;
-    const write = async () => {
-      const wasDirty = document.isDirty;
-      const edit = new vscode.WorkspaceEdit();
-      edit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), insertion.yml);
-      if ((await vscode.workspace.applyEdit(edit)) && !wasDirty) await document.save();
-    };
-    if (answers) return answers.nav ? write : undefined;
+    if (answers) return answers.nav ? insertion.yml : undefined;
     const choice = await askNav(insertion.section);
     if (!choice) return null;
-    return choice === 'add' ? write : undefined;
+    return choice === 'add' ? insertion.yml : undefined;
   }
 }
 
@@ -313,6 +458,40 @@ function firstPage(item: DocsItem): DocsItem | undefined {
     if (page) return page;
   }
   return undefined;
+}
+
+/** O clique ou a página ativa é de um site do GitHub. */
+function isRemoteTarget(target: vscode.Uri | DocsItem | undefined): boolean {
+  if (target instanceof DocsItem) return Boolean(rootItem(target).remote);
+  if (target) return target.scheme === REMOTE_SCHEME;
+  return Boolean(activeRemotePage());
+}
+
+function rootItem(item: DocsItem): DocsItem {
+  let at = item;
+  while (at.parent) at = at.parent;
+  return at;
+}
+
+/** Endereço `techdocs:` do item: o do site, o da página, ou o da primeira página da seção. */
+function remoteItemUri(item: DocsItem): vscode.Uri | undefined {
+  if (item.kind === 'remote' || item.kind === 'page') return item.uri;
+  const page = firstPage(item)?.uri;
+  return page && page.with({ path: page.path.replace(/\/[^/]*$/, '') });
+}
+
+/** O site do caminho (o de `root`, se veio da árvore; senão o do `docs_dir` mais fundo que contém o caminho). */
+function remoteSiteOf(sites: RemoteSite[], path: string, root?: string): RemoteSite | undefined {
+  if (root !== undefined) return sites.find(s => s.root === root);
+  return sites
+    .filter(s => !s.docsDir || path === s.docsDir || path.startsWith(`${s.docsDir}/`) || path === s.root)
+    .sort((a, b) => b.docsDir.length - a.docsDir.length)[0];
+}
+
+/** Página do GitHub ativa: no editor de texto ou no visual. */
+function activeRemotePage(): vscode.Uri | undefined {
+  const uri = vscode.window.activeTextEditor?.document.uri ?? activeCustomEditorUri();
+  return uri?.scheme === REMOTE_SCHEME ? uri : undefined;
 }
 
 function activeCustomEditorUri(): vscode.Uri | undefined {

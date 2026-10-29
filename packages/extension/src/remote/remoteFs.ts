@@ -57,6 +57,12 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
     const { access, path } = await this.resolve(uri);
     const entry = entryAt(access.files, path);
     const permissions = writable(access) ? undefined : vscode.FilePermission.Readonly;
+    if (!entry && /\.md$/i.test(path)) {
+      // Página que só existe no rascunho (criada por template, TP10): a leitura acha a branch dela
+      if (!this.sessions.has(uri.toString())) await this.readFile(uri);
+      const session = this.sessions.get(uri.toString())!;
+      return { type: vscode.FileType.File, ctime: 0, mtime: this.versions.get(uri.toString()) ?? 0, size: new TextEncoder().encode(session.content).byteLength, permissions };
+    }
     if (!entry) {
       const draft = await this.draftFile(uri, access, path);
       if (!draft) throw vscode.FileSystemError.FileNotFound(uri);

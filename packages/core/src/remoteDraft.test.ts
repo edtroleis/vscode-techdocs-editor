@@ -1,6 +1,6 @@
 import { FakeGitHub } from '../test/fakeGitHub';
 import { GitHubClient } from './github';
-import { RemoteDraftChangedError, RemoteReadOnlyError, saveRemoteDraft, saveRemoteImage } from './remoteDraft';
+import { createRemotePage, RemoteDraftChangedError, RemotePageExistsError, RemoteReadOnlyError, saveRemoteDraft, saveRemoteImage } from './remoteDraft';
 import { loadRemoteSession } from './remoteSession';
 
 const FILES = {
@@ -103,5 +103,37 @@ describe('saveRemoteImage', () => {
     const raw = await client(github).getRaw('docs/assets/1-logo.png', 'docs/pessoa-teste/docs-guias-deploy');
     expect(await raw!.text()).toBe('PNG-falso');
     expect(await client(github).getRaw('docs/assets/1-logo.png', 'main')).toBeNull();
+  });
+});
+
+describe('createRemotePage', () => {
+  const BRANCH = 'docs/pessoa-teste/docs-guias-novo';
+  const params = (github: FakeGitHub, extra: Partial<Parameters<typeof createRemotePage>[1]> = {}) => ({
+    branch: BRANCH,
+    mainSha: github.refs.get('main')!,
+    filePath: 'docs/guias/novo.md',
+    files: { 'docs/guias/novo.md': '# Novo\n', 'mkdocs.yml': 'site_name: Wiki\nnav:\n  - novo: guias/novo.md\n' },
+    message: 'docs: nova página "Novo"',
+    skipCi: true,
+    ...extra,
+  });
+
+  it('um commit na branch da página nova, com a página e o mkdocs.yml; a principal não muda', async () => {
+    const github = new FakeGitHub(FILES);
+    const sha = await createRemotePage(client(github), params(github));
+    const head = github.head(BRANCH)!;
+    expect(head.sha).toBe(sha);
+    expect(head.message).toBe('docs: nova página "Novo" [skip ci]');
+    expect(head.files['docs/guias/novo.md']).toBe('# Novo\n');
+    expect(head.files['mkdocs.yml']).toContain('guias/novo.md');
+    expect(head.files['docs/index.md']).toBe(FILES['docs/index.md']);
+    expect(github.head('main')!.files['docs/guias/novo.md']).toBeUndefined();
+  });
+
+  it('nunca sobrescreve: a página já existe na principal ou no rascunho', async () => {
+    const github = new FakeGitHub(FILES);
+    await expect(createRemotePage(client(github), params(github, { filePath: 'docs/index.md' }))).rejects.toBeInstanceOf(RemotePageExistsError);
+    await createRemotePage(client(github), params(github));
+    await expect(createRemotePage(client(github), params(github))).rejects.toBeInstanceOf(RemotePageExistsError);
   });
 });

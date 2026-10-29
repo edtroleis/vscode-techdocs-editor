@@ -333,5 +333,10 @@
   "Version of {0} restored in the editor. Save it to keep it in your draft; it is published like any other change.": "Versão de {0} restaurada no editor. Salve para guardar no seu rascunho; ela é publicada como qualquer outra alteração.",
   "current published version": "versão publicada agora",
   "Page history": "Histórico da página",
-  "Choose a published version to restore in the editor": "Escolha uma versão publicada para restaurar no editor"
+  "Choose a published version to restore in the editor": "Escolha uma versão publicada para restaurar no editor",
+  "You need write access to {0} to create pages in it.": "Você precisa de permissão de escrita em {0} para criar páginas nele.",
+  "There is no documentation site (mkdocs.yml) for {0} in {1}.": "Não há site de documentação (mkdocs.yml) para {0} em {1}.",
+  "Creating {0} on GitHub…": "Criando {0} no GitHub…",
+  "docs: new page \"{0}\"": "docs: nova página \"{0}\"",
+  "Page created in your draft. Use the Publishing panel to check it and send it for publication.": "Página criada no seu rascunho. Use o painel Publicação para verificar e enviar para publicação."
 }

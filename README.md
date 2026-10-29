@@ -231,6 +231,8 @@ anything opens.
 - **Page History…** (the clock in the editor title) lists the published versions of the page. **Restore** puts
   the text of a version in the editor without saving; save it and it goes through your draft and pull request
   like any other change.
+- **New page from template…** works on GitHub sites too: the page (and the `nav` entry, if you choose) is
+  committed to the draft branch of the new page, with the repository's own templates read from GitHub.
 - **Other pull requests on the page:** the Publishing panel shows open pull requests by other people that change
   the same page (with the author), and yours opened outside the editor.
 - **Conflicts:** if your draft changed in another window, saving merges the two versions when they changed
@@ -355,7 +357,7 @@ otherwise). Only pages inside a `docs_dir` are checked.
 - VS Code 1.100 or later.
 - Works on local folders and clones (local mode). Git stays with VS Code's source control.
 - In local mode, the publishing panel needs a clone with a GitHub remote and VS Code's Git extension.
-- Remote mode, not yet: new pages from templates, and VS Code for the Web. See the [roadmap](specs/00-visao-geral.md#fases).
+- Remote mode, not yet: VS Code for the Web. See the [roadmap](specs/00-visao-geral.md#fases).
 - Math (LaTeX) is off, as in TechDocs' default MkDocs setup.
 - Some advanced Material for MkDocs constructs, such as grid cards and HTML blocks with `markdown`, are still
   being hardened. Review the diff before committing pages that use them.

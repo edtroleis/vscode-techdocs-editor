@@ -34,7 +34,7 @@ export function activate(context: vscode.ExtensionContext) {
   const conflicts = new ConflictPanel(context.extensionUri);
   const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs, conflicts);
   const central = new CentralTemplates(context);
-  const newPage = new NewPageCommand(sites, provider, central);
+  const newPage = new NewPageCommand(sites, provider, central, remotes);
   const proposals = new ProposedChanges();
   const newSite = new NewSiteCommand(central, proposals);
   const repoCheck = new RepoCheck(sites, lint, newSite, proposals);

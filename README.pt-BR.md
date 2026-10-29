@@ -233,6 +233,9 @@ de abrir qualquer coisa.
 - **Histórico da Página…** (o relógio no título do editor) lista as versões publicadas da página. **Restaurar** põe
   o texto de uma versão no editor, sem salvar; ao salvar, ele passa pelo seu rascunho e pelo pull request como
   qualquer outra alteração.
+- **Nova página a partir de template…** funciona também nos sites do GitHub: a página (e a entrada no `nav`, se
+  você escolher) vai num commit na branch de rascunho da página nova, com os templates do próprio repositório lidos
+  do GitHub.
 - **Outros pull requests na página:** o painel Publicação mostra os pull requests abertos de outras pessoas que
   mudam a mesma página (com o autor) e os seus abertos fora do editor.
 - **Conflitos:** se o seu rascunho mudou em outra janela, o salvar junta as duas versões quando elas mudaram
@@ -357,7 +360,7 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 - VS Code 1.100 ou mais novo.
 - Funciona em pastas locais e clones (modo local). O Git continua com o controle de versão do VS Code.
 - No modo local, o painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
-- Modo remoto, ainda não: páginas novas por template e o VS Code para a Web. Veja o [plano](specs/00-visao-geral.md#fases).
+- Modo remoto, ainda não: o VS Code para a Web. Veja o [plano](specs/00-visao-geral.md#fases).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.
 - Algumas construções avançadas do Material for MkDocs, como grid cards e blocos HTML com `markdown`, ainda
   estão sendo reforçadas. Confira o diff antes de commitar páginas que as usam.

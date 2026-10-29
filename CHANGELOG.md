@@ -10,6 +10,9 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 - **Page History…** on GitHub pages: the published versions of the page, and **Restore** to put the text of one
   back in the editor. Saving it goes through the draft and the pull request like any other change.
+- **New page from template on GitHub sites:** the page, and its `nav` entry if you choose, is committed to the
+  draft branch of the new page; the repository's own templates are read from GitHub. It never overwrites a page
+  that exists on the main branch or in a draft.
 - **Other pull requests on the page:** the Publishing panel warns about open pull requests by other people that
   change the same page, with the author and a link, and about your own opened outside the editor.
 
