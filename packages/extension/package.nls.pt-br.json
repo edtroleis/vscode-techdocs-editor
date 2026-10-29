@@ -7,6 +7,7 @@
   "config.openVisualByDefault": "Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto Markdown. Para ver o texto, use **Reabrir Editor com…**.",
   "config.images.maxSizeMB": "Maior imagem, em MB, que o editor visual grava na pasta `assets` das docs. As imagens vão para o repositório: arquivos grandes pesam em todo clone e na publicação.",
   "view.docs": "Documentação",
+  "view.preview": "Nova documentação",
   "view.publish": "Publicação",
   "config.local.publishPanel": "Mostra o painel **Publicação** no Explorer: salvar um rascunho numa branch, abrir um pull request, acompanhar as verificações e enviar, sem sair do VS Code. Precisa de um clone com remote do GitHub.",
   "config.github.scopes": "Escopos pedidos no login do GitHub. Use `public_repo` só para repositórios públicos.",

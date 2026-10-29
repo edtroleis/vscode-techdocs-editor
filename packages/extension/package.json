@@ -442,6 +442,13 @@
     "views": {
       "techdocs": [
         {
+          "type": "webview",
+          "id": "techdocsEditor.preview",
+          "name": "%view.preview%",
+          "when": "techdocsEditor.preview",
+          "icon": "$(preview)"
+        },
+        {
           "id": "techdocsEditor.docs",
           "name": "%view.docs%",
           "icon": "$(book)"

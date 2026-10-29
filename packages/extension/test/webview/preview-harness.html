@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <!-- Bundle da prévia da documentação nova fora do VS Code (ver panel-harness.html): as mensagens ficam em
+       window.sent; os testes mandam o estado do host com window.postMessage. -->
+  <script>
+    window.sent = [];
+    window.acquireVsCodeApi = () => ({ postMessage: message => window.sent.push(message) });
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="../../dist/webview/preview.js"></script>
+</body>
+</html>

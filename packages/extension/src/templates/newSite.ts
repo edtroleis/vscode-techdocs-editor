@@ -28,6 +28,7 @@ import {
   readText,
   repositoryPageTemplates,
   repositorySiteTemplates,
+  type PageChoice,
   SiteChoice,
   templateFolders,
 } from './templateSources';
@@ -65,6 +66,7 @@ const DOCS_DIR = 'docs';
  */
 export class NewSiteCommand {
   private catalogOptions: CatalogOptions | undefined;
+  private preview: { open(root: vscode.Uri): Promise<void> } | undefined;
 
   constructor(
     private readonly central?: CentralTemplates,
@@ -79,6 +81,11 @@ export class NewSiteCommand {
         void vscode.window.showErrorMessage(vscode.l10n.t('There is already a {0} in {1}.', name, relative(root)));
         return undefined;
       }
+    }
+    // Sem respostas prontas (fora dos testes): a prévia na barra lateral, que grava só no "Criar"
+    if (!answers && this.preview) {
+      await this.preview.open(root);
+      return undefined;
     }
 
     // Já há páginas em docs/: usá-las (só falta o mkdocs.yml) ou começar de um template ao lado delas
@@ -205,8 +212,8 @@ export class NewSiteCommand {
     return picked?.[0];
   }
 
-  /** Lista dos templates de site: os do repositório, com a pasta de onde vieram, os da empresa (TA3) e os da extensão. */
-  private async pickTemplate(folders: vscode.Uri[], root: vscode.Uri, id: string | undefined): Promise<SiteChoice | undefined> {
+  /** Os templates de site, por origem: os do repositório, os da empresa (TA3) e os da extensão; o primeiro de cada id vale. */
+  async siteChoices(folders: vscode.Uri[], root: vscode.Uri): Promise<{ repository: SiteChoice[]; central: SiteChoice[]; builtIn: SiteChoice[] }> {
     const repository = await repositorySiteTemplates(folders);
     const ids = new Set(repository.map(c => c.template.id));
     const company = await this.central?.get(root);
@@ -215,6 +222,21 @@ export class NewSiteCommand {
       .map(s => ({ ...s, origin: 'central', source: company!.label }));
     central.forEach(c => ids.add(c.template.id));
     const builtIn = builtInEnabled(root) ? builtInSiteTemplates().filter(c => !ids.has(c.template.id)) : [];
+    return { repository, central, builtIn };
+  }
+
+  /** Os templates de página (para o texto das páginas): os do repositório, os da empresa e os da extensão. */
+  async pageChoices(folders: vscode.Uri[], root: vscode.Uri): Promise<PageChoice[]> {
+    const company = await this.central?.get(root);
+    return [
+      ...(await repositoryPageTemplates(folders)),
+      ...(company?.pages ?? []).map(template => ({ template, origin: 'central' as const, source: company!.label })),
+      ...builtInPageTemplates(),
+    ];
+  }
+
+  private async pickTemplate(folders: vscode.Uri[], root: vscode.Uri, id: string | undefined): Promise<SiteChoice | undefined> {
+    const { repository, central, builtIn } = await this.siteChoices(folders, root);
     const choices = [...repository, ...central, ...builtIn];
     if (!choices.length) {
       void vscode.window.showWarningMessage(
@@ -267,13 +289,8 @@ export class NewSiteCommand {
    * com `builtIn: false`, que só esconde da lista); `source` da pasta do template. Com os campos que os templates
    * de página usados declaram.
    */
-  private async sources(choice: SiteChoice, folders: vscode.Uri[], root: vscode.Uri): Promise<{ sources: SiteSources; pageFields: TemplateField[] }> {
-    const company = await this.central?.get(root);
-    const pages = [
-      ...(await repositoryPageTemplates(folders)),
-      ...(company?.pages ?? []).map(template => ({ template })),
-      ...builtInPageTemplates(),
-    ];
+  async sources(choice: SiteChoice, folders: vscode.Uri[], root: vscode.Uri): Promise<{ sources: SiteSources; pageFields: TemplateField[] }> {
+    const pages = await this.pageChoices(folders, root);
     const pageOf = (id: string) => pages.find(p => p.template.id === id)?.template;
     const files: Record<string, string | undefined> = {};
     if (choice.origin !== 'repository') {
@@ -326,6 +343,11 @@ export class NewSiteCommand {
     return values;
   }
 
+  /** A prévia da barra lateral, criada depois (ela usa os templates e o `finish` daqui). */
+  usePreview(preview: { open(root: vscode.Uri): Promise<void> }) {
+    this.preview = preview;
+  }
+
   /** As opções da verificação, para a pergunta do `catalog-info.yaml` no fim (criadas depois, com o `RepoCheck`). */
   useCatalogOptions(options: CatalogOptions) {
     this.catalogOptions = options;
@@ -337,7 +359,7 @@ export class NewSiteCommand {
    * e não fala mais nele; "sim" grava `required` e leva à Verificação, que oferece criar o arquivo. A pergunta vem
    * antes de abrir a página `home` (o editor visual abrindo tira o foco da lista).
    */
-  private async finish(root: vscode.Uri, mkdocs: vscode.Uri, home: vscode.Uri | undefined, answers?: NewSiteAnswers): Promise<NewSiteResult> {
+  async finish(root: vscode.Uri, mkdocs: vscode.Uri, home: vscode.Uri | undefined, answers?: NewSiteAnswers): Promise<NewSiteResult> {
     const annotation = await this.catalogAnnotation(root);
     const folder = repositoryFolder(root);
     const current = await catalogModeFor(folder);
@@ -368,7 +390,7 @@ export class NewSiteCommand {
    * A anotação do TechDocs que falta (TP11): no `catalog-info.yaml` da pasta do site ou da raiz do workspace;
    * undefined se ele já a tem. O arquivo não é alterado.
    */
-  private async catalogAnnotation(root: vscode.Uri): Promise<{ text: string; catalog?: vscode.Uri } | undefined> {
+  async catalogAnnotation(root: vscode.Uri): Promise<{ text: string; catalog?: vscode.Uri } | undefined> {
     const workspace = vscode.workspace.getWorkspaceFolder(root)?.uri;
     const relativeTo = (uri: vscode.Uri) => (workspace && uri.path.startsWith(workspace.path) ? uri.path.slice(workspace.path.length).replace(/^\/+/, '') : '');
     for (const dir of [root, workspace]) {
@@ -399,19 +421,19 @@ export class NewSiteCommand {
   }
 }
 
-const isHome = (page: string) => /^(index|readme)\.md$/i.test(page);
+export const isHome = (page: string) => /^(index|readme)\.md$/i.test(page);
 
-const folderName = (uri: vscode.Uri) => decodeURIComponent(uri.path.split('/').filter(Boolean).pop() ?? '');
+export const folderName = (uri: vscode.Uri) => decodeURIComponent(uri.path.split('/').filter(Boolean).pop() ?? '');
 
 /** As páginas (`.md`) que já existem na pasta das docs, relativas a ela. */
-async function existingPages(docsDir: vscode.Uri): Promise<string[]> {
+export async function existingPages(docsDir: vscode.Uri): Promise<string[]> {
   const isFolder = (await vscode.workspace.fs.stat(docsDir).then(s => s.type, () => 0)) === vscode.FileType.Directory;
   if (!isFolder) return [];
   const files = await vscode.workspace.findFiles(new vscode.RelativePattern(docsDir, '**/*.md'));
   return files.map(uri => uri.path.slice(docsDir.path.length + 1)).sort();
 }
 
-async function findReadme(root: vscode.Uri): Promise<{ uri: vscode.Uri; text: string } | undefined> {
+export async function findReadme(root: vscode.Uri): Promise<{ uri: vscode.Uri; text: string } | undefined> {
   for (const name of README_FILES) {
     const uri = vscode.Uri.joinPath(root, name);
     const text = await readText(uri);
@@ -449,7 +471,7 @@ async function askReadme(): Promise<ReadmeUse | undefined> {
 }
 
 /** Caminho para as mensagens: relativo ao workspace, ou o nome dele para a raiz. */
-function relative(uri: vscode.Uri) {
+export function relative(uri: vscode.Uri) {
   const workspace = vscode.workspace.getWorkspaceFolder(uri);
   return workspace && workspace.uri.path === uri.path ? workspace.name : vscode.workspace.asRelativePath(uri);
 }

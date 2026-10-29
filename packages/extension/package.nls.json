@@ -7,6 +7,7 @@
   "config.openVisualByDefault": "Open pages of a MkDocs `docs_dir` in the visual editor instead of the Markdown text. Use **Reopen Editor With…** to switch to the text.",
   "config.images.maxSizeMB": "Largest image, in MB, that the visual editor saves to the `assets` folder of the docs. Images go into the repository: large files weigh on every clone and on publishing.",
   "view.docs": "Documentation",
+  "view.preview": "New documentation",
   "view.publish": "Publishing",
   "config.local.publishPanel": "Show the **Publishing** panel in the Explorer: save a draft to a branch, open a pull request, follow the checks and send it, without leaving VS Code. Needs a clone with a GitHub remote.",
   "config.github.scopes": "Scopes requested when signing in to GitHub. Use `public_repo` for public repositories only.",

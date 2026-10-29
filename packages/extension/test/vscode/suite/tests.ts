@@ -18,6 +18,7 @@ import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
 import type { CentralTemplates } from '../../../src/templates/centralTemplates';
 import type { NewSiteCommand } from '../../../src/templates/newSite';
+import type { SitePreview } from '../../../src/templates/sitePreview';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
 function equal<T>(actual: T, expected: T, message: string) {
@@ -54,6 +55,7 @@ type Api = {
   central: CentralTemplates;
   catalogOptions: CatalogOptions;
   prepare: PrepareContext;
+  preview: SitePreview;
 };
 
 async function api(): Promise<Api> {
@@ -736,6 +738,43 @@ export function defineTests() {
         ok(pointer.startsWith('# Pagamentos\n\n') && pointer.includes('(docs/index.md)') && !pointer.includes('src/main.ts'), `README movido: ${pointer}`);
       } finally {
         for (const path of ['com-readme', 'move-readme']) await remove(path);
+      }
+    });
+
+    test('prévia: sugere nome e dono, desmarca, renomeia, acrescenta e só grava no Criar', async () => {
+      const { preview, sites } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const exists = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
+      await write('previa/README.md', '# Pagamentos\n\nServiço de cobrança.\n');
+      await write('previa/CODEOWNERS', '* @acme/time-pagamentos\n');
+      try {
+        await preview.open(file('previa'));
+        const plan = await until(() => preview.current, p => Boolean(p?.files.some(f => f.origin === 'template')), 'prévia sem as páginas do template');
+        const view = (preview as unknown as { state(): { view: { siteName: string; owner: string; ownerFrom?: string } } }).state().view;
+        equal(view.siteName, 'Pagamentos', 'nome do título do README');
+        equal(`${view.owner} (${view.ownerFrom})`, 'time-pagamentos (CODEOWNERS)', 'dono do CODEOWNERS');
+        ok(plan!.files.some(f => f.path === 'catalog-info.yaml' && f.included), 'sem catalog-info.yaml na prévia');
+        ok(!(await exists('previa/mkdocs.yml')), 'gravou antes do Criar');
+
+        const optional = plan!.files.find(f => f.origin === 'template' && f.optional && !f.path.endsWith('index.md'))!;
+        await preview.send({ type: 'toggle', path: optional.path, on: false });
+        await preview.send({ type: 'rename', key: 'index.md', title: 'Início' });
+        await preview.send({ type: 'add', text: 'guias/deploy', by: 'path' });
+        await preview.send({ type: 'set', field: 'readme', value: 'move' });
+        await preview.send({ type: 'create' });
+
+        const yml = await read('previa/mkdocs.yml');
+        ok(yml.startsWith('site_name: Pagamentos\n') && yml.includes('Início: index.md') && yml.includes('deploy.md'), `mkdocs.yml: ${yml}`);
+        ok(!(await exists(`previa/${optional.path}`)), `criou ${optional.path} desmarcado`);
+        ok(await exists('previa/docs/guias/deploy.md'), 'página acrescentada');
+        equal(await read('previa/docs/index.md'), '# Pagamentos\n\nServiço de cobrança.\n', 'página inicial do README');
+        ok((await read('previa/README.md')).includes('(docs/index.md)'), 'README movido não virou link');
+        ok((await read('previa/catalog-info.yaml')).includes('owner: time-pagamentos'), 'catalog-info.yaml sem o dono');
+        equal(preview.current, undefined, 'a prévia não fechou');
+        await until(() => sites.list().some(s => s.mkdocs.path.endsWith('/previa/mkdocs.yml')), Boolean, 'site novo não reconhecido');
+      } finally {
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await remove('previa');
       }
     });
 

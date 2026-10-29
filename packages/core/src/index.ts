@@ -14,6 +14,7 @@ export * from './remoteTree';
 export * from './repoConfig';
 export * from './setup';
 export * from './siteCheck';
+export * from './sitePlan';
 export * from './siteTemplates';
 export * from './syncMain';
 export * from './templates';

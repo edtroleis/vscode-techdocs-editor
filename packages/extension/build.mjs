@@ -90,6 +90,15 @@ const builds = [
     format: 'iife',
     target: 'es2022',
   },
+  // Webview da prévia da documentação nova: também HTML simples
+  {
+    ...common,
+    entryPoints: { preview: 'webview/preview.ts' },
+    outdir: 'dist/webview',
+    platform: 'browser',
+    format: 'iife',
+    target: 'es2022',
+  },
   // Testes de integração: a mesma suíte no desktop (Node) e no navegador
   {
     ...common,

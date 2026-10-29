@@ -17,6 +17,7 @@ import { RepoCheck } from './repoCheck';
 import { CentralTemplates } from './templates/centralTemplates';
 import { NewPageCommand } from './templates/newPage';
 import { NewSiteCommand } from './templates/newSite';
+import { SitePreview } from './templates/sitePreview';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -36,6 +37,8 @@ export function activate(context: vscode.ExtensionContext) {
   const checkView = new CheckView(repoCheck);
   const catalogOptions = new CatalogOptions(repoCheck);
   newSite.useCatalogOptions(catalogOptions);
+  const preview = new SitePreview(context.extensionUri, newSite);
+  newSite.usePreview(preview);
   const prepare = new PrepareContext(sites);
   context.subscriptions.push(
     remotes,
@@ -57,6 +60,8 @@ export function activate(context: vscode.ExtensionContext) {
     prepare,
     docsPageContext(sites),
     vscode.window.registerWebviewViewProvider(PublishPanel.viewId, publish),
+    preview,
+    vscode.window.registerWebviewViewProvider(SitePreview.viewId, preview),
     sites,
     lint,
     docs,
@@ -94,7 +99,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, remotes, remoteFs, opener };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener };
 }
 
 /**
