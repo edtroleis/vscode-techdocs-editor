@@ -316,7 +316,7 @@
   "Save the page before resolving the conflict.": "Salve a página antes de resolver o conflito.",
   "docs: merge the published version into \"{0}\"": "docs: junta a versão publicada em \"{0}\"",
   "Documentation to show in this workspace": "Documentação para mostrar neste workspace",
-  "Filter by name or folder": "Filtrar pelo nome ou pela pasta",
+  "Filter by name or folder": "Filtre pelo nome ou pela pasta",
   "Other people are also changing this page: {0}. Whoever publishes later may have to resolve a conflict.": "Outras pessoas também estão mudando esta página: {0}. Quem publicar depois pode ter de resolver um conflito.",
   "You already have a pull request for this page, opened outside the editor: {0}.": "Você já tem um pedido de revisão desta página, aberto fora do editor: {0}.",
   "Open a page from GitHub to see its history.": "Abra uma página do GitHub para ver o histórico dela.",
@@ -335,13 +335,11 @@
   "Creating {0} on GitHub…": "Criando {0} no GitHub…",
   "docs: new page \"{0}\"": "docs: nova página \"{0}\"",
   "Page created in your draft. Use the Publishing panel to check it and send it for publication.": "Página criada no seu rascunho. Use o painel Publicação para verificar e enviar para publicação.",
-  "Showing now": "Mostrando agora",
   "More": "Mais",
   "Open from GitHub by link…": "Abrir do GitHub pelo link…",
   "Open another folder…": "Abrir outra pasta…",
   "Choose which sites of this workspace appear…": "Escolher quais sites deste workspace aparecem…",
   "Documentation to edit": "Documentação para editar",
-  "Filter by name, folder or repository": "Filtre pelo nome, pasta ou repositório",
   "In review": "Em revisão",
   "Draft": "Rascunho",
   "Review request #{0}": "Pedido de revisão #{0}",
@@ -374,5 +372,9 @@
   "Published": "Publicada",
   "Your request was approved and the page is published.": "Seu pedido foi aprovado e a página está publicada.",
   "Edit at will: saving (Ctrl+S) keeps a draft that only you see.": "Edite à vontade: salvar (Ctrl+S) guarda um rascunho que só você vê.",
-  "Edit at will: your changes stay on this computer until you send them.": "Edite à vontade: as mudanças ficam neste computador até você enviar."
+  "Edit at will: your changes stay on this computer until you send them.": "Edite à vontade: as mudanças ficam neste computador até você enviar.",
+  "showing now": "mostrando agora",
+  "Create documentation in a folder…": "Criar documentação numa pasta…",
+  "Choose the folder for the new documentation": "Escolha a pasta da documentação nova",
+  "Create the documentation here": "Criar a documentação aqui"
 }

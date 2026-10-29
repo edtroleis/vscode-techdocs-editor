@@ -26,7 +26,8 @@ All notable changes to the TechDocs Editor extension. The format follows
   signed in to GitHub, and it never asks you to sign in.
 - **One documentation site at a time.** With several sites in the workspace or opened from GitHub, the
   sidebar shows one, with **Switch documentation…** next to its name. The list is grouped by repository and
-  also offers opening from GitHub and opening another folder. Opening a page from another site switches by
+  also offers creating documentation in a folder (an empty one, say), opening from GitHub and opening
+  another folder. Opening a page from another site switches by
   itself. With none chosen, the sidebar asks for a choice.
 
 ### Changed

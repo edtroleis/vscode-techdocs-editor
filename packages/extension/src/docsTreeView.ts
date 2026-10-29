@@ -205,15 +205,24 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     for (const candidate of candidates) {
       if (candidate.repo !== repo) items.push({ label: candidate.repo, kind: vscode.QuickPickItemKind.Separator });
       repo = candidate.repo;
+      // O repositório já está no separador: só a pasta dentro dele
+      const folder = !candidate.local
+        ? candidate.description
+        : candidate.description.startsWith(`${candidate.repo}/`)
+          ? candidate.description.slice(candidate.repo.length + 1)
+          : candidate.description === candidate.repo
+            ? ''
+            : candidate.description;
+      const showing = candidate.key === this.currentKey;
       items.push({
-        label: `$(${candidate.remote ? 'github' : 'book'}) ${candidate.label}`,
-        description: candidate.description,
-        detail: candidate.key === this.currentKey ? vscode.l10n.t('Showing now') : undefined,
+        label: `$(${showing ? 'check' : candidate.remote ? 'github' : 'book'}) ${candidate.label}`,
+        description: [folder, showing ? vscode.l10n.t('showing now') : ''].filter(Boolean).join(' · '),
         key: candidate.key,
       });
     }
     items.push(
       { label: vscode.l10n.t('More'), kind: vscode.QuickPickItemKind.Separator },
+      { label: `$(new-folder) ${vscode.l10n.t('Create documentation in a folder…')}`, command: 'newSiteInFolder' },
       { label: `$(github) ${vscode.l10n.t('Open from GitHub by link…')}`, command: 'techdocsEditor.openRemote' },
       { label: `$(folder-opened) ${vscode.l10n.t('Open another folder…')}`, command: 'workbench.action.files.openFolder' },
     );
@@ -222,10 +231,11 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     }
     const chosen = await vscode.window.showQuickPick(items, {
       title: vscode.l10n.t('Documentation to edit'),
-      placeHolder: vscode.l10n.t('Filter by name, folder or repository'),
+      placeHolder: vscode.l10n.t('Filter by name or folder'),
       matchOnDescription: true,
     });
     if (chosen?.key) await this.select(chosen.key);
+    else if (chosen?.command === 'newSiteInFolder') await newSiteInFolder();
     else if (chosen?.command) await vscode.commands.executeCommand(chosen.command);
   }
 
@@ -379,6 +389,22 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     const item = uri && this.pageItem(uri);
     if (item) void this.view.reveal(item, { select: true, focus: false, expand: true }).then(undefined, () => {});
   }
+}
+
+/**
+ * "Criar documentação numa pasta…": a pasta (uma vazia, por exemplo) e o "Novo site de documentação" nela; o
+ * site criado entra na lista e a página inicial aberta o mostra na árvore.
+ */
+async function newSiteInFolder() {
+  const picked = await vscode.window.showOpenDialog({
+    title: vscode.l10n.t('Choose the folder for the new documentation'),
+    defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    openLabel: vscode.l10n.t('Create the documentation here'),
+  });
+  if (picked?.[0]) await vscode.commands.executeCommand('techdocsEditor.newSite', picked[0]);
 }
 
 /** O arquivo da aba ativa (texto ou editor visual). */
