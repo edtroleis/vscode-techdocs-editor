@@ -463,7 +463,7 @@
           "type": "webview",
           "id": "techdocsEditor.publish",
           "name": "%view.publish%",
-          "when": "techdocsEditor.hasDocs && techdocsEditor.publishPanel",
+          "when": "techdocsEditor.hasDocs && techdocsEditor.publishPanel || techdocsEditor.remoteDocs",
           "icon": "$(git-pull-request)"
         }
       ]

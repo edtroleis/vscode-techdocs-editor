@@ -1,12 +1,27 @@
 import * as vscode from 'vscode';
-import { DEFAULT_LINT_CONFIG, parseGitHubRemote, parseRepoConfig, REPO_CONFIG_FILE, RepoConfig } from '@edtroleis/techdocs-editor-core';
+import {
+  branchFor,
+  DEFAULT_LINT_CONFIG,
+  GitHubClient,
+  parseGitHubRemote,
+  parseRemoteUri,
+  parseRepoConfig,
+  REMOTE_SCHEME,
+  REPO_CONFIG_FILE,
+  RepoConfig,
+} from '@edtroleis/techdocs-editor-core';
+import type { Configuration } from 'markdownlint';
 import type { LintService } from '../lintService';
 import type { LocalSites } from '../localSites';
+import { remoteUri, type RemoteFileSystem } from '../remote/remoteFs';
+import type { RemoteRepos } from '../remote/remoteRepos';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import { GitHubTransport } from '@edtroleis/techdocs-editor-core';
 import { clientFor, gitHubErrorText, hasSession, useTestTransport } from './githubAuth';
 import { LocalPublisher, PublishView } from './localPublisher';
 import { publishConfig } from './publishConfig';
+import { RemoteGit } from './remoteGit';
+import type { LocalGit, PageDoc } from './types';
 import { DocumentPage, gitApi, VscodeGit } from './vscodeGit';
 
 /** O que o webview do painel desenha. */
@@ -25,8 +40,9 @@ export type PanelMessage =
 const CONFIG = 'techdocsEditor';
 
 /**
- * Painel "Publicação" (LC5): opcional no modo local (`techdocsEditor.local.publishPanel`). Acompanha a
- * página de docs ativa (no editor visual ou no texto) e liga o `LocalPublisher` ao clone e ao GitHub.
+ * Painel "Publicação" (LC5): opcional no modo local (`techdocsEditor.local.publishPanel`); sempre nas páginas
+ * abertas do GitHub (4d). Acompanha a página de docs ativa (no editor visual ou no texto) e liga o
+ * `LocalPublisher` ao clone e ao GitHub, ou ao GitHub só pela API (`RemoteGit`).
  */
 export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposable {
   static readonly viewId = 'techdocsEditor.publish';
@@ -43,11 +59,16 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
     private readonly extensionUri: vscode.Uri,
     private readonly sites: LocalSites,
     private readonly lint: LintService,
+    private readonly remotes: RemoteRepos,
+    private readonly remoteFs: RemoteFileSystem,
   ) {
     this.updateContext();
     this.disposables.push(
+      remotes.onDidChange(() => this.updateContext()),
       vscode.window.onDidChangeActiveTextEditor(() => this.follow()),
       vscode.window.tabGroups.onDidChangeTabs(() => this.follow()),
+      // A página do GitHub abre a aba antes de o texto chegar: o documento aparece depois
+      vscode.workspace.onDidOpenTextDocument(() => this.follow()),
       vscode.window.onDidChangeWindowState(state => this.publisher?.setFocused(state.focused)),
       vscode.workspace.onDidChangeConfiguration(e => {
         if (!e.affectsConfiguration(CONFIG)) return;
@@ -98,6 +119,7 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
 
   private updateContext() {
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.publishPanel', this.enabled);
+    void vscode.commands.executeCommand('setContext', 'techdocsEditor.remoteDocs', this.remotes.list().length > 0);
   }
 
   /** Página de docs ativa: o editor de texto ou o editor visual em foco. */
@@ -107,15 +129,18 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
       input instanceof vscode.TabInputCustom && input.viewType === VisualEditorProvider.viewType
         ? input.uri
         : vscode.window.activeTextEditor?.document.uri;
-    if (!uri || uri.scheme !== 'file' || !this.sites.siteOf(uri)) return undefined;
+    if (!uri) return undefined;
+    const isRemote = uri.scheme === REMOTE_SCHEME && /\.md$/i.test(uri.path);
+    const isLocal = this.enabled && uri.scheme === 'file' && this.sites.siteOf(uri);
+    if (!isRemote && !isLocal) return undefined;
     return vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
   }
 
   /** Troca de página ativa: novo controlador. Sair para outro arquivo mantém a última página. */
   private follow() {
-    if (!this.enabled) return this.setState({ status: 'off' });
     const document = this.activeDocument();
     if (!document) {
+      if (!this.enabled && !this.key?.startsWith(`${REMOTE_SCHEME}:`)) return this.setState({ status: 'off' });
       if (!this.publisher) this.setState({ status: 'noPage' });
       return;
     }
@@ -135,6 +160,7 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
     this.publisher?.dispose();
     this.publisher = undefined;
     this.setState({ status: 'loading' });
+    if (document.uri.scheme === REMOTE_SCHEME) return this.openRemote(document, signIn);
     try {
       const api = await gitApi();
       const repository = api?.getRepository(document.uri);
@@ -149,31 +175,93 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
       const inRepo = (path: string) => path.slice(rootPath.length + 1);
       const page = new DocumentPage(document, inRepo(document.uri.path), inRepo(vscode.Uri.file(site.docsDir).path));
       const repoConfig = await readRepoConfig(repository.rootUri);
-      const publisher = new LocalPublisher({
+      await this.start({
         git,
         page,
+        host: remote.host,
         client: clientFor(remote.host, remote.slug),
-        workflowClient: async () => {
-          const client = clientFor(remote.host, remote.slug, ['workflow']);
-          // Pede o login com o escopo agora (A-3), antes de qualquer mudança no repositório
-          await client.getLogin();
-          return client;
-        },
+        slug: remote.slug,
         lintConfig: async () => (await this.lint.configFor(document.uri)) ?? DEFAULT_LINT_CONFIG,
-        config: publishConfig(vscode.workspace.getConfiguration(CONFIG), repoConfig, vscode.env.language),
-        l10n: vscode.l10n,
-        confirm: async (message, action) =>
-          testConfirm ?? (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
-        errorText: error => gitHubErrorText(error, vscode.l10n),
-        onChange: view => this.publisher === publisher && this.setState({ status: 'ready', view }),
+        repoConfig,
       });
-      this.publisher = publisher;
-      await publisher.load();
-      publisher.setFocused(vscode.window.state.focused);
-      this.setState({ status: 'ready', view: publisher.view() });
     } catch (error) {
       this.setState({ status: 'error', message: gitHubErrorText(error, vscode.l10n) });
     }
+  }
+
+  /**
+   * Página do GitHub (4d): o mesmo painel, com o `RemoteGit` no lugar do clone. Sem login, o painel oferece
+   * entrar (A-1); entrando, a página é lida de novo, agora do rascunho da pessoa e podendo salvar.
+   */
+  private async openRemote(document: vscode.TextDocument, signIn: boolean) {
+    const uri = document.uri;
+    const target = parseRemoteUri(uri.authority, uri.path);
+    if (!target) return this.setState({ status: 'noPage' });
+    try {
+      const access = await this.remotes.access(target.host, target.slug, { signIn });
+      if (!access.login) return this.setState({ status: 'signIn', host: target.host });
+      if (signIn || !this.remoteFs.session(uri)?.branch) {
+        // Lida antes sem login: de novo, com o rascunho da pessoa e a permissão de escrita
+        await this.remoteFs.reload(uri);
+        await reopenVisual(uri);
+      }
+      const session = this.remoteFs.session(uri);
+      if (!session) return this.setState({ status: 'noPage' });
+      const config = publishConfig(vscode.workspace.getConfiguration(CONFIG), session.repoConfig, vscode.env.language);
+      const git = new RemoteGit({
+        client: access.client,
+        defaultBranch: access.repo.defaultBranch,
+        draftBranch: branchFor(access.login, session.filePath, config.branchPattern),
+        remoteUrl: `https://${target.host}/${target.slug}.git`,
+        session: () => this.remoteFs.session(uri)!,
+        reload: () => this.remoteFs.reload(uri),
+      });
+      await git.refresh();
+      await this.start({
+        git,
+        page: new DocumentPage(document, session.filePath, session.docsDir),
+        host: target.host,
+        slug: target.slug,
+        client: access.client,
+        lintConfig: async () => this.remoteFs.session(uri)?.lintConfig ?? DEFAULT_LINT_CONFIG,
+        repoConfig: session.repoConfig,
+      });
+    } catch (error) {
+      this.setState({ status: 'error', message: gitHubErrorText(error, vscode.l10n) });
+    }
+  }
+
+  private async start(o: {
+    git: LocalGit;
+    page: PageDoc;
+    host: string;
+    slug: string;
+    client: GitHubClient;
+    lintConfig: () => Promise<Configuration>;
+    repoConfig: RepoConfig | undefined;
+  }) {
+    const publisher = new LocalPublisher({
+      git: o.git,
+      page: o.page,
+      client: o.client,
+      workflowClient: async () => {
+        const client = clientFor(o.host, o.slug, ['workflow']);
+        // Pede o login com o escopo agora (A-3), antes de qualquer mudança no repositório
+        await client.getLogin();
+        return client;
+      },
+      lintConfig: o.lintConfig,
+      config: publishConfig(vscode.workspace.getConfiguration(CONFIG), o.repoConfig, vscode.env.language),
+      l10n: vscode.l10n,
+      confirm: async (message, action) =>
+        testConfirm ?? (await vscode.window.showWarningMessage(message, { modal: true }, action)) === action,
+      errorText: error => gitHubErrorText(error, vscode.l10n),
+      onChange: view => this.publisher === publisher && this.setState({ status: 'ready', view }),
+    });
+    this.publisher = publisher;
+    await publisher.load();
+    publisher.setFocused(vscode.window.state.focused);
+    this.setState({ status: 'ready', view: publisher.view() });
   }
 
   private async onMessage(message: PanelMessage) {
@@ -204,8 +292,17 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
 
   /** "Ver linha" de um apontamento da pipeline: o texto Markdown na linha. */
   private async showLine(path: string, line: number) {
-    const api = await gitApi();
     const key = this.key ? vscode.Uri.parse(this.key) : undefined;
+    const remote = key?.scheme === REMOTE_SCHEME ? parseRemoteUri(key.authority, key.path) : undefined;
+    if (remote) {
+      const position = new vscode.Position(Math.max(0, line - 1), 0);
+      await vscode.window.showTextDocument(remoteUri(remote.host, remote.slug, path), {
+        selection: new vscode.Range(position, position),
+        viewColumn: vscode.ViewColumn.Beside,
+      });
+      return;
+    }
+    const api = await gitApi();
     const root = key && api?.getRepository(key)?.rootUri;
     if (!root) return;
     const position = new vscode.Position(Math.max(0, line - 1), 0);
@@ -243,6 +340,17 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
   }
 }
 
+/** Reabre o editor visual da página, se está aberto (o "só leitura" é decidido ao abrir). */
+async function reopenVisual(uri: vscode.Uri) {
+  const tabs = vscode.window.tabGroups.all.flatMap(g => g.tabs).filter(
+    t => t.input instanceof vscode.TabInputCustom && t.input.viewType === VisualEditorProvider.viewType && t.input.uri.toString() === uri.toString(),
+  );
+  const dirty = vscode.workspace.textDocuments.some(d => d.uri.toString() === uri.toString() && d.isDirty);
+  if (!tabs.length || dirty) return;
+  await vscode.window.tabGroups.close(tabs);
+  await vscode.commands.executeCommand('vscode.openWith', uri, VisualEditorProvider.viewType);
+}
+
 /** Transporte de teste ligado: não há sessão do VS Code a conferir. */
 let testSession = false;
 let testConfirm: boolean | undefined;
@@ -278,6 +386,7 @@ export function panelLabels() {
     discard: vscode.l10n.t('Discard'),
     pullRequest: vscode.l10n.t('Pull request #{0}'),
     draftPr: vscode.l10n.t('draft'),
+    published: vscode.l10n.t('Published: pull request #{0} was merged on GitHub.'),
     readyPr: vscode.l10n.t('ready'),
     unverified: vscode.l10n.t('Saved without checking. Save and check before sending.'),
     checks: vscode.l10n.t('Checks'),

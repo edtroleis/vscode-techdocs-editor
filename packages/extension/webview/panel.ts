@@ -50,6 +50,9 @@ function render(state: PanelState, l: PanelLabels): string {
     <button data-action="send" title="${escape(l.sendHint)}"${canSend && !v.busy ? '' : ' disabled'}>${escape(v.sendForReview ? l.sendForReview : l.sendForPublication)}</button>
     ${v.pr || !v.onDefaultBranch ? `<button class="secondary" data-action="discard"${disabled}>${escape(l.discard)}</button>` : ''}
   </div>`);
+  if (v.published) {
+    parts.push(`<p class="notice" role="status"><a data-url="${escape(v.published.url)}" href="#">${format(l.published, v.published.number)}</a></p>`);
+  }
   if (v.error) parts.push(`<p class="error" role="alert">${escape(v.error)}</p>`);
   if (v.notice) parts.push(`<p class="notice" role="status">${escape(v.notice)}</p>`);
   if (v.unverified && v.pr) parts.push(`<p class="muted">${escape(l.unverified)}</p>`);

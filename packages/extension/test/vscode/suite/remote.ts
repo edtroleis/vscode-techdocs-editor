@@ -5,12 +5,13 @@
 import * as vscode from 'vscode';
 import { FakeGitHub } from '../../../../core/test/fakeGitHub';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
+import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { RemoteOpener } from '../../../src/remote/openRemote';
 import type { RemoteFileSystem } from '../../../src/remote/remoteFs';
 import type { RemoteRepos } from '../../../src/remote/remoteRepos';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
-type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider };
+type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel };
 
 const FILES = {
   'README.md': '# Wiki\n',
@@ -185,6 +186,43 @@ export function defineRemoteTests() {
       await edit('# Deploy\n\nSegunda versão.\n');
       ok(await document.save(), 'o segundo salvar falhou');
       equal(github.head(branch)?.files['docs/guias/deploy.md'], '# Deploy\n\nSegunda versão.\n', 'segundo commit no rascunho');
+    });
+
+    test('painel Publicação (4d): Salvar e verificar abre o PR e a pipeline roda; Enviar; Descartar volta à principal', async () => {
+      const { opener, publish } = await api();
+      const transport = () => ({ baseUrl: 'https://api.github.com', headers: { Authorization: `Bearer ${github.token}` }, fetch: github.fetch });
+      publish.useTestGitHub(transport, true);
+      try {
+        const uri = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/guias/deploy.md');
+        const publisher = await until(() => publish.current(), Boolean, 'o painel não acompanhou a página do GitHub', 10_000).catch(e => { throw new Error(`${e.message} ${JSON.stringify(publish.panelState)}`); });
+        const branch = 'docs/pessoa-teste/docs-guias-deploy';
+        ok(publish.panelState.status === 'ready', `painel: ${JSON.stringify(publish.panelState)}`);
+        equal(publisher!.view().branch, branch, 'branch do rascunho');
+        equal(publisher!.view().onDefaultBranch, true, 'ainda sem rascunho');
+
+        const document = await vscode.workspace.openTextDocument(uri!);
+        const change = new vscode.WorkspaceEdit();
+        change.insert(uri!, new vscode.Position(document.lineCount, 0), '\nMais um passo.\n');
+        await vscode.workspace.applyEdit(change);
+        ok(await document.save(), 'Ctrl+S falhou');
+        await publisher!.saveAndVerify();
+        equal(publisher!.view().error, undefined, 'erro ao salvar e verificar');
+        const pull = github.openPull(branch);
+        ok(pull?.draft, 'PR em rascunho não foi aberto');
+        equal(github.head(branch)?.message, 'docs: update "Deploy"', 'commit que dispara a pipeline');
+        ok(github.pipelineRuns.includes(github.head(branch)!.sha), 'a pipeline não rodou');
+
+        await publisher!.send();
+        equal(publisher!.view().error, undefined, 'erro ao enviar');
+        equal(github.openPull(branch)?.draft, false, 'o PR continuou em rascunho');
+
+        await publisher!.discard();
+        equal(publisher!.view().error, undefined, 'erro ao descartar');
+        ok(!github.refs.has(branch), 'a branch do rascunho continuou');
+        await until(() => document.getText(), t => t === FILES['docs/guias/deploy.md'], 'a página não voltou ao texto da principal');
+      } finally {
+        publish.useTestGitHub(undefined);
+      }
     });
 
     test('imagens (M6): o envio vai para o rascunho e é lido de lá; a de um rascunho salvo antes também', async () => {

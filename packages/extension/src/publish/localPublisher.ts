@@ -58,6 +58,8 @@ export type PublishView = {
   onDefaultBranch: boolean;
   defaultBranch: string;
   pr?: { number: number; url: string; draft: boolean };
+  /** O PR desta página teve o merge feito no GitHub: a página está publicada. */
+  published?: { number: number; url: string };
   /** O texto foi salvo depois da última verificação ("Salvar rascunho" pula a pipeline). */
   unverified: boolean;
   busy: boolean;
@@ -167,6 +169,7 @@ export class LocalPublisher {
       onDefaultBranch,
       defaultBranch: this.repo.defaultBranch,
       pr: this.pr?.state === 'open' ? { number: this.pr.number, url: this.pr.htmlUrl, draft: this.pr.draft } : undefined,
+      published: this.pr?.merged ? { number: this.pr.number, url: this.pr.htmlUrl } : undefined,
       unverified: this.unverified,
       busy: this.busy,
       notice: this.notice,

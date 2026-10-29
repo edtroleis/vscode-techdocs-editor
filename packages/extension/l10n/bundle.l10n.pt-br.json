@@ -291,5 +291,6 @@
   "Cancel": "Cancelar",
   "Creating…": "Criando…",
   "docs: image for \"{0}\"": "docs: imagem de \"{0}\"",
-  "This page changed in your draft ({0}) after it was opened. Close it and open it again.": "Esta página mudou no seu rascunho ({0}) depois de aberta. Feche e abra de novo."
+  "This page changed in your draft ({0}) after it was opened. Close it and open it again.": "Esta página mudou no seu rascunho ({0}) depois de aberta. Feche e abra de novo.",
+  "Published: pull request #{0} was merged on GitHub.": "Publicado: o merge do pull request #{0} foi feito no GitHub."
 }

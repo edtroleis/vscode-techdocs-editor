@@ -36,6 +36,8 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
   private readonly sessions = new Map<string, RemoteSession>();
   /** Arquivos que não estão na branch principal, lidos de um rascunho ou enviados agora (imagens). */
   private readonly drafts = new Map<string, Uint8Array>();
+  /** "Data" de cada página relida (o VS Code só recarrega um documento aberto se ela muda). */
+  private readonly versions = new Map<string, number>();
 
   constructor(private readonly repos: RemoteRepos) {}
 
@@ -60,7 +62,7 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
     return {
       type: entry.type === 'dir' ? vscode.FileType.Directory : vscode.FileType.File,
       ctime: 0,
-      mtime: 0,
+      mtime: this.versions.get(uri.toString()) ?? 0,
       size: entry.type === 'file' ? entry.size : 0,
       permissions,
     };
@@ -132,6 +134,17 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
       throw this.saveError(page, error);
     }
     this.drafts.set(remoteUri(page.authority, parseRemoteUri(page.authority, page.path)!.slug, path).toString(), data);
+  }
+
+  /**
+   * Lê a página de novo do GitHub (depois de entrar no GitHub ou de descartar o rascunho) e avisa o VS Code,
+   * que recarrega o documento aberto se ele não tem alteração não salva.
+   */
+  async reload(uri: vscode.Uri): Promise<void> {
+    this.sessions.delete(uri.toString());
+    this.versions.set(uri.toString(), Date.now());
+    await this.readFile(uri);
+    this.changeEmitter.fire([{ type: vscode.FileChangeType.Changed, uri }]);
   }
 
   /** Dá para salvar a página (login com permissão de escrita no repositório). */

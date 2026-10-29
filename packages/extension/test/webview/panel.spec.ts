@@ -128,3 +128,9 @@ test('admin: o que falta no repositório e o botão de configurar (P7)', async (
   await page.getByRole('button', { name: 'Set up checks' }).click();
   expect((await sent(page)).at(-1)).toEqual({ type: 'action', action: 'setUp' });
 });
+
+test('merge feito no GitHub: "Publicado" com o link do PR', async ({ page }) => {
+  await show(page, { status: 'ready', view: { ...VIEW, pr: undefined, published: { number: 7, url: 'https://github.com/acme/wiki/pull/7' } } });
+  await page.getByRole('link', { name: 'Published: pull request #7 was merged on GitHub.' }).click();
+  expect((await sent(page)).at(-1)).toEqual({ type: 'openUrl', url: 'https://github.com/acme/wiki/pull/7' });
+});

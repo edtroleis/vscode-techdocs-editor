@@ -28,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
   const lint = new LintService(sites);
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites, remoteFs);
   const docs = new DocsTreeView(sites, remotes);
-  const publish = new PublishPanel(context.extensionUri, sites, lint);
+  const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs);
   const central = new CentralTemplates(context);
   const newPage = new NewPageCommand(sites, provider, central);
   const proposals = new ProposedChanges();

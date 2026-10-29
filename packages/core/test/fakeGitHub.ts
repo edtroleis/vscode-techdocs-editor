@@ -23,6 +23,8 @@ export type FakePull = {
   draft: boolean;
   state: 'open' | 'closed';
   author: string;
+  /** Merge feito no GitHub (com `state: 'closed'`). */
+  merged?: boolean;
 };
 type CheckResult = { conclusion: 'success' | 'failure'; annotations?: Array<{ path: string; line: number; message: string }> };
 /** Resultado de cada check para uma execução (padrão: todos passam). */
@@ -176,7 +178,7 @@ export class FakeGitHub {
       html_url: `https://github.com/${this.slug}/pull/${pr.number}`,
       draft: pr.draft,
       state: pr.state,
-      merged_at: null,
+      merged_at: pr.merged ? '2026-10-29T12:00:00Z' : null,
       head: { ref: pr.head, sha: headSha },
       title: pr.title,
       user: { login: pr.author },
