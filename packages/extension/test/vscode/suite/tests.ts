@@ -14,6 +14,7 @@ import type { NewPageCommand } from '../../../src/templates/newPage';
 import type { PrepareContext } from '../../../src/prepareContext';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { CatalogOptions } from '../../../src/catalogOptions';
+import type { useTestSiteChoice } from '../../../src/chooseSites';
 import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
 import type { CentralTemplates } from '../../../src/templates/centralTemplates';
@@ -56,6 +57,7 @@ type Api = {
   catalogOptions: CatalogOptions;
   prepare: PrepareContext;
   preview: SitePreview;
+  useTestSiteChoice: typeof useTestSiteChoice;
 };
 
 async function api(): Promise<Api> {
@@ -492,6 +494,58 @@ export function defineTests() {
         await vscode.workspace.fs.delete(file('nav-site'), { recursive: true });
       }
       await until(() => siteItem(docs, 'nav-site') === undefined, gone => gone, 'site removido continuou na árvore');
+    });
+
+    test('muitos sites: aviso para escolher; escolher, esconder e mostrar todos; cópias e esqueletos ficam de fora', async () => {
+      const { docs, sites, repoCheck, useTestSiteChoice } = await api();
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const extra = ['outro-1', 'outro-2', 'outro-3', 'outro-4'];
+      const ignored = ['.copia/wiki', 'app/test/fixtures/wiki', 'template/skeleton'];
+      const config = () => vscode.workspace.getConfiguration('techdocsEditor');
+      const roots = () => docs.getChildren().map(item => `${item.description ?? item.label} (${item.kind})`);
+      await sites.ready;
+      const before = sites.all().map(s => vscode.workspace.asRelativePath(s.mkdocs.with({ path: s.site.root }), false));
+      try {
+        // Cópia numa pasta oculta, fixture de teste e esqueleto de template: nenhum entra
+        for (const folder of ignored) await write(`${folder}/mkdocs.yml`, folder.startsWith('template') ? 'site_name: ${{ values.nome }}\n' : 'site_name: Cópia\n');
+        // Gravados de novo a cada tentativa: logo depois de abrir, o observador dos mkdocs.yml pode não estar ativo
+        await until(
+          async () => {
+            for (const folder of extra) await write(`${folder}/mkdocs.yml`, `site_name: ${folder}\n`);
+            await new Promise(resolve => setTimeout(resolve, 400));
+            return sites.all().map(s => s.site.root.split('/').pop());
+          },
+          r => r.length === before.length + extra.length,
+          'os sites novos não apareceram (ou as cópias entraram)',
+        );
+        // Mais de 5 e nada escolhido: o aviso no topo
+        await until(() => (docs.ready.then(() => roots())), r => r[0]?.endsWith('(chooseSites)'), 'sem o aviso de escolher');
+
+        // Escolher: só a wiki e a wiki-demo
+        let offered: string[] = [];
+        useTestSiteChoice(items => {
+          offered = items.map(item => item.path);
+          return items.filter(item => item.path.startsWith('wiki'));
+        });
+        await vscode.commands.executeCommand('techdocsEditor.chooseSites');
+        equal(offered.sort().join(','), [...before, ...extra].sort().join(','), 'sites oferecidos');
+        equal(JSON.stringify(config().get('sites')), JSON.stringify(['wiki', 'wiki-demo']), 'escolha gravada');
+        await until(() => docs.ready.then(() => roots().join(' | ')), r => r === 'wiki (site) | wiki-demo (site) | Choose documentation… (hiddenSites)', 'árvore com os escolhidos');
+        equal((await repoCheck.check(true)).length, 2, 'a verificação conferiu os escondidos');
+
+        // Esconder a wiki-demo pelo menu do site
+        await vscode.commands.executeCommand('techdocsEditor.hideSite', siteItem(docs, 'wiki-demo'));
+        equal(JSON.stringify(config().get('sites')), JSON.stringify(['wiki']), 'esconder não tirou da escolha');
+
+        // Mostrar todos e não perguntar mais
+        await vscode.commands.executeCommand('techdocsEditor.dismissChooseSites');
+        await until(() => docs.ready.then(() => roots()), r => r.length === before.length + extra.length && r.every(item => item.endsWith('(site)')), 'todos os sites, sem o aviso');
+      } finally {
+        useTestSiteChoice(undefined);
+        await config().update('sites', undefined, vscode.ConfigurationTarget.Workspace);
+        for (const folder of [...extra, '.copia', 'app', 'template']) await vscode.workspace.fs.delete(file(folder), { recursive: true }).then(undefined, () => undefined);
+      }
+      await until(() => sites.all().length, n => n === before.length, 'os sites de teste continuaram');
     });
 
     test('sem mkdocs.yml: README, docs/ ou catalog-info.yaml ligam a tela "Preparar"; o site criado a desliga', async () => {

@@ -59,7 +59,7 @@ export class PrepareContext implements vscode.Disposable {
       return false;
     };
     this.found = { readme: await has(PATTERNS.readme), docs: await has(PATTERNS.docs), catalog: await has(PATTERNS.catalog) };
-    this.active = canPrepare(this.found, this.sites.list().length > 0);
+    this.active = canPrepare(this.found, this.sites.all().length > 0);
     const set = (key: string, value: boolean) => vscode.commands.executeCommand('setContext', `techdocsEditor.${key}`, value);
     await Promise.all([
       set('canPrepare', this.active),

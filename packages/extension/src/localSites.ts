@@ -1,8 +1,17 @@
 import * as vscode from 'vscode';
-import { DocsSite, siteFromMkdocs, siteOf } from './docsSite';
+import { DocsSite, isIgnoredMkdocs, isShownSite, siteFromMkdocs, siteOf } from './docsSite';
 
 const MKDOCS = '**/mkdocs.{yml,yaml}';
-const IGNORED = '**/{node_modules,.git,site,.venv}/**';
+const IGNORED = ['**/node_modules/**', '**/.*/**'];
+
+/** O que a busca pula: as pastas que nunca têm sites e o `files.exclude` do VS Code (ignorado ao passar uma lista). */
+function excludeGlob() {
+  const excluded = vscode.workspace.getConfiguration('files').get<Record<string, unknown>>('exclude') ?? {};
+  const fromSettings = Object.entries(excluded)
+    .filter(([, on]) => on === true)
+    .flatMap(([glob]) => [glob, `${glob}/**`]);
+  return `{${[...IGNORED, ...fromSettings].join(',')}}`;
+}
 
 /**
  * Sites do MkDocs do workspace (modo local, spec 02 LC1): os `mkdocs.yml` achados, com o `docs_dir`
@@ -35,13 +44,28 @@ export class LocalSites implements vscode.Disposable {
         inside.forEach(key => this.sites.delete(key));
         if (inside.length) this.changeEmitter.fire();
       }),
+      vscode.workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration('files.exclude')) void this.scan(true);
+        else if (e.affectsConfiguration('techdocsEditor.sites')) this.changeEmitter.fire();
+      }),
       this.changeEmitter,
     );
     this.ready = this.scan();
   }
 
-  /** Todos os sites, com o `mkdocs.yml` de cada um, na ordem dos caminhos. */
+  /** Os sites escolhidos em `techdocsEditor.sites` (todos, sem escolha), na ordem dos caminhos. */
   list(): { mkdocs: vscode.Uri; site: DocsSite }[] {
+    const chosen = this.chosen();
+    return this.all().filter(({ mkdocs, site }) => isShownSite(sitePath(mkdocs.with({ path: site.root })), chosen));
+  }
+
+  /** O que está em `techdocsEditor.sites`: null se a pessoa nunca escolheu. */
+  chosen(): string[] | null {
+    return vscode.workspace.getConfiguration('techdocsEditor').get<string[] | null>('sites') ?? null;
+  }
+
+  /** Todos os sites achados, escolhidos ou não, com o `mkdocs.yml` de cada um, na ordem dos caminhos. */
+  all(): { mkdocs: vscode.Uri; site: DocsSite }[] {
     return [...this.sites.entries()]
       .map(([key, { site }]) => ({ mkdocs: vscode.Uri.parse(key), site }))
       .sort((a, b) => a.site.root.localeCompare(b.site.root));
@@ -57,8 +81,9 @@ export class LocalSites implements vscode.Disposable {
     this.disposables.forEach(d => d.dispose());
   }
 
-  private async scan() {
-    const found = await vscode.workspace.findFiles(MKDOCS, IGNORED);
+  private async scan(again = false) {
+    if (again) this.sites.clear();
+    const found = await vscode.workspace.findFiles(MKDOCS, excludeGlob());
     await Promise.all(found.map(uri => this.read(uri, false)));
     this.changeEmitter.fire();
   }
@@ -71,9 +96,17 @@ export class LocalSites implements vscode.Disposable {
       // Lido entre a criação e a gravação, ou removido: o observador avisa de novo
       return;
     }
+    if (isIgnoredMkdocs(vscode.workspace.asRelativePath(uri, false), text)) return;
     this.sites.set(uri.toString(), { origin: originOf(uri), site: siteFromMkdocs(uri.path, text) });
     if (notify) this.changeEmitter.fire();
   }
+}
+
+/** Pasta do site relativa à pasta do workspace (`.` na raiz), como em `techdocsEditor.sites`. */
+export function sitePath(root: vscode.Uri): string {
+  const folder = vscode.workspace.getWorkspaceFolder(root);
+  if (!folder) return root.path;
+  return root.path.slice(folder.uri.path.replace(/\/$/, '').length + 1) || '.';
 }
 
 const originOf = (uri: vscode.Uri) => `${uri.scheme}://${uri.authority}`;

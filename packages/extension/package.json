@@ -141,6 +141,24 @@
         "title": "%command.refreshRemote%",
         "category": "TechDocs",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "techdocsEditor.chooseSites",
+        "title": "%command.chooseSites%",
+        "category": "TechDocs",
+        "icon": "$(list-filter)"
+      },
+      {
+        "command": "techdocsEditor.hideSite",
+        "title": "%command.hideSite%",
+        "category": "TechDocs",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "techdocsEditor.dismissChooseSites",
+        "title": "%command.dismissChooseSites%",
+        "category": "TechDocs",
+        "icon": "$(close)"
       }
     ],
     "menus": {
@@ -180,6 +198,18 @@
         {
           "command": "techdocsEditor.refreshRemote",
           "when": "techdocsEditor.hasRemote"
+        },
+        {
+          "command": "techdocsEditor.chooseSites",
+          "when": "techdocsEditor.hasDocs"
+        },
+        {
+          "command": "techdocsEditor.hideSite",
+          "when": "false"
+        },
+        {
+          "command": "techdocsEditor.dismissChooseSites",
+          "when": "false"
         }
       ],
       "view/item/context": [
@@ -242,6 +272,21 @@
           "command": "techdocsEditor.closeRemote",
           "when": "view == techdocsEditor.docs && viewItem == remote",
           "group": "navigation@2"
+        },
+        {
+          "command": "techdocsEditor.hideSite",
+          "when": "view == techdocsEditor.docs && viewItem == site",
+          "group": "inline"
+        },
+        {
+          "command": "techdocsEditor.hideSite",
+          "when": "view == techdocsEditor.docs && viewItem == site",
+          "group": "navigation"
+        },
+        {
+          "command": "techdocsEditor.dismissChooseSites",
+          "when": "view == techdocsEditor.docs && viewItem == chooseSites",
+          "group": "inline"
         }
       ],
       "view/title": [
@@ -249,6 +294,11 @@
           "command": "techdocsEditor.newPage",
           "when": "view == techdocsEditor.docs",
           "group": "navigation"
+        },
+        {
+          "command": "techdocsEditor.chooseSites",
+          "when": "view == techdocsEditor.docs && techdocsEditor.hasDocs",
+          "group": "navigation@2"
         },
         {
           "command": "techdocsEditor.newSite",
@@ -427,6 +477,18 @@
           "default": 60,
           "minimum": 10,
           "markdownDescription": "%config.polling.idleIntervalSeconds%"
+        },
+        "techdocsEditor.sites": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "default": null,
+          "scope": "resource",
+          "markdownDescription": "%config.sites%"
         }
       }
     },

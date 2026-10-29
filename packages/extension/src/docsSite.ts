@@ -31,3 +31,34 @@ export function siteOf(pagePath: string, sites: readonly DocsSite[]): DocsSite |
 export function hasConflictMarkers(text: string): boolean {
   return /^<{7}(?: .*)?\r?\n[\s\S]*?^={7}\r?\n[\s\S]*?^>{7}(?: .*)?$/m.test(text);
 }
+
+/** Pastas que nunca têm documentação de verdade: dependências, saídas de build, fixtures de teste. */
+const IGNORED_FOLDERS = new Set(['node_modules', 'site', 'out', 'dist', 'build']);
+/** `fixtures`, `__fixtures__`, `wiki-fixture`… */
+const FIXTURE = /(^|[-_])fixtures?(__)?$/;
+
+/**
+ * `mkdocs.yml` que não é um site para editar: numa pasta oculta (`.git`, `.claude/worktrees`, `.vscode-test`…)
+ * ou ignorada, ou esqueleto de template (`${{ values.x }}` do Backstage, `{{ cookiecutter.x }}`).
+ * `path`: relativo ao workspace.
+ */
+export function isIgnoredMkdocs(path: string, text: string): boolean {
+  const folders = path.split('/').slice(0, -1);
+  if (folders.some(f => f.startsWith('.') || IGNORED_FOLDERS.has(f) || FIXTURE.test(f))) return true;
+  return /\$\{\{|\{\{\s*cookiecutter\./.test(text);
+}
+
+/** Com mais sites que isso e nada escolhido, a árvore sugere escolher quais mostrar. */
+export const CHOOSE_SITES_THRESHOLD = 5;
+
+/**
+ * O site (pasta do `mkdocs.yml`, relativa ao workspace; `.` na raiz) está entre os escolhidos em
+ * `techdocsEditor.sites`: a própria pasta ou uma pasta acima dela. Sem escolha (ou lista vazia), todos.
+ */
+export function isShownSite(path: string, chosen: readonly string[] | null | undefined): boolean {
+  if (!chosen?.length) return true;
+  return chosen.some(entry => {
+    const folder = entry.replace(/^\.\/+/, '').replace(/\/+$/, '');
+    return !folder || folder === '.' || path === folder || path.startsWith(`${folder}/`);
+  });
+}

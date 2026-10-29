@@ -314,5 +314,11 @@
   "Published version": "Versão publicada",
   "Version saved in another window": "Versão salva em outra janela",
   "Save the page before resolving the conflict.": "Salve a página antes de resolver o conflito.",
-  "docs: merge the published version into \"{0}\"": "docs: junta a versão publicada em \"{0}\""
+  "docs: merge the published version into \"{0}\"": "docs: junta a versão publicada em \"{0}\"",
+  "Documentation to show in this workspace": "Documentação para mostrar neste workspace",
+  "Filter by name or folder": "Filtrar pelo nome ou pela pasta",
+  "Choose which documentation to show…": "Escolher qual documentação mostrar…",
+  "{0} found": "{0} encontradas",
+  "{0} hidden": "{0} escondidas",
+  "Choose documentation…": "Escolher documentação…"
 }

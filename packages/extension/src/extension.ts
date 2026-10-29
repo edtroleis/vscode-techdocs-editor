@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { chooseSites, dismissChooseSites, hideSite, useTestSiteChoice } from './chooseSites';
 import { REMOTE_SCHEME } from '@edtroleis/techdocs-editor-core';
 import { CatalogOptions, repositoryFolder } from './catalogOptions';
 import { CheckItem, CheckView } from './checkView';
@@ -52,6 +53,9 @@ export function activate(context: vscode.ExtensionContext) {
       },
     }),
     vscode.commands.registerCommand('techdocsEditor.openRemote', (input?: string) => opener.fromInput(typeof input === 'string' ? input : undefined)),
+    vscode.commands.registerCommand('techdocsEditor.chooseSites', () => chooseSites(sites)),
+    vscode.commands.registerCommand('techdocsEditor.hideSite', (item?: DocsItem) => hideSite(sites, item?.siteRoot)),
+    vscode.commands.registerCommand('techdocsEditor.dismissChooseSites', () => dismissChooseSites()),
     vscode.commands.registerCommand('techdocsEditor.closeRemote', (item?: DocsItem) => item?.remote && remotes.remove(item.remote)),
     vscode.commands.registerCommand('techdocsEditor.refreshRemote', (item?: DocsItem) =>
       item?.remote ? remotes.refresh(item.remote.host, item.remote.slug) : remotes.refresh(),
@@ -102,7 +106,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice };
 }
 
 /**

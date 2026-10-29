@@ -277,6 +277,7 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 | Configuração | Padrão | O que faz |
 |--------------|--------|-----------|
 | `techdocsEditor.openVisualByDefault` | `false` | Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto |
+| `techdocsEditor.sites` | todos | Sites de documentação mostrados na view TechDocs e conferidos: pastas de um `mkdocs.yml` (ou uma pasta acima delas). Escolha com **Escolher Documentação…** na view |
 | `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
 | `techdocsEditor.templates.paths` | `[]` | Mais pastas com templates de página e de site, relativas à pasta do workspace (o `.techdocs/templates/` é sempre lido) |
 | `techdocsEditor.templates.repository` | `""` | Templates da empresa num repositório do GitHub: `dono/repo[/pasta][@ref]` |

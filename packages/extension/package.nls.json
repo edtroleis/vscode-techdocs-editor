@@ -75,5 +75,9 @@
   "config.mode.auto": "From GitHub, or the local copy when the repository is in the workspace (you choose)",
   "config.mode.local": "Only the local copy in the workspace",
   "config.mode.remote": "Always from GitHub, even when the repository is in the workspace",
-  "config.github.host": "GitHub server of your company (GitHub Enterprise Server), for example `github.example.com`. Links and the **Open documentation from GitHub…** command accept it besides `github.com`."
+  "config.github.host": "GitHub server of your company (GitHub Enterprise Server), for example `github.example.com`. Links and the **Open documentation from GitHub…** command accept it besides `github.com`.",
+  "config.sites": "Documentation sites shown in the TechDocs view and checked by **Check documentation**: folders of a `mkdocs.yml` (or a folder above them), relative to the workspace. Empty: all of them. Use **Choose documentation to show…** in the view.",
+  "command.chooseSites": "Choose Documentation to Show…",
+  "command.hideSite": "Hide",
+  "command.dismissChooseSites": "Show All and Don't Ask Again"
 }

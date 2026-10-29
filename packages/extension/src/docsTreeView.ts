@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
-import type { DocsSite } from './docsSite';
+import { CHOOSE_SITES_THRESHOLD, type DocsSite } from './docsSite';
 import type { LocalSites } from './localSites';
 import { remoteUri } from './remote/remoteFs';
 import { type RemoteEntry, type RemoteRepos, SignInRequiredError } from './remote/remoteRepos';
@@ -16,8 +16,10 @@ export class DocsItem {
   readonly children: DocsItem[] = [];
   /** O site do GitHub do item `remote` (para fechar e ler de novo). */
   remote?: RemoteEntry;
+  /** Pasta do `mkdocs.yml` do item `site` (para esconder). */
+  siteRoot?: vscode.Uri;
   constructor(
-    readonly kind: 'site' | 'remote' | 'remoteError' | 'section' | 'page' | 'missing' | 'link' | 'notInNav',
+    readonly kind: 'site' | 'remote' | 'remoteError' | 'section' | 'page' | 'missing' | 'link' | 'notInNav' | 'chooseSites' | 'hiddenSites',
     readonly label: string,
     readonly parent: DocsItem | undefined,
     /** Página ou arquivo do link (link externo: o endereço). */
@@ -110,6 +112,11 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         tree.iconPath = new vscode.ThemeIcon('warning');
         tree.tooltip = item.label;
         break;
+      case 'chooseSites':
+      case 'hiddenSites':
+        tree.iconPath = new vscode.ThemeIcon(item.kind === 'chooseSites' ? 'list-filter' : 'eye-closed');
+        tree.command = { command: 'techdocsEditor.chooseSites', title: item.label };
+        break;
     }
     if (item.kind === 'page' && item.uri?.scheme === REMOTE_SCHEME) {
       // Página do GitHub: abre no editor visual, como no portal
@@ -159,25 +166,33 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   }
 
   private async build(run: number): Promise<void> {
+    const all = this.sites.all();
     const sites = this.sites.list();
-    void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasDocs', sites.length > 0);
+    void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasDocs', all.length > 0);
     const pages = new Map<string, DocsItem>();
     const remotes = this.remotes.list();
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasRemote', remotes.length > 0);
-    const single = sites.length === 1 && !remotes.length;
+    const hidden = all.length - sites.length;
+    const single = sites.length === 1 && !remotes.length && !hidden;
     const roots: DocsItem[] = [];
+    // Muitos sites e nada escolhido (workspace com vários repositórios): sugere escolher quais mostrar
+    if (this.sites.chosen() === null && all.length > CHOOSE_SITES_THRESHOLD) {
+      roots.push(new DocsItem('chooseSites', vscode.l10n.t('Choose which documentation to show…'), undefined, undefined, vscode.l10n.t('{0} found', all.length)));
+    }
     for (const { mkdocs, site } of sites) {
       const yml = await readText(mkdocs);
       const docsDir = mkdocs.with({ path: site.docsDir });
       const parent = single
         ? undefined
         : new DocsItem('site', siteName(yml) ?? site.root.split('/').pop()!, undefined, docsDir, vscode.workspace.asRelativePath(mkdocs.with({ path: site.root })));
+      if (parent) parent.siteRoot = mkdocs.with({ path: site.root });
       const items = await this.siteItems(yml, site, docsDir, parent, pages);
       if (parent) {
         parent.children.push(...items);
         roots.push(parent);
       } else roots.push(...items);
     }
+    if (hidden) roots.push(new DocsItem('hiddenSites', vscode.l10n.t('{0} hidden', hidden), undefined, undefined, vscode.l10n.t('Choose documentation…')));
     for (const entry of remotes) roots.push(await this.remoteItem(entry, pages));
     if (run !== this.runs) return this.latest;
     this.roots = roots;

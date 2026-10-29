@@ -14,6 +14,14 @@ All notable changes to the TechDocs Editor extension. The format follows
 - **Published version in the draft.** Before checking, the Publishing panel brings into the draft what was
   published after it started. If the published version changed the same passages, the panel shows the
   conflict, holds the pull request and *Send*, and **Resolve conflict** opens the same screen.
+- **Choose which documentation to show.** In a workspace with many repositories, **Choose Documentation to
+  Show…** in the TechDocs view picks the sites shown in the tree and checked (`techdocsEditor.sites`). With
+  more than 5 sites and nothing chosen, the tree suggests it. **Hide** on a site removes it from the list.
+
+### Changed
+
+- The search for `mkdocs.yml` skips hidden folders (such as `.git` worktrees), build output (`out`, `dist`,
+  `build`), test fixtures, template skeletons (`${{ values.x }}`, cookiecutter) and what `files.exclude` hides.
 
 ## [0.5.0] - 2026-10-29
 
