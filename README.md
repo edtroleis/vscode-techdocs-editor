@@ -63,7 +63,9 @@ the page. Never a temporary `blob:` address, and never larger than you allow
 
 - **TechDocs in the activity bar:** an icon of its own, shown only in workspaces with a `mkdocs.yml`, so the
   rest of your Markdown stays out of the way. It has three sections: **Documentation**, **Check** and the
-  optional **Publishing** panel.
+  optional **Publishing** panel. In a repository with no `mkdocs.yml` yet but with a `README.md`, a `docs/`
+  folder with pages or a `catalog-info.yaml`, the icon opens a welcome screen that says what was found, with
+  **Prepare the documentation**.
 - **Documentation tree:** the pages of each MkDocs site in the workspace, in the order of the `nav` in
   `mkdocs.yml` (or of the folders, without a `nav`), with the page titles. Pages missing from the `nav`, and
   `nav` entries pointing to missing pages, are flagged.
@@ -138,6 +140,20 @@ Alert: {{alert}}. Owner: {{owner}}. Reviewed on {{date}}.
 you chose. It never overwrites a file, and it tells you the annotation to add to `catalog-info.yaml`
 (`backstage.io/techdocs-ref: dir:.`) without changing it.
 
+![A repository with only a README: the welcome screen, the README as the home page, and the catalog-info.yaml question](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/prepare-readme.gif)
+
+- **The README as the home page:** next to a `README.md`, choose **Copy to docs/index.md**, **Move to
+  docs/index.md** (the README keeps a link to the docs) or leave it out. Links to `docs/…` are made relative to
+  the docs folder.
+- **Pages you already have:** with pages in `docs/` and no `mkdocs.yml`, **Use the pages that already exist**
+  creates only `mkdocs.yml`, with the `nav` built from the folders and page titles and the `techdocs-core`
+  plugin, shown in a diff first. No page changes.
+- **Asked once:** without a `catalog-info.yaml`, it asks whether your Backstage uses one in the repository.
+  **No** stops all talk of it; **Yes** leads to the Check view, which offers to create it. The answer goes to
+  `.techdocs-editor.yaml`, for the whole team.
+
+![Pages in docs/ with no mkdocs.yml: use them, and only mkdocs.yml is created, with the nav from folders and titles](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/adopt-docs.gif)
+
 | Site | Pages |
 |------|-------|
 | Service docs | Service home page, Architecture, Operations and support, and the first ADR |
@@ -180,6 +196,14 @@ diff of that one fix before writing anything. The same items are in the Problems
 `mkdocs.yml`. Otherwise it goes through the fixes one by one, showing the diff first, so you apply, skip or
 stop. Broken links and missing images have no fix: only a person knows the right target.
 
+Not every Backstage reads `catalog-info.yaml` from the repository. The gear of the **Check** section (**Check
+options**) sets how the check treats it: **Check only if it exists** (the default; a missing file is just a hint,
+not counted on the icon), **Require it** (a missing file is a problem, with a fix that creates a minimal one) or
+**Do not use it**. Save it **For the team** in `.techdocs-editor.yaml` (`catalog:`) or **Just for me** in the
+`techdocsEditor.catalog` setting; the repository file wins.
+
+![The gear of the Check view: do not use catalog-info.yaml, saved for the team, and the hint goes away](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/check-options.gif)
+
 ### Publish without leaving VS Code (optional)
 
 For people who would rather not deal with branches and pull requests: turn on
@@ -205,7 +229,9 @@ the Backstage plugin.
 ## Getting started
 
 1. Install **TechDocs Editor** from the VS Code Marketplace.
-2. Open a folder that has a `mkdocs.yml` (the extension starts on its own there).
+2. Open a folder that has a `mkdocs.yml` (the extension starts on its own there). No `mkdocs.yml` yet? The
+   TechDocs icon also shows up next to a `README.md`, a `docs/` folder or a `catalog-info.yaml`, with
+   **Prepare the documentation**.
 3. Open a page:
    - from the **Documentation** section of the TechDocs icon in the activity bar, or
    - with the **Open in visual editor** button in the editor title bar of a `.md` file, or

@@ -2,7 +2,7 @@
  * Vídeos curtos do README, gravados no VS Code de verdade. Cada teste grava um vídeo (webm) na sua
  * pasta; scripts/make-videos.mjs corta o começo (a abertura do VS Code) e converte em GIF.
  */
-import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 import { cursorToEnd } from '../../test/webview/editing';
@@ -91,6 +91,34 @@ async function openSidebar(page: Page) {
   await expect(icon).toBeVisible({ timeout: 30_000 });
   await clickLike(page, icon);
   await expect(docsView(page).locator('.pane-header')).toBeVisible();
+}
+
+/**
+ * Escolhe um item da lista aberta: o cursor desenhado vai até ele e a escolha é pelo teclado (filtrar pelo rótulo e
+ * Enter). Clicar falha quando a dica de outra linha fica por cima.
+ */
+async function pick(page: Page, label: string) {
+  const row = page.locator('.quick-input-list .monaco-list-row', { hasText: label }).first();
+  await row.waitFor();
+  await pause(page, 700);
+  const box = await row.boundingBox();
+  if (box) {
+    await page.evaluate(({ x, y }) => {
+      const cursor = document.getElementById('demo-cursor')!;
+      cursor.style.left = `${x}px`;
+      cursor.style.top = `${y}px`;
+    }, { x: box.x + 60, y: box.y + box.height / 2 });
+  }
+  await quickInput(page).focus();
+  await typeSlowly(page, label);
+  await pause(page, 500);
+  await page.keyboard.press('Enter');
+  await pause(page, 500);
+}
+
+/** Sem site no workspace: só o que a cena precisa. */
+function clearSites(workspace: string, keep: string[] = []) {
+  for (const path of ['wiki', 'wiki-demo', 'crlf'].filter(p => !keep.includes(p))) rmSync(join(workspace, path), { recursive: true, force: true });
 }
 
 /** Botão de um item de árvore (só aparece com o mouse em cima). */
@@ -310,5 +338,98 @@ test.describe('new-site', () => {
     await caption(page, 'mkdocs.yml, nav and pages ready for TechDocs');
     await openSidebar(page);
     await pause(page, 2_500);
+  });
+});
+
+test.describe('prepare-readme', () => {
+  test.use(scene('prepare-readme'));
+  test('repositório só com README: boas-vindas, README como página inicial e a pergunta do catálogo', async ({ vscode: { page, workspace, startedAt } }) => {
+    clearSites(workspace);
+    writeFileSync(join(workspace, 'README.md'), '# Payments\n\nThe service that charges the checkout.\n\n## Run it\n\n```sh\nmake run\n```\n');
+    await overlay(page);
+    const icon = page.locator('.activitybar .action-item a[aria-label^="TechDocs"]');
+    await expect(icon).toBeVisible({ timeout: 30_000 });
+    markStart('prepare-readme', startedAt);
+    await caption(page, 'A repository with only a README: the TechDocs icon shows up');
+    await clickLike(page, icon);
+    const prepare = page.getByRole('button', { name: 'Prepare the documentation' });
+    await prepare.waitFor();
+    await pause(page, 1_800);
+    await clickLike(page, prepare);
+    await caption(page, 'The README can become the home page');
+    await pick(page, 'Copy to docs/index.md');
+    await caption(page, 'Choose the kind of site');
+    await quickInput(page).waitFor();
+    await pause(page, 1_000);
+    await typeSlowly(page, 'service');
+    await answer(page);
+    await caption(page, 'Name it and answer the template questions');
+    await answer(page, 'Payments');
+    await answer(page, 'team-payments');
+    const notSure = page.locator('.quick-input-list .monaco-list-row', { hasText: 'Not sure' });
+    while ((await notSure.count()) === 0 && (await quickInput(page).isVisible())) await answer(page);
+    await caption(page, 'Asked once: does your Backstage use catalog-info.yaml?');
+    await pick(page, 'Yes');
+    await prose(page).waitFor({ timeout: 30_000 });
+    await caption(page, 'The README is the home page; mkdocs.yml, nav and pages are ready');
+    await pause(page, 2_500);
+  });
+});
+
+test.describe('adopt-docs', () => {
+  test.use(scene('adopt-docs'));
+  test('docs/ sem mkdocs.yml: usar as páginas que já existem', async ({ vscode: { page, workspace, startedAt } }) => {
+    // As páginas da wiki numa docs/ na raiz, sem mkdocs.yml
+    cpSync(join(workspace, 'wiki/docs'), join(workspace, 'docs'), { recursive: true });
+    clearSites(workspace);
+    await overlay(page);
+    const icon = page.locator('.activitybar .action-item a[aria-label^="TechDocs"]');
+    await expect(icon).toBeVisible({ timeout: 30_000 });
+    markStart('adopt-docs', startedAt);
+    await caption(page, 'Pages in docs/, but no mkdocs.yml');
+    await clickLike(page, icon);
+    const prepare = page.getByRole('button', { name: 'Prepare the documentation' });
+    await prepare.waitFor();
+    await pause(page, 1_800);
+    await clickLike(page, prepare);
+    await caption(page, 'Use the pages you already have');
+    await pick(page, 'Use the pages that already exist');
+    await caption(page, 'The site name comes from the home page');
+    await answer(page);
+    await caption(page, 'Only mkdocs.yml is created, with the nav from folders and titles');
+    await pause(page, 2_500);
+    await pick(page, 'Apply');
+    await caption(page, 'No catalog-info.yaml in this Backstage? Say so once');
+    await pick(page, 'No');
+    await caption(page, 'Your pages, now a TechDocs site: none of them changed');
+    await pause(page, 2_500);
+  });
+});
+
+test.describe('check-options', () => {
+  test.use(scene('check-options'));
+  test('engrenagem da verificação: o modo do catalog-info.yaml, para o time', async ({ vscode: { page, workspace, startedAt } }) => {
+    clearSites(workspace, ['wiki']);
+    await overlay(page);
+    markStart('check-options', startedAt);
+    await openSidebar(page);
+    await clickLike(page, docsView(page).locator('.pane-header'));
+    const rows = checkView(page).locator('.monaco-list-row');
+    await expect(rows.filter({ hasText: 'No catalog-info.yaml' }).first()).toBeVisible({ timeout: 30_000 });
+    await caption(page, 'Without catalog-info.yaml: just a hint, not counted on the icon', 'top');
+    await pause(page, 2_200);
+    await caption(page, 'The gear sets how the check treats it', 'top');
+    await checkView(page).locator('.pane-header').hover();
+    await clickLike(page, checkView(page).locator('.pane-header .action-label[aria-label^="Check options"]'));
+    await pause(page, 1_500);
+    await caption(page, 'Our Backstage registers docs another way');
+    await pick(page, 'Do not use it');
+    await caption(page, 'Saved for the whole team in .techdocs-editor.yaml');
+    await pick(page, 'For the team');
+    await pause(page, 1_800);
+    await pick(page, 'Apply');
+    await expect(rows.filter({ hasText: 'No catalog-info.yaml' })).toHaveCount(0, { timeout: 15_000 });
+    await caption(page, 'Nothing more about catalog-info.yaml', 'top');
+    await pause(page, 2_000);
   });
 });

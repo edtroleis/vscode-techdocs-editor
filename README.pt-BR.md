@@ -64,7 +64,9 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
 
 - **TechDocs na barra de atividades:** um ícone próprio, que só aparece em workspaces com `mkdocs.yml`, para o
   resto do seu Markdown não atrapalhar. Ele tem três seções: **Documentação**, **Verificação** e o painel
-  opcional **Publicação**.
+  opcional **Publicação**. Num repositório ainda sem `mkdocs.yml`, mas com `README.md`, uma pasta `docs/` com
+  páginas ou um `catalog-info.yaml`, o ícone abre uma tela de boas-vindas que diz o que achou, com **Preparar a
+  documentação**.
 - **Árvore Documentação:** as páginas de cada site do MkDocs do workspace, na ordem do `nav` do `mkdocs.yml`
   (ou das pastas, sem `nav`), com o título de cada página. Páginas fora do `nav` e itens do `nav` que apontam
   para páginas que não existem aparecem marcados.
@@ -139,6 +141,20 @@ Alerta: {{alert}}. Dono: {{owner}}. Revisado em {{date}}.
 Nunca sobrescreve um arquivo e diz a anotação a pôr no `catalog-info.yaml` (`backstage.io/techdocs-ref: dir:.`)
 sem alterá-lo.
 
+![Repositório só com README: a tela de boas-vindas, o README como página inicial e a pergunta do catalog-info.yaml](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/prepare-readme.gif)
+
+- **O README como página inicial:** ao lado de um `README.md`, escolha **Copiar para docs/index.md**, **Mover
+  para docs/index.md** (o README fica com um link para as docs) ou não usar. Links para `docs/…` passam a ser
+  relativos à pasta das docs.
+- **As páginas que você já tem:** com páginas em `docs/` e sem `mkdocs.yml`, **Usar as páginas que já existem**
+  cria só o `mkdocs.yml`, com o `nav` pelas pastas e títulos das páginas e o plugin `techdocs-core`, mostrado
+  num diff antes. Nenhuma página muda.
+- **Uma pergunta só:** sem `catalog-info.yaml`, pergunta se o seu Backstage usa um no repositório. **Não** faz a
+  extensão parar de falar nele; **Sim** leva à Verificação, que oferece criá-lo. A resposta vai para o
+  `.techdocs-editor.yaml`, para o time todo.
+
+![Páginas em docs/ sem mkdocs.yml: usá-las, e só o mkdocs.yml é criado, com o nav pelas pastas e títulos](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/adopt-docs.gif)
+
 | Site | Páginas |
 |------|---------|
 | Docs de serviço | Página inicial do serviço, Arquitetura, Operação e suporte e o primeiro ADR |
@@ -182,6 +198,14 @@ Problemas.
 Se há, passa pelas correções uma por uma, com o diff antes, para você aplicar, pular ou parar. Links quebrados
 e imagens que faltam não têm correção: só uma pessoa sabe o destino certo.
 
+Nem todo Backstage lê o `catalog-info.yaml` do repositório. A engrenagem da seção **Verificação** (**Opções da
+verificação**) define como a verificação o trata: **Conferir só se existir** (o padrão; a falta do arquivo é só
+uma dica, que não conta no ícone), **Exigir** (a falta é um problema, com uma correção que cria um mínimo) ou
+**Não usar**. Grave **Para o time** no `.techdocs-editor.yaml` (`catalog:`) ou **Só para mim** na configuração
+`techdocsEditor.catalog`; o arquivo do repositório vale sobre ela.
+
+![A engrenagem da Verificação: não usar o catalog-info.yaml, gravado para o time, e a dica some](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/check-options.gif)
+
 ### Publicar sem sair do VS Code (opcional)
 
 Para quem prefere não lidar com branches e pull requests: ligue `techdocsEditor.local.publishPanel` e um
@@ -207,7 +231,9 @@ painel **Publicação** aparece na barra lateral TechDocs, com o mesmo fluxo do 
 ## Como começar
 
 1. Instale o **TechDocs Editor** pelo Marketplace do VS Code.
-2. Abra uma pasta que tenha um `mkdocs.yml` (a extensão começa sozinha ali).
+2. Abra uma pasta que tenha um `mkdocs.yml` (a extensão começa sozinha ali). Ainda sem `mkdocs.yml`? O ícone
+   TechDocs também aparece ao lado de um `README.md`, de uma pasta `docs/` ou de um `catalog-info.yaml`, com
+   **Preparar a documentação**.
 3. Abra uma página:
    - pela seção **Documentação** do ícone TechDocs na barra de atividades, ou
    - pelo botão **Abrir no editor visual** na barra de título de um arquivo `.md`, ou
