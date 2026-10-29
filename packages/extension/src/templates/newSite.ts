@@ -138,8 +138,7 @@ export class NewSiteCommand {
       await vscode.workspace.fs.writeFile(readme.uri, encoder.encode(`# ${title}\n\n${pointer}\n`));
     }
 
-    await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.joinPath(docsDir, pages[0].path), VisualEditorProvider.viewType);
-    return this.finish(root, mkdocs, answers);
+    return this.finish(root, mkdocs, vscode.Uri.joinPath(docsDir, pages[0].path), answers);
   }
 
   /**
@@ -173,8 +172,7 @@ export class NewSiteCommand {
       if (decision !== 'apply') return undefined;
     }
     await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(yml));
-    if (home) await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.joinPath(docsDir, home), VisualEditorProvider.viewType);
-    return this.finish(root, mkdocs, answers);
+    return this.finish(root, mkdocs, home ? vscode.Uri.joinPath(docsDir, home) : undefined, answers);
   }
 
   /**
@@ -336,9 +334,10 @@ export class NewSiteCommand {
   /**
    * Depois de criar o site: a anotação do TechDocs a pôr no `catalog-info.yaml` (TP11). Sem o arquivo e sem o modo
    * definido, pergunta uma vez se o Backstage usa o `catalog-info.yaml` do repositório: "não" grava `catalog: off`
-   * e não fala mais nele; "sim" grava `required` e leva à Verificação, que oferece criar o arquivo.
+   * e não fala mais nele; "sim" grava `required` e leva à Verificação, que oferece criar o arquivo. A pergunta vem
+   * antes de abrir a página `home` (o editor visual abrindo tira o foco da lista).
    */
-  private async finish(root: vscode.Uri, mkdocs: vscode.Uri, answers?: NewSiteAnswers): Promise<NewSiteResult> {
+  private async finish(root: vscode.Uri, mkdocs: vscode.Uri, home: vscode.Uri | undefined, answers?: NewSiteAnswers): Promise<NewSiteResult> {
     const annotation = await this.catalogAnnotation(root);
     const folder = repositoryFolder(root);
     const current = await catalogModeFor(folder);
@@ -346,6 +345,7 @@ export class NewSiteCommand {
     if (annotation && !annotation.catalog && current.source === 'default' && this.catalogOptions && (!answers || answers.catalog)) {
       mode = (await this.catalogOptions.askUsage(folder, answers?.catalog)) ?? 'auto';
     }
+    if (home) await vscode.commands.executeCommand('vscode.openWith', home, VisualEditorProvider.viewType);
     if (mode === 'off') return { mkdocs };
     if (annotation && !annotation.catalog && mode === 'required') {
       if (!answers) void this.showCreateCatalog();

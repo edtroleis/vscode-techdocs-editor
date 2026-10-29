@@ -82,6 +82,8 @@ export class CatalogOptions {
     if (picked === 'unknown') return 'auto';
     const mode: CatalogMode = picked === 'yes' ? 'required' : 'off';
     await this.saveForTeam(folder, mode, true);
+    // A Verificação já conferiu nesta sessão: ela mostra o modo novo sem esperar o próximo salvamento
+    if (this.repoCheck.last) await this.repoCheck.check(true);
     return mode;
   }
 
