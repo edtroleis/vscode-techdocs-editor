@@ -161,9 +161,10 @@ function toBase64(text: string): string {
   return btoa(binary);
 }
 
+const bytesFromBase64 = (b64: string) => Uint8Array.from(atob(b64.replace(/\n/g, '')), c => c.charCodeAt(0));
+
 function fromBase64(b64: string): string {
-  const binary = atob(b64.replace(/\n/g, ''));
-  return new TextDecoder().decode(Uint8Array.from(binary, c => c.charCodeAt(0)));
+  return new TextDecoder().decode(bytesFromBase64(b64));
 }
 
 const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/');
@@ -343,6 +344,12 @@ export class GitHubClient {
   async getBlob(sha: string): Promise<string> {
     const blob = await this.request<any>('GET', `/repos/${this.slug}/git/blobs/${sha}`);
     return fromBase64(blob.content);
+  }
+
+  /** Bytes de um blob pelo SHA (imagens e outros arquivos binários). */
+  async getBlobBytes(sha: string): Promise<Uint8Array> {
+    const blob = await this.request<any>('GET', `/repos/${this.slug}/git/blobs/${sha}`);
+    return bytesFromBase64(blob.content);
   }
 
   async getBranchSha(branch: string): Promise<string | null> {

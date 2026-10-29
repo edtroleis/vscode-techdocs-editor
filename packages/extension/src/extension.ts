@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { REMOTE_SCHEME } from '@edtroleis/techdocs-editor-core';
 import { CatalogOptions, repositoryFolder } from './catalogOptions';
 import { CheckItem, CheckView } from './checkView';
 import { DocsItem, DocsTreeView } from './docsTreeView';
@@ -9,6 +10,9 @@ import { openVisualByDefault } from './openByDefault';
 import { ProposedChanges } from './proposedChange';
 import { PrepareContext } from './prepareContext';
 import { PublishPanel } from './publish/publishPanel';
+import { RemoteOpener } from './remote/openRemote';
+import { RemoteFileSystem } from './remote/remoteFs';
+import { RemoteRepos } from './remote/remoteRepos';
 import { RepoCheck } from './repoCheck';
 import { CentralTemplates } from './templates/centralTemplates';
 import { NewPageCommand } from './templates/newPage';
@@ -17,9 +21,12 @@ import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
   const sites = new LocalSites();
+  const remotes = new RemoteRepos(context.globalState);
+  const remoteFs = new RemoteFileSystem(remotes);
+  const opener = new RemoteOpener(remotes);
   const lint = new LintService(sites);
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
-  const docs = new DocsTreeView(sites);
+  const docs = new DocsTreeView(sites, remotes);
   const publish = new PublishPanel(context.extensionUri, sites, lint);
   const central = new CentralTemplates(context);
   const newPage = new NewPageCommand(sites, provider, central);
@@ -31,6 +38,18 @@ export function activate(context: vscode.ExtensionContext) {
   newSite.useCatalogOptions(catalogOptions);
   const prepare = new PrepareContext(sites);
   context.subscriptions.push(
+    remotes,
+    vscode.workspace.registerFileSystemProvider(REMOTE_SCHEME, remoteFs, { isCaseSensitive: true }),
+    vscode.window.registerUriHandler({
+      handleUri: async uri => {
+        await opener.fromLink(uri);
+      },
+    }),
+    vscode.commands.registerCommand('techdocsEditor.openRemote', (input?: string) => opener.fromInput(typeof input === 'string' ? input : undefined)),
+    vscode.commands.registerCommand('techdocsEditor.closeRemote', (item?: DocsItem) => item?.remote && remotes.remove(item.remote)),
+    vscode.commands.registerCommand('techdocsEditor.refreshRemote', (item?: DocsItem) =>
+      item?.remote ? remotes.refresh(item.remote.host, item.remote.slug) : remotes.refresh(),
+    ),
     proposals,
     publish,
     repoCheck,
@@ -75,18 +94,20 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, remotes, remoteFs, opener };
 }
 
 /**
- * `techdocsEditor.activeIsDocs`: o editor ativo é uma página de um `docs_dir`. Os botões e comandos do editor
+ * `techdocsEditor.activeIsDocs`: o editor ativo é uma página de um `docs_dir` ou do GitHub. Os botões e comandos do editor
  * visual aparecem só nessas páginas, e não em qualquer Markdown (um README, por exemplo).
  */
 function docsPageContext(sites: LocalSites): vscode.Disposable {
   const update = () => {
     const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
     const uri = input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom ? input.uri : undefined;
-    void vscode.commands.executeCommand('setContext', 'techdocsEditor.activeIsDocs', Boolean(uri && sites.siteOf(uri)));
+    // Páginas do GitHub (`techdocs:`) também são de docs
+    const isDocs = Boolean(uri && (uri.scheme === REMOTE_SCHEME ? /\.md$/i.test(uri.path) : sites.siteOf(uri)));
+    void vscode.commands.executeCommand('setContext', 'techdocsEditor.activeIsDocs', isDocs);
   };
   update();
   return vscode.Disposable.from(

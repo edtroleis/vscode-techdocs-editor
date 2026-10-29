@@ -46,7 +46,9 @@
     "workspaceContains:**/mkdocs.yaml",
     "workspaceContains:README.md",
     "workspaceContains:docs/**/*.md",
-    "workspaceContains:catalog-info.yaml"
+    "workspaceContains:catalog-info.yaml",
+    "onUri",
+    "onFileSystem:techdocs"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -121,6 +123,24 @@
         "title": "%command.checkOptions%",
         "category": "TechDocs",
         "icon": "$(gear)"
+      },
+      {
+        "command": "techdocsEditor.openRemote",
+        "title": "%command.openRemote%",
+        "category": "TechDocs",
+        "icon": "$(github)"
+      },
+      {
+        "command": "techdocsEditor.closeRemote",
+        "title": "%command.closeRemote%",
+        "category": "TechDocs",
+        "icon": "$(close)"
+      },
+      {
+        "command": "techdocsEditor.refreshRemote",
+        "title": "%command.refreshRemote%",
+        "category": "TechDocs",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -152,6 +172,14 @@
         {
           "command": "techdocsEditor.fixFinding",
           "when": "false"
+        },
+        {
+          "command": "techdocsEditor.closeRemote",
+          "when": "false"
+        },
+        {
+          "command": "techdocsEditor.refreshRemote",
+          "when": "techdocsEditor.hasRemote"
         }
       ],
       "view/item/context": [
@@ -194,6 +222,26 @@
           "command": "techdocsEditor.checkOptions",
           "when": "view == techdocsEditor.check && viewItem == catalogHint",
           "group": "navigation"
+        },
+        {
+          "command": "techdocsEditor.refreshRemote",
+          "when": "view == techdocsEditor.docs && viewItem == remote",
+          "group": "inline@1"
+        },
+        {
+          "command": "techdocsEditor.closeRemote",
+          "when": "view == techdocsEditor.docs && viewItem == remote",
+          "group": "inline@2"
+        },
+        {
+          "command": "techdocsEditor.refreshRemote",
+          "when": "view == techdocsEditor.docs && viewItem == remote",
+          "group": "navigation@1"
+        },
+        {
+          "command": "techdocsEditor.closeRemote",
+          "when": "view == techdocsEditor.docs && viewItem == remote",
+          "group": "navigation@2"
         }
       ],
       "view/title": [
@@ -206,6 +254,11 @@
           "command": "techdocsEditor.newSite",
           "when": "view == techdocsEditor.docs",
           "group": "1_create@1"
+        },
+        {
+          "command": "techdocsEditor.openRemote",
+          "when": "view == techdocsEditor.docs",
+          "group": "1_create@3"
         },
         {
           "command": "techdocsEditor.refreshTemplates",
@@ -244,6 +297,21 @@
     "configuration": {
       "title": "TechDocs Editor",
       "properties": {
+        "techdocsEditor.mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "local",
+            "remote"
+          ],
+          "default": "auto",
+          "markdownEnumDescriptions": [
+            "%config.mode.auto%",
+            "%config.mode.local%",
+            "%config.mode.remote%"
+          ],
+          "markdownDescription": "%config.mode%"
+        },
         "techdocsEditor.openVisualByDefault": {
           "type": "boolean",
           "default": false,
@@ -293,6 +361,11 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "%config.local.publishPanel%"
+        },
+        "techdocsEditor.github.host": {
+          "type": "string",
+          "default": "github.com",
+          "markdownDescription": "%config.github.host%"
         },
         "techdocsEditor.github.scopes": {
           "type": "array",

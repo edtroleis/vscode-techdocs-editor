@@ -31,7 +31,7 @@
   "viewContainer.techdocs": "TechDocs",
   "view.check": "Check",
   "viewsWelcome.noFolder": "Open a folder to write its TechDocs documentation.\n[Open Folder](command:workbench.action.files.openFolder)",
-  "viewsWelcome.empty": "No TechDocs documentation in this workspace yet.\n[Create the documentation](command:techdocsEditor.prepareDocs)\nCreates mkdocs.yml and the docs folder from a template.\n[Get started](command:workbench.action.openWalkthrough?%5B%22edtroleis.techdocs-editor%23getStarted%22%2Cfalse%5D) · [What is TechDocs](https://backstage.io/docs/features/techdocs/)",
+  "viewsWelcome.empty": "No TechDocs documentation in this workspace yet.\n[Create the documentation](command:techdocsEditor.prepareDocs)\nCreates mkdocs.yml and the docs folder from a template.\n[Open documentation from GitHub](command:techdocsEditor.openRemote)\n[Get started](command:workbench.action.openWalkthrough?%5B%22edtroleis.techdocs-editor%23getStarted%22%2Cfalse%5D) · [What is TechDocs](https://backstage.io/docs/features/techdocs/)",
   "viewsWelcome.prepare.intro": "This repository has no TechDocs documentation yet.",
   "viewsWelcome.prepare.readme": "Found: README.md",
   "viewsWelcome.prepare.docs": "Found: Markdown pages in docs/",
@@ -66,5 +66,13 @@
   "walkthrough.visual.media": "media/walkthrough/en/visual.md",
   "walkthrough.check.media": "media/walkthrough/en/check.md",
   "walkthrough.publish.media": "media/walkthrough/en/publish.md",
-  "walkthrough.company.media": "media/walkthrough/en/company.md"
+  "walkthrough.company.media": "media/walkthrough/en/company.md",
+  "command.openRemote": "Open documentation from GitHub…",
+  "command.closeRemote": "Close",
+  "command.refreshRemote": "Read again from GitHub",
+  "config.mode": "Where documentation from a GitHub repository opens (the **Open documentation from GitHub…** command and `vscode://edtroleis.techdocs-editor/open` links).",
+  "config.mode.auto": "From GitHub, or the local copy when the repository is in the workspace (you choose)",
+  "config.mode.local": "Only the local copy in the workspace",
+  "config.mode.remote": "Always from GitHub, even when the repository is in the workspace",
+  "config.github.host": "GitHub server of your company (GitHub Enterprise Server), for example `github.example.com`. Links and the **Open documentation from GitHub…** command accept it besides `github.com`."
 }

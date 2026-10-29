@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { parseRemoteUri, REMOTE_SCHEME, remoteUriPath } from '@edtroleis/techdocs-editor-core';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
 import { DEFAULT_MAX_IMAGE_MB, imageProblem, imageTarget } from './imageUpload';
@@ -77,10 +78,15 @@ export class EditorSession {
     this.ready = new Promise(resolve => (this.markReady = resolve));
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
     const pageDir = vscode.Uri.joinPath(document.uri, '..');
+    const remote = document.uri.scheme === REMOTE_SCHEME ? parseRemoteUri(document.uri.authority, document.uri.path) : undefined;
     panel.webview.options = {
       enableScripts: true,
-      // Imagens da página: a pasta do workspace (ou só a da página, para arquivo solto)
-      localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist', 'webview'), folder?.uri ?? pageDir],
+      // Imagens da página: a pasta do workspace, o repositório do GitHub (lidas pelo esquema `techdocs:`) ou
+      // só a pasta da página, para arquivo solto
+      localResourceRoots: [
+        vscode.Uri.joinPath(extensionUri, 'dist', 'webview'),
+        remote ? document.uri.with({ path: remoteUriPath(remote.slug, '') }) : (folder?.uri ?? pageDir),
+      ],
     };
     panel.webview.html = webviewHtml(panel.webview, extensionUri);
 
@@ -272,6 +278,8 @@ export class EditorSession {
       language: vscode.env.language,
       baseUri: this.panel.webview.asWebviewUri(this.pageDir).toString(),
       labels: webviewLabels(),
+      // Do GitHub, por enquanto só leitura (o Salvar rascunho é a 4c)
+      readOnly: this.document.uri.scheme === REMOTE_SCHEME,
     });
   }
 

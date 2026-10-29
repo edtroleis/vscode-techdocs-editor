@@ -1,16 +1,23 @@
 import * as vscode from 'vscode';
-import { DocsNode, docsTree, pageTitle, siteName } from '@edtroleis/techdocs-editor-core';
+import { DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
 import type { DocsSite } from './docsSite';
 import type { LocalSites } from './localSites';
+import { remoteUri } from './remote/remoteFs';
+import { type RemoteEntry, type RemoteRepos, SignInRequiredError } from './remote/remoteRepos';
 
 export const DOCS_VIEW = 'techdocsEditor.docs';
 const REFRESH_DELAY_MS = 300;
 
-/** Item da árvore: um site (com mais de um no workspace), uma seção, uma página ou um link do `nav`. */
+/**
+ * Item da árvore: um site (com mais de um no workspace), um site aberto do GitHub (`remote`), uma seção, uma
+ * página, um link do `nav` ou o aviso de que o site do GitHub não pôde ser lido (`remoteError`).
+ */
 export class DocsItem {
   readonly children: DocsItem[] = [];
+  /** O site do GitHub do item `remote` (para fechar e ler de novo). */
+  remote?: RemoteEntry;
   constructor(
-    readonly kind: 'site' | 'section' | 'page' | 'missing' | 'link' | 'notInNav',
+    readonly kind: 'site' | 'remote' | 'remoteError' | 'section' | 'page' | 'missing' | 'link' | 'notInNav',
     readonly label: string,
     readonly parent: DocsItem | undefined,
     /** Página ou arquivo do link (link externo: o endereço). */
@@ -37,7 +44,10 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   /** Última montagem da árvore (os testes esperam por ela). */
   ready: Promise<void> = Promise.resolve();
 
-  constructor(private readonly sites: LocalSites) {
+  constructor(
+    private readonly sites: LocalSites,
+    private readonly remotes: RemoteRepos,
+  ) {
     this.view = vscode.window.createTreeView(DOCS_VIEW, { treeDataProvider: this, showCollapseAll: true });
     const watcher = vscode.workspace.createFileSystemWatcher('**/*.md');
     // Pasta apagada (ou renomeada): o VS Code avisa só a pasta, não os `.md` de dentro
@@ -54,6 +64,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       deletions,
       deletions.onDidDelete(later),
       sites.onDidChange(later),
+      remotes.onDidChange(later),
       vscode.window.tabGroups.onDidChangeTabs(() => this.revealActive()),
       this.view.onDidChangeVisibility(() => this.revealActive()),
     );
@@ -91,6 +102,18 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       case 'site':
         tree.iconPath = new vscode.ThemeIcon('book');
         break;
+      case 'remote':
+        tree.iconPath = new vscode.ThemeIcon('github');
+        tree.tooltip = vscode.l10n.t('Read from GitHub: {0}', item.description!);
+        break;
+      case 'remoteError':
+        tree.iconPath = new vscode.ThemeIcon('warning');
+        tree.tooltip = item.label;
+        break;
+    }
+    if (item.kind === 'page' && item.uri?.scheme === REMOTE_SCHEME) {
+      // Página do GitHub: abre no editor visual, como no portal
+      tree.command = { command: 'techdocsEditor.openVisual', title: vscode.l10n.t('Open'), arguments: [item.uri] };
     }
     return tree;
   }
@@ -139,7 +162,9 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     const sites = this.sites.list();
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasDocs', sites.length > 0);
     const pages = new Map<string, DocsItem>();
-    const single = sites.length === 1;
+    const remotes = this.remotes.list();
+    void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasRemote', remotes.length > 0);
+    const single = sites.length === 1 && !remotes.length;
     const roots: DocsItem[] = [];
     for (const { mkdocs, site } of sites) {
       const yml = await readText(mkdocs);
@@ -153,6 +178,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         roots.push(parent);
       } else roots.push(...items);
     }
+    for (const entry of remotes) roots.push(await this.remoteItem(entry, pages));
     if (run !== this.runs) return this.latest;
     this.roots = roots;
     this.pages = pages;
@@ -167,30 +193,34 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     const relative = (uri: vscode.Uri) => uri.path.slice(site.docsDir.length + 1);
     const titles = new Map<string, string | undefined>();
     await Promise.all(own.map(async uri => titles.set(relative(uri), pageTitle((await readText(uri)) ?? ''))));
-    const tree = docsTree(yml, [...titles.keys()], path => titles.get(path));
+    return treeItems(docsTree(yml, [...titles.keys()], path => titles.get(path)), docsDir, parent, pages);
+  }
 
-    const toItem = (node: DocsNode, under: DocsItem | undefined): DocsItem => {
-      if (node.kind === 'section') {
-        const section = new DocsItem('section', node.title, under);
-        section.children.push(...node.children.map(child => toItem(child, section)));
-        return section;
+  /** Um site do GitHub: o nó com o nome do site e as páginas da branch principal, ou o aviso se não deu para ler. */
+  private async remoteItem(entry: RemoteEntry, pages: Map<string, DocsItem>): Promise<DocsItem> {
+    const where = entry.root ? `${entry.slug}/${entry.root}` : entry.slug;
+    const item = new DocsItem('remote', where, undefined, remoteUri(entry.host, entry.slug, entry.root), `${where} · ${entry.host}`);
+    item.remote = entry;
+    try {
+      const access = await this.remotes.access(entry.host, entry.slug);
+      const site = access.sites.find(s => s.root === entry.root);
+      if (!site) {
+        item.children.push(new DocsItem('remoteError', vscode.l10n.t('There is no mkdocs.yml in {0} any more', entry.root || '/'), item));
+        return item;
       }
-      if (node.kind === 'link') {
-        const uri = /^[a-z][a-z0-9+.-]*:/i.test(node.url) ? vscode.Uri.parse(node.url) : vscode.Uri.joinPath(docsDir, node.url);
-        return new DocsItem('link', node.title, under, uri);
-      }
-      if (node.missing) return new DocsItem('missing', node.title, under, undefined, node.path);
-      const page = new DocsItem('page', node.title, under, vscode.Uri.joinPath(docsDir, node.path));
-      pages.set(page.uri!.toString(), page);
-      return page;
-    };
-    const items = tree.nodes.map(node => toItem(node, parent));
-    if (tree.notInNav.length) {
-      const group = new DocsItem('notInNav', vscode.l10n.t('Not in the nav'), parent);
-      group.children.push(...tree.notInNav.map(node => toItem(node, group)));
-      items.push(group);
+      const remote = await loadRemoteSiteTree(access.client, site, access.repo.defaultBranch);
+      const named = new DocsItem('remote', site.name, undefined, item.uri, item.description);
+      named.remote = entry;
+      named.children.push(...treeItems(remote.tree, remoteUri(entry.host, entry.slug, site.docsDir), named, pages));
+      return named;
+    } catch (error) {
+      const message =
+        error instanceof SignInRequiredError
+          ? vscode.l10n.t('Sign in to GitHub to read it (open it again from the GitHub command)')
+          : vscode.l10n.t('Could not read it: {0}', error instanceof Error ? error.message : String(error));
+      item.children.push(new DocsItem('remoteError', message, item));
+      return item;
     }
-    return items;
   }
 
   /** Seleciona na árvore a página do editor ativo (texto ou visual), como o Explorer faz com o arquivo. */
@@ -201,6 +231,32 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     const item = uri && this.pageItem(uri);
     if (item) void this.view.reveal(item, { select: true, focus: false, expand: true }).then(undefined, () => {});
   }
+}
+
+/** Itens da árvore de um site (o `nav`, ou as pastas, e as páginas fora do `nav`), com as páginas em `pages`. */
+function treeItems(tree: DocsTree, docsDir: vscode.Uri, parent: DocsItem | undefined, pages: Map<string, DocsItem>): DocsItem[] {
+  const toItem = (node: DocsNode, under: DocsItem | undefined): DocsItem => {
+    if (node.kind === 'section') {
+      const section = new DocsItem('section', node.title, under);
+      section.children.push(...node.children.map(child => toItem(child, section)));
+      return section;
+    }
+    if (node.kind === 'link') {
+      const uri = /^[a-z][a-z0-9+.-]*:/i.test(node.url) ? vscode.Uri.parse(node.url) : vscode.Uri.joinPath(docsDir, node.url);
+      return new DocsItem('link', node.title, under, uri);
+    }
+    if (node.missing) return new DocsItem('missing', node.title, under, undefined, node.path);
+    const page = new DocsItem('page', node.title, under, vscode.Uri.joinPath(docsDir, node.path));
+    pages.set(page.uri!.toString(), page);
+    return page;
+  };
+  const items = tree.nodes.map(node => toItem(node, parent));
+  if (tree.notInNav.length) {
+    const group = new DocsItem('notInNav', vscode.l10n.t('Not in the nav'), parent);
+    group.children.push(...tree.notInNav.map(node => toItem(node, group)));
+    items.push(group);
+  }
+  return items;
 }
 
 async function readText(uri: vscode.Uri): Promise<string | undefined> {

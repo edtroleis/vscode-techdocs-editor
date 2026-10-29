@@ -37,6 +37,9 @@ export function useTestTransport(factory: ((host: string) => GitHubTransport) | 
   testTransport = factory;
 }
 
+/** Os testes estão usando o GitHub simulado (com login: não há sessão do VS Code para conferir). */
+export const usingTestTransport = () => Boolean(testTransport);
+
 export function clientFor(host: string, slug: string, extraScopes: string[] = []): GitHubClient {
   const transport =
     testTransport?.(host) ?? userTransport(sessionTokenSource(host, [...configuredScopes(), ...extraScopes]), apiBaseUrlFor(host));

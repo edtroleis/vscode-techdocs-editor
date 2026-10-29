@@ -23,7 +23,7 @@ declare function acquireVsCodeApi(): { postMessage(message: WebviewMessage): voi
 const vscode = acquireVsCodeApi();
 const post = (message: WebviewMessage) => vscode.postMessage(message);
 
-type Content = { text: string; language: string; baseUri: string; labels: WebviewLabels };
+type Content = { text: string; language: string; baseUri: string; labels: WebviewLabels; readOnly?: boolean };
 
 /** Texto com `{0}` trocado pelo valor. */
 const format = (template: string, value: number) => template.replace('{0}', String(value));
@@ -193,6 +193,7 @@ function App({ content }: { content: Content }) {
       history={history}
       onLineClick={line => post({ type: 'showLine', line })}
       lineTitle={lineTitle}
+      readOnly={content.readOnly}
     />
     <Problems problems={problems} labels={content.labels} />
     </>

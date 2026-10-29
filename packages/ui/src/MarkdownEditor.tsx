@@ -87,6 +87,8 @@ type Props = {
   onLineClick?: (line: number) => void;
   /** Dica do número da linha; sem ela (ou sem texto), a dica genérica nos blocos com problema. */
   lineTitle?: (line: number, problem: boolean) => string | undefined;
+  /** Só leitura: o texto aparece formatado, mas não pode ser mudado (sem permissão de escrita, M8). */
+  readOnly?: boolean;
 };
 
 /**
@@ -107,6 +109,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       history,
       onLineClick,
       lineTitle,
+      readOnly = false,
     },
     ref,
   ) => {
@@ -133,6 +136,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   readyRef.current = onReady;
   const historyRef = useRef(history);
   historyRef.current = history;
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
   // Último Markdown repassado (ou recebido por setMarkdown): só o que for diferente é edição nova
   const lastRef = useRef<string>();
   /** Troca feita por setMarkdown em andamento: não é edição da pessoa. */
@@ -276,6 +281,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
     root.current?.addEventListener('keydown', historyKeys, true);
     // Imagens carregando, janela redimensionada etc. mudam a posição dos blocos
     const resize = new ResizeObserver(() => updateMarks.current());
+    // Antes de criar: o Crepe usa o valor ao montar a view
+    crepe.setReadonly(readOnlyRef.current);
     const created = crepe.create().then(() => {
       loaded = crepe.getMarkdown();
       lastRef.current = loaded;
@@ -295,6 +302,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   }, [initialValue]);
 
   useEffect(() => updateMarks.current(), [problemLines, showsSavedVersion]);
+
+  useEffect(() => {
+    crepeRef.current?.setReadonly(readOnly);
+  }, [readOnly]);
 
   useImperativeHandle(ref, () => ({
     search: query => search(crepeRef.current!.editor.ctx.get(editorViewCtx), query),

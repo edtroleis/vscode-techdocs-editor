@@ -14,7 +14,7 @@ export type WebviewLabels = {
 
 export type HostMessage =
   /** Conteúdo do arquivo ao abrir (formato do repositório, com `\n`). */
-  | { type: 'init'; text: string; language: string; baseUri: string; labels: WebviewLabels }
+  | { type: 'init'; text: string; language: string; baseUri: string; labels: WebviewLabels; readOnly?: boolean }
   /** O documento mudou fora do editor visual (editor de texto, desfazer do VS Code, git). */
   | { type: 'update'; text: string }
   /**
