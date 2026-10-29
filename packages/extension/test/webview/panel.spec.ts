@@ -23,6 +23,8 @@ const VIEW: PublishView = {
   ownBranch: true,
   pipeline: true,
   checks: { summary: 'passed', items: [], stalled: false },
+  othersPrs: [],
+  ownPrs: [],
 };
 
 type Sent = { type: string; action?: string; url?: string; path?: string; line?: number };
@@ -141,4 +143,20 @@ test('versão publicada mudou o mesmo trecho: aviso, "Resolver conflito" e Envia
   await expect(page.getByRole('button', { name: LABELS.sendForPublication })).toBeDisabled();
   await page.getByRole('button', { name: LABELS.resolve }).click();
   expect((await sent(page)).at(-1)).toEqual({ type: 'action', action: 'resolve' });
+});
+
+test('outros PRs na mesma página (M9): de outras pessoas, com o autor, e os da própria pessoa', async ({ page }) => {
+  await show(page, {
+    status: 'ready',
+    view: {
+      ...VIEW,
+      othersPrs: [{ number: 12, url: 'https://github.com/acme/wiki/pull/12', author: 'maria' }],
+      ownPrs: [{ number: 9, url: 'https://github.com/acme/wiki/pull/9' }],
+    },
+  });
+  const notes = page.getByRole('note');
+  await expect(notes.nth(0)).toHaveText(LABELS.ownPrs.replace('{0}', 'Pull request #9'));
+  await expect(notes.nth(1)).toHaveText(LABELS.othersPrs.replace('{0}', 'Pull request #12 (maria)'));
+  await notes.nth(1).getByRole('link', { name: 'Pull request #12' }).click();
+  expect((await sent(page)).at(-1)).toEqual({ type: 'openUrl', url: 'https://github.com/acme/wiki/pull/12' });
 });

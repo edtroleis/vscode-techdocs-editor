@@ -221,3 +221,21 @@ describe('versão publicada mudou depois do rascunho (4e)', () => {
     expect(first.view().conflict).toBe(true);
   });
 });
+
+describe('outros PRs na mesma página (M9)', () => {
+  it('de outra pessoa: aviso com autor e link; o da própria pessoa em outra branch: aviso próprio; o do painel: nenhum', async () => {
+    const { github, page, publisher, view } = await setup();
+    const pull = (head: string, author: string, file: string) => {
+      github.push(head, github.commit('docs: outra mudança', { ...github.head('main')!.files, [file]: '# Outro texto\n' }));
+      github.pulls.push({ number: github.pulls.length + 1, head, base: 'main', title: 'docs', body: '', draft: false, state: 'open', author });
+    };
+    pull('maria/inicio', 'maria', 'docs/index.md');
+    pull('pessoa-teste/por-fora', github.login, 'docs/index.md');
+    pull('joao/outra', 'joao', 'docs/outra.md');
+    page.edit(`${INDEX}\nMais texto.\n`);
+    await publisher.saveAndVerify();
+    await publisher.load();
+    expect(view().othersPrs).toEqual([{ number: 1, url: 'https://github.com/acme/wiki/pull/1', author: 'maria' }]);
+    expect(view().ownPrs).toEqual([{ number: 2, url: 'https://github.com/acme/wiki/pull/2' }]);
+  });
+});

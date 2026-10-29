@@ -12,6 +12,7 @@ import {
   lintRuleText,
   MainConflict,
   MainSync,
+  OpenPullRequest,
   pageTitle,
   nameToTitle,
   parseAnnotation,
@@ -64,6 +65,10 @@ export type PublishView = {
   conflict?: boolean;
   /** O PR desta página teve o merge feito no GitHub: a página está publicada. */
   published?: { number: number; url: string };
+  /** PRs abertos de outras pessoas que mudam esta página (M9). */
+  othersPrs: Array<{ number: number; url: string; author: string }>;
+  /** PRs da própria pessoa que mudam esta página, abertos fora do painel (outra branch). */
+  ownPrs: Array<{ number: number; url: string }>;
   /** O texto foi salvo depois da última verificação ("Salvar rascunho" pula a pipeline). */
   unverified: boolean;
   busy: boolean;
@@ -117,6 +122,7 @@ export class LocalPublisher {
   private error: string | undefined;
   private setup: PublishView['setup'];
   private conflict: MainConflict | undefined;
+  private otherPrs: OpenPullRequest[] = [];
   private readonly watcher: ChecksWatcher;
   private readonly poller: Poller;
 
@@ -163,6 +169,10 @@ export class LocalPublisher {
     const plan = repo.isAdmin ? await planSetup(client).catch(() => undefined) : undefined;
     const steps = plan ? applicableSteps(plan) : [];
     this.setup = steps.length ? { steps } : undefined;
+    // Outros PRs abertos na mesma página (M9); erro ao consultar só esconde o aviso
+    this.otherPrs = (await client.findOpenPullRequestsForFile(this.options.page.path).catch(() => [])).filter(
+      p => p.number !== this.pr?.number && p.branch !== branch && p.branch !== this.draftBranch,
+    );
     // O que foi publicado enquanto o rascunho existia: entra sozinho, ou o conflito aparece no painel
     if (branch && branch !== repo.defaultBranch) await this.syncMain().catch(() => false);
     this.track(git.headSha());
@@ -182,6 +192,8 @@ export class LocalPublisher {
       pr: this.pr?.state === 'open' ? { number: this.pr.number, url: this.pr.htmlUrl, draft: this.pr.draft } : undefined,
       published: this.pr?.merged ? { number: this.pr.number, url: this.pr.htmlUrl } : undefined,
       conflict: Boolean(this.conflict),
+      othersPrs: this.otherPrs.filter(p => p.author !== this.login).map(p => ({ number: p.number, url: p.htmlUrl, author: p.author })),
+      ownPrs: this.otherPrs.filter(p => p.author === this.login).map(p => ({ number: p.number, url: p.htmlUrl })),
       unverified: this.unverified,
       busy: this.busy,
       notice: this.notice,

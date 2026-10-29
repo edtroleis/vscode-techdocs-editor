@@ -8,11 +8,12 @@ import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { ConflictPanel } from '../../../src/remote/conflictPanel';
 import type { RemoteOpener } from '../../../src/remote/openRemote';
+import type { useTestHistoryPick } from '../../../src/remote/pageHistory';
 import type { RemoteFileSystem } from '../../../src/remote/remoteFs';
 import type { RemoteRepos } from '../../../src/remote/remoteRepos';
 import type { VisualEditorProvider } from '../../../src/visualEditorProvider';
 
-type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel; conflicts: ConflictPanel };
+type Api = { remotes: RemoteRepos; remoteFs: RemoteFileSystem; opener: RemoteOpener; docs: DocsTreeView; provider: VisualEditorProvider; publish: PublishPanel; conflicts: ConflictPanel; useTestHistoryPick: typeof useTestHistoryPick };
 
 const FILES = {
   'README.md': '# Wiki\n',
@@ -299,6 +300,32 @@ export function defineRemoteTests() {
       } finally {
         conflicts.testChoices = undefined;
         publish.useTestGitHub(undefined);
+      }
+    });
+
+    test('histórico da página (M7): as versões publicadas; Restaurar põe o texto no editor e o Ctrl+S grava no rascunho', async () => {
+      const { opener, useTestHistoryPick } = await api();
+      const page = 'docs/guias/deploy.md';
+      const publish = (text: string) => github.push('main', github.commit(`docs: ${text}`, { ...github.head('main')!.files, [page]: text }));
+      publish('# Deploy\n\nVersão 2.\n');
+      publish('# Deploy\n\nVersão 3.\n');
+      const uri = await opener.fromInput(`https://github.com/acme/wiki/blob/main/${page}`);
+      const document = await vscode.workspace.openTextDocument(uri!);
+      let offered: string[] = [];
+      useTestHistoryPick(versions => {
+        offered = versions.map(v => v.title);
+        return versions[2];
+      });
+      try {
+        await vscode.commands.executeCommand('techdocsEditor.pageHistory', uri);
+        equal(offered.join(' | '), 'docs: # Deploy | docs: # Deploy | docs: wiki inicial', 'versões oferecidas');
+        await until(() => document.getText(), t => t === FILES[page], 'a versão restaurada não chegou ao editor');
+        ok(document.isDirty, 'restaurar salvou sem a pessoa pedir');
+        ok(await document.save(), 'Ctrl+S falhou');
+        equal(github.head('docs/pessoa-teste/docs-guias-deploy')?.files[page], FILES[page], 'versão restaurada no rascunho');
+        equal(github.head('main')?.files[page], '# Deploy\n\nVersão 3.\n', 'restaurar mudou a principal');
+      } finally {
+        useTestHistoryPick(undefined);
       }
     });
 

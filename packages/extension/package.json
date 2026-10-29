@@ -159,6 +159,12 @@
         "title": "%command.dismissChooseSites%",
         "category": "TechDocs",
         "icon": "$(close)"
+      },
+      {
+        "command": "techdocsEditor.pageHistory",
+        "title": "%command.pageHistory%",
+        "category": "TechDocs",
+        "icon": "$(history)"
       }
     ],
     "menus": {
@@ -172,6 +178,11 @@
           "command": "techdocsEditor.openText",
           "when": "activeCustomEditorId == techdocsEditor.visual",
           "group": "navigation"
+        },
+        {
+          "command": "techdocsEditor.pageHistory",
+          "when": "resourceScheme == techdocs && resourceExtname == .md",
+          "group": "navigation@9"
         }
       ],
       "commandPalette": [
@@ -210,6 +221,10 @@
         {
           "command": "techdocsEditor.dismissChooseSites",
           "when": "false"
+        },
+        {
+          "command": "techdocsEditor.pageHistory",
+          "when": "techdocsEditor.hasRemote"
         }
       ],
       "view/item/context": [
@@ -287,6 +302,11 @@
           "command": "techdocsEditor.dismissChooseSites",
           "when": "view == techdocsEditor.docs && viewItem == chooseSites",
           "group": "inline"
+        },
+        {
+          "command": "techdocsEditor.pageHistory",
+          "when": "view == techdocsEditor.docs && viewItem == page && techdocsEditor.hasRemote",
+          "group": "navigation@9"
         }
       ],
       "view/title": [

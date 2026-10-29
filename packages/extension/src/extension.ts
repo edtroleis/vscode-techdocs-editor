@@ -13,6 +13,7 @@ import { PrepareContext } from './prepareContext';
 import { PublishPanel } from './publish/publishPanel';
 import { RemoteOpener } from './remote/openRemote';
 import { ConflictPanel, resolveSaveConflicts } from './remote/conflictPanel';
+import { showPageHistory, useTestHistoryPick } from './remote/pageHistory';
 import { RemoteFileSystem } from './remote/remoteFs';
 import { RemoteRepos } from './remote/remoteRepos';
 import { RepoCheck } from './repoCheck';
@@ -53,6 +54,9 @@ export function activate(context: vscode.ExtensionContext) {
       },
     }),
     vscode.commands.registerCommand('techdocsEditor.openRemote', (input?: string) => opener.fromInput(typeof input === 'string' ? input : undefined)),
+    vscode.commands.registerCommand('techdocsEditor.pageHistory', (uri?: vscode.Uri | DocsItem) =>
+      showPageHistory(remotes, remoteFs, uri instanceof vscode.Uri ? uri : uri?.uri),
+    ),
     vscode.commands.registerCommand('techdocsEditor.chooseSites', () => chooseSites(sites)),
     vscode.commands.registerCommand('techdocsEditor.hideSite', (item?: DocsItem) => hideSite(sites, item?.siteRoot)),
     vscode.commands.registerCommand('techdocsEditor.dismissChooseSites', () => dismissChooseSites()),
@@ -106,7 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice };
+  return { provider, sites, lint, docs, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick };
 }
 
 /**

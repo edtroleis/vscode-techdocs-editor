@@ -20,6 +20,10 @@ export type FakeCommit = {
   files: Record<string, string>;
   /** Commits pais (o `push` preenche com a ponta anterior da branch, se o commit não tiver). */
   parents?: string[];
+  /** Data do commit (um minuto depois do anterior). */
+  date?: string;
+  /** Login de quem fez o commit (padrão: a pessoa logada). */
+  author?: string;
 };
 export type FakePull = {
   number: number;
@@ -92,7 +96,8 @@ export class FakeGitHub {
 
   /** Um commit novo (ainda sem branch). */
   commit(message: string, files: Record<string, string>, parents?: string[]): FakeCommit {
-    const commit = { sha: sha1(`${message}${JSON.stringify(files)}${this.counter++}`), message, files, parents };
+    const date = new Date(Date.UTC(2026, 9, 1) + this.counter * 60_000).toISOString();
+    const commit = { sha: sha1(`${message}${JSON.stringify(files)}${this.counter++}`), message, files, parents, date, author: this.login };
     this.commits.set(commit.sha, commit);
     return commit;
   }
@@ -425,6 +430,28 @@ export class FakeGitHub {
       this.pulls.push(pr);
       this.runPipeline(this.refs.get(pr.head)!);
       return ok(this.pullJson(pr, false), 201);
+    }
+    m = rest.match(/^\/pulls\/(\d+)\/files$/);
+    if (m && method === 'GET') {
+      // Arquivos que o PR muda: os da branch diferentes dos da base comum com a base do PR
+      const pr = this.pulls.find(p => p.number === Number(m![1]));
+      const [head, base] = [pr && this.refs.get(pr.head), pr && this.refs.get(pr.base)];
+      if (!head || !base) return notFound;
+      const [from, to] = [this.commits.get(this.mergeBase(base, head))!.files, this.commits.get(head)!.files];
+      return ok([...new Set([...Object.keys(from), ...Object.keys(to)])].filter(f => from[f] !== to[f]).map(filename => ({ filename })));
+    }
+    if (method === 'GET' && rest === '/commits') {
+      // Histórico de um arquivo: os commits (pelo primeiro pai) em que ele mudou
+      const path = url.searchParams.get('path') ?? '';
+      const start = this.refs.get(url.searchParams.get('sha') ?? 'main') ?? url.searchParams.get('sha') ?? '';
+      const list = [];
+      for (let commit = this.commits.get(start); commit; commit = this.commits.get(commit.parents?.[0] ?? '')) {
+        const parent = this.commits.get(commit.parents?.[0] ?? '');
+        if (commit.files[path] !== parent?.files[path]) {
+          list.push({ sha: commit.sha, commit: { message: commit.message, committer: { date: commit.date }, author: { name: commit.author } }, author: { login: commit.author } });
+        }
+      }
+      return ok(list.slice(0, Number(url.searchParams.get('per_page') ?? 30)));
     }
     m = rest.match(/^\/pulls\/(\d+)$/);
     if (m) {

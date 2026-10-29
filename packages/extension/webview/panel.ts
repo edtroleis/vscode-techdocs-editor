@@ -50,6 +50,13 @@ function render(state: PanelState, l: PanelLabels): string {
     <button data-action="send" title="${escape(l.sendHint)}"${canSend && !v.busy ? '' : ' disabled'}>${escape(v.sendForReview ? l.sendForReview : l.sendForPublication)}</button>
     ${v.pr || !v.onDefaultBranch ? `<button class="secondary" data-action="discard"${disabled}>${escape(l.discard)}</button>` : ''}
   </div>`);
+  // M9: outros PRs na mesma página (o texto tem {0} = os links, montados aqui)
+  const links = (prs: Array<{ number: number; url: string; author?: string }>) =>
+    prs
+      .map(p => `<a data-url="${escape(p.url)}" href="#">${format(l.pullRequest, p.number)}</a>${p.author ? ` (${escape(p.author)})` : ''}`)
+      .join(', ');
+  if (v.ownPrs?.length) parts.push(`<p class="info" role="note">${escape(l.ownPrs).replace('{0}', links(v.ownPrs))}</p>`);
+  if (v.othersPrs?.length) parts.push(`<p class="info" role="note">${escape(l.othersPrs).replace('{0}', links(v.othersPrs))}</p>`);
   if (v.published) {
     parts.push(`<p class="notice" role="status"><a data-url="${escape(v.published.url)}" href="#">${format(l.published, v.published.number)}</a></p>`);
   }

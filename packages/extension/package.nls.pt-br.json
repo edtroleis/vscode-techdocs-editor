@@ -79,5 +79,6 @@
   "config.sites": "Sites de documentação mostrados na view TechDocs e conferidos pela **Verificação**: pastas de um `mkdocs.yml` (ou uma pasta acima delas), relativas ao workspace. Vazio: todos. Use **Escolher documentação…** na view.",
   "command.chooseSites": "Escolher Documentação…",
   "command.hideSite": "Esconder",
-  "command.dismissChooseSites": "Mostrar Todas e Não Perguntar Mais"
+  "command.dismissChooseSites": "Mostrar Todas e Não Perguntar Mais",
+  "command.pageHistory": "Histórico da Página…"
 }

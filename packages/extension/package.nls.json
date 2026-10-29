@@ -79,5 +79,6 @@
   "config.sites": "Documentation sites shown in the TechDocs view and checked by **Check documentation**: folders of a `mkdocs.yml` (or a folder above them), relative to the workspace. Empty: all of them. Use **Choose documentation to show…** in the view.",
   "command.chooseSites": "Choose Documentation to Show…",
   "command.hideSite": "Hide",
-  "command.dismissChooseSites": "Show All and Don't Ask Again"
+  "command.dismissChooseSites": "Show All and Don't Ask Again",
+  "command.pageHistory": "Page History…"
 }

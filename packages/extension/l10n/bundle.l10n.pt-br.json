@@ -320,5 +320,18 @@
   "Choose which documentation to show…": "Escolher qual documentação mostrar…",
   "{0} found": "{0} encontradas",
   "{0} hidden": "{0} escondidas",
-  "Choose documentation…": "Escolher documentação…"
+  "Choose documentation…": "Escolher documentação…",
+  "Other people are also changing this page: {0}. Whoever publishes later may have to resolve a conflict.": "Outras pessoas também estão mudando esta página: {0}. Quem publicar depois pode ter de resolver um conflito.",
+  "You already have a pull request for this page, opened outside the editor: {0}.": "Você já tem um pull request desta página, aberto fora do editor: {0}.",
+  "Open a page from GitHub to see its history.": "Abra uma página do GitHub para ver o histórico dela.",
+  "Reading the page history…": "Lendo o histórico da página…",
+  "This page has no published versions yet.": "Esta página ainda não tem versões publicadas.",
+  "Sign in to GitHub with write access to restore a version (Publishing panel).": "Entre no GitHub com permissão de escrita para restaurar uma versão (painel Publicação).",
+  "The page already has the text of this version.": "A página já tem o texto desta versão.",
+  "Restore": "Restaurar",
+  "The page has unsaved changes. Restoring replaces them with the text of this version.": "A página tem alterações não salvas. Restaurar troca elas pelo texto desta versão.",
+  "Version of {0} restored in the editor. Save it to keep it in your draft; it is published like any other change.": "Versão de {0} restaurada no editor. Salve para guardar no seu rascunho; ela é publicada como qualquer outra alteração.",
+  "current published version": "versão publicada agora",
+  "Page history": "Histórico da página",
+  "Choose a published version to restore in the editor": "Escolha uma versão publicada para restaurar no editor"
 }

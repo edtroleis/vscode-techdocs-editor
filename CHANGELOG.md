@@ -6,6 +6,13 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Page History…** on GitHub pages: the published versions of the page, and **Restore** to put the text of one
+  back in the editor. Saving it goes through the draft and the pull request like any other change.
+- **Other pull requests on the page:** the Publishing panel warns about open pull requests by other people that
+  change the same page, with the author and a link, and about your own opened outside the editor.
+
 ## [0.6.0] - 2026-10-29
 
 Conflicts on GitHub pages, and a cleaner sidebar in workspaces with many repositories.

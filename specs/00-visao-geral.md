@@ -210,7 +210,7 @@ Decisões:
 | 4c. Salvar ✅ | Ctrl+S = Salvar rascunho (branch criada na primeira vez, commit sobre o SHA); imagens com commit em `<docs>/assets/` na branch, mostradas lendo da branch; hot exit | M3, M4, M6 | unitários; integração (commit no GitHub simulado, imagem) |
 | 4d. Painel remoto ✅ | Salvar e verificar, Enviar, Descartar, checks e consulta (`ChecksWatcher`, `Poller`), Configurar verificações, rótulo pelo ruleset, merge feito no GitHub = Publicado | Publicação, P1 a P9 | unitários (os cenários do `panel.spec.ts` do plugin); webview do painel |
 | 4e. Conflitos ✅ | Página mudou no GitHub: "Esta página mudou enquanto você editava", tela de resolução; outro arquivo publicado: rascunho atualizado sozinho (`syncWithMain`) | M5 | unitários (os cenários do `conflict.spec.ts`); webview (a tela) |
-| 4f. Avisos e histórico | PR de outra pessoa na mesma página e PR próprio feito fora; Histórico da página e Restaurar | M7, M9 | unitários; integração |
+| 4f. Avisos e histórico ✅ | PR de outra pessoa na mesma página e PR próprio feito fora; Histórico da página e Restaurar | M7, M9 | unitários; integração |
 | 4g. Templates no remoto (T4) | Nova página por commit na branch do rascunho; templates do repositório lidos pela API | TP10 | unitários; integração |
 
 Critério da fase: os cenários do `test:editor:portal` do plugin que valem para o VS Code (sem os do lápis e da

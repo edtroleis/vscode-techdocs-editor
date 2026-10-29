@@ -414,6 +414,8 @@ export function panelLabels() {
     draftPr: vscode.l10n.t('draft'),
     published: vscode.l10n.t('Published: pull request #{0} was merged on GitHub.'),
     conflict: vscode.l10n.t('The published version of this page changed the same passages as your draft.'),
+    othersPrs: vscode.l10n.t('Other people are also changing this page: {0}. Whoever publishes later may have to resolve a conflict.'),
+    ownPrs: vscode.l10n.t('You already have a pull request for this page, opened outside the editor: {0}.'),
     resolve: vscode.l10n.t('Resolve conflict'),
     readyPr: vscode.l10n.t('ready'),
     unverified: vscode.l10n.t('Saved without checking. Save and check before sending.'),
@@ -454,6 +456,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 button:focus-visible, a:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
 a { color: var(--vscode-textLink-foreground); cursor: pointer; }
 .notice { border-left: 3px solid var(--vscode-notificationsInfoIcon-foreground); padding-left: 8px; }
+.info { border-left: 3px solid var(--vscode-notificationsInfoIcon-foreground); padding-left: 8px; color: var(--vscode-descriptionForeground); }
 .error { border-left: 3px solid var(--vscode-errorForeground); padding-left: 8px; color: var(--vscode-errorForeground); }
 ul { list-style: none; padding: 0; margin: 4px 0; }
 li { margin: 4px 0; }
