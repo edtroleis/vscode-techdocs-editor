@@ -65,6 +65,11 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 - The visual editor button on a page in the documentation tree failed with "Converting circular structure to
   JSON".
+- **Ctrl+S** right after typing in the visual editor saved the page without the last words, and the tab stayed
+  modified.
+- Typing `# ` at the start of a heading in the visual editor made it one level lower (Heading 1 became
+  Heading 2). Now `# ` makes it Heading 1, `## ` Heading 2, and so on.
+- **+ Page** kept the title as typed: "Referência da API" no longer becomes "Referencia da api".
 
 ## [0.6.0] - 2026-10-29
 

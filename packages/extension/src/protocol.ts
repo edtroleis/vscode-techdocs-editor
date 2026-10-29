@@ -67,4 +67,6 @@ export type WebviewMessage =
   /** Desfazer ou refazer no documento (o histórico é um só: o do VS Code). */
   | { type: 'undo' }
   | { type: 'redo' }
+  /** Ctrl+S no visual: o host grava o documento depois de aplicar as edições que já chegaram. */
+  | { type: 'save' }
   | { type: 'test:saved'; id: number; text: string };

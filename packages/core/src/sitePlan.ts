@@ -228,7 +228,7 @@ export function moveNavEntry(nav: PlanNavEntry[], key: string, to: { delta: numb
 
 /**
  * A página que o texto digitado na prévia cria (undefined se não dá): na visão Arquivos, `text` é o caminho
- * (`guias/deploy.md`) e o título sai do nome; na visão Menu, é o título e o caminho sai dele, na pasta da seção.
+ * (`guias/deploy.md`) e o título sai do nome, ou é o próprio texto se ele não é um nome de arquivo (`Referência da API`); na visão Menu, é o título e o caminho sai dele, na pasta da seção.
  * O template de página decide a pasta (`folder`) e o número (`numbered`, como os ADRs). Nunca repete um caminho.
  */
 export function newPagePath(
@@ -249,14 +249,17 @@ export function newPagePath(
   const template = opts.template && { template: opts.template.id };
 
   if (opts.by === 'path') {
-    const parts = typed.split(/[\\/]+/).map(part => fileNameFor(part.replace(/\.md$/i, '')).replace(/\.md$/, '')).filter(Boolean);
+    const typedParts = typed.split(/[\\/]+/).map(part => part.replace(/\.md$/i, '').trim()).filter(Boolean);
+    const parts = typedParts.map(part => fileNameFor(part).replace(/\.md$/, '')).filter(Boolean);
     if (!parts.length || typed.includes('..')) return undefined;
     const folder = parts.slice(0, -1).join('/') || opts.template?.folder || '';
     const name = parts[parts.length - 1];
+    // "Referência da API" é um título: fica como foi digitado; "deploy" já é nome de arquivo e vira "Deploy"
+    const typedName = typedParts[typedParts.length - 1];
     const base = opts.template?.numbered ? `${nextNumber(namesIn(pages, folder))}-${name}` : name;
     const path = unique(folder ? `${folder}/${base}` : base);
     const section = folder ? (sectionOf(folder) ?? nameToTitle(folder.split('/').pop()!)) : undefined;
-    return { path, title: nameToTitle(name), ...(section && { section }), ...template };
+    return { path, title: typedName === name ? nameToTitle(name) : typedName, ...(section && { section }), ...template };
   }
   const sectionFolder = opts.section ? dirOfSection(pages, opts.section) : undefined;
   const folder = opts.template?.folder ?? sectionFolder ?? '';

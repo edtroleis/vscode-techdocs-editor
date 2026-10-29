@@ -9,6 +9,7 @@ import { replaceChanged } from './externalContent';
 import { ExternalHistory, externalHistoryCtx } from './externalHistory';
 import { listCaretFixPlugin } from './listCaretFix';
 import { imageAltPlugin } from './imageAlt';
+import { headingLevelFixPlugin } from './headingLevelFix';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
 import { buildTopBar } from './topBar';
 import { EditorText, headingOptions, labelTopBar, selectionToolbar, slashMenu } from './labels';
@@ -192,6 +193,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         ctx.inject(externalHistoryCtx, external);
       })
       .use(defaultCodeLanguagePlugin)
+      .use(headingLevelFixPlugin)
       .use(inlineCodeTypingPlugin)
       .use(listCaretFixPlugin)
       .use(visualSearchPlugin)

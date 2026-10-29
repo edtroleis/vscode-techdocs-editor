@@ -142,7 +142,18 @@ function App({ content }: { content: Content }) {
     // Ctrl+F (Cmd+F no Mac) abre a busca do editor visual (spec 01, W10); com uma palavra selecionada,
     // já procura por ela, como a busca do VS Code
     const keydown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'f') return;
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+      const key = event.key.toLowerCase();
+      if (key === 's') {
+        // Ctrl+S: o aviso do que a pessoa digitou é adiado; se o VS Code gravasse já, a página ficaria
+        // gravada pela metade. Avisa tudo e pede ao host que grave depois de aplicar
+        event.preventDefault();
+        event.stopPropagation();
+        editor.current?.flushChange();
+        post({ type: 'save' });
+        return;
+      }
+      if (key !== 'f') return;
       event.preventDefault();
       event.stopPropagation();
       const selected = window.getSelection()?.toString() ?? '';

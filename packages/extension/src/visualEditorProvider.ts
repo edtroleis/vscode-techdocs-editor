@@ -244,6 +244,10 @@ export class EditorSession {
           if (await this.activated()) await vscode.commands.executeCommand(message.type);
         });
         return;
+      case 'save':
+        // Na fila: grava só depois que a última edição do webview chegou ao documento
+        this.queue = this.queue.then(() => this.document.save());
+        return;
       case 'test:saved':
         this.requests.get(message.id)?.(message.text);
         this.requests.delete(message.id);

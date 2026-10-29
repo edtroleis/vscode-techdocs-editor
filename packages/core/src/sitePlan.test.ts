@@ -125,6 +125,8 @@ describe('newPagePath', () => {
   it('pelo caminho (Arquivos): o título sai do nome; a pasta de uma seção entra nela', () => {
     expect(newPagePath('guias/Como fazer deploy', { by: 'path' }, plan)).toEqual({ path: 'guias/como-fazer-deploy.md', title: 'Como fazer deploy', section: 'Guias' });
     expect(newPagePath('adr/outra.md', { by: 'path' }, plan)).toMatchObject({ path: 'adr/outra.md', section: 'Decisões' });
+    // Um título na visão Arquivos: o caminho sai dele, e o título fica com acentos e maiúsculas
+    expect(newPagePath('Referência da API', { by: 'path' }, plan)).toEqual({ path: 'referencia-da-api.md', title: 'Referência da API' });
     expect(newPagePath('../fora', { by: 'path' }, plan)).toBeUndefined();
     expect(newPagePath('  ', { by: 'title' }, plan)).toBeUndefined();
   });
