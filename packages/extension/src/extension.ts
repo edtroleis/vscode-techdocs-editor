@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
   const remoteFs = new RemoteFileSystem(remotes);
   const opener = new RemoteOpener(remotes);
   const lint = new LintService(sites);
-  const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
+  const provider = new VisualEditorProvider(context.extensionUri, lint, sites, remoteFs);
   const docs = new DocsTreeView(sites, remotes);
   const publish = new PublishPanel(context.extensionUri, sites, lint);
   const central = new CentralTemplates(context);

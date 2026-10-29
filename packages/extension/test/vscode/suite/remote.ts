@@ -84,10 +84,6 @@ export function defineRemoteTests() {
       ok(tree.includes('  Início') && tree.includes('    Deploy'), `árvore sem as páginas do nav: ${tree.join(' | ')}`);
       const page = docs.pageItem(uri!);
       ok(page, 'a página aberta não está na árvore');
-
-      let refused = false;
-      await vscode.workspace.fs.writeFile(uri!, new TextEncoder().encode('# Outro\n')).then(undefined, () => (refused = true));
-      ok(refused, 'gravar numa página do GitHub foi aceito (a 4b é só leitura)');
     });
 
     test('o rascunho da pessoa tem preferência sobre a branch principal (M2)', async () => {
@@ -162,6 +158,50 @@ export function defineRemoteTests() {
       const uri = await opener.fromInput('acme/wiki', sites => sites[0]);
       ok(uri, 'a página não abriu');
       equal(remoteFs.session(uri!)?.repo.canWrite, false, 'permissão lida do GitHub');
+      equal((await vscode.workspace.fs.stat(uri!)).permissions, vscode.FilePermission.Readonly, 'stat sem a marca de só leitura');
+      let refused = false;
+      await vscode.workspace.fs.writeFile(uri!, new TextEncoder().encode('# Outro\n')).then(undefined, () => (refused = true));
+      ok(refused, 'gravar sem permissão de escrita foi aceito');
+      ok(![...github.refs.keys()].some(ref => ref.startsWith('docs/')), 'criou rascunho sem permissão');
+    });
+
+    test('Ctrl+S grava o rascunho (M3): branch criada na primeira vez, commit com [skip ci], depois sobre o anterior', async () => {
+      const { opener, remoteFs } = await api();
+      const uri = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/guias/deploy.md');
+      const document = await vscode.workspace.openTextDocument(uri!);
+      const edit = (text: string) => {
+        const change = new vscode.WorkspaceEdit();
+        change.replace(uri!, new vscode.Range(0, 0, document.lineCount, 0), text);
+        return vscode.workspace.applyEdit(change);
+      };
+      const branch = 'docs/pessoa-teste/docs-guias-deploy';
+      await edit('# Deploy\n\nPasso a passo novo.\n');
+      ok(await document.save(), 'o salvar falhou');
+      equal(github.head(branch)?.files['docs/guias/deploy.md'], '# Deploy\n\nPasso a passo novo.\n', 'texto no rascunho');
+      equal(github.head(branch)?.message, 'docs: draft of "Deploy" [skip ci]', 'mensagem do commit');
+      equal(github.head('main')?.files['docs/guias/deploy.md'], FILES['docs/guias/deploy.md'], 'a branch principal mudou');
+      equal(remoteFs.session(uri!)?.hasBranch, true, 'sessão sem o rascunho');
+
+      await edit('# Deploy\n\nSegunda versão.\n');
+      ok(await document.save(), 'o segundo salvar falhou');
+      equal(github.head(branch)?.files['docs/guias/deploy.md'], '# Deploy\n\nSegunda versão.\n', 'segundo commit no rascunho');
+    });
+
+    test('imagens (M6): o envio vai para o rascunho e é lido de lá; a de um rascunho salvo antes também', async () => {
+      const { opener, remoteFs } = await api();
+      const uri = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/guias/deploy.md');
+      await remoteFs.saveImage(uri!, 'docs/assets/1-captura.png', new TextEncoder().encode('PNG-1'));
+      equal(github.head('docs/pessoa-teste/docs-guias-deploy')?.files['docs/assets/1-captura.png'], 'PNG-1', 'imagem no rascunho');
+      ok(!github.head('main')?.files['docs/assets/1-captura.png'], 'imagem na branch principal');
+      const image = vscode.Uri.parse('techdocs://github.com/acme/wiki/docs/assets/1-captura.png');
+      equal(text(await vscode.workspace.fs.readFile(image)), 'PNG-1', 'imagem enviada');
+
+      // Rascunho de outra página, salvo antes, com uma imagem que a principal não tem: lida do GitHub
+      github.push('docs/pessoa-teste/docs-index', github.commit('rascunho', { ...FILES, 'docs/index.md': '# Início\n\n![](assets/2-foto.png)\n', 'docs/assets/2-foto.png': 'PNG-2' }));
+      await vscode.workspace.fs.readFile(vscode.Uri.parse('techdocs://github.com/acme/wiki/docs/index.md'));
+      const old = vscode.Uri.parse('techdocs://github.com/acme/wiki/docs/assets/2-foto.png');
+      equal((await vscode.workspace.fs.stat(old)).type, vscode.FileType.File, 'stat da imagem do rascunho');
+      equal(text(await vscode.workspace.fs.readFile(old)), 'PNG-2', 'imagem do rascunho');
     });
   });
 }

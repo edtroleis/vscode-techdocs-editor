@@ -289,5 +289,7 @@
   "{0} new, {1} modified · nothing written yet": "{0} novos, {1} alterados · nada foi gravado ainda",
   "Create": "Criar",
   "Cancel": "Cancelar",
-  "Creating…": "Criando…"
+  "Creating…": "Criando…",
+  "docs: image for \"{0}\"": "docs: imagem de \"{0}\"",
+  "This page changed in your draft ({0}) after it was opened. Close it and open it again.": "Esta página mudou no seu rascunho ({0}) depois de aberta. Feche e abra de novo."
 }

@@ -9,6 +9,7 @@ export * from './mkdocs';
 export * from './pageDates';
 export * from './publish';
 export * from './remoteSession';
+export * from './remoteDraft';
 export * from './remoteLink';
 export * from './remoteTree';
 export * from './repoConfig';

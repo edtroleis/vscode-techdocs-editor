@@ -238,6 +238,18 @@ export class FakeGitHub {
     }
 
     let m = rest.match(/^\/contents\/(.+)$/);
+    if (m && method === 'PUT') {
+      // Commit de um arquivo; o `sha` tem de ser o do arquivo na ponta da branch (senão 409, como no GitHub)
+      const head = this.head(body.branch);
+      if (!head) return notFound;
+      const existing = head.files[m[1]];
+      if (existing !== undefined && body.sha !== sha1(existing)) return { status: 409, json: { message: `${m[1]} does not match ${body.sha}` } };
+      if (existing === undefined && body.sha) return { status: 422, json: { message: 'sha wasn\'t supplied' } };
+      const content = Buffer.from(body.content, 'base64').toString();
+      const commit = this.commit(body.message, { ...head.files, [m[1]]: content });
+      this.push(body.branch, commit);
+      return ok({ content: { sha: sha1(content) }, commit: { sha: commit.sha } }, existing === undefined ? 201 : 200);
+    }
     if (m && method === 'GET') {
       const ref = url.searchParams.get('ref') ?? 'main';
       const content = (this.head(ref) ?? this.commits.get(ref))?.files[m[1]];
@@ -380,6 +392,13 @@ export class FakeGitHub {
       return Response.json({ message: f.message }, { status: f.status });
     }
     const body = init.body ? JSON.parse(String(init.body)) : undefined;
+    // Conteúdo bruto (`getRaw`): o arquivo como está, sem JSON
+    const raw = method === 'GET' && headers.Accept?.includes('raw') && url.pathname.match(/\/contents\/(.+)$/);
+    if (raw) {
+      const ref = url.searchParams.get('ref') ?? 'main';
+      const content = (this.head(ref) ?? this.commits.get(ref))?.files[decodeURIComponent(raw[1])];
+      return content === undefined ? Response.json({ message: 'Not Found' }, { status: 404 }) : new Response(content, { headers: { 'content-type': 'application/octet-stream' } });
+    }
     const reply = this.handle(method, url, body);
     if (!reply) return Response.json({ message: `Não simulado: ${method} ${url.pathname}` }, { status: 501 });
     if (reply.status === 204) return new Response(null, { status: 204 });

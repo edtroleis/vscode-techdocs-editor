@@ -4,14 +4,20 @@ import {
   entryAt,
   listDir,
   loadRemoteSession,
+  pageTitle,
   parseRemoteUri,
   REMOTE_SCHEME,
+  RemoteDraftChangedError,
   RemotePageNotFoundError,
+  RemoteReadOnlyError,
   remoteUriPath,
+  saveRemoteDraft,
+  saveRemoteImage,
   siteOfPath,
   type RemoteSession,
 } from '@edtroleis/techdocs-editor-core';
-import { type RemoteRepos, SignInRequiredError } from './remoteRepos';
+import { publishConfig } from '../publish/publishConfig';
+import { type RepoAccess, type RemoteRepos, SignInRequiredError } from './remoteRepos';
 
 /** URI de um arquivo (ou da raiz, com `path` vazio) de um repositório aberto do GitHub. */
 export const remoteUri = (host: string, slug: string, path: string) =>
@@ -19,14 +25,17 @@ export const remoteUri = (host: string, slug: string, path: string) =>
 
 /**
  * O esquema `techdocs:` (M2, fase 4b): `techdocs://<host>/<dono>/<repo>/<caminho>`, lido pela API do GitHub,
- * sem clone. As páginas vêm do rascunho da pessoa, se existir, senão da branch principal. Por enquanto, só
- * leitura: salvar o rascunho é a 4c.
+ * sem clone. As páginas vêm do rascunho da pessoa, se existir, senão da branch principal. Salvar (Ctrl+S) grava
+ * o rascunho (4c, M3): um commit na branch da pessoa, criada na primeira vez. Sem login ou sem permissão de
+ * escrita, só leitura. As imagens enviadas vão para o rascunho e são lidas de lá (M6).
  */
 export class RemoteFileSystem implements vscode.FileSystemProvider {
   private readonly changeEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   readonly onDidChangeFile = this.changeEmitter.event;
-  /** A última leitura de cada página: de que branch e de que SHA veio o texto (o salvar da 4c parte dela). */
+  /** A última leitura (ou gravação) de cada página: de que branch e de que SHA veio o texto; o salvar parte dela. */
   private readonly sessions = new Map<string, RemoteSession>();
+  /** Arquivos que não estão na branch principal, lidos de um rascunho ou enviados agora (imagens). */
+  private readonly drafts = new Map<string, Uint8Array>();
 
   constructor(private readonly repos: RemoteRepos) {}
 
@@ -42,13 +51,18 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
     const { access, path } = await this.resolve(uri);
     const entry = entryAt(access.files, path);
-    if (!entry) throw vscode.FileSystemError.FileNotFound(uri);
+    const permissions = writable(access) ? undefined : vscode.FilePermission.Readonly;
+    if (!entry) {
+      const draft = await this.draftFile(uri, access, path);
+      if (!draft) throw vscode.FileSystemError.FileNotFound(uri);
+      return { type: vscode.FileType.File, ctime: 0, mtime: 0, size: draft.byteLength, permissions };
+    }
     return {
       type: entry.type === 'dir' ? vscode.FileType.Directory : vscode.FileType.File,
       ctime: 0,
       mtime: 0,
       size: entry.type === 'file' ? entry.size : 0,
-      permissions: vscode.FilePermission.Readonly,
+      permissions,
     };
   }
 
@@ -76,14 +90,54 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
         throw error;
       }
     }
-    // Imagens e outros arquivos: da branch principal (as do rascunho entram com o salvar, na 4c)
+    // Imagens e outros arquivos: da branch principal, senão de um rascunho
     const entry = entryAt(access.files, path);
-    if (entry?.type !== 'file') throw vscode.FileSystemError.FileNotFound(uri);
-    return access.client.getBlobBytes(entry.sha);
+    if (entry?.type === 'file') return access.client.getBlobBytes(entry.sha);
+    const draft = await this.draftFile(uri, access, path);
+    if (!draft) throw vscode.FileSystemError.FileNotFound(uri);
+    return draft;
   }
 
-  writeFile(uri: vscode.Uri): never {
-    throw this.readOnly(uri);
+  /** Ctrl+S numa página: o rascunho (M3). Outros arquivos só entram pelo editor visual (`saveImage`). */
+  async writeFile(uri: vscode.Uri, content: Uint8Array): Promise<void> {
+    const { access, path } = await this.resolve(uri);
+    if (!/\.md$/i.test(path) || !writable(access)) throw this.readOnly(uri);
+    const session = this.sessions.get(uri.toString()) ?? (await this.readFile(uri), this.sessions.get(uri.toString())!);
+    const text = new TextDecoder().decode(content);
+    const title = pageTitle(text) ?? path.split('/').pop()!.replace(/\.md$/i, '');
+    try {
+      const saved = await saveRemoteDraft(access.client, session, text, { message: vscode.l10n.t('docs: draft of "{0}"', title), skipCi: this.skipCi(uri) });
+      this.sessions.set(uri.toString(), saved.session);
+    } catch (error) {
+      throw this.saveError(uri, error);
+    }
+  }
+
+  /**
+   * Imagem enviada pelo editor visual da página `page` (M6): commit em `path` (relativo ao repositório) no
+   * rascunho da página, criado se preciso. Fica guardada aqui para o editor mostrar sem ler de novo.
+   */
+  async saveImage(page: vscode.Uri, path: string, data: Uint8Array): Promise<void> {
+    const { access } = await this.resolve(page);
+    const session = this.sessions.get(page.toString());
+    if (!session || !writable(access)) throw this.readOnly(page);
+    try {
+      const base64 = btoa(Array.from(data, b => String.fromCharCode(b)).join(''));
+      const saved = await saveRemoteImage(access.client, session, path, base64, {
+        message: vscode.l10n.t('docs: image for "{0}"', pageTitle(session.content) ?? session.filePath),
+        skipCi: this.skipCi(page),
+      });
+      this.sessions.set(page.toString(), saved);
+    } catch (error) {
+      throw this.saveError(page, error);
+    }
+    this.drafts.set(remoteUri(page.authority, parseRemoteUri(page.authority, page.path)!.slug, path).toString(), data);
+  }
+
+  /** Dá para salvar a página (login com permissão de escrita no repositório). */
+  canSave(uri: vscode.Uri): boolean {
+    const session = this.sessions.get(uri.toString());
+    return Boolean(session?.branch && session.repo.canWrite);
   }
 
   createDirectory(uri: vscode.Uri): never {
@@ -96,6 +150,35 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
 
   rename(uri: vscode.Uri): never {
     throw this.readOnly(uri);
+  }
+
+  /** Arquivo fora da branch principal: enviado agora ou num rascunho já salvo de uma página do repositório. */
+  private async draftFile(uri: vscode.Uri, access: RepoAccess, path: string): Promise<Uint8Array | undefined> {
+    const key = uri.toString();
+    const known = this.drafts.get(key);
+    if (known) return known;
+    const prefix = uri.with({ path: remoteUriPath(parseRemoteUri(uri.authority, uri.path)!.slug, '') }).toString();
+    const branches = new Set([...this.sessions].filter(([page, s]) => page.startsWith(prefix) && s.hasBranch && s.branch).map(([, s]) => s.branch!));
+    for (const branch of branches) {
+      const blob = await access.client.getRaw(path, branch);
+      if (!blob) continue;
+      const data = new Uint8Array(await blob.arrayBuffer());
+      this.drafts.set(key, data);
+      return data;
+    }
+    return undefined;
+  }
+
+  private skipCi(uri: vscode.Uri) {
+    return publishConfig(vscode.workspace.getConfiguration('techdocsEditor', uri), undefined, vscode.env.language).skipCi;
+  }
+
+  private saveError(uri: vscode.Uri, error: unknown) {
+    if (error instanceof RemoteReadOnlyError) return this.readOnly(uri);
+    if (error instanceof RemoteDraftChangedError) {
+      return new Error(vscode.l10n.t('This page changed in your draft ({0}) after it was opened. Close it and open it again.', error.branch));
+    }
+    return error;
   }
 
   private readOnly(uri: vscode.Uri) {
@@ -117,3 +200,6 @@ export class RemoteFileSystem implements vscode.FileSystemProvider {
     }
   }
 }
+
+/** Com login e permissão de escrita no repositório: as páginas podem ser salvas. */
+const writable = (access: RepoAccess) => Boolean(access.login && access.repo.canWrite);

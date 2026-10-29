@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { parseRemoteUri, REMOTE_SCHEME, remoteUriPath } from '@edtroleis/techdocs-editor-core';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
+import type { RemoteFileSystem } from './remote/remoteFs';
 import { DEFAULT_MAX_IMAGE_MB, imageProblem, imageTarget } from './imageUpload';
 import type { HostMessage, WebviewLabels, WebviewMessage } from './protocol';
 import { hasConflictMarkers } from './docsSite';
@@ -23,11 +24,12 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     private readonly extensionUri: vscode.Uri,
     private readonly lint: LintService,
     private readonly sites: LocalSites,
+    private readonly remoteFs?: RemoteFileSystem,
   ) {}
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
-    const session = new EditorSession(document, panel, this.extensionUri, this.lint, this.sites);
+    const session = new EditorSession(document, panel, this.extensionUri, this.lint, this.sites, this.remoteFs);
     this.sessions.set(key, session);
     panel.onDidDispose(() => {
       if (this.sessions.get(key) === session) this.sessions.delete(key);
@@ -74,6 +76,7 @@ export class EditorSession {
     extensionUri: vscode.Uri,
     private readonly lint: LintService,
     private readonly sites: LocalSites,
+    private readonly remoteFs?: RemoteFileSystem,
   ) {
     this.ready = new Promise(resolve => (this.markReady = resolve));
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
@@ -235,13 +238,21 @@ export class EditorSession {
     if (problem === 'tooLarge') {
       throw new Error(vscode.l10n.t('"{0}" is larger than {1} MB. Use a smaller image.', name, maxMB));
     }
-    const { path, link } = imageTarget(this.document.uri.path, this.sites.siteOf(this.document.uri)?.docsDir, name, Date.now());
+    const uri = this.document.uri;
+    const remote = uri.scheme === REMOTE_SCHEME ? parseRemoteUri(uri.authority, uri.path) : undefined;
     try {
-      await vscode.workspace.fs.writeFile(this.document.uri.with({ path }), data);
+      if (remote) {
+        // Do GitHub: commit no rascunho da página, com o caminho relativo ao repositório (M6)
+        const { path, link } = imageTarget(remote.path, this.remoteFs?.session(uri)?.docsDir, name, Date.now());
+        await this.remoteFs!.saveImage(uri, path, data);
+        return link;
+      }
+      const { path, link } = imageTarget(uri.path, this.sites.siteOf(uri)?.docsDir, name, Date.now());
+      await vscode.workspace.fs.writeFile(uri.with({ path }), data);
+      return link;
     } catch (e) {
       throw new Error(vscode.l10n.t('Could not save the image "{0}": {1}', name, e instanceof Error ? e.message : String(e)));
     }
-    return link;
   }
 
   /**
@@ -278,8 +289,8 @@ export class EditorSession {
       language: vscode.env.language,
       baseUri: this.panel.webview.asWebviewUri(this.pageDir).toString(),
       labels: webviewLabels(),
-      // Do GitHub, por enquanto só leitura (o Salvar rascunho é a 4c)
-      readOnly: this.document.uri.scheme === REMOTE_SCHEME,
+      // Do GitHub: só leitura sem login ou sem permissão de escrita (salvar grava o rascunho, 4c)
+      readOnly: this.document.uri.scheme === REMOTE_SCHEME && !this.remoteFs?.canSave(this.document.uri),
     });
   }
 
