@@ -27,11 +27,13 @@ All notable changes to the TechDocs Editor extension. The format follows
 - **One documentation site at a time.** With several sites in the workspace or opened from GitHub, the
   sidebar shows one, with **Switch documentation…** next to its name and in the status bar. Opening a page from
   another site switches by itself; with none chosen, the sidebar asks for a choice.
-- **A short list to switch.** It opens with your recent sites and *See all sites*. Typing searches every site,
-  the pages of all of them (a click opens the page) and the folders of the workspace without documentation yet
-  (Git repositories and empty folders), where a click creates it. Each site shows only its name, with the folder
-  on the folder button and your drafts on the row (*1 draft*, *1 in review*); the × hides it, with *Undo*.
-  Opening from GitHub, opening another folder and choosing which sites appear are buttons in the title.
+- **Switch documentation by folder.** The list opens in the workspace folder and shows what is inside it:
+  a folder that is a site shows the site name (a click shows it in the sidebar), a folder with sites inside
+  says how many (a click goes in), and a folder without documentation says so (inside, *Create documentation
+  here*). *Back to…* goes up. Typing searches every site, the pages of all of them and the folders without
+  documentation. Your drafts show on the row (*1 draft*, *1 in review*); the × hides a site, with *Undo*.
+  Opening from GitHub, opening another folder and choosing which sites appear are buttons in the title. Sites
+  named with a template placeholder (`CHANGE-ME`) show the folder name.
 
 ### Changed
 

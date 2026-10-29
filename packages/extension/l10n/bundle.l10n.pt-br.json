@@ -390,9 +390,15 @@
   "sites": "sites",
   "pages": "páginas",
   "without documentation yet": "sem documentação ainda",
-  "recent": "recentes",
-  "See all sites ({0})": "Ver todos os sites ({0})",
-  "other repositories": "outros repositórios",
-  "Back to recent sites": "Voltar aos recentes",
-  "Filter by name or folder": "Filtre pelo nome ou pela pasta"
+  "Filter by name or folder": "Filtre pelo nome ou pela pasta",
+  "Back to {0}": "Voltar para {0}",
+  "the workspace folders": "as pastas do workspace",
+  "this folder": "esta pasta",
+  "1 site": "1 site",
+  "{0} sites": "{0} sites",
+  "without documentation": "sem documentação",
+  "no documentation": "sem documentação",
+  "Create documentation here": "Criar documentação aqui",
+  "This folder is empty.": "Esta pasta está vazia.",
+  "Workspace folders": "Pastas do workspace"
 }

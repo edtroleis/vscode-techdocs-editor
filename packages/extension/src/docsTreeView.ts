@@ -214,7 +214,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     await pickSite({
       candidates: this.candidates,
       currentKey: this.currentKey,
-      recents: this.state?.get<string[]>(RECENT_KEY) ?? [],
       select: key => this.select(key),
       drafts: () => this.draftsBySite(),
       sites: this.sites,
@@ -314,7 +313,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         const root = mkdocs.with({ path: site.root });
         return {
           key: mkdocs.toString(),
-          label: siteName(yml) ?? site.root.split('/').pop()!,
+          label: usableName(siteName(yml)) ?? site.root.split('/').pop()!,
           description: vscode.workspace.asRelativePath(root),
           repo: await repoOf(root),
           local: { mkdocs, site, yml },
@@ -414,6 +413,11 @@ function keyOf(candidates: SiteCandidate[], sites: LocalSites, uri: vscode.Uri):
   }
   const site = sites.siteOf(uri);
   return site && candidates.find(c => c.local?.site.root === site.root)?.key;
+}
+
+/** O `site_name`, menos os de esqueleto ("CHANGE-ME", "TODO"…): aí fica o nome da pasta. */
+function usableName(name: string | undefined): string | undefined {
+  return name && !/^(change[-_ ]?me|todo|tbd|xxx+|site[-_ ]?name|my[-_ ]?docs)$/i.test(name.trim()) ? name : undefined;
 }
 
 function remoteKey(entry: RemoteEntry) {

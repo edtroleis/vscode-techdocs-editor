@@ -5,7 +5,7 @@ import type { SiteCandidate } from './docsTreeView';
 import type { LocalSites } from './localSites';
 import type { RemoteRepos } from './remote/remoteRepos';
 
-/** Quantos sites recentes a lista mostra ao abrir. */
+/** Quantos sites recentes a árvore guarda. */
 export const RECENT_COUNT = 5;
 /** Até onde procurar pastas sem documentação, a partir da pasta do workspace. */
 const FOLDER_DEPTH = 3;
@@ -16,8 +16,6 @@ const SKIPPED = new Set(['node_modules', 'site', 'out', 'dist', 'build', 'target
 export type PickerHost = {
   candidates: readonly SiteCandidate[];
   currentKey: string | undefined;
-  /** Chaves dos últimos sites mostrados, o mais recente primeiro. */
-  recents: readonly string[];
   select(key: string): Promise<void>;
   /** Rascunhos da pessoa por site (de "Minhas alterações"). */
   drafts(): Map<string, { draft: number; review: number }>;
@@ -28,8 +26,11 @@ export type PickerHost = {
 type Item = vscode.QuickPickItem & {
   site?: SiteCandidate;
   page?: { uri: vscode.Uri; remote: boolean };
+  /** Pasta sem documentação achada na busca: criar nela. */
   folder?: vscode.Uri;
-  action?: 'all' | 'recent' | 'create' | 'undo';
+  /** Entrar na pasta (`to` undefined: a lista das pastas do workspace). */
+  enter?: { to: vscode.Uri | undefined };
+  action?: 'create' | 'createHere' | 'undo';
 };
 
 /** Páginas lidas de cada site local (título e arquivo), até a árvore mudar. */
@@ -39,14 +40,13 @@ export function invalidatePages() {
 }
 
 /**
- * "Trocar documentação": ao abrir, os sites recentes, "Ver todos os sites" e "Criar documentação numa pasta…".
- * Ao digitar, a busca vale para todos os sites, as páginas deles e as pastas do workspace sem documentação. Cada
- * site mostra o nome (a pasta fica no botão de pasta, com o caminho na dica), os rascunhos da pessoa e o × para
- * esconder; as outras ações ficam nos botões do título.
+ * "Trocar documentação" pelas pastas: começa na pasta aberta no VS Code e mostra o que tem dentro, com ou sem
+ * documentação. Uma pasta que é um site mostra o nome dele (clicar o abre na árvore); uma pasta com sites dentro
+ * diz quantos (clicar entra); uma sem nada diz "sem documentação" (dentro, "Criar documentação aqui"). "Voltar"
+ * sobe. Ao digitar, a busca vale para todos os sites, as páginas deles e as pastas sem documentação.
  */
 export async function pickSite(host: PickerHost) {
   const quickPick = vscode.window.createQuickPick<Item>();
-  quickPick.title = vscode.l10n.t('Documentation to edit');
   quickPick.placeholder = vscode.l10n.t('Search sites, pages and folders');
   quickPick.matchOnDescription = true;
   const titleButtons = {
@@ -59,22 +59,25 @@ export async function pickSite(host: PickerHost) {
   const folderButton = (tooltip: string) => ({ iconPath: new vscode.ThemeIcon('folder'), tooltip });
   const hideButton = { iconPath: new vscode.ThemeIcon('close'), tooltip: vscode.l10n.t('Hide from this list') };
 
+  const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+  // Com uma pasta só no workspace, começa nela; com várias, na lista delas
+  const top = workspaceFolders.length === 1 ? workspaceFolders[0].uri : undefined;
+  let here = top;
+  let entries: Array<{ uri: vscode.Uri; name: string }> | undefined;
   let candidates = [...host.candidates];
-  let mode: 'recent' | 'all' = 'recent';
   let pages: Array<{ title: string; uri: vscode.Uri; site: SiteCandidate }> = [];
   let empty: vscode.Uri[] | undefined;
   /** O último site escondido pelo ×, para desfazer. */
   let undo: { site: SiteCandidate; run: () => Thenable<unknown> } | undefined;
   const drafts = host.drafts();
-  const names = candidates.map(c => c.label);
-  const repeated = new Set(names.filter((n, i) => names.indexOf(n) !== i));
+  /** Os sites locais dentro da pasta (ou nela mesma). */
+  const sitesIn = (path: string) => candidates.filter(c => c.local && (c.local.site.root === path || c.local.site.root.startsWith(`${path}/`)));
 
-  const siteItem = (site: SiteCandidate): Item => {
+  const siteItem = (site: SiteCandidate, extra?: string): Item => {
     const showing = site.key === host.currentKey;
     const count = drafts.get(site.key);
     const parts = [
-      // Nome repetido: a pasta, para distinguir sem passar o mouse
-      repeated.has(site.label) ? site.description.split('/').pop() : '',
+      extra,
       count?.draft ? (count.draft === 1 ? vscode.l10n.t('1 draft') : vscode.l10n.t('{0} drafts', count.draft)) : '',
       count?.review ? vscode.l10n.t('{0} in review', count.review) : '',
       showing ? vscode.l10n.t('showing now') : '',
@@ -99,38 +102,73 @@ export async function pickSite(host: PickerHost) {
     action: 'create',
     alwaysShow: true,
   });
+  /** A pasta de cima, ou undefined na pasta do workspace (com várias, volta à lista delas). */
+  const parentOf = (uri: vscode.Uri) => (workspaceFolders.some(f => f.uri.path === uri.path) ? undefined : uri.with({ path: uri.path.slice(0, uri.path.lastIndexOf('/')) }));
+
+  const browse = (): Item[] => {
+    const items: Item[] = [];
+    if (here && here.path !== top?.path) {
+      const up = parentOf(here);
+      items.push({ label: `$(arrow-up) ${vscode.l10n.t('Back to {0}', up ? shortPath(up) : vscode.l10n.t('the workspace folders'))}`, enter: { to: up }, alwaysShow: true });
+    }
+    const self = here && candidates.find(c => c.local?.site.root === here!.path);
+    if (self) items.push(siteItem(self, vscode.l10n.t('this folder')));
+    const rows = (entries ?? []).map(entry => ({ ...entry, sites: sitesIn(entry.uri.path) }));
+    for (const row of rows.filter(r => r.sites.length)) {
+      const [only] = row.sites;
+      if (row.sites.length === 1 && only.local!.site.root === row.uri.path) items.push(siteItem(only, row.name));
+      else {
+        const count = row.sites.length === 1 ? vscode.l10n.t('1 site') : vscode.l10n.t('{0} sites', row.sites.length);
+        items.push({ label: `$(folder) ${row.name}`, description: count, enter: { to: row.uri } });
+      }
+    }
+    const without = rows.filter(r => !r.sites.length);
+    if (without.length) items.push(separator(vscode.l10n.t('without documentation')));
+    items.push(...without.map((row): Item => ({ label: `$(folder) ${row.name}`, description: vscode.l10n.t('no documentation'), enter: { to: row.uri } })));
+    if (here && !self && !sitesIn(here.path).length) {
+      items.push({ label: `$(add) ${vscode.l10n.t('Create documentation here')}`, description: shortPath(here), action: 'createHere', alwaysShow: true });
+    }
+    // Os sites abertos do GitHub ficam na pasta de cima
+    const remote = candidates.filter(c => c.remote);
+    if (here?.path === top?.path && remote.length) items.push(separator('GitHub'), ...sorted(remote).map(site => siteItem(site)));
+    if (entries && !items.length) items.push({ label: vscode.l10n.t('This folder is empty.'), alwaysShow: true });
+    return items;
+  };
 
   const render = () => {
     const items: Item[] = [];
     if (undo) items.push({ label: `$(discard) ${vscode.l10n.t('Undo: {0} left the list', undo.site.label)}`, action: 'undo', alwaysShow: true });
-    const recent = host.recents.map(key => candidates.find(c => c.key === key)).filter((c): c is SiteCandidate => Boolean(c)).slice(0, RECENT_COUNT);
     if (quickPick.value) {
       // Busca: todos os sites, as páginas e as pastas sem documentação (o VS Code filtra)
-      items.push(separator(vscode.l10n.t('sites')), ...sorted(candidates).map(siteItem));
+      quickPick.title = vscode.l10n.t('Documentation to edit');
+      items.push(separator(vscode.l10n.t('sites')), ...sorted(candidates).map(site => siteItem(site)));
       if (pages.length) {
         items.push(separator(vscode.l10n.t('pages')));
         items.push(...pages.map(p => ({ label: `$(file) ${p.title}`, description: p.site.label, page: { uri: p.uri, remote: Boolean(p.site.remote) } })));
       }
       if (empty?.length) items.push(separator(vscode.l10n.t('without documentation yet')), ...empty.map(folderItem));
       items.push(createItem());
-    } else if (mode === 'recent' && recent.length && candidates.length > recent.length) {
-      items.push(separator(vscode.l10n.t('recent')), ...recent.map(siteItem));
-      items.push({ label: `$(ellipsis) ${vscode.l10n.t('See all sites ({0})', candidates.length)}`, action: 'all' }, createItem());
     } else {
-      // Todos: só os repositórios com mais de um site têm grupo; os outros ficam juntos
-      const byRepo = new Map<string, SiteCandidate[]>();
-      for (const site of sorted(candidates)) byRepo.set(site.repo, [...(byRepo.get(site.repo) ?? []), site]);
-      const single: SiteCandidate[] = [];
-      for (const [repo, sites] of [...byRepo].sort(([a], [b]) => a.localeCompare(b))) {
-        if (sites.length > 1) items.push(separator(repo.split('/').pop()!), ...sites.map(siteItem));
-        else single.push(sites[0]);
-      }
-      if (single.length) items.push(separator(byRepo.size > single.length ? vscode.l10n.t('other repositories') : ''), ...sorted(single).map(siteItem));
-      if (empty?.length) items.push(separator(vscode.l10n.t('without documentation yet')), ...empty.map(folderItem));
-      if (recent.length && candidates.length > recent.length) items.push({ label: `$(arrow-left) ${vscode.l10n.t('Back to recent sites')}`, action: 'recent' });
-      items.push(createItem());
+      quickPick.title = here ? shortPath(here) : vscode.l10n.t('Workspace folders');
+      items.push(...browse());
     }
+    quickPick.busy = !entries;
     quickPick.items = items;
+  };
+
+  const load = async () => {
+    entries = undefined;
+    render();
+    const at = here;
+    const found = at
+      ? ((await vscode.workspace.fs.readDirectory(at).then(e => e, () => [])) as [string, vscode.FileType][])
+          .filter(([name, type]) => type & vscode.FileType.Directory && !name.startsWith('.') && !SKIPPED.has(name))
+          .map(([name]) => ({ uri: vscode.Uri.joinPath(at, name), name }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      : workspaceFolders.map(f => ({ uri: f.uri, name: f.name }));
+    if (at !== here) return;
+    entries = found;
+    render();
   };
 
   quickPick.onDidChangeValue(() => render());
@@ -166,9 +204,10 @@ export async function pickSite(host: PickerHost) {
   quickPick.onDidAccept(async () => {
     const item = quickPick.selectedItems[0];
     if (!item) return;
-    if (item.action === 'all' || item.action === 'recent') {
-      mode = item.action;
-      return render();
+    if (item.enter) {
+      here = item.enter.to;
+      quickPick.value = '';
+      return load();
     }
     if (item.action === 'undo' && undo) {
       const { site, run } = undo;
@@ -177,16 +216,18 @@ export async function pickSite(host: PickerHost) {
       candidates = [...candidates, site];
       return render();
     }
+    if (!item.site && !item.page && !item.folder && !item.action) return;
     quickPick.hide();
     if (item.site) await host.select(item.site.key);
     else if (item.page) {
       await vscode.commands.executeCommand(item.page.remote ? 'techdocsEditor.openVisual' : 'vscode.open', item.page.uri);
     } else if (item.folder) await createIn(item.folder);
+    else if (item.action === 'createHere' && here) await createIn(here);
     else if (item.action === 'create') await newSiteInFolder();
   });
   quickPick.onDidHide(() => quickPick.dispose());
-  render();
   quickPick.show();
+  await load();
 
   // Em segundo plano: as páginas (para a busca) e as pastas sem documentação
   void Promise.all([
@@ -196,9 +237,15 @@ export async function pickSite(host: PickerHost) {
     }),
     foldersWithoutDocs(candidates).then(found => {
       empty = found;
-      render();
+      if (quickPick.value) render();
     }),
   ]);
+}
+
+/** A pasta para mostrar: `~/code` no home, senão o caminho do workspace. */
+function shortPath(uri: vscode.Uri): string {
+  const home = /^\/(?:home|Users)\/[^/]+/.exec(uri.path)?.[0];
+  return home ? `~${uri.path.slice(home.length)}` : vscode.workspace.asRelativePath(uri, true) || uri.path;
 }
 
 const sorted = (list: SiteCandidate[]) => [...list].sort((a, b) => a.label.localeCompare(b.label) || a.description.localeCompare(b.description));
