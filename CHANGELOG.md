@@ -42,6 +42,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 - **Pages outside the menu.** The group of pages in `docs_dir` that the `nav` does not list is now **Not in
   the menu**, and each page has a **+** to add it. On a site without `nav`, the first change to the order
   offers to write one with the current menu.
+- **Blank** site template, first in the list and the default when the repository and the company have no
+  templates: only `mkdocs.yml` and a home page with the site name.
 - **Filter** button in the tree title, and a ⚠ on pages with formatting fixes (the tip says what to do).
 
 ### Changed

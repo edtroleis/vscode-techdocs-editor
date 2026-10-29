@@ -1,0 +1,7 @@
+version: 1
+name: Em branco
+description: Só a página inicial, para começar do zero
+files:
+  - path: index.md
+    title: "{{site_name}}"
+    source: index.md

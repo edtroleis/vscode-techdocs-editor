@@ -966,7 +966,11 @@ export function defineTests() {
       await write('previa/CODEOWNERS', '* @acme/time-pagamentos\n');
       try {
         await preview.open(file('previa'));
-        const plan = await until(() => preview.current, p => Boolean(p?.files.some(f => f.origin === 'template')), 'prévia sem as páginas do template');
+        // Sem templates no repositório: começa pelo em branco (só a página inicial)
+        const blank = await until(() => preview.current, p => Boolean(p?.files.some(f => f.origin === 'template')), 'prévia sem as páginas do template');
+        equal(blank!.files.filter(f => f.origin === 'template').map(f => f.path).join(), 'docs/index.md', 'o padrão não é o em branco');
+        await preview.send({ type: 'set', field: 'template', value: 'golden-path' });
+        const plan = await until(() => preview.current, p => (p?.files.filter(f => f.origin === 'template').length ?? 0) > 1, 'prévia sem as páginas do golden path');
         const view = (preview as unknown as { state(): { view: { siteName: string; owner: string; ownerFrom?: string } } }).state().view;
         equal(view.siteName, 'Pagamentos', 'nome do título do README');
         equal(`${view.owner} (${view.ownerFrom})`, 'time-pagamentos (CODEOWNERS)', 'dono do CODEOWNERS');

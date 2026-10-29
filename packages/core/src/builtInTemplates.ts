@@ -29,12 +29,16 @@ import serviceHomePt from '../templates/pt-br/service-home.md?raw';
 import troubleshootingPt from '../templates/pt-br/troubleshooting.md?raw';
 import tutorialPt from '../templates/pt-br/tutorial.md?raw';
 import wikiPagePt from '../templates/pt-br/wiki-page.md?raw';
+import blankHomeEn from '../templates/en/sites/blank/index.md?raw';
+import blankSiteEn from '../templates/en/sites/blank/template.yml?raw';
 import goldenPathSiteEn from '../templates/en/sites/golden-path/template.yml?raw';
 import serviceDocsAdrEn from '../templates/en/sites/service-docs/adr-0001.md?raw';
 import serviceDocsSiteEn from '../templates/en/sites/service-docs/template.yml?raw';
 import teamWikiGuidesEn from '../templates/en/sites/team-wiki/guides.md?raw';
 import teamWikiHomeEn from '../templates/en/sites/team-wiki/home.md?raw';
 import teamWikiSiteEn from '../templates/en/sites/team-wiki/template.yml?raw';
+import blankHomePt from '../templates/pt-br/sites/blank/index.md?raw';
+import blankSitePt from '../templates/pt-br/sites/blank/template.yml?raw';
 import goldenPathSitePt from '../templates/pt-br/sites/golden-path/template.yml?raw';
 import serviceDocsAdrPt from '../templates/pt-br/sites/service-docs/adr-0001.md?raw';
 import serviceDocsSitePt from '../templates/pt-br/sites/service-docs/template.yml?raw';
@@ -78,14 +82,19 @@ export const BUILT_IN_TEMPLATES: Record<TemplateLanguage, Record<string, string>
   },
 };
 
-/** Templates de site da extensão, por língua e id: os arquivos de cada pasta, pelo nome (`template.yml` e os `source`). */
+/**
+ * Templates de site da extensão, por língua e id: os arquivos de cada pasta, pelo nome (`template.yml` e os `source`).
+ * O em branco vem primeiro: é o padrão quando o repositório e a empresa não têm templates.
+ */
 export const BUILT_IN_SITES: Record<TemplateLanguage, Record<string, Record<string, string>>> = {
   'en': {
+    'blank': { 'template.yml': blankSiteEn, 'index.md': blankHomeEn },
     'golden-path': { 'template.yml': goldenPathSiteEn },
     'service-docs': { 'template.yml': serviceDocsSiteEn, 'adr-0001.md': serviceDocsAdrEn },
     'team-wiki': { 'template.yml': teamWikiSiteEn, 'home.md': teamWikiHomeEn, 'guides.md': teamWikiGuidesEn },
   },
   'pt-br': {
+    'blank': { 'template.yml': blankSitePt, 'index.md': blankHomePt },
     'golden-path': { 'template.yml': goldenPathSitePt },
     'service-docs': { 'template.yml': serviceDocsSitePt, 'adr-0001.md': serviceDocsAdrPt },
     'team-wiki': { 'template.yml': teamWikiSitePt, 'home.md': teamWikiHomePt, 'guides.md': teamWikiGuidesPt },

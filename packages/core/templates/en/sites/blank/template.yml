@@ -1,0 +1,7 @@
+version: 1
+name: Blank
+description: Only the home page, to start from scratch
+files:
+  - path: index.md
+    title: "{{site_name}}"
+    source: index.md

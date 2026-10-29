@@ -166,6 +166,7 @@ written:
 
 | Site | Pages |
 |------|-------|
+| Blank (the default) | Only the home page, to start from scratch |
 | Service docs | Service home page, Architecture, Operations and support, and the first ADR |
 | Team wiki | Home (how to use the wiki), Onboarding, Guides, an example wiki page |
 | Golden path | Overview, Getting started tutorial, Troubleshooting |

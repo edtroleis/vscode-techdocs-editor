@@ -63,7 +63,9 @@ describe('templates da extensão', () => {
         expect(Object.keys(BUILT_IN_SITES[language][id]).sort(), `${language}/${id}`).toEqual(readdirSync(join(dir, language, 'sites', id)).sort());
       }
     }
-    expect(Object.keys(BUILT_IN_SITES.en)).toHaveLength(3);
+    expect(Object.keys(BUILT_IN_SITES.en)).toHaveLength(4);
+    // O em branco é o primeiro (o padrão)
+    expect(Object.keys(BUILT_IN_SITES.en)[0]).toBe('blank');
   });
 
   for (const language of ['en', 'pt-br'] as const) {
