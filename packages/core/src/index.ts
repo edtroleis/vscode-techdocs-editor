@@ -8,6 +8,7 @@ export * from './merge3';
 export * from './mkdocs';
 export * from './pageDates';
 export * from './publish';
+export * from './remoteSession';
 export * from './repoConfig';
 export * from './setup';
 export * from './siteCheck';
