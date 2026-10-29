@@ -44,6 +44,8 @@ All notable changes to the TechDocs Editor extension. The format follows
   offers to write one with the current menu.
 - **Blank** site template, first in the list and the default when the repository and the company have no
   templates: only `mkdocs.yml` and a home page with the site name.
+- **New documentation:** with no owner found (`CODEOWNERS`, `catalog-info.yaml`), `catalog-info.yaml` starts
+  unchecked, so **Create** works right away. Check it and fill in the owner to create it too.
 - **Filter** button in the tree title, and a ⚠ on pages with formatting fixes (the tip says what to do).
 
 ### Changed

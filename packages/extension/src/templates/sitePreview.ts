@@ -79,6 +79,8 @@ type Context = {
   ownerFrom?: string;
 };
 
+const CATALOG_FILE = 'catalog-info.yaml';
+
 /**
  * Prévia da documentação nova (layout validado em 2026-10-29), na barra lateral TechDocs: template, nome, dono e
  * README no topo; a árvore dos arquivos ou o menu, que dá para desmarcar, reordenar, renomear e completar; o texto de
@@ -168,6 +170,8 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
     this.owner = owner ?? '';
     this.readmeUse = 'copy';
     this.edits = emptyEdits();
+    // Sem dono achado, o catalog-info.yaml começa desmarcado: o Criar já vale (quem quer o catálogo marca e preenche)
+    if (this.context.catalogName !== undefined && !owner && catalogMode !== 'required') this.edits.off = [CATALOG_FILE];
     this.selected = 'docs/index.md';
     this.error = undefined;
     this.busy = false;
@@ -200,9 +204,9 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
     switch (message.type) {
       case 'set':
         if (message.field === 'template') {
-          // Outro template: o que foi mexido nas páginas dele não vale mais; as páginas acrescentadas ficam
+          // Outro template: o que foi mexido nas páginas dele não vale mais; as páginas acrescentadas e o catálogo ficam
           this.template = message.value;
-          this.edits = { ...emptyEdits(), added: edits.added };
+          this.edits = { ...emptyEdits(), added: edits.added, off: edits.off.filter(p => p === CATALOG_FILE) };
         } else if (message.field === 'siteName') this.siteName = message.value;
         else if (message.field === 'owner') this.owner = message.value;
         else this.readmeUse = message.value as ReadmeUse;

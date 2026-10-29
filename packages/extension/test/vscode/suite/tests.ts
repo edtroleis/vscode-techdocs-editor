@@ -999,6 +999,23 @@ export function defineTests() {
       }
     });
 
+    test('prévia sem dono achado: catalog-info.yaml começa desmarcado e continua ao trocar de template', async () => {
+      const { preview } = await api();
+      await vscode.workspace.fs.writeFile(file('sem-dono/README.md'), new TextEncoder().encode('# Sem dono\n'));
+      try {
+        await preview.open(file('sem-dono'));
+        const catalog = () => preview.current?.files.find(f => f.path === 'catalog-info.yaml');
+        await until(catalog, Boolean, 'prévia sem o catalog-info.yaml');
+        equal(catalog()!.included, false, 'catalog-info.yaml marcado sem dono');
+        await preview.send({ type: 'set', field: 'template', value: 'golden-path' });
+        await until(() => preview.current, p => (p?.files.filter(f => f.origin === 'template').length ?? 0) > 1, 'prévia sem as páginas do golden path');
+        equal(catalog()!.included, false, 'trocar de template marcou o catalog-info.yaml');
+      } finally {
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await remove('sem-dono');
+      }
+    });
+
     test('no fim, sem catalog-info.yaml: pergunta se o Backstage usa; "não" grava catalog: off e não fala mais nele', async () => {
       const { newSite } = await api();
       await vscode.workspace.fs.writeFile(file('catalogo/docs/index.md'), new TextEncoder().encode('# Catálogo\n'));
