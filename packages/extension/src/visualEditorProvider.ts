@@ -4,7 +4,7 @@ import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
 import type { RemoteFileSystem } from './remote/remoteFs';
 import { DEFAULT_MAX_IMAGE_MB, imageProblem, imageTarget } from './imageUpload';
-import type { HostMessage, WebviewLabels, WebviewMessage } from './protocol';
+import type { HostMessage, LinkPageView, WebviewLabels, WebviewMessage } from './protocol';
 import type { Strip, StripAction } from './publish/strip';
 import { hasConflictMarkers } from './docsSite';
 import { rebase } from './rebase';
@@ -33,11 +33,15 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     private readonly remoteFs?: RemoteFileSystem,
   ) {}
 
+  /** Páginas do site de uma página, para a caixa de link (a árvore da Documentação, que já as conhece). */
+  linkPages: (uri: vscode.Uri) => LinkPageView[] = () => [];
+
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
     const session = new EditorSession(document, panel, this.extensionUri, this.lint, this.sites, this.remoteFs, {
       strip: () => this.strips.get(key),
       action: action => this.onStripActionEmitter.fire({ uri: document.uri, action }),
+      linkPages: () => this.linkPages(document.uri),
     });
     this.sessions.set(key, session);
     panel.onDidDispose(() => {
@@ -93,7 +97,7 @@ export class EditorSession {
     private readonly lint: LintService,
     private readonly sites: LocalSites,
     private readonly remoteFs?: RemoteFileSystem,
-    private readonly status?: { strip(): Strip | undefined; action(action: StripAction): void },
+    private readonly status?: { strip(): Strip | undefined; action(action: StripAction): void; linkPages?(): LinkPageView[] },
   ) {
     this.ready = new Promise(resolve => (this.markReady = resolve));
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
@@ -221,6 +225,9 @@ export class EditorSession {
         return;
       case 'showLine':
         void this.showLine(message.line);
+        return;
+      case 'linkPages':
+        this.post({ type: 'linkPages', id: message.id, pages: this.status?.linkPages?.() ?? [] });
         return;
       case 'uploadImage':
         void this.uploadImage(message.name, message.mime, message.data).then(

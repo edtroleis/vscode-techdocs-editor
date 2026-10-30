@@ -15,7 +15,7 @@ import {
   searchTextFrom,
   useVisualSearch,
 } from '@edtroleis/techdocs-editor-ui';
-import type { HostMessage, ProblemView, WebviewLabels, WebviewMessage } from '../src/protocol';
+import type { HostMessage, LinkPageView, ProblemView, WebviewLabels, WebviewMessage } from '../src/protocol';
 import type { Strip } from '../src/publish/strip';
 import { rebase } from '../src/rebase';
 import './webview.css';
@@ -40,6 +40,18 @@ async function uploadImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     uploads.set(id, { resolve, reject });
     post({ type: 'uploadImage', id, name: file.name, mime: file.type, data });
+  });
+}
+
+const linkRequests = new Map<number, (pages: LinkPageView[]) => void>();
+let nextLinkRequest = 0;
+
+/** Pede ao host as páginas do site para a caixa de link (a cada vez que ela abre: páginas novas entram). */
+function linkPages(): Promise<LinkPageView[]> {
+  const id = nextLinkRequest++;
+  return new Promise(resolve => {
+    linkRequests.set(id, resolve);
+    post({ type: 'linkPages', id });
   });
 }
 
@@ -102,6 +114,10 @@ function App({ content }: { content: Content }) {
         }
         case 'lint':
           setProblems(message.problems);
+          return;
+        case 'linkPages':
+          linkRequests.get(message.id)?.(message.pages);
+          linkRequests.delete(message.id);
           return;
         case 'uploaded': {
           const pending = uploads.get(message.id);
@@ -207,6 +223,7 @@ function App({ content }: { content: Content }) {
       onLineClick={line => post({ type: 'showLine', line })}
       lineTitle={lineTitle}
       readOnly={content.readOnly}
+      linkPages={linkPages}
     />
     <Problems problems={problems} labels={content.labels} />
     </>

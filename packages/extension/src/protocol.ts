@@ -15,6 +15,9 @@ export type WebviewLabels = {
   more: string;
 };
 
+/** Página do site para a caixa de link do editor visual (ver ui/src/linkPages.ts). */
+export type LinkPageView = { title: string; href: string; detail: string; section?: string; outside?: boolean };
+
 export type HostMessage =
   /** Conteúdo do arquivo ao abrir (formato do repositório, com `\n`). */
   | { type: 'init'; text: string; language: string; baseUri: string; labels: WebviewLabels; readOnly?: boolean }
@@ -33,6 +36,8 @@ export type HostMessage =
   | { type: 'lint'; problems: ProblemView[] }
   /** Resposta a `uploadImage`: o link para pôr no Markdown, ou o motivo da recusa (já mostrado ao usuário). */
   | { type: 'uploaded'; id: number; link?: string; error?: string }
+  /** Resposta a `linkPages`: as outras páginas do site, com o link relativo a esta. */
+  | { type: 'linkPages'; id: number; pages: LinkPageView[] }
   /** Testes: devolve o que o editor gravaria agora (`fromEditor` do Markdown do editor). */
   | { type: 'test:getSaved'; id: number }
   /** Testes: insere Markdown no cursor, como se a pessoa digitasse. */
@@ -57,6 +62,8 @@ export type WebviewMessage =
   | { type: 'showLine'; line: number }
   /** Imagem escolhida no editor visual: o host grava em `<docs>/assets/` e responde com `uploaded`. */
   | { type: 'uploadImage'; id: number; name: string; mime: string; data: Uint8Array }
+  /** A caixa de link abriu: o host responde com `linkPages`. */
+  | { type: 'linkPages'; id: number }
   /**
    * Mudança feita pela pessoa no editor visual: o texto antes e depois dela (formato do repositório,
    * com `\n`). O host aplica só essa diferença ao documento como ele está (ver rebase.ts).

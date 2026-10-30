@@ -35,6 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
   const treeActions = new TreeActions();
   const docs = new DocsTreeView(sites, remotes, context.workspaceState, treeActions, lint);
   treeActions.use(docs);
+  provider.linkPages = uri => docs.linkTargets(uri);
   const conflicts = new ConflictPanel(context.extensionUri);
   const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs, conflicts);
   // A faixa de estado da página (rascunho, em revisão…) no editor visual, e os botões dela

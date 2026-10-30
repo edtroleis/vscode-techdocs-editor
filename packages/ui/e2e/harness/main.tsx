@@ -95,5 +95,12 @@ createRoot(document.getElementById('root')!).render(
       return url ? PICTURE : '';
     }}
     problemLines={[]}
+    // Páginas do site para a caixa de link, como o host manda (a página aberta é guias/deploy.md)
+    linkPages={async () => [
+      { title: 'Início', href: '../index.md', detail: 'index.md' },
+      { title: 'Referência da API', href: '../referencia-da-api.md', detail: 'referencia-da-api.md' },
+      { title: 'Rotina de backup', href: 'backup.md', detail: 'guias/backup.md', section: 'Guias' },
+      { title: 'Rascunho', href: '../rascunho.md', detail: 'rascunho.md', outside: true },
+    ]}
   />,
 );

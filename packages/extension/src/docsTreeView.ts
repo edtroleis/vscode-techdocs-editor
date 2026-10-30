@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
-import { DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, parseRemoteUri, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
+import { dirOf, DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, parseRemoteUri, relativePath, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
 import { repoOf } from './chooseSites';
 import type { DocsSite } from './docsSite';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
+import type { LinkPageView } from './protocol';
 import { invalidatePages, pickSite, RECENT_COUNT } from './sitePicker';
 import { remoteUri } from './remote/remoteFs';
 import { type RemoteEntry, type RemoteRepos, SignInRequiredError } from './remote/remoteRepos';
@@ -309,6 +310,35 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   /** Item da página na árvore (testes e "revelar a página aberta"). */
   pageItem(uri: vscode.Uri): DocsItem | undefined {
     return this.pages.get(uri.toString());
+  }
+
+  /**
+   * As outras páginas do site da página `uri`, na ordem do menu (as fora dele no fim), com o link relativo a ela:
+   * a caixa de link do editor visual. Vazio se a página não está na árvore (outro site, ou a árvore ainda montando).
+   */
+  linkTargets(uri: vscode.Uri): LinkPageView[] {
+    let site = this.pageItem(uri);
+    while (site?.parent) site = site.parent;
+    if (!site) return [];
+    const from = dirOf(uri.path);
+    const found: LinkPageView[] = [];
+    const walk = (items: DocsItem[]) =>
+      items.forEach(item => {
+        if (item.kind === 'page' && item.uri && item.uri.toString() !== uri.toString()) {
+          found.push({
+            title: item.label,
+            // Espaço no nome do arquivo quebraria o link do Markdown
+            href: relativePath(from, item.uri.path).replace(/ /g, '%20'),
+            detail: item.path ?? item.uri.path.split('/').pop()!,
+            ...(item.parent?.kind === 'section' && { section: item.parent.label }),
+            ...(item.outside && { outside: true }),
+          });
+        }
+        walk(item.children);
+      });
+    walk(site.children.filter(item => item.kind !== 'notInNav'));
+    walk(site.children.filter(item => item.kind === 'notInNav'));
+    return found;
   }
 
   dispose() {

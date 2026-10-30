@@ -29,6 +29,7 @@ export type EditorText = {
   inlineCode: string;
   link: string;
   linkPlaceholder: string;
+  linkOutsideMenu: string;
   topBar: { bold: string; italic: string; table: string; divider: string; undo: string; redo: string };
   uploadImage: string;
   uploadImageInline: string;
@@ -61,6 +62,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
     inlineCode: k('inlineCode'),
     link: k('link'),
     linkPlaceholder: k('linkPlaceholder'),
+    linkOutsideMenu: k('linkOutsideMenu'),
     topBar: {
       bold: k('topBar.bold'),
       italic: k('topBar.italic'),

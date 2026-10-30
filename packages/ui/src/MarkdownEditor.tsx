@@ -11,6 +11,7 @@ import { listCaretFixPlugin } from './listCaretFix';
 import { imageAltPlugin } from './imageAlt';
 import { headingLevelFixPlugin } from './headingLevelFix';
 import { tableTabRowPlugin } from './tableTabRow';
+import { attachLinkPages, LinkPage } from './linkPages';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
 import { buildTopBar } from './topBar';
 import { EditorText, headingOptions, labelTopBar, selectionToolbar, slashMenu } from './labels';
@@ -91,6 +92,8 @@ type Props = {
   lineTitle?: (line: number, problem: boolean) => string | undefined;
   /** Só leitura: o texto aparece formatado, mas não pode ser mudado (sem permissão de escrita, M8). */
   readOnly?: boolean;
+  /** Páginas do site para a caixa de link (lidas a cada vez que ela abre); sem isto, a caixa só aceita endereço. */
+  linkPages?: () => Promise<LinkPage[]>;
 };
 
 /**
@@ -112,6 +115,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       onLineClick,
       lineTitle,
       readOnly = false,
+      linkPages,
     },
     ref,
   ) => {
@@ -140,6 +144,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   historyRef.current = history;
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
+  const linkPagesRef = useRef(linkPages);
+  linkPagesRef.current = linkPages;
   // Último Markdown repassado (ou recebido por setMarkdown): só o que for diferente é edição nova
   const lastRef = useRef<string>();
   /** Troca feita por setMarkdown em andamento: não é edição da pessoa. */
@@ -283,6 +289,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       external[action]();
     };
     root.current?.addEventListener('keydown', historyKeys, true);
+    const detachLinkPages = root.current
+      ? attachLinkPages(
+          root.current,
+          () => crepe.editor.ctx.get(editorViewCtx),
+          async () => (await linkPagesRef.current?.()) ?? [],
+          () => ({ outside: textRef.current.linkOutsideMenu }),
+        )
+      : () => {};
     // Imagens carregando, janela redimensionada etc. mudam a posição dos blocos
     const resize = new ResizeObserver(() => updateMarks.current());
     // Antes de criar: o Crepe usa o valor ao montar a view
@@ -299,6 +313,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
     return () => {
       rootElement?.removeEventListener('click', openUploader);
       rootElement?.removeEventListener('keydown', historyKeys, true);
+      detachLinkPages();
       resize.disconnect();
       cancelAnimationFrame(frame);
       created.then(() => crepe.destroy());

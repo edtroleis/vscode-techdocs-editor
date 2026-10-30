@@ -494,6 +494,23 @@ export function defineTests() {
       equal(docs.getTreeItem(page!).command?.command, 'techdocsEditor.openVisual', 'clicar na página não a abre no editor visual');
     });
 
+    test('caixa de link: as outras páginas do site, com o link relativo à página aberta', async () => {
+      const { docs } = await api();
+      await docs.ready;
+      await until(() => siteItem(docs, 'wiki'), Boolean, 'site wiki não está na árvore');
+      const uri = file('wiki/docs/guias/imagens.md');
+      await until(() => docs.pageItem(uri), Boolean, 'página sem item');
+      equal(
+        JSON.stringify(docs.linkTargets(uri)),
+        JSON.stringify([
+          { title: 'Wiki de Demonstração', href: '../index.md', detail: 'index.md' },
+          { title: 'Primeiros passos', href: 'primeiros-passos.md', detail: 'guias/primeiros-passos.md', section: 'Guias' },
+          { title: 'Processo de aprovação', href: '../processos/aprovacao.md', detail: 'processos/aprovacao.md', section: 'Processos' },
+        ]),
+        'páginas da caixa de link',
+      );
+    });
+
     test('site com nav: na ordem do nav, página que não existe e páginas fora do nav', async () => {
       const { docs } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
