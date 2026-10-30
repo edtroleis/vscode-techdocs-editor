@@ -52,12 +52,11 @@ test('repositório do GitHub vazio: criar a doc e publicar', async ({ vscode: { 
     await pause(page, 1_500);
   });
 
-  await story.step('Criar, e dizer que não há Backstage', async () => {
+  await story.step('Criar (sem Backstage no workspace, sem pergunta)', async () => {
     const panel = await previewPanel(page);
     await click(page, panel.getByRole('button', { name: 'Create' }));
-    const question = quickInput(page).filter({ hasText: 'Does your Backstage use a catalog-info.yaml' });
-    await expect(question).toBeVisible();
-    await click(page, question.locator('.monaco-list-row', { hasText: /^No\s*Backstage registers/ }));
+    // Sem Backstage no workspace (nenhum catalog-info.yaml), não há pergunta sobre o arquivo depois do Criar
+    await story.check('sem pergunta sobre o catalog-info.yaml', () => expect(quickInput(page).filter({ hasText: 'Does your Backstage use a catalog-info.yaml' })).toBeHidden());
     await expect(page.locator('.tab.active')).toContainText('index.md', { timeout: 30_000 });
     expect(read('mkdocs.yml')).toContain('site_name: Cenário Vazio');
     await expect(treeRow(page, 'Como contribuir')).toBeVisible();

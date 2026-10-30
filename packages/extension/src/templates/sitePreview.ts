@@ -422,7 +422,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
     const home = plan.files.find(f => f.included && f.path.startsWith(`${DOCS_DIR}/`) && isHome(f.path.slice(DOCS_DIR.length + 1)))
       ?? plan.files.find(f => f.included && f.path.startsWith(`${DOCS_DIR}/`));
     await this.close();
-    await this.newSite.finish(context.root, mkdocs, home && vscode.Uri.joinPath(context.root, home.path));
+    await this.newSite.finish(context.root, mkdocs, home && vscode.Uri.joinPath(context.root, home.path), undefined, this.catalogToggled);
   }
 
   private fail(message: string) {

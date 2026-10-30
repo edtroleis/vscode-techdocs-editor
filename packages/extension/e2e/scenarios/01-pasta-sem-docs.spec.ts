@@ -63,14 +63,8 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
   await story.step('Criar: os arquivos são gravados e a página inicial abre no editor visual', async () => {
     const panel = await previewPanel(page);
     await click(page, panel.getByRole('button', { name: 'Create' }));
-    // Sem catalog-info.yaml, a extensão pergunta uma vez se o Backstage usa o arquivo: aqui não há Backstage
-    const question = quickInput(page).filter({ hasText: 'Does your Backstage use a catalog-info.yaml' });
-    await expect(question).toBeVisible();
-    story.suggest(
-      'Depois do Criar, uma pergunta a mais: "Does your Backstage use a catalog-info.yaml in the repository?". O painel já mostrava o catalog-info.yaml desmarcado; a pergunta podia estar no painel, junto do arquivo.',
-    );
-    await pause(page);
-    await click(page, question.locator('.monaco-list-row', { hasText: /^No\s*Backstage registers/ }));
+    // Sem Backstage no workspace (nenhum catalog-info.yaml), não há pergunta sobre o arquivo depois do Criar
+    await story.check('sem pergunta sobre o catalog-info.yaml', () => expect(quickInput(page).filter({ hasText: 'Does your Backstage use a catalog-info.yaml' })).toBeHidden());
     await expect(page.locator('.tab.active')).toContainText('index.md', { timeout: 30_000 });
     await editorOf(page);
     for (const file of ['mkdocs.yml', 'docs/index.md', 'docs/arquitetura.md', 'docs/como-rodar-localmente.md', 'docs/referencia-da-api.md', '.markdownlint.yaml']) {

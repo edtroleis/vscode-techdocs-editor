@@ -21,6 +21,14 @@ export function repositoryFolder(uri?: vscode.Uri): vscode.Uri | undefined {
 }
 
 /**
+ * Há algum `catalog-info.yaml` no workspace: sinal de que o Backstage é usado. Sem ele, o modo `auto` não fala do
+ * arquivo. Limite acima de 1: no navegador, o findFiles com maxResults 1 não acha nada.
+ */
+export async function backstageInWorkspace(): Promise<boolean> {
+  return (await vscode.workspace.findFiles('**/catalog-info.yaml', '**/node_modules/**', 5)).length > 0;
+}
+
+/**
  * O modo do `catalog-info.yaml` na conferência (spec 04): o `.techdocs-editor.yaml` do repositório vence a
  * configuração `techdocsEditor.catalog`. Num workspace não confiável, nem o arquivo nem a configuração da pasta
  * valem: só a do usuário.

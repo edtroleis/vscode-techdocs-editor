@@ -14,7 +14,7 @@ import {
   TemplateField,
   today,
 } from '@edtroleis/techdocs-editor-core';
-import { catalogModeFor, type CatalogOptions, type CatalogUsageAnswer, repositoryFolder } from '../catalogOptions';
+import { backstageInWorkspace, catalogModeFor, type CatalogOptions, type CatalogUsageAnswer, repositoryFolder } from '../catalogOptions';
 import type { ProposedChanges } from '../proposedChange';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import type { CentralTemplates } from './centralTemplates';
@@ -365,15 +365,23 @@ export class NewSiteCommand {
    * Depois de criar o site: a anotação do TechDocs a pôr no `catalog-info.yaml` (TP11). Sem o arquivo e sem o modo
    * definido, pergunta uma vez se o Backstage usa o `catalog-info.yaml` do repositório: "não" grava `catalog: off`
    * e não fala mais nele; "sim" grava `required` e leva à Verificação, que oferece criar o arquivo. A pergunta vem
-   * antes de abrir a página `home` (o editor visual abrindo tira o foco da lista).
+   * antes de abrir a página `home` (o editor visual abrindo tira o foco da lista). Sem nenhum `catalog-info.yaml` no
+   * workspace (sem Backstage), ou com a caixa do arquivo mexida na prévia (`catalogDecided`), não pergunta.
    */
-  async finish(root: vscode.Uri, mkdocs: vscode.Uri, home: vscode.Uri | undefined, answers?: NewSiteAnswers): Promise<NewSiteResult> {
+  async finish(
+    root: vscode.Uri,
+    mkdocs: vscode.Uri,
+    home: vscode.Uri | undefined,
+    answers?: NewSiteAnswers,
+    catalogDecided = false,
+  ): Promise<NewSiteResult> {
     const annotation = await this.catalogAnnotation(root);
     const folder = repositoryFolder(root);
     const current = await catalogModeFor(folder);
     let mode = current.mode;
-    if (annotation && !annotation.catalog && current.source === 'default' && this.catalogOptions && (!answers || answers.catalog)) {
-      mode = (await this.catalogOptions.askUsage(folder, answers?.catalog)) ?? 'auto';
+    const ask = annotation && !annotation.catalog && current.source === 'default' && this.catalogOptions && (!answers || answers.catalog) && !catalogDecided;
+    if (ask && (await backstageInWorkspace())) {
+      mode = (await this.catalogOptions!.askUsage(folder, answers?.catalog)) ?? 'auto';
     }
     if (home) await vscode.commands.executeCommand('vscode.openWith', home, VisualEditorProvider.viewType);
     if (mode === 'off') return { mkdocs };

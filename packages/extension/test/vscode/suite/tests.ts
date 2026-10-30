@@ -1095,18 +1095,25 @@ export function defineTests() {
       }
     });
 
-    test('no fim, sem catalog-info.yaml: pergunta se o Backstage usa; "não" grava catalog: off e não fala mais nele', async () => {
+    test('no fim, sem catalog-info.yaml: pergunta se o Backstage usa (só com Backstage no workspace); "não" grava catalog: off', async () => {
       const { newSite } = await api();
       await vscode.workspace.fs.writeFile(file('catalogo/docs/index.md'), new TextEncoder().encode('# Catálogo\n'));
       const config = '.techdocs-editor.yaml';
       const before = await read(config).catch(() => undefined);
       try {
+        // Sem nenhum catalog-info.yaml no workspace (sem Backstage), não pergunta nem grava nada
+        await newSite.run(undefined, { folder: file('catalogo'), adopt: true, values: { site_name: 'Catálogo' }, catalog: 'no' });
+        equal(await read(config).catch(() => before), before, 'perguntou sem Backstage no workspace');
+        await remove('catalogo/mkdocs.yml');
+        // Com o de outro repositório, pergunta
+        await vscode.workspace.fs.writeFile(file('catalogo-outro/catalog-info.yaml'), new TextEncoder().encode('kind: Component\n'));
         const result = await newSite.run(undefined, { folder: file('catalogo'), adopt: true, values: { site_name: 'Catálogo' }, catalog: 'no' });
         ok(result, 'não criou');
         equal(result!.annotation, undefined, 'com catalog: off, não há anotação a sugerir');
         ok((await read(config)).includes('catalog: off'), `${config} sem catalog: off`);
       } finally {
         await remove('catalogo');
+        await remove('catalogo-outro');
         if (before === undefined) await remove(config);
         else await vscode.workspace.fs.writeFile(file(config), new TextEncoder().encode(before));
       }
