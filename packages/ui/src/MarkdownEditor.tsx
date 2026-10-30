@@ -10,6 +10,7 @@ import { ExternalHistory, externalHistoryCtx } from './externalHistory';
 import { listCaretFixPlugin } from './listCaretFix';
 import { imageAltPlugin } from './imageAlt';
 import { headingLevelFixPlugin } from './headingLevelFix';
+import { tableTabRowPlugin } from './tableTabRow';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
 import { buildTopBar } from './topBar';
 import { EditorText, headingOptions, labelTopBar, selectionToolbar, slashMenu } from './labels';
@@ -194,6 +195,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       })
       .use(defaultCodeLanguagePlugin)
       .use(headingLevelFixPlugin)
+      .use(tableTabRowPlugin)
       .use(inlineCodeTypingPlugin)
       .use(listCaretFixPlugin)
       .use(visualSearchPlugin)
