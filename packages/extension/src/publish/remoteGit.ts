@@ -65,6 +65,14 @@ export class RemoteGit implements LocalGit {
     return paths.includes(session.filePath) && session.contentSha !== this.committed ? [session.filePath] : [];
   }
 
+  changedFiles() {
+    return [];
+  }
+
+  tracked() {
+    return true;
+  }
+
   stagedOutside() {
     return [];
   }

@@ -11,12 +11,22 @@ export function configuredScopes(): string[] {
 }
 
 /**
+ * Token dos cenários de usuário (e2e/scenarios): o VS Code de teste não tem login no GitHub e o login abre o navegador.
+ * Só a extensão em desenvolvimento lê a variável (extension.ts); o resto do caminho (git, API, PR) é o de verdade.
+ */
+let e2eToken: string | undefined;
+export function useE2eToken(token: string | undefined) {
+  e2eToken = token || undefined;
+}
+
+/**
  * Token do GitHub da sessão do VS Code, lido a cada chamada (A-4, A-6: nunca guardado pela extensão).
  * Num 401, o cliente pede `renew`: sessão nova e uma nova tentativa.
  */
 export function sessionTokenSource(host: string, scopes = configuredScopes()): TokenSource {
   const provider = authProviderFor(host);
   return async ({ renew }) => {
+    if (e2eToken) return e2eToken;
     const session = renew
       ? await vscode.authentication.getSession(provider, scopes, {
           forceNewSession: { detail: vscode.l10n.t('GitHub did not accept the saved sign-in. Sign in again to continue.') },
@@ -28,6 +38,7 @@ export function sessionTokenSource(host: string, scopes = configuredScopes()): T
 
 /** Já há login no GitHub, sem pedir nada (A-1: o login só é pedido quando a pessoa age). */
 export async function hasSession(host: string, scopes = configuredScopes()): Promise<boolean> {
+  if (e2eToken) return true;
   return Boolean(await vscode.authentication.getSession(authProviderFor(host), scopes, { silent: true }));
 }
 

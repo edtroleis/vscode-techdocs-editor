@@ -4,7 +4,7 @@ import type { LocalGit, PageDoc } from './types';
 
 // O pedaço da API da extensão Git do VS Code (`vscode.git`, versão 1) que o painel usa.
 // Tipos completos: https://github.com/microsoft/vscode/blob/main/extensions/git/src/api/git.d.ts
-type Change = { readonly uri: vscode.Uri };
+type Change = { readonly uri: vscode.Uri; readonly status?: number };
 type Branch = { readonly name?: string; readonly commit?: string; readonly type?: number };
 type Repository = {
   readonly rootUri: vscode.Uri;
@@ -42,6 +42,9 @@ export async function gitApi(): Promise<GitApi | undefined> {
 }
 
 const LOCAL_BRANCH = 0;
+/** `Status` da API do Git: arquivo novo no índice e arquivo fora do Git. */
+const INDEX_ADDED = 1;
+const UNTRACKED = 7;
 
 /** O Git do clone pela API do `vscode.git` (LC5): passa pela autenticação e pelos hooks que o VS Code já usa. */
 export class VscodeGit implements LocalGit {
@@ -92,12 +95,23 @@ export class VscodeGit implements LocalGit {
     return paths.filter(p => changed.has(p));
   }
 
+  changedFiles() {
+    const { indexChanges, workingTreeChanges, untrackedChanges = [] } = this.repository.state;
+    return [...new Set([...indexChanges, ...workingTreeChanges, ...untrackedChanges].map(c => this.relative(c.uri)))];
+  }
+
+  tracked(path: string) {
+    const { indexChanges, workingTreeChanges, untrackedChanges = [] } = this.repository.state;
+    const isNew = (c: Change) => c.status === INDEX_ADDED || c.status === UNTRACKED;
+    return ![...indexChanges.filter(isNew), ...workingTreeChanges.filter(isNew), ...untrackedChanges].some(c => this.relative(c.uri) === path);
+  }
+
   stagedOutside(paths: string[]) {
     return this.repository.state.indexChanges.map(c => this.relative(c.uri)).filter(p => !paths.includes(p));
   }
 
-  async createBranch(name: string) {
-    await this.repository.createBranch(name, true);
+  async createBranch(name: string, from?: string) {
+    await this.repository.createBranch(name, true, from);
   }
 
   async checkout(name: string) {
@@ -134,6 +148,7 @@ export class DocumentPage implements PageDoc {
     private readonly document: vscode.TextDocument,
     readonly path: string,
     readonly docsDir: string,
+    readonly mkdocs?: string,
   ) {}
 
   text() {

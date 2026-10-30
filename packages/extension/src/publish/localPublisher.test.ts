@@ -27,9 +27,11 @@ class FakeGit implements LocalGit {
   headMessage = async () => this.head.message;
   hasLocalBranch = async (name: string) => this.branches.has(name);
   changed = (paths: string[]) => paths.filter(p => this.work[p] !== undefined && this.work[p] !== this.head.files[p]);
+  changedFiles = () => Object.keys(this.work).filter(p => this.work[p] !== this.head.files[p]);
+  tracked = (path: string) => this.head.files[path] !== undefined;
   stagedOutside = (paths: string[]) => [...this.staged].filter(p => !paths.includes(p));
-  async createBranch(name: string) {
-    this.branches.set(name, this.head);
+  async createBranch(name: string, from?: string) {
+    this.branches.set(name, from ? this.branches.get(from)! : this.head);
     this.current = name;
   }
   async checkout(name: string) {
@@ -63,7 +65,12 @@ class FakeGit implements LocalGit {
 /** Página aberta no editor: texto não salvo até `save`. */
 class FakePage implements PageDoc {
   buffer: string | undefined;
-  constructor(private readonly git: FakeGit, readonly path = 'docs/index.md', readonly docsDir = 'docs') {}
+  constructor(
+    private readonly git: FakeGit,
+    readonly path = 'docs/index.md',
+    readonly docsDir = 'docs',
+    readonly mkdocs?: string,
+  ) {}
   text = () => this.buffer ?? this.git.work[this.path];
   get dirty() {
     return this.buffer !== undefined && this.buffer !== this.git.work[this.path];
@@ -99,11 +106,18 @@ async function setup({
   files = {},
   config = {},
   prepare,
-}: { files?: Record<string, string>; config?: Partial<PublishConfig>; prepare?: (github: FakeGitHub) => void } = {}) {
+  pagePath,
+  mkdocs,
+}: { files?: Record<string, string>; config?: Partial<PublishConfig>; prepare?: (github: FakeGitHub) => void; pagePath?: string; mkdocs?: string } = {}) {
   const github = new FakeGitHub({ 'docs/index.md': INDEX, 'docs/outra.md': OTHER, ...files });
   prepare?.(github);
   const git = new FakeGit(github);
-  const page = new FakePage(git);
+  const page = new FakePage(git, pagePath, 'docs', mkdocs);
+  return { github, git, page, ...(await publisherFor(github, git, page, config)) };
+}
+
+/** O painel de uma página no mesmo clone. */
+async function publisherFor(github: FakeGitHub, git: FakeGit, page: FakePage, config: Partial<PublishConfig> = {}) {
   const client = new GitHubClient({ ...userTransport(github.token), fetch: github.fetch }, github.slug);
   let view: PublishView | undefined;
   const confirm = vi.fn(async () => true);
@@ -121,7 +135,7 @@ async function setup({
     onChange: v => (view = v),
   });
   await publisher.load();
-  return { github, git, page, publisher, confirm, workflowClient, view: () => view! };
+  return { publisher, confirm, workflowClient, view: () => view! };
 }
 
 const BRANCH = 'docs/pessoa-teste/docs-index';
@@ -196,6 +210,63 @@ describe('painel de publicação no modo local', () => {
     expect(files['docs/assets/1-foto.png']).toBe('PNG');
     expect(files['docs/assets/2-outra.png']).toBeUndefined();
     expect(files['docs/outra.md']).toBe(OTHER);
+  });
+
+  it('site novo (mkdocs.yml fora do Git): o commit leva o site inteiro, e não o resto do repositório', async () => {
+    const { github, git, page, publisher } = await setup({ mkdocs: 'mkdocs.yml' });
+    git.work['mkdocs.yml'] = 'site_name: Novo\n';
+    git.work['docs/guia.md'] = '# Guia\n';
+    git.work['.markdownlint.yaml'] = 'default: true\n';
+    git.work['catalog-info.yaml'] = 'kind: Component\n';
+    git.work['app/main.py'] = 'print("oi")\n';
+    page.edit(`${INDEX}\nMais texto.\n`);
+    await publisher.saveDraft();
+    const files = github.head(BRANCH)!.files;
+    for (const path of ['mkdocs.yml', 'docs/guia.md', '.markdownlint.yaml', 'catalog-info.yaml']) expect(files[path], path).toBeDefined();
+    expect(files['app/main.py']).toBeUndefined();
+  });
+
+  it('página nova: o commit leva o mkdocs.yml (a entrada dela no menu); página que já existia, não', async () => {
+    const yml = 'site_name: Wiki\nnav:\n  - index.md\n';
+    const nova = await setup({ files: { 'mkdocs.yml': yml }, mkdocs: 'mkdocs.yml', pagePath: 'docs/nova.md' });
+    nova.git.work['docs/nova.md'] = '# Nova\n\nTexto.\n';
+    nova.git.work['mkdocs.yml'] = `${yml}  - nova.md\n`;
+    await nova.publisher.saveDraft();
+    const branch = [...nova.github.refs.keys()].find(ref => ref !== 'main')!;
+    expect(nova.github.head(branch)!.files['mkdocs.yml']).toContain('nova.md');
+
+    const antiga = await setup({ files: { 'mkdocs.yml': yml }, mkdocs: 'mkdocs.yml' });
+    antiga.git.work['mkdocs.yml'] = `${yml}  - outra.md\n`;
+    antiga.page.edit(`${INDEX}\nMais texto.\n`);
+    await antiga.publisher.saveDraft();
+    expect(antiga.github.head(BRANCH)!.files['mkdocs.yml']).toBe(yml);
+  });
+
+  it('sem pipeline: o merge feito no GitHub aparece como publicado, ainda na branch do rascunho', async () => {
+    const { github, page, publisher, view } = await setup({ prepare: g => (g.hasPipeline = false), config: { verificationMode: 'auto' } });
+    page.edit(`${INDEX}\nMais texto.\n`);
+    await publisher.submit();
+    expect(view()).toMatchObject({ pipeline: false, pr: { draft: false } });
+    Object.assign(github.openPull(BRANCH)!, { state: 'closed', merged: true });
+    await publisher.refreshChecks();
+    expect(view()).toMatchObject({ onDefaultBranch: false, pr: undefined, published: { number: 1 } });
+  });
+
+  it('no rascunho de outra página: esta vai para a branch dela, a partir da principal, num PR só dela', async () => {
+    const { github, git, page: outra, publisher: first } = await setup({ pagePath: 'docs/outra.md' });
+    outra.edit(`${OTHER}\nMais texto.\n`);
+    await first.submit();
+    expect(git.current).toBe('docs/pessoa-teste/docs-outra');
+    const page = new FakePage(git);
+    const { publisher, view } = await publisherFor(github, git, page);
+    expect(view()).toMatchObject({ onDefaultBranch: true, branch: BRANCH, pr: undefined });
+    page.edit(`${INDEX}\nMais texto.\n`);
+    await publisher.submit();
+    expect(git.current).toBe(BRANCH);
+    expect(github.openPull(BRANCH)).toBeTruthy();
+    expect(github.head(BRANCH)!.files['docs/outra.md']).toBe(OTHER);
+    expect(github.head(BRANCH)!.files['docs/index.md']).toContain('Mais texto.');
+    expect(view()).toMatchObject({ onDefaultBranch: false, pr: { number: 2 } });
   });
 
   it('arquivo de fora da página no índice: não faz commit', async () => {

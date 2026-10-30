@@ -10,6 +10,7 @@ import {
   GitHubClient,
   lintFindings,
   lintRuleText,
+  LINT_CONFIG_FILES,
   MainConflict,
   MainSync,
   OpenPullRequest,
@@ -109,6 +110,8 @@ export type LocalPublisherOptions = {
 };
 
 /** Links do Markdown e `src` de HTML. */
+/** Arquivos do site ao lado do `mkdocs.yml` que vão junto com o site novo. */
+const SITE_FILES = new Set(['catalog-info.yaml', 'README.md', ...LINT_CONFIG_FILES]);
 const LINKS = /\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)|\bsrc=["']([^"']+)["']/g;
 
 /**
@@ -143,8 +146,8 @@ export class LocalPublisher {
       },
     });
     this.poller = new Poller({
-      run: () => this.watcher.refresh(),
-      delayMs: () => (this.watcher.active ? options.config.pollMs : options.config.idlePollMs),
+      run: () => (this.pipeline ? this.watcher.refresh() : this.refreshPr()),
+      delayMs: () => (this.pipeline && this.watcher.active ? options.config.pollMs : options.config.idlePollMs),
     });
   }
 
@@ -169,7 +172,12 @@ export class LocalPublisher {
       config.verificationMode === 'pipeline' ||
       (config.verificationMode === 'auto' && (hasWorkflows || rules.requiredChecks.length > 0));
     const branch = git.currentBranch();
-    this.pr = branch && branch !== repo.defaultBranch ? await client.findOpenPullRequest(branch) : null;
+    // No rascunho de outra página, o PR desta é o da branch dela (se ela já tem uma)
+    this.pr = this.onBase(branch)
+      ? branch && branch !== repo.defaultBranch
+        ? await client.findOpenPullRequest(this.draftBranch)
+        : null
+      : await client.findOpenPullRequest(branch!);
     // PR aberto cujo último commit pulou a pipeline: falta verificar
     this.unverified = Boolean(this.pr) && (await git.headMessage()).includes(SKIP_CI);
     // Sem admin, nada a oferecer; erro ao consultar só esconde a oferta
@@ -181,7 +189,7 @@ export class LocalPublisher {
       p => p.number !== this.pr?.number && p.branch !== branch && p.branch !== this.draftBranch,
     );
     // O que foi publicado enquanto o rascunho existia: entra sozinho, ou o conflito aparece no painel
-    if (branch && branch !== repo.defaultBranch) await this.syncMain().catch(() => false);
+    if (!this.onBase(branch)) await this.syncMain().catch(() => false);
     this.track(git.headSha());
   }
 
@@ -189,11 +197,11 @@ export class LocalPublisher {
   view(): PublishView {
     const { git, page } = this.options;
     const current = git.currentBranch();
-    const onDefaultBranch = !current || current === this.repo.defaultBranch;
+    const onDefaultBranch = this.onBase(current);
     const state = this.watcher.current;
     return {
       page: page.path,
-      branch: onDefaultBranch ? this.draftBranch : current,
+      branch: onDefaultBranch ? this.draftBranch : current!,
       onDefaultBranch,
       defaultBranch: this.repo.defaultBranch,
       pr: this.pr?.state === 'open' ? { number: this.pr.number, url: this.pr.htmlUrl, draft: this.pr.draft } : undefined,
@@ -249,7 +257,7 @@ export class LocalPublisher {
 
   /** Consulta as verificações agora (testes e botão "Atualizar"). */
   refreshChecks() {
-    return this.watcher.refresh();
+    return this.pipeline ? this.watcher.refresh() : this.refreshPr();
   }
 
   dispose() {
@@ -485,6 +493,20 @@ export class LocalPublisher {
     return branchFor(this.login, this.options.page.path, this.options.config.branchPattern);
   }
 
+  /**
+   * Na principal ou no rascunho de outra página (a branch que o painel criou para ela): esta página vai para a
+   * branch dela, criada a partir da principal. Numa branch que a pessoa criou, a página vai nela.
+   */
+  private onBase(branch: string | undefined) {
+    if (!branch || branch === this.repo.defaultBranch) return true;
+    if (branch === this.draftBranch) return false;
+    const [before, after] = this.options.config.branchPattern
+      .replace('{login}', this.login)
+      .split('{path}')
+      .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    return after !== undefined && new RegExp(`^${before}.+${after}$`).test(branch);
+  }
+
   private branch(): string {
     return this.options.git.currentBranch()!;
   }
@@ -494,20 +516,36 @@ export class LocalPublisher {
     return pageTitle(page.text()) ?? nameToTitle(page.path.split('/').pop()!);
   }
 
-  /** Na principal, cria (ou retoma) a branch do rascunho e troca para ela. Devolve se criou. */
+  /** Na principal (ou no rascunho de outra página), cria (ou retoma) a branch do rascunho e troca para ela. Devolve se criou. */
   private async ensureBranch(): Promise<boolean> {
     const { git } = this.options;
     const current = git.currentBranch();
-    if (current && current !== this.repo.defaultBranch) return false;
+    if (!this.onBase(current)) return false;
     if (await git.hasLocalBranch(this.draftBranch)) {
       await git.checkout(this.draftBranch);
       return false;
     }
-    await git.createBranch(this.draftBranch);
+    // No rascunho de outra página, a partir da principal: o PR desta não leva os commits da outra
+    await git.createBranch(this.draftBranch, current && current !== this.repo.defaultBranch ? this.repo.defaultBranch : undefined);
     return true;
   }
 
   /** Página e imagens de `<docs>/assets/` que ela usa, só os que mudaram (D3-3). */
+  /**
+   * O que vai com a página para ela funcionar no GitHub: enquanto o site é novo (o `mkdocs.yml` fora do Git), o site
+   * inteiro (o `mkdocs.yml`, as páginas e os arquivos do site ao lado dele); com a página nova, o `mkdocs.yml`, que
+   * tem a entrada dela no menu.
+   */
+  private siteFiles(): string[] {
+    const { git, page } = this.options;
+    if (!page.mkdocs) return [];
+    if (git.tracked(page.mkdocs)) return git.tracked(page.path) ? [] : [page.mkdocs];
+    const root = dirOf(page.mkdocs);
+    return git
+      .changedFiles()
+      .filter(path => path === page.mkdocs || path.startsWith(`${page.docsDir}/`) || (dirOf(path) === root && SITE_FILES.has(path.slice(path.lastIndexOf('/') + 1))));
+  }
+
   private changedPaths(): string[] {
     const { git, page } = this.options;
     const assets = `${page.docsDir}/assets/`;
@@ -516,7 +554,7 @@ export class LocalPublisher {
       .filter(url => !/^([a-z][a-z0-9+.-]*:|\/|#)/i.test(url))
       .map(url => resolvePath(dirOf(page.path), decodeURI(url.split('#')[0])))
       .filter(path => path.startsWith(assets));
-    const paths = [page.path, ...new Set(linked)];
+    const paths = [page.path, ...new Set(linked), ...this.siteFiles()];
     const outside = git.stagedOutside(paths);
     if (outside.length) {
       throw new Error(
@@ -526,11 +564,25 @@ export class LocalPublisher {
     return git.changed(paths);
   }
 
-  /** Acompanha as verificações do PR aberto (do commit `head`), se a pipeline é a verificação. */
+  /**
+   * Acompanha as verificações do PR aberto (do commit `head`), se a pipeline é a verificação. Sem pipeline, só o
+   * estado do PR, mais devagar: o merge no GitHub aparece como publicado sem reabrir a página.
+   */
   private track(head: string | undefined) {
     const open = this.pr?.state === 'open' ? this.pr : null;
     this.watcher.track(this.pipeline ? open : null, open ? head : undefined);
-    this.poller.setEnabled(Boolean(open) && this.pipeline);
+    this.poller.setEnabled(Boolean(open));
+    this.emit();
+  }
+
+  /** Sem pipeline: o PR de novo do GitHub (merge, fechado); erro na consulta fica para a próxima. */
+  private async refreshPr() {
+    const pr = this.pr;
+    if (pr?.state !== 'open') return;
+    const latest = await this.options.client.getPullRequest(pr.number).catch(() => undefined);
+    if (!latest || this.pr !== pr) return;
+    this.pr = latest;
+    if (latest.state !== 'open') this.poller.setEnabled(false);
     this.emit();
   }
 

@@ -17,10 +17,14 @@ export interface LocalGit {
   hasLocalBranch(name: string): Promise<boolean>;
   /** Dos `paths`, os que têm alteração (no índice, na árvore de trabalho ou ainda não versionados). */
   changed(paths: string[]): string[];
+  /** Todos os arquivos com alteração ou ainda não versionados. */
+  changedFiles(): string[];
+  /** O arquivo já está no Git (não é novo). */
+  tracked(path: string): boolean;
   /** Arquivos no índice (staged) fora de `paths`: um commit levaria junto. */
   stagedOutside(paths: string[]): string[];
-  /** Cria a branch a partir do HEAD e troca para ela (as alterações não commitadas vão junto). */
-  createBranch(name: string): Promise<void>;
+  /** Cria a branch a partir do HEAD (ou de `from`) e troca para ela (as alterações não commitadas vão junto). */
+  createBranch(name: string, from?: string): Promise<void>;
   checkout(name: string): Promise<void>;
   deleteBranch(name: string): Promise<void>;
   /** Commit só de `paths`. */
@@ -37,6 +41,8 @@ export interface PageDoc {
   readonly path: string;
   /** Pasta das docs no repositório (imagens em `<docsDir>/assets/`). */
   readonly docsDir: string;
+  /** O `mkdocs.yml` do site, no repositório: vai junto com a página quando ela precisa dele (site ou página novos). */
+  readonly mkdocs?: string;
   text(): string;
   readonly dirty: boolean;
   save(): Promise<void>;

@@ -34,6 +34,8 @@ describe('faixa de estado da página', () => {
     expect(draft).toMatchObject({ tone: 'draft', state: 'Draft', actions: [{ action: 'submit', primary: true }] });
     expect(draft.menu.map(m => m.action)).toEqual(['check', 'discard', 'history', 'details']);
     expect(strip({ onDefaultBranch: false, pr: { number: 3, url: 'u', draft: false } })).toMatchObject({ tone: 'review', url: 'u' });
+    // Merge feito, ainda na branch do rascunho (clone): publicada
+    expect(strip({ onDefaultBranch: false, branch: 'docs/ana/index', published: { number: 3, url: 'u' } }, false)).toMatchObject({ tone: 'done', state: 'Published', url: 'u' });
   });
 
   it('enviando: os passos com o atual', () => {

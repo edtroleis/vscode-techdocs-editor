@@ -42,6 +42,8 @@ export type PanelMessage =
   | { type: 'showLine'; path: string; line: number };
 
 const CONFIG = 'techdocsEditor';
+const FOLLOW_AGAIN_MS = 150;
+const FOLLOW_TRIES = 10;
 
 /**
  * Painel "Publicação" (LC5): opcional no modo local (`techdocsEditor.local.publishPanel`); sempre nas páginas
@@ -58,6 +60,7 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
   private state: PanelState = { status: 'noPage' };
   private readonly disposables: vscode.Disposable[] = [];
   private loading: Promise<void> = Promise.resolve();
+  private followAgain: ReturnType<typeof setTimeout> | undefined;
   /** Faixa de estado da página atual (editor visual e barra de status). */
   private strip: Strip | undefined;
   private readonly statusItem = vscode.window.createStatusBarItem('techdocsEditor.pageStatus', vscode.StatusBarAlignment.Left, 50);
@@ -135,6 +138,7 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
   }
 
   dispose() {
+    clearTimeout(this.followAgain);
     this.publisher?.dispose();
     this.disposables.forEach(d => d.dispose());
   }
@@ -163,8 +167,13 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
   }
 
   /** Troca de página ativa: novo controlador. Sair para outro arquivo mantém a última página. */
-  private follow() {
+  private follow(tries = FOLLOW_TRIES) {
     const document = this.activeDocument();
+    if (!document && !vscode.window.tabGroups.activeTabGroup.activeTab && tries > 0) {
+      // Fechando a aba ativa, o aviso chega antes de a aba seguinte ficar ativa: olha de novo logo depois
+      clearTimeout(this.followAgain);
+      this.followAgain = setTimeout(() => this.follow(tries - 1), FOLLOW_AGAIN_MS);
+    }
     if (!document) {
       if (!this.enabled && !this.key?.startsWith(`${REMOTE_SCHEME}:`)) return this.setState({ status: 'off' });
       if (!this.publisher) this.setState({ status: 'noPage' });
@@ -201,7 +210,8 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
       const site = this.sites.siteOf(document.uri)!;
       const rootPath = repository.rootUri.path.replace(/\/$/, '');
       const inRepo = (path: string) => path.slice(rootPath.length + 1);
-      const page = new DocumentPage(document, inRepo(document.uri.path), inRepo(vscode.Uri.file(site.docsDir).path));
+      const mkdocs = this.sites.list().find(s => s.site.root === site.root)?.mkdocs;
+      const page = new DocumentPage(document, inRepo(document.uri.path), inRepo(vscode.Uri.file(site.docsDir).path), mkdocs && inRepo(mkdocs.path));
       const repoConfig = await readRepoConfig(repository.rootUri);
       await this.start({
         git,

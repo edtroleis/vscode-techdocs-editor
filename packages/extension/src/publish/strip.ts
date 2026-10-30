@@ -99,7 +99,8 @@ export function stripFor(state: PanelState, l10n: { t: T }, remote: boolean): St
       url: v.pr.url,
     };
   }
-  if (v.pr || !v.onDefaultBranch) {
+  // Num clone, depois do merge a pessoa continua na branch do rascunho: a página já está publicada
+  if (v.pr || (!v.onDefaultBranch && !v.published)) {
     return {
       tone: 'draft',
       state: l10n.t('Draft'),
