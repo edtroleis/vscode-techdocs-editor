@@ -33,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
   const lint = new LintService(sites);
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites, remoteFs);
   const treeActions = new TreeActions();
-  const docs = new DocsTreeView(sites, remotes, context.workspaceState, treeActions);
+  const docs = new DocsTreeView(sites, remotes, context.workspaceState, treeActions, lint);
   treeActions.use(docs);
   const conflicts = new ConflictPanel(context.extensionUri);
   const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs, conflicts);

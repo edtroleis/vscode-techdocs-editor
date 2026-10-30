@@ -293,6 +293,30 @@ export function defineTests() {
       }
     });
 
+    test('a dica do ⚠ na árvore só manda usar Ajustar agora quando ele resolve', async () => {
+      const { docs } = await api();
+      await docs.ready;
+      const uri = file('wiki/docs/index.md');
+      const wiki = await until(() => siteItem(docs, 'wiki'), Boolean, 'site wiki não está na árvore');
+      docs.getChildren(wiki);
+      const page = await until(() => docs.pageItem(uri), Boolean, 'a página não está na árvore');
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+      const tooltip = () => String(docs.getTreeItem(page!).tooltip);
+      // Link vazio (MD042): não tem ajuste automático
+      await appendLines(document, '\n[vazio]()\n');
+      await until(() => rules(uri), r => r.join() === 'MD042', 'o MD042 não apareceu');
+      equal(tooltip(), '1 formatting problem. Open the page to see what to change.', 'só problema sem ajuste');
+      // Título que pula um nível (MD001): o Ajustar agora resolve
+      await appendLines(document, '\n#### Pulou um nível\n');
+      await until(() => rules(uri), r => r.join() === 'MD001,MD042', 'o MD001 não apareceu');
+      equal(tooltip(), '2 formatting problems, 1 with an automatic fix. Open the page to see them.', 'com e sem ajuste');
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+      await appendLines(document, '\n#### Pulou um nível\n');
+      await until(() => rules(uri), r => r.join() === 'MD001', 'só o MD001');
+      equal(tooltip(), '1 formatting problem. Open the page and use Fix automatically.', 'só problema com ajuste');
+    });
+
     test('problema aparece no painel com a linha e o texto simples; a configuração da pipeline vale', async () => {
       await (await api()).sites.ready;
       const uri = file('wiki/docs/index.md');

@@ -568,7 +568,7 @@
         },
         {
           "command": "techdocsEditor.newPage",
-          "when": "view == techdocsEditor.docs",
+          "when": "view == techdocsEditor.docs && (techdocsEditor.hasDocs || techdocsEditor.hasRemote)",
           "group": "navigation@2"
         },
         {

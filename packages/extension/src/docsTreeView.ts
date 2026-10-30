@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, parseRemoteUri, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
 import { repoOf } from './chooseSites';
 import type { DocsSite } from './docsSite';
+import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
 import { invalidatePages, pickSite, RECENT_COUNT } from './sitePicker';
 import { remoteUri } from './remote/remoteFs';
@@ -100,6 +101,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     private readonly remotes: RemoteRepos,
     private readonly state?: vscode.Memento,
     dragAndDropController?: vscode.TreeDragAndDropController<DocsItem>,
+    /** Problemas de formatação da página: a dica do ⚠ diz se há ajuste automático. */
+    private readonly lint?: Pick<LintService, 'problems'>,
   ) {
     this.currentKey = state?.get<string>(CURRENT_KEY);
     // Ao abrir o VS Code, o site da página que estava aberta
@@ -160,7 +163,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         const problems = vscode.languages.getDiagnostics(item.uri!).filter(d => d.severity <= vscode.DiagnosticSeverity.Warning).length;
         tree.iconPath = problems ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground')) : new vscode.ThemeIcon('markdown');
         tree.tooltip = problems
-          ? vscode.l10n.t('{0} formatting fixes. Open the page and use Fix.', problems)
+          ? problemsTooltip(problems, this.lint?.problems(item.uri!).filter(p => p.fixable).length ?? 0)
           : item.uri!.scheme === REMOTE_SCHEME
             ? item.path
             : vscode.workspace.asRelativePath(item.uri!);
@@ -542,4 +545,20 @@ async function readText(uri: vscode.Uri): Promise<string | undefined> {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Dica do ⚠ de uma página: só fala em "Ajustar agora" quando o botão resolve, porque avisos como o de
+ * linha comprida não têm ajuste automático (a pessoa procurava um botão que não existe).
+ */
+function problemsTooltip(problems: number, fixable: number) {
+  if (fixable >= problems)
+    return problems === 1
+      ? vscode.l10n.t('1 formatting problem. Open the page and use Fix automatically.')
+      : vscode.l10n.t('{0} formatting problems. Open the page and use Fix automatically.', problems);
+  if (!fixable)
+    return problems === 1
+      ? vscode.l10n.t('1 formatting problem. Open the page to see what to change.')
+      : vscode.l10n.t('{0} formatting problems. Open the page to see what to change.', problems);
+  return vscode.l10n.t('{0} formatting problems, {1} with an automatic fix. Open the page to see them.', problems, fixable);
 }
