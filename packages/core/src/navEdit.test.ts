@@ -111,4 +111,9 @@ describe('listForPage', () => {
     expect(listForPage(nav, 'solta.md')).toBe(nav);
     expect(listForPage(nav, 'outra/pagina.md')).toBe(nav);
   });
+
+  it('página da raiz vai para a raiz, mesmo com outra da raiz numa seção', () => {
+    const mixed: NavItem[] = [{ kind: 'section', title: 'Guias', children: [{ kind: 'page', path: 'c.md' }] }];
+    expect(listForPage(mixed, 'solta.md')).toBe(mixed);
+  });
 });

@@ -102,10 +102,12 @@ export function findSection(nav: NavItem[], trail: readonly string[]): NavPlace 
 
 /**
  * Onde entra uma página que ainda não está no menu: na lista da seção mais funda com outra página da mesma pasta
- * (`operacao/estorno.md` vai para a seção de `operacao/alertas.md`); sem nenhuma, na raiz do menu.
+ * (`operacao/estorno.md` vai para a seção de `operacao/alertas.md`); sem nenhuma, ou da raiz do `docs_dir`, na raiz
+ * do menu (uma seção com uma página solta da raiz não é a seção da raiz).
  */
 export function listForPage(nav: NavItem[], path: string): NavItem[] {
   const folder = (page: string) => page.slice(0, page.lastIndexOf('/') + 1);
+  if (!folder(path)) return nav;
   let best: { list: NavItem[]; depth: number } = { list: nav, depth: -1 };
   const walk = (list: NavItem[], depth: number) => {
     for (const item of list) {
