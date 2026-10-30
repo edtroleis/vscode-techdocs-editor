@@ -145,6 +145,11 @@ describe('catalog-info.yaml por modo', () => {
     expect(codes(checkSite(site({ catalogMode: 'auto' })))).toContain('catalog-ref-missing:backstage.io/techdocs-ref: dir:./svc');
   });
 
+  it('auto sem sinal de Backstage no workspace: nada sobre o arquivo que falta; required continua cobrando', () => {
+    expect(catalogFindings(checkSite(noCatalog({ backstageSignal: false })))).toEqual([]);
+    expect(catalogFindings(checkSite(noCatalog({ backstageSignal: false, catalogMode: 'required' })))).toHaveLength(1);
+  });
+
   it('required: sem o arquivo, aviso com a correção que cria o esqueleto', () => {
     const [finding] = catalogFindings(checkSite(noCatalog({ catalogMode: 'required', repository: { name: 'Serviço Pagamentos', owner: 'time-pag' } })));
     expect(finding).toMatchObject({ code: 'catalog-missing', severity: 'warning', fix: { file: 'catalog-info.yaml' } });

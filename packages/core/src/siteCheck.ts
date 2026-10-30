@@ -68,6 +68,11 @@ export type SiteSnapshot = {
   catalog?: { file: string; text: string };
   /** O `catalog-info.yaml` na conferência (padrão `auto`, ver `CatalogMode`). */
   catalogMode?: CatalogMode;
+  /**
+   * Há outro `catalog-info.yaml` no workspace: sinal de que o Backstage é usado. Sem ele (`false`), o modo `auto` não
+   * fala do arquivo que falta; undefined conta como sinal.
+   */
+  backstageSignal?: boolean;
   /** Nome da pasta do repositório e o dono, para o `catalog-info.yaml` novo no modo `required`. */
   repository?: { name: string; owner?: string };
 };
@@ -108,7 +113,8 @@ export function checkSite(site: SiteSnapshot): SiteFinding[] {
     });
     add({ code: 'catalog-missing', severity: 'warning', file: site.mkdocsFile, target: file, fix: { file, apply: text => text ?? skeleton } });
   } else if (!site.catalog) {
-    add({ code: 'catalog-missing', severity: 'hint', file: site.mkdocsFile, target: 'catalog-info.yaml' });
+    // Modo auto: só uma dica, e só se o workspace tem sinal de Backstage (a extensão não depende dele)
+    if (site.backstageSignal !== false) add({ code: 'catalog-missing', severity: 'hint', file: site.mkdocsFile, target: 'catalog-info.yaml' });
   } else if (!hasRef(site.catalog.text)) {
     const catalogDir = site.catalog.file.split('/').slice(0, -1).join('/');
     const annotation = techdocsRefAnnotation(catalogDir, site.root);

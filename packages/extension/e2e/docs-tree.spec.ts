@@ -38,9 +38,11 @@ test('barra lateral TechDocs: escolher o site; árvore e manutenção; clicar ab
   await page.locator('.quick-input-widget').getByRole('option', { name: /^file Imagens/ }).first().click();
   await expect(page.locator('.tab.active', { hasText: 'imagens.md' })).toBeVisible();
 
-  // Manutenção: confere sozinha e agrupa por tipo (as wikis de teste não têm catalog-info.yaml)
+  // Manutenção: confere sozinha. As wikis de teste não têm catalog-info.yaml, nem outro repositório do workspace
+  // (sem Backstage): a falta dele não aparece
   const check = pane(/^Maintenance/i);
   if ((await check.locator('.pane-header').getAttribute('aria-expanded')) === 'false') await check.locator('.pane-header').click();
-  await expect(check.locator('.monaco-list-row', { hasText: 'No catalog-info.yaml' }).first()).toBeVisible({ timeout: 30_000 });
+  await expect(check.locator('.monaco-list-row').first()).toBeVisible({ timeout: 30_000 });
+  await expect(check.locator('.monaco-list-row', { hasText: 'No catalog-info.yaml' })).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('barra-lateral.png') });
 });

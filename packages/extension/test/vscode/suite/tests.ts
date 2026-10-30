@@ -1123,7 +1123,7 @@ export function defineTests() {
         await until(() => sites.list().some(s => s.mkdocs.path.endsWith('/check-site/mkdocs.yml')), Boolean, 'site não reconhecido');
         const result = (await repoCheck.check(true)).find(r => r.mkdocs.path.endsWith('/check-site/mkdocs.yml'));
         const codes = result!.findings.map(f => f.code).join(', ');
-        for (const code of ['techdocs-plugin-missing', 'nav-page-missing', 'broken-link', 'page-not-in-nav', 'catalog-missing']) {
+        for (const code of ['techdocs-plugin-missing', 'nav-page-missing', 'broken-link', 'page-not-in-nav']) {
           ok(codes.includes(code), `faltou ${code}: ${codes}`);
         }
         const problems = vscode.languages.getDiagnostics(file('check-site/mkdocs.yml'));
@@ -1160,7 +1160,10 @@ export function defineTests() {
       const catalogFindings = async () =>
         (await repoCheck.check(true)).find(r => r.mkdocs.path.endsWith('/wiki/mkdocs.yml'))!.findings.filter(f => f.code.startsWith('catalog-'));
       try {
-        // Padrão (auto): sem o arquivo, só uma dica
+        // Padrão (auto): sem o arquivo e sem outro catalog-info.yaml no workspace (sem Backstage), nada
+        equal((await catalogFindings()).length, 0, 'modo auto sem sinal de Backstage');
+        // Com o de outro repositório no workspace, só uma dica
+        await vscode.workspace.fs.writeFile(file('outro-repo/catalog-info.yaml'), new TextEncoder().encode('kind: Component\n'));
         equal((await catalogFindings()).map(f => `${f.code}:${f.severity}`).join(), 'catalog-missing:hint', 'modo auto');
         // Só para mim: a configuração do VS Code
         equal(await catalogOptions.choose(undefined, { mode: 'off', scope: 'me' }), 'off', 'escolha só para mim');
@@ -1182,7 +1185,7 @@ export function defineTests() {
         equal(await read('.techdocs-editor.yaml'), 'catalog: off\n', '"não sei" não grava');
       } finally {
         await config().update('catalog', undefined, vscode.ConfigurationTarget.Global);
-        for (const path of ['.techdocs-editor.yaml', 'catalog-info.yaml']) await remove(path);
+        for (const path of ['.techdocs-editor.yaml', 'catalog-info.yaml', 'outro-repo']) await remove(path);
       }
     });
 

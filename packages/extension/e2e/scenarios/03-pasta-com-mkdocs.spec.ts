@@ -65,11 +65,7 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
     await expect(checkRow(page, 'guias/deploy-antigo.md')).toBeVisible();
     await expect(checkRow(page, 'operacao/estorno.md')).toBeVisible();
     await expect(checkRow(page, 'docs/index.md')).toBeVisible();
-    if (await checkRow(page, 'No catalog-info.yaml').isVisible()) {
-      story.suggest(
-        'Num repositório que não vai para o Backstage, a conferência acusa a falta do catalog-info.yaml. Depois do "Não" na pergunta do Backstage (cenário 1), ou com uma opção aqui, a conferência podia deixar isso de fora.',
-      );
-    }
+    await story.check('sem Backstage no workspace, a conferência não cobra o catalog-info.yaml', () => expect(checkRow(page, 'No catalog-info.yaml')).toHaveCount(0));
     await pause(page, 2_000);
   });
 
