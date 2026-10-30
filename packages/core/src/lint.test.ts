@@ -36,8 +36,13 @@ describe('lintMarkdown', () => {
 
   it('respeita a configuração (linha longa liberada na wiki)', () => {
     const page = `# Título\n\n${'palavra '.repeat(30).trim()}\n`;
-    expect(lintMarkdown(page, DEFAULT_LINT_CONFIG).map(p => p.rule)).toContain('MD013');
+    expect(lintMarkdown(page, { default: true }).map(p => p.rule)).toContain('MD013');
     expect(lintMarkdown(page, WIKI_CONFIG)).toEqual([]);
+  });
+
+  it('sem arquivo de regras, a linha longa passa (o editor visual não quebra parágrafos)', () => {
+    const page = `# Título\n\n${'palavra '.repeat(30).trim()}\n`;
+    expect(lintMarkdown(page, DEFAULT_LINT_CONFIG)).toEqual([]);
   });
 });
 

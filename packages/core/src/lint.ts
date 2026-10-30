@@ -17,12 +17,15 @@ export const LINT_CONFIG_FILES = [
   '.markdownlint.yml',
 ];
 
-/** Sem arquivo de configuração, o markdownlint usa todas as regras. */
-export const DEFAULT_LINT_CONFIG: Configuration = { default: true };
+/**
+ * Sem arquivo de configuração: todas as regras, menos o tamanho de linha. O editor visual grava cada parágrafo numa
+ * linha só e não tem como quebrá-la; com a regra, nenhum parágrafo comum passaria. Quem quer a regra a liga no arquivo.
+ */
+export const DEFAULT_LINT_CONFIG: Configuration = { default: true, MD013: false };
 
 /** Conteúdo do arquivo de configuração → configuração (JSON com comentários ou YAML). */
 export function parseLintConfig(fileName: string, text: string): Configuration {
-  if (/\.ya?ml$/.test(fileName)) return (parseYaml(text) as Configuration) ?? DEFAULT_LINT_CONFIG;
+  if (/\.ya?ml$/.test(fileName)) return (parseYaml(text) as Configuration) ?? { default: true };
   // jsonc: tira comentários de linha e de bloco fora das strings
   const json = text.replace(/("(?:\\.|[^"\\])*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (_m, str) => str ?? '');
   return JSON.parse(json) as Configuration;
