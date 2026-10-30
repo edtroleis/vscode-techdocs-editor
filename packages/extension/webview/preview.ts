@@ -25,11 +25,17 @@ function render() {
     return;
   }
   const v = state.view;
-  const focused = document.activeElement as HTMLInputElement | null;
-  const focus = focused?.id ? { id: focused.id, start: focused.selectionStart, end: focused.selectionEnd } : undefined;
+  const active = document.activeElement;
+  const focused = active as HTMLInputElement | null;
+  // O valor digitado fica: a resposta da extensão pode chegar com o texto de algumas letras atrás
+  const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+  const focus = focused?.id ? { id: focused.id, start: focused.selectionStart, end: focused.selectionEnd, value: typing ? focused.value : undefined } : undefined;
   root.innerHTML = fields(v) + viewbar() + `<div class="tree" role="tree">${ui.mode === 'menu' ? menu(v) : files(v)}</div>` + foot(v);
+  // O recuo de cada linha pelo script: o CSP do painel bloqueia o atributo style (só vale o CSS com nonce)
+  root.querySelectorAll<HTMLElement>('[data-pad]').forEach(element => (element.style.paddingLeft = `${element.dataset.pad}px`));
   if (focus) {
     const element = document.getElementById(focus.id) as HTMLInputElement | null;
+    if (element && focus.value !== undefined && 'value' in element && element.type !== 'checkbox') element.value = focus.value;
     element?.focus();
     if (element && focus.start !== null && 'setSelectionRange' in element && element.type === 'text') element.setSelectionRange(focus.start, focus.end);
   }
@@ -133,16 +139,16 @@ function checkbox(f: { path: string; optional: boolean; included: boolean; origi
 function fileRow(f: FileView, depth: number, v: PreviewView) {
   const name = f.path.split('/').pop()!;
   const icon = /\.ya?ml$/.test(name) ? '{}' : 'M↓';
-  let html = `<div class="row ${kindClass(f.status)}${f.included ? '' : ' off'}${v.selected === f.path ? ' sel' : ''}" tabindex="0" role="treeitem" data-open="${escape(f.path)}" style="padding-left:${10 + depth * 14}px">
+  let html = `<div class="row ${kindClass(f.status)}${f.included ? '' : ' off'}${v.selected === f.path ? ' sel' : ''}" tabindex="0" role="treeitem" data-open="${escape(f.path)}" data-pad="${10 + depth * 14}">
     ${checkbox(f, name)}<span class="ic">${icon}</span><span class="name">${escape(name)}</span><span class="desc">${escape(note(f))}</span>
     <span class="end">${f.origin === 'added' ? removeButton(f.path.slice(DOCS.length), name) : ''}${badge(f.status, f.conflict)}</span></div>`;
   if (f.origin === 'catalog') {
     // Quem não conhece o Backstage não sabe para que serve o arquivo: uma linha explica
-    html += `<div class="why${f.included ? '' : ' warn'}" style="padding-left:${46 + depth * 14}px">${escape(f.included ? l.catalogOn : l.catalogOff)}</div>`;
+    html += `<div class="why${f.included ? '' : ' warn'}" data-pad="${46 + depth * 14}">${escape(f.included ? l.catalogOn : l.catalogOff)}</div>`;
   }
   if (f.conflict) {
     const page = f.path.slice(DOCS.length);
-    html += `<div class="conflict" style="padding-left:${46 + depth * 14}px"><button data-replace="${escape(page)}" data-value="false" aria-pressed="${!f.conflict.replace}">${escape(l.keep)}</button><button data-replace="${escape(page)}" data-value="true" aria-pressed="${f.conflict.replace}">${escape(l.replace)}</button></div>`;
+    html += `<div class="conflict" data-pad="${46 + depth * 14}"><button data-replace="${escape(page)}" data-value="false" aria-pressed="${!f.conflict.replace}">${escape(l.keep)}</button><button data-replace="${escape(page)}" data-value="true" aria-pressed="${f.conflict.replace}">${escape(l.replace)}</button></div>`;
   }
   return html;
 }
@@ -158,7 +164,7 @@ function files(v: PreviewView) {
   const out: string[] = [];
   const walk = (node: Folder, depth: number) => {
     for (const [name, child] of Object.entries(node.dirs).sort(([a], [b]) => a.localeCompare(b))) {
-      out.push(`<div class="row" style="padding-left:${10 + depth * 14}px"><span class="spacer"></span><span class="ic dir">▸</span><span class="name">${escape(name)}</span></div>`);
+      out.push(`<div class="row" data-pad="${10 + depth * 14}"><span class="spacer"></span><span class="ic dir">▸</span><span class="name">${escape(name)}</span></div>`);
       walk(child, depth + 1);
     }
     for (const f of node.files) out.push(fileRow(f, depth, v));
@@ -175,7 +181,7 @@ function menuRow(p: PlanNavPage, key: string, depth: number, v: PreviewView) {
       ? `<input class="edit" id="rename" type="text" value="${escape(p.title)}" data-key="${escape(key)}">`
       : `<span class="name" data-rename="${escape(key)}" title="${escape(l.rename)}">${escape(p.title)}</span>`;
   const top = depth === 0;
-  return `<div class="row ${kindClass(p.status)}${p.included ? '' : ' off'}${v.selected === path ? ' sel' : ''}" tabindex="0" role="treeitem" data-open="${escape(path)}"${top ? ` draggable="true" data-key="${escape(key)}"` : ''} style="padding-left:${8 + depth * 18}px">
+  return `<div class="row ${kindClass(p.status)}${p.included ? '' : ' off'}${v.selected === path ? ' sel' : ''}" tabindex="0" role="treeitem" data-open="${escape(path)}"${top ? ` draggable="true" data-key="${escape(key)}"` : ''} data-pad="${8 + depth * 18}">
     <span class="handle" aria-hidden="true">${top ? '⋮⋮' : ''}</span>${file ? checkbox(file, p.title) : '<span class="spacer"></span>'}${title}<span class="desc">${escape(p.path)}</span>
     <span class="end">${top ? moveButtons(key) : ''}${p.origin === 'added' ? removeButton(p.path, p.title) : ''}</span></div>`;
 }
@@ -194,7 +200,7 @@ function menu(v: PreviewView) {
             : `<span class="name" data-rename="${escape(e.key)}" title="${escape(l.rename)}">${escape(e.name)}</span>`;
         const addIn = `<button data-add-in="${escape(e.original)}" aria-label="${escape(format(l.addPageIn, e.name))}" title="${escape(format(l.addPageIn, e.name))}">+</button>`;
         return (
-          `<div class="row" tabindex="0" role="treeitem" draggable="true" data-key="${escape(e.key)}" style="padding-left:8px"><span class="handle" aria-hidden="true">⋮⋮</span><span class="ic">§</span>${name}<span class="desc">${escape(l.section)}</span><span class="end">${moveButtons(e.key, addIn)}</span></div>` +
+          `<div class="row" tabindex="0" role="treeitem" draggable="true" data-key="${escape(e.key)}" data-pad="8"><span class="handle" aria-hidden="true">⋮⋮</span><span class="ic">§</span>${name}<span class="desc">${escape(l.section)}</span><span class="end">${moveButtons(e.key, addIn)}</span></div>` +
           e.pages.map(p => menuRow(p, p.path, 1, v)).join('') +
           (ui.adding?.section === e.original ? addInput(1, v) : '')
         );
@@ -212,8 +218,8 @@ function addInput(depth: number, v: PreviewView) {
       : `<select id="add-type" aria-label="${escape(l.pageType)}"><option value="">${escape(l.freePage)}</option>${v.pageTypes
           .map(t => `<option value="${escape(t.id)}"${a.type === t.id ? ' selected' : ''}>${escape(t.name)}</option>`)
           .join('')}</select>`;
-  return `<div class="row" style="padding-left:${8 + depth * 18}px"><span class="handle"></span><span class="ic">${a.kind === 'section' ? '§' : 'M↓'}</span><input class="edit" id="add" type="text" placeholder="${escape(placeholder)}" aria-label="${escape(placeholder)}"></div>
-    <div class="addhint" style="padding-left:${44 + depth * 18}px">${types}<span id="add-hint">${escape(ui.hint || l.addKeys)}</span></div>`;
+  return `<div class="row" data-pad="${8 + depth * 18}"><span class="handle"></span><span class="ic">${a.kind === 'section' ? '§' : 'M↓'}</span><input class="edit" id="add" type="text" placeholder="${escape(placeholder)}" aria-label="${escape(placeholder)}"></div>
+    <div class="addhint" data-pad="${44 + depth * 18}">${types}<span id="add-hint">${escape(ui.hint || l.addKeys)}</span></div>`;
 }
 
 function addArea(v: PreviewView) {

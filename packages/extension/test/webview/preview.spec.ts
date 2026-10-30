@@ -73,6 +73,19 @@ test('campos com a origem da sugestão; desmarcar um arquivo e abrir outro', asy
   expect(await last(p)).toEqual({ type: 'set', field: 'template', value: 'golden-path' });
 });
 
+test('digitando no nome: a resposta atrasada da extensão não apaga as letras novas', async ({ page: p }) => {
+  await show(p, { siteName: '' });
+  const name = p.getByLabel('Site name');
+  await name.click();
+  await p.keyboard.type('Cenário');
+  // A extensão responde à primeira letra depois de a pessoa já ter digitado a palavra
+  await show(p, { siteName: 'C' });
+  await expect(name).toHaveValue('Cenário');
+  await expect(name).toBeFocused();
+  await p.keyboard.type(' Vazio');
+  expect(await last(p)).toEqual({ type: 'set', field: 'siteName', value: 'Cenário Vazio' });
+});
+
 test('campo que falta: aviso, Criar desligado; o dono opcional sem o catalog-info.yaml', async ({ page: p }) => {
   await show(p, { owner: '', missing: ['owner'] });
   await expect(p.getByText('Fill in the owner or uncheck catalog-info.yaml.')).toBeVisible();
