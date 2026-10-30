@@ -257,7 +257,7 @@
   "+ Section": "+ Seção",
   "Add page": "Adicionar página",
   "Add page in {0}": "Adicionar página em {0}",
-  "Path, e.g. guides/deploy.md": "Caminho, ex.: guias/deploy.md",
+  "Page name (guides/Name puts it in a folder)": "Nome da página (guias/Nome põe numa pasta)",
   "Page title": "Título da página",
   "Section name": "Nome da seção",
   "Kind of page": "Tipo da página",

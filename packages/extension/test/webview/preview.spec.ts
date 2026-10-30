@@ -100,14 +100,14 @@ test('menu: subir, renomear com dois cliques e acrescentar página na seção co
   expect(await last(p)).toEqual({ type: 'add', text: 'Usar Postgres', by: 'title', section: 'Decisions', template: 'adr' });
 });
 
-test('arquivos: "+ Página" pede o caminho; página que já existe pede manter ou substituir', async ({ page: p }) => {
+test('arquivos: "+ Página" pede o nome (com pasta, se quiser); página que já existe pede manter ou substituir', async ({ page: p }) => {
   await show(p, {
     files: [...VIEW.files, { path: 'docs/faq.md', status: 'unchanged', origin: 'existing', optional: false, included: true, conflict: { replace: false } }],
   });
   await p.getByRole('button', { name: 'Use the template one' }).click();
   expect(await last(p)).toEqual({ type: 'replace', path: 'faq.md', replace: true });
   await p.getByRole('button', { name: '+ Page' }).click();
-  await p.getByPlaceholder('Path, e.g. guides/deploy.md').fill('guias/deploy');
-  await p.getByPlaceholder('Path, e.g. guides/deploy.md').press('Enter');
-  expect(await last(p)).toEqual({ type: 'add', text: 'guias/deploy', by: 'path', template: undefined });
+  await p.getByPlaceholder('Page name (guides/Name puts it in a folder)').fill('guias/Como publicar');
+  await p.getByPlaceholder('Page name (guides/Name puts it in a folder)').press('Enter');
+  expect(await last(p)).toEqual({ type: 'add', text: 'guias/Como publicar', by: 'path', template: undefined });
 });

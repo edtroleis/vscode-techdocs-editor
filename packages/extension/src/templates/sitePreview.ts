@@ -491,7 +491,7 @@ export function previewLabels() {
     addSection: vscode.l10n.t('+ Section'),
     addPageTitle: vscode.l10n.t('Add page'),
     addPageIn: vscode.l10n.t('Add page in {0}'),
-    pathPlaceholder: vscode.l10n.t('Path, e.g. guides/deploy.md'),
+    pathPlaceholder: vscode.l10n.t('Page name (guides/Name puts it in a folder)'),
     titlePlaceholder: vscode.l10n.t('Page title'),
     sectionPlaceholder: vscode.l10n.t('Section name'),
     pageType: vscode.l10n.t('Kind of page'),
