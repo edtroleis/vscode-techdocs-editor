@@ -24,9 +24,14 @@ test.describe('caixa de link: páginas do site', () => {
     await newLineAtEnd(page);
     await page.keyboard.type('Veja ', { delay: 20 });
     await clickTopBar(page, 'link');
+    // As setas só valem com a lista na tela (antes dela, no CI, uma se perdia)
+    await expect(page.locator('.milkdown-link-edit input')).toBeFocused();
+    await expect(suggestions(page).first()).toBeVisible();
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
+    await expect(suggestions(page).and(page.locator('[aria-selected=true]'))).toHaveText(/Referência da API/);
     await page.keyboard.press('Enter');
+    await expect(suggestions(page)).toHaveCount(0);
     // O que vem depois fica fora do link
     await page.keyboard.type('.', { delay: 20 });
     await expectSaved(page, `${ORIGINAL}\nVeja [Referência da API](../referencia-da-api.md).\n`);
