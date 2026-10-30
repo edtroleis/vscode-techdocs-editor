@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { codeownersOwner, emptyEdits, moveNavEntry, newPagePath, newSectionPage, PlanInput, planSite } from './sitePlan';
+import { codeownersOwner, emptyEdits, moveNavEntry, newPagePath, newSectionPage, PlanInput, planSite, readmeDescription } from './sitePlan';
 
 const TEMPLATE = {
   nav: true,
@@ -81,6 +81,17 @@ describe('planSite', () => {
     expect(planSite(input({ siteName: ' ' })).missing).toEqual(['siteName']);
   });
 
+  it('catalog-info.yaml com título e descrição; o name sai do nome do componente', () => {
+    const plan = planSite(
+      input({ catalog: { name: 'Tarefas API', owner: 'platform-team', annotation: 'a: b', title: 'Tarefas API', description: 'Uma API: tarefas do time.' } }),
+    );
+    const catalog = parse(file(plan, 'catalog-info.yaml')!.content!);
+    expect(catalog.metadata).toMatchObject({ name: 'tarefas-api', title: 'Tarefas API', description: 'Uma API: tarefas do time.' });
+    const plain = parse(file(planSite(input({ catalog: { name: 'x', owner: 'y', annotation: 'a: b', title: ' ', description: '' } })), 'catalog-info.yaml')!.content!);
+    expect(plain.metadata).not.toHaveProperty('title');
+    expect(plain.metadata).not.toHaveProperty('description');
+  });
+
   it('README: copiado como página inicial (o README fica) ou movido (vira um link)', () => {
     const readme = { path: 'README.md', text: '# Pagamentos\n\nVer [guia](docs/guia.md).\n', pointer: 'A documentação está em docs/.' };
     const copy = planSite(input({ readme: { ...readme, use: 'copy' } }));
@@ -156,5 +167,24 @@ describe('codeownersOwner', () => {
     expect(codeownersOwner('# donos\n*.js @front\n* @acme/time-pagamentos @ana\n')).toBe('time-pagamentos');
     expect(codeownersOwner('* @ana\n* @bia\n')).toBe('bia');
     expect(codeownersOwner('docs/ @ana\n')).toBeUndefined();
+  });
+});
+
+describe('readmeDescription', () => {
+  it('o 1º parágrafo de texto, sem a formatação do Markdown', () => {
+    const readme = '# Tarefas API\n\n[![CI](https://x/badge.svg)](https://x)\n\nUma **API** para cadastrar as\ntarefas do [time](docs/time.md).\n\nOutro parágrafo.\n';
+    expect(readmeDescription(readme)).toBe('Uma API para cadastrar as tarefas do time.');
+  });
+
+  it('pula títulos, listas, código, citações, HTML e tabelas', () => {
+    expect(readmeDescription('<p align="center"><img src="x.png"></p>\n\n## Instalar\n\n```bash\nnpm i\n```\n\n- item\n\n> nota\n\n| a | b |\n|---|---|\n')).toBeUndefined();
+  });
+
+  it('parágrafo comprido: corta no fim de uma frase, ou numa palavra', () => {
+    const long = 'Primeira frase curta. ' + 'palavra '.repeat(60);
+    expect(readmeDescription(long)).toBe('Primeira frase curta.');
+    const text = readmeDescription('palavra '.repeat(80))!;
+    expect(text.length).toBeLessThanOrEqual(201);
+    expect(text.endsWith('palavra…')).toBe(true);
   });
 });

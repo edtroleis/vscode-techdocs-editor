@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import {
   buildSitePages,
+  catalogOwner,
   codeownersOwner,
   emptyEdits,
   isTemplateSupported,
@@ -14,6 +15,7 @@ import {
   PlanInput,
   PlanNavEntry,
   planSite,
+  readmeDescription,
   ReadmeUse,
   SitePage,
   SitePlan,
@@ -41,6 +43,11 @@ export type PreviewView = {
   ownerFrom?: string;
   /** O dono é pedido: o `catalog-info.yaml` vai ser criado. */
   ownerRequired: boolean;
+  /** Donos dos outros `catalog-info.yaml` do workspace, do mais usado para o menos, com quantos arquivos usam cada um. */
+  owners: { owner: string; count: number }[];
+  /** Descrição do componente no `catalog-info.yaml`; undefined quando a prévia não cria esse arquivo. */
+  description?: string;
+  descriptionFrom?: string;
   readme?: { path: string; use: ReadmeUse };
   pageTypes: { id: string; name: string }[];
   files: Omit<PlanFile, 'content'>[];
@@ -53,7 +60,7 @@ export type PreviewView = {
 
 export type PreviewMessage =
   | { type: 'ready' }
-  | { type: 'set'; field: 'template' | 'siteName' | 'owner' | 'readme'; value: string }
+  | { type: 'set'; field: 'template' | 'siteName' | 'owner' | 'description' | 'readme'; value: string }
   | { type: 'toggle'; path: string; on: boolean }
   | { type: 'replace'; path: string; replace: boolean }
   | { type: 'move'; key: string; delta?: number; before?: string }
@@ -82,7 +89,13 @@ type Context = {
   lint: boolean;
   siteNameFrom: string;
   ownerFrom?: string;
+  owners: { owner: string; count: number }[];
+  /** 1º parágrafo do README, sugerido como descrição do componente. */
+  description?: string;
 };
+
+/** Quantos `catalog-info.yaml` do workspace são lidos para sugerir o dono. */
+const OWNER_SCAN_LIMIT = 200;
 
 const CATALOG_FILE = 'catalog-info.yaml';
 const LINT_FILE = '.markdownlint.yaml';
@@ -100,6 +113,9 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
   private template = '';
   private siteName = '';
   private owner = '';
+  private description = '';
+  /** A pessoa marcou ou desmarcou o `catalog-info.yaml`: digitar o dono não o marca mais. */
+  private catalogToggled = false;
   private readmeUse: ReadmeUse = 'copy';
   private edits: PlanEdits = emptyEdits();
   private selected: string | undefined;
@@ -178,10 +194,14 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
       lint: !lintFound,
       siteNameFrom: readmeTitle ? 'README.md' : vscode.l10n.t('folder name'),
       ownerFrom,
+      owners: await workspaceOwners(),
+      description: readmeDescription((readme ?? (await findReadme(root)))?.text ?? ''),
     };
     this.template = existing.length ? '' : (choices[0]?.template.id ?? '');
     this.siteName = readmeTitle ?? folderName(root);
     this.owner = owner ?? '';
+    this.description = this.context.description ?? '';
+    this.catalogToggled = false;
     this.readmeUse = 'copy';
     this.edits = emptyEdits();
     // Sem dono achado, o catalog-info.yaml começa desmarcado: o Criar já vale (quem quer o catálogo marca e preenche)
@@ -222,10 +242,15 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
           this.template = message.value;
           this.edits = { ...emptyEdits(), added: edits.added, off: edits.off.filter(p => p === CATALOG_FILE || p === LINT_FILE) };
         } else if (message.field === 'siteName') this.siteName = message.value;
-        else if (message.field === 'owner') this.owner = message.value;
+        else if (message.field === 'owner') {
+          this.owner = message.value;
+          // Quem preenche o dono quer o catálogo: marca o arquivo (a não ser que a pessoa já tenha mexido nele)
+          if (message.value.trim() && !this.catalogToggled) edits.off = edits.off.filter(p => p !== CATALOG_FILE);
+        } else if (message.field === 'description') this.description = message.value;
         else this.readmeUse = message.value as ReadmeUse;
         break;
       case 'toggle':
+        if (message.path === CATALOG_FILE) this.catalogToggled = true;
         edits.off = edits.off.filter(p => p !== message.path).concat(message.on ? [] : [message.path]);
         break;
       case 'replace':
@@ -298,7 +323,17 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
         use: this.readmeUse,
         pointer: vscode.l10n.t('The documentation of this repository is in [docs/](docs/index.md), published by TechDocs.'),
       },
-      catalog: context.catalogName !== undefined ? { name: context.catalogName, owner: this.owner, annotation: techdocsRefAnnotation('', '') } : undefined,
+      catalog:
+        context.catalogName !== undefined
+          ? {
+              // O componente com o nome do site (tarefas-api), não o da pasta; sem nome, o da pasta
+              name: this.siteName.trim() || context.catalogName,
+              title: this.siteName,
+              description: this.description,
+              owner: this.owner,
+              annotation: techdocsRefAnnotation('', ''),
+            }
+          : undefined,
       lint: context.lint ? SETUP_MARKDOWNLINT : undefined,
       pageTemplates: context.pageTemplates.map(p => p.template),
       values: this.values(),
@@ -426,6 +461,9 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
         owner: this.owner,
         ownerFrom: context.ownerFrom,
         ownerRequired: plan.files.some(f => f.origin === 'catalog' && f.included),
+        owners: context.owners,
+        description: context.catalogName !== undefined ? this.description : undefined,
+        descriptionFrom: context.description && this.description === context.description ? 'README.md' : undefined,
         readme: context.readme && { path: relativeTo(context.root, context.readme.uri), use: this.readmeUse },
         pageTypes: context.pageTemplates.map(p => ({ id: p.template.id, name: p.template.name })),
         files: plan.files.map(({ content: _content, ...file }) => file),
@@ -478,7 +516,13 @@ export function previewLabels() {
     optional: vscode.l10n.t('optional'),
     suggestedFrom: vscode.l10n.t('Suggested from {0}'),
     notFoundOwner: vscode.l10n.t('No CODEOWNERS or catalog-info.yaml found'),
-    ownerOptional: vscode.l10n.t('Only catalog-info.yaml needs the owner, and it is unchecked.'),
+    ownersInWorkspace: vscode.l10n.t('Used in other catalog-info.yaml files: {0}'),
+    ownerUnknown: vscode.l10n.t('No other catalog-info.yaml in the workspace uses this owner. Check that the group exists in Backstage.'),
+    ownerFiles: vscode.l10n.t('{0} files'),
+    description: vscode.l10n.t('Description'),
+    descriptionFrom: vscode.l10n.t('Suggested from the first paragraph of {0}'),
+    catalogOn: vscode.l10n.t('Registers the site in the Backstage catalog. Without it, the site does not appear there.'),
+    catalogOff: vscode.l10n.t('Without this file, the site does not appear in Backstage.'),
     readme: vscode.l10n.t('README.md'),
     readmeCopy: vscode.l10n.t('Copy as the home page'),
     readmeMove: vscode.l10n.t('Move (the README becomes a link)'),
@@ -533,11 +577,15 @@ body { padding: 0 0 8px; color: var(--vscode-foreground); font-family: var(--vsc
 .fields { padding: 4px 12px 10px 20px; display: grid; gap: 8px; border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border)); }
 .field { display: grid; gap: 2px; }
 .field > label { font-size: 12px; color: var(--vscode-descriptionForeground); }
-input, select { font: inherit; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, transparent); border-radius: 2px; padding: 3px 6px; min-width: 0; }
+input, select, textarea { font: inherit; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, transparent); border-radius: 2px; padding: 3px 6px; min-width: 0; }
 select { color: var(--vscode-dropdown-foreground); background: var(--vscode-dropdown-background); border-color: var(--vscode-dropdown-border, transparent); }
-input:focus, select:focus { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+input:focus, select:focus, textarea:focus { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 input.missing { border-color: var(--vscode-inputValidation-warningBorder); background: var(--vscode-inputValidation-warningBackground); }
 .from { font-size: 11px; color: var(--vscode-descriptionForeground); opacity: .8; }
+.from.warn { color: var(--vscode-editorWarning-foreground); opacity: 1; }
+.why { font-size: 11px; color: var(--vscode-descriptionForeground); padding: 0 8px 4px 0; }
+.why.warn { color: var(--vscode-editorWarning-foreground); }
+.field textarea { resize: vertical; }
 .viewbar { display: flex; align-items: center; gap: 8px; padding: 8px 8px 4px 20px; }
 .seg { display: inline-flex; border: 1px solid var(--vscode-panel-border); border-radius: 3px; overflow: hidden; }
 .seg button { font: 12px var(--vscode-font-family); color: var(--vscode-descriptionForeground); background: none; border: none; padding: 2px 10px; cursor: pointer; }
@@ -583,3 +631,15 @@ input.missing { border-color: var(--vscode-inputValidation-warningBorder); backg
 .btn:disabled { opacity: .5; cursor: default; }
 :focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 `;
+
+/** Donos (`spec.owner`) dos `catalog-info.yaml` do workspace, do mais usado para o menos: sugestões para o campo Dono. */
+async function workspaceOwners(): Promise<{ owner: string; count: number }[]> {
+  const counts = new Map<string, number>();
+  const files = await vscode.workspace.findFiles('**/catalog-info.yaml', '**/node_modules/**', OWNER_SCAN_LIMIT);
+  for (const uri of files) {
+    const text = await readText(uri);
+    const owner = text && catalogOwner(text);
+    if (owner) counts.set(owner, (counts.get(owner) ?? 0) + 1);
+  }
+  return [...counts].map(([owner, count]) => ({ owner, count })).sort((a, b) => b.count - a.count || a.owner.localeCompare(b.owner));
+}

@@ -44,16 +44,39 @@ function render() {
 
 function fields(v: PreviewView) {
   const templates = [...(v.allowNone ? [{ id: '', name: l.noTemplate }] : []), ...v.templates];
-  const field = (id: string, label: string, value: string, help: string, missing: boolean, optional = false) =>
+  const field = (id: string, label: string, value: string, help: string, missing: boolean, optional = false, extra = '', helpClass = '') =>
     `<div class="field"><label for="${id}">${escape(label)}${optional ? ` <span class="from">(${escape(l.optional)})</span>` : ''}</label>
-      <input id="${id}" type="text" value="${escape(value)}" class="${missing ? 'missing' : ''}"><span class="from">${help}</span></div>`;
-  const ownerHelp = !v.ownerRequired ? escape(l.ownerOptional) : v.owner.trim() && v.ownerFrom ? format(l.suggestedFrom, v.ownerFrom) : v.owner.trim() ? '' : escape(l.notFoundOwner);
+      <input id="${id}" type="text" value="${escape(value)}" class="${missing ? 'missing' : ''}"${extra}><span class="from${helpClass}">${help}</span></div>`;
+  // Os donos dos outros catalog-info.yaml do workspace: sugestões no campo e na dica
+  const owner = v.owner.trim();
+  const known = v.owners.some(o => o.owner === owner);
+  const ownerHelp =
+    owner && v.ownerFrom
+      ? format(l.suggestedFrom, v.ownerFrom)
+      : owner && !known && v.owners.length
+        ? escape(l.ownerUnknown)
+        : owner
+          ? ''
+          : v.owners.length
+            ? format(l.ownersInWorkspace, v.owners.slice(0, 3).map(o => o.owner).join(', '))
+            : v.ownerRequired
+              ? escape(l.notFoundOwner)
+              : '';
+  const ownerList = v.owners.length
+    ? `<datalist id="owners">${v.owners.map(o => `<option value="${escape(o.owner)}">${format(l.ownerFiles, o.count)}</option>`).join('')}</datalist>`
+    : '';
+  const description =
+    v.description === undefined
+      ? ''
+      : `<div class="field"><label for="f-description">${escape(l.description)} <span class="from">(${escape(l.optional)})</span></label>
+      <textarea id="f-description" rows="2">${escape(v.description)}</textarea><span class="from">${v.descriptionFrom ? format(l.descriptionFrom, v.descriptionFrom) : ''}</span></div>`;
   return `<div class="fields">
     <div class="field"><label for="f-template">${escape(l.template)}</label><select id="f-template">${templates
       .map(t => `<option value="${escape(t.id)}"${t.id === v.template ? ' selected' : ''}>${escape(t.name)}</option>`)
       .join('')}</select></div>
     ${field('f-siteName', l.siteName, v.siteName, v.siteName.trim() ? format(l.suggestedFrom, v.siteNameFrom) : '', v.missing.includes('siteName'))}
-    ${field('f-owner', l.owner, v.owner, ownerHelp, v.missing.includes('owner'), !v.ownerRequired)}
+    ${field('f-owner', l.owner, v.owner, ownerHelp, v.missing.includes('owner'), !v.ownerRequired, v.owners.length ? ' list="owners" autocomplete="off"' : '', owner && !known && v.owners.length && !v.ownerFrom ? ' warn' : '')}${ownerList}
+    ${description}
     ${
       v.readme
         ? `<div class="field"><label for="f-readme">${escape(v.readme.path)}</label><select id="f-readme">${(
@@ -113,6 +136,10 @@ function fileRow(f: FileView, depth: number, v: PreviewView) {
   let html = `<div class="row ${kindClass(f.status)}${f.included ? '' : ' off'}${v.selected === f.path ? ' sel' : ''}" tabindex="0" role="treeitem" data-open="${escape(f.path)}" style="padding-left:${10 + depth * 14}px">
     ${checkbox(f, name)}<span class="ic">${icon}</span><span class="name">${escape(name)}</span><span class="desc">${escape(note(f))}</span>
     <span class="end">${f.origin === 'added' ? removeButton(f.path.slice(DOCS.length), name) : ''}${badge(f.status, f.conflict)}</span></div>`;
+  if (f.origin === 'catalog') {
+    // Quem não conhece o Backstage não sabe para que serve o arquivo: uma linha explica
+    html += `<div class="why${f.included ? '' : ' warn'}" style="padding-left:${46 + depth * 14}px">${escape(f.included ? l.catalogOn : l.catalogOff)}</div>`;
+  }
   if (f.conflict) {
     const page = f.path.slice(DOCS.length);
     html += `<div class="conflict" style="padding-left:${46 + depth * 14}px"><button data-replace="${escape(page)}" data-value="false" aria-pressed="${!f.conflict.replace}">${escape(l.keep)}</button><button data-replace="${escape(page)}" data-value="true" aria-pressed="${f.conflict.replace}">${escape(l.replace)}</button></div>`;
@@ -242,6 +269,7 @@ root.addEventListener('input', e => {
   const target = e.target as HTMLInputElement;
   if (target.id === 'f-siteName') send({ type: 'set', field: 'siteName', value: target.value });
   if (target.id === 'f-owner') send({ type: 'set', field: 'owner', value: target.value });
+  if (target.id === 'f-description') send({ type: 'set', field: 'description', value: target.value });
   if (target.id === 'add' && ui.adding?.kind === 'page') {
     send({ type: 'add', hint: true, text: target.value, by: ui.mode === 'files' ? 'path' : 'title', section: ui.adding.section, template: ui.adding.type || undefined });
   }

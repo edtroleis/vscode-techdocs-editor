@@ -43,7 +43,7 @@ export type PlanInput = {
   /** O README.md da pasta do site; `pointer`: o texto que fica nele quando é movido. */
   readme?: { path: string; text: string; use: ReadmeUse; pointer: string };
   /** O `catalog-info.yaml` a criar (só quando a pasta não tem um). */
-  catalog?: { name: string; owner: string; annotation: string };
+  catalog?: { name: string; owner: string; annotation: string; title?: string; description?: string };
   /** O texto do `.markdownlint.yaml` a criar na pasta do site (só quando o repositório não tem um). */
   lint?: string;
   /** Templates de página, para o texto das páginas acrescentadas. */
@@ -148,8 +148,7 @@ export function planSite(input: PlanInput): SitePlan {
   const files: PlanFile[] = [{ path: 'mkdocs.yml', status: 'new', origin: 'mkdocs', content: mkdocs, optional: false, included: true }];
   const catalogOn = Boolean(input.catalog) && !off.has(CATALOG);
   if (input.catalog) {
-    const { name, owner, annotation } = input.catalog;
-    files.push({ path: CATALOG, status: 'new', origin: 'catalog', content: catalogInfoSkeleton({ name, owner, annotation }), optional: true, included: catalogOn });
+    files.push({ path: CATALOG, status: 'new', origin: 'catalog', content: catalogInfoSkeleton(input.catalog), optional: true, included: catalogOn });
   }
   // As regras do lint ficam no repositório: a pipeline e quem edita sem a extensão usam as mesmas
   if (input.lint !== undefined) files.push({ path: LINT, status: 'new', origin: 'lint', content: input.lint, optional: true, included: !off.has(LINT) });
@@ -297,6 +296,38 @@ export function newSectionPage(name: string, plan: Pick<SitePlan, 'nav'>): Added
  * Dono sugerido pelo CODEOWNERS: o primeiro dono da regra `*` (a que vale para o repositório todo), sem o `@` e
  * sem a organização (`@acme/time-pagamentos` → `time-pagamentos`). undefined sem regra `*`.
  */
+/** Tamanho máximo da descrição tirada do README: uma ou duas frases, como as do catálogo do Backstage. */
+const DESCRIPTION_MAX = 200;
+
+/**
+ * Descrição do componente pelo README: o 1º parágrafo de texto (pula títulos, selos, listas, código, citações, HTML e
+ * tabelas), sem a formatação do Markdown. Comprido, corta no fim de uma frase, senão numa palavra. undefined se não há.
+ */
+export function readmeDescription(readme: string): string | undefined {
+  const blocks = readme
+    .replace(/\r\n?/g, '\n')
+    .replace(/^(```|~~~)[\s\S]*?^\1[^\n]*$/gm, '')
+    .split(/\n\s*\n/)
+    .map(block => block.trim());
+  for (const block of blocks) {
+    if (!block || /^([#>|<*+-]|\d+[.)]\s|={3,}|-{3,})/.test(block)) continue;
+    const text = block
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/\[\s*\]\([^)]*\)/g, '')
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/(\*\*|__|\*|_|`)(\S(?:.*?\S)?)\1/g, '$2')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!text) continue;
+    if (text.length <= DESCRIPTION_MAX) return text;
+    const head = text.slice(0, DESCRIPTION_MAX);
+    const sentence = head.search(/[.!?](?=\s)[^.!?]*$/);
+    if (sentence > 0) return head.slice(0, sentence + 1);
+    return `${head.slice(0, head.lastIndexOf(' ')).trimEnd()}…`;
+  }
+  return undefined;
+}
+
 export function codeownersOwner(text: string): string | undefined {
   let owner: string | undefined;
   for (const line of text.split(/\r?\n/)) {

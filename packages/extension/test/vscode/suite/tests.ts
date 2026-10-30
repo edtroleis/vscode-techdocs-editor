@@ -1040,7 +1040,7 @@ export function defineTests() {
 
     test('prévia sem dono achado: catalog-info.yaml começa desmarcado e continua ao trocar de template', async () => {
       const { preview } = await api();
-      await vscode.workspace.fs.writeFile(file('sem-dono/README.md'), new TextEncoder().encode('# Sem dono\n'));
+      await vscode.workspace.fs.writeFile(file('sem-dono/README.md'), new TextEncoder().encode('# Sem dono\n\nPagamentos do time, por cartão e Pix.\n'));
       try {
         await preview.open(file('sem-dono'));
         const catalog = () => preview.current?.files.find(f => f.path === 'catalog-info.yaml');
@@ -1049,6 +1049,21 @@ export function defineTests() {
         await preview.send({ type: 'set', field: 'template', value: 'golden-path' });
         await until(() => preview.current, p => (p?.files.filter(f => f.origin === 'template').length ?? 0) > 1, 'prévia sem as páginas do golden path');
         equal(catalog()!.included, false, 'trocar de template marcou o catalog-info.yaml');
+        // Preencher o dono marca o arquivo; o componente leva o nome, o título e a descrição do README
+        await preview.send({ type: 'set', field: 'owner', value: 'time-pagamentos' });
+        await until(catalog, f => f!.included, 'preencher o dono não marcou o catalog-info.yaml');
+        const metadata = (yaml: string) => yaml.slice(yaml.indexOf('metadata:'), yaml.indexOf('  annotations:'));
+        equal(
+          metadata(catalog()!.content!),
+          'metadata:\n  name: sem-dono\n  title: Sem dono\n  description: Pagamentos do time, por cartão e Pix.\n',
+          'metadata do catalog-info.yaml',
+        );
+        await preview.send({ type: 'set', field: 'siteName', value: 'Tarefas API' });
+        await until(catalog, f => metadata(f!.content!).includes('name: tarefas-api\n  title: Tarefas API\n'), 'o nome do componente não seguiu o do site');
+        // Desmarcado à mão, continua desmarcado mesmo mudando o dono
+        await preview.send({ type: 'toggle', path: 'catalog-info.yaml', on: false });
+        await preview.send({ type: 'set', field: 'owner', value: 'outro-time' });
+        equal(catalog()!.included, false, 'mudar o dono marcou o arquivo desmarcado à mão');
       } finally {
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         await remove('sem-dono');

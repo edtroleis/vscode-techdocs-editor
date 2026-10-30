@@ -25,6 +25,7 @@ const VIEW: PreviewView = {
   owner: 'time-pagamentos',
   ownerFrom: 'CODEOWNERS',
   ownerRequired: true,
+  owners: [],
   readme: { path: 'README.md', use: 'copy' },
   pageTypes: [{ id: 'adr', name: 'Decision record (ADR)' }],
   files: [
@@ -76,10 +77,31 @@ test('campo que falta: aviso, Criar desligado; o dono opcional sem o catalog-inf
   await show(p, { owner: '', missing: ['owner'] });
   await expect(p.getByText('Fill in the owner or uncheck catalog-info.yaml.')).toBeVisible();
   await expect(p.getByRole('button', { name: 'Create' })).toBeDisabled();
-  await show(p, { owner: '', ownerRequired: false });
-  await expect(p.getByText('Only catalog-info.yaml needs the owner, and it is unchecked.')).toBeVisible();
+  await show(p, { owner: '', ownerRequired: false, files: VIEW.files.map(f => (f.origin === 'catalog' ? { ...f, included: false } : f)) });
+  await expect(p.getByText('Without this file, the site does not appear in Backstage.')).toBeVisible();
   await p.getByRole('button', { name: 'Create' }).click();
   expect(await last(p)).toEqual({ type: 'create' });
+});
+
+test('catalog-info.yaml: diz para que serve, sugere os donos do workspace e a descrição do README', async ({ page: p }) => {
+  const owners = [
+    { owner: 'platform-team', count: 3 },
+    { owner: 'squad-checkout', count: 1 },
+  ];
+  await show(p, { owner: '', ownerFrom: undefined, owners, description: 'Uma API de pagamentos.', descriptionFrom: 'README.md' });
+  await expect(p.getByText('Registers the site in the Backstage catalog. Without it, the site does not appear there.')).toBeVisible();
+  await expect(p.getByText('Used in other catalog-info.yaml files: platform-team, squad-checkout')).toBeVisible();
+  expect(await p.locator('#owners option').evaluateAll(options => options.map(o => (o as HTMLOptionElement).value))).toEqual(['platform-team', 'squad-checkout']);
+  await expect(p.getByLabel('Description (optional)')).toHaveValue('Uma API de pagamentos.');
+  await expect(p.getByText('Suggested from the first paragraph of README.md')).toBeVisible();
+  await p.getByLabel('Description (optional)').fill('Pagamentos do checkout.');
+  expect(await last(p)).toEqual({ type: 'set', field: 'description', value: 'Pagamentos do checkout.' });
+  // Dono que nenhum outro catalog-info.yaml usa: aviso, sem bloquear o Criar
+  await show(p, { owner: 'time-plataforma', ownerFrom: undefined, owners });
+  await expect(p.getByText('No other catalog-info.yaml in the workspace uses this owner. Check that the group exists in Backstage.')).toBeVisible();
+  await expect(p.getByRole('button', { name: 'Create' })).toBeEnabled();
+  await show(p, { owner: 'platform-team', ownerFrom: undefined, owners });
+  await expect(p.getByText(/Check that the group exists/)).toHaveCount(0);
 });
 
 test('menu: subir, renomear com dois cliques e acrescentar página na seção com o tipo', async ({ page: p }) => {

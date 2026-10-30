@@ -208,13 +208,18 @@ function entityName(name: string): string {
  * `catalog-info.yaml` mínimo de um componente com a documentação no TechDocs (modo `required`). `annotation`:
  * `backstage.io/techdocs-ref: dir:…`, de `techdocsRefAnnotation`.
  */
-export function catalogInfoSkeleton(opts: { name: string; owner?: string; annotation: string }): string {
+export function catalogInfoSkeleton(opts: { name: string; owner?: string; annotation: string; title?: string; description?: string }): string {
   const owner = opts.owner?.trim();
+  const title = opts.title?.trim();
+  const description = opts.description?.trim();
   return [
     'apiVersion: backstage.io/v1alpha1',
     'kind: Component',
     'metadata:',
     `  name: ${entityName(opts.name)}`,
+    // Sem título e descrição, o Backstage mostra o name (tarefas-api) e uma linha vazia na lista das docs
+    ...(title ? [`  title: ${yamlString(title)}`] : []),
+    ...(description ? [`  description: ${yamlString(description)}`] : []),
     '  annotations:',
     `    ${opts.annotation}`,
     'spec:',
@@ -224,6 +229,9 @@ export function catalogInfoSkeleton(opts: { name: string; owner?: string; annota
     '',
   ].join('\n');
 }
+
+/** Texto de uma linha no YAML: sem aspas quando não precisa, senão entre aspas (JSON é YAML válido). */
+const yamlString = (text: string) => (/^[\p{L}\p{N}][\p{L}\p{N} ,.()/-]*$/u.test(text) ? text : JSON.stringify(text));
 
 function lineOf(text: string, pattern: RegExp): number | undefined {
   const match = pattern.exec(text);
