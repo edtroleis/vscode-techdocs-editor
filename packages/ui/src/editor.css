@@ -47,10 +47,7 @@
   font-weight: 700;
 }
 
-/* Páginas do site embaixo do campo da caixa de link (linkPages.ts) */
-.milkdown .milkdown-link-edit {
-  position: relative;
-}
+/* Páginas do site embaixo do campo da caixa de link (linkPages.ts); a caixa do Crepe já é posicionada */
 .milkdown .docs-link-pages {
   position: absolute;
   top: calc(100% + 4px);
@@ -64,6 +61,10 @@
   color: var(--crepe-color-on-surface);
   box-shadow: var(--crepe-shadow-1);
   z-index: 10;
+}
+.milkdown .docs-link-pages.up {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 .milkdown .docs-link-pages [role='option'] {
   display: flex;

@@ -27,11 +27,13 @@ test.describe('caixa de link: páginas do site', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
-    await expectSaved(page, `${ORIGINAL}\nVeja [Referência da API](../referencia-da-api.md)\n`);
+    // O que vem depois fica fora do link
+    await page.keyboard.type('.', { delay: 20 });
+    await expectSaved(page, `${ORIGINAL}\nVeja [Referência da API](../referencia-da-api.md).\n`);
     await newLineAtEnd(page);
     await clickTopBar(page, 'link');
     await suggestions(page).filter({ hasText: 'Rotina de backup' }).click();
-    await expectSaved(page, `${ORIGINAL}\nVeja [Referência da API](../referencia-da-api.md)\n\n[Rotina de backup](backup.md)\n`);
+    await expectSaved(page, `${ORIGINAL}\nVeja [Referência da API](../referencia-da-api.md).\n\n[Rotina de backup](backup.md)\n`);
   });
 
   test('endereço https: a lista some e vale o que foi digitado', async ({ page }) => {
@@ -43,5 +45,19 @@ test.describe('caixa de link: páginas do site', () => {
     await expect(suggestions(page)).toHaveCount(0);
     await input.press('Enter');
     await expectSaved(page, ORIGINAL.replace('Texto inicial.', '[Texto inicial.](https://exemplo.com)'));
+  });
+
+  test('caixa perto do fim da tela: a lista abre para cima e fica visível', async ({ page }) => {
+    await page.setViewportSize({ width: 900, height: 420 });
+    await openEditor(page, `# Página\n\n${'Parágrafo.\n\n'.repeat(12)}Fim.\n`);
+    await editor(page).locator('> p').last().click();
+    await page.keyboard.press('End');
+    await page.keyboard.type(' Veja ');
+    await clickTopBar(page, 'link');
+    const list = page.locator('.docs-link-pages');
+    await expect(list).toBeVisible();
+    const box = (await list.boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(420);
+    expect(box.y).toBeGreaterThanOrEqual(0);
   });
 });

@@ -16,6 +16,8 @@ export type LinkPagesText = { outside: string };
 
 /** Endereço com esquema (https:, mailto:), âncora ou caminho absoluto: a pessoa está digitando um link, não uma página. */
 const TYPED_LINK = /^([a-z][a-z0-9+.-]*:|#|\/)/i;
+/** Altura máxima da lista (a mesma do editor.css). */
+const LIST_MAX_HEIGHT = 240;
 const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /**
@@ -80,7 +82,21 @@ export function attachLinkPages(root: HTMLElement, view: () => EditorView, pages
         return option;
       }),
     );
+    place();
     list.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
+  };
+
+  /**
+   * A caixa à vista e a lista do lado com espaço. O Crepe posiciona a caixa depois de abri-la (e, no fim da página,
+   * abaixo da parte visível, sem rolar até ela): de novo no quadro seguinte.
+   */
+  const place = () => {
+    if (!input || !list) return;
+    input.scrollIntoView({ block: 'nearest' });
+    const field = input.getBoundingClientRect();
+    const height = Math.min(list.scrollHeight, LIST_MAX_HEIGHT) + 8;
+    const below = window.innerHeight - field.bottom;
+    list.classList.toggle('up', below < height && field.top > below);
   };
 
   const choose = (page: LinkPage) => {
@@ -92,14 +108,21 @@ export function attachLinkPages(root: HTMLElement, view: () => EditorView, pages
     field.value = page.href;
     field.dispatchEvent(new Event('input', { bubbles: true }));
     field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
-    if (from !== to) return;
-    // Sem seleção, o Crepe escreve o endereço como texto do link: troca pelo título
     const editor = view();
+    // O que a pessoa digita depois do link fica fora dele (a marca de link continua no texto digitado no fim dela)
+    const outside = () => {
+      const { state } = editor;
+      const link = state.schema.marks.link;
+      if (link) editor.dispatch(state.tr.setStoredMarks(state.selection.$from.marks().filter(mark => mark.type !== link)));
+    };
+    if (from !== to) return outside();
+    // Sem seleção, o Crepe escreve o endereço como texto do link: troca pelo título
     const { state } = editor;
     const end = from + page.href.length;
-    if (end > state.doc.content.size || state.doc.textBetween(from, end) !== page.href) return;
+    if (end > state.doc.content.size || state.doc.textBetween(from, end) !== page.href) return outside();
     const marks = state.doc.resolve(end).marks();
     editor.dispatch(state.tr.replaceWith(from, end, state.schema.text(page.title, marks)));
+    outside();
   };
 
   const onFocusIn = (event: FocusEvent) => {
@@ -115,6 +138,7 @@ export function attachLinkPages(root: HTMLElement, view: () => EditorView, pages
         if (current !== request || input !== field) return;
         all = result;
         render();
+        requestAnimationFrame(place);
       },
       () => undefined,
     );

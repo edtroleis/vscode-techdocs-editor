@@ -317,9 +317,11 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
    * a caixa de link do editor visual. Vazio se a página não está na árvore (outro site, ou a árvore ainda montando).
    */
   linkTargets(uri: vscode.Uri): LinkPageView[] {
-    let site = this.pageItem(uri);
-    while (site?.parent) site = site.parent;
-    if (!site) return [];
+    let top = this.pageItem(uri);
+    while (top?.parent) top = top.parent;
+    if (!top) return [];
+    // Um site só no workspace não tem o nó do site: as páginas estão na raiz da árvore
+    const site = top.kind === 'site' || top.kind === 'remote' ? top.children : this.roots;
     const from = dirOf(uri.path);
     const found: LinkPageView[] = [];
     const walk = (items: DocsItem[]) =>
@@ -336,8 +338,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         }
         walk(item.children);
       });
-    walk(site.children.filter(item => item.kind !== 'notInNav'));
-    walk(site.children.filter(item => item.kind === 'notInNav'));
+    walk(site.filter(item => item.kind !== 'notInNav'));
+    walk(site.filter(item => item.kind === 'notInNav'));
     return found;
   }
 
@@ -499,7 +501,9 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
     const uri = input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom ? input.uri : undefined;
     const item = uri && this.pageItem(uri);
-    if (item) void this.view.reveal(item, { select: true, focus: false, expand: true }).then(undefined, () => {});
+    // No editor visual, sem selecionar: a seleção feita daqui tira o foco do webview na primeira edição seguinte, e
+    // as letras digitadas se perdem (o clique da própria pessoa na árvore não tem esse problema)
+    if (item) void this.view.reveal(item, { select: !(input instanceof vscode.TabInputCustom), focus: false, expand: true }).then(undefined, () => {});
   }
 }
 
