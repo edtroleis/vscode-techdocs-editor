@@ -4,6 +4,7 @@ import {
   filesOnlyUsedBy,
   findPage,
   findSection,
+  listForPage,
   navFromTree,
   pageTitle,
   pagesLinkingTo,
@@ -364,7 +365,7 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     this.done(message, undo);
   }
 
-  /** "Adicionar ao menu": a página de fora do `nav` entra no fim do menu. */
+  /** "Adicionar ao menu": a página de fora do `nav` entra no fim da seção da pasta dela (senão, no fim do menu). */
   async addToMenu(target?: unknown) {
     const item = this.itemOf(target);
     if (!item?.outside || !item.path) return;
@@ -372,7 +373,7 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     if (!site) return;
     const yml = await this.readYml(site.mkdocs);
     const nav = readNav(yml) ?? [];
-    nav.push({ kind: 'page', path: item.path });
+    listForPage(nav, item.path).push({ kind: 'page', path: item.path });
     const undo = await this.change(vscode.l10n.t('add "{0}" to the menu', item.label), [site.mkdocs], () => writeText(site.mkdocs, writeNav(yml, nav)));
     this.done(vscode.l10n.t('"{0}" now appears in the menu of the site.', item.label), undo);
   }

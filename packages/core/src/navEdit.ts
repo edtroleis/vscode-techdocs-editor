@@ -100,6 +100,23 @@ export function findSection(nav: NavItem[], trail: readonly string[]): NavPlace 
   return place;
 }
 
+/**
+ * Onde entra uma página que ainda não está no menu: na lista da seção mais funda com outra página da mesma pasta
+ * (`operacao/estorno.md` vai para a seção de `operacao/alertas.md`); sem nenhuma, na raiz do menu.
+ */
+export function listForPage(nav: NavItem[], path: string): NavItem[] {
+  const folder = (page: string) => page.slice(0, page.lastIndexOf('/') + 1);
+  let best: { list: NavItem[]; depth: number } = { list: nav, depth: -1 };
+  const walk = (list: NavItem[], depth: number) => {
+    for (const item of list) {
+      if (item.kind === 'page' && folder(item.path) === folder(path) && depth > best.depth) best = { list, depth };
+      if (item.kind === 'section') walk(item.children, depth + 1);
+    }
+  };
+  walk(nav, 0);
+  return best.list;
+}
+
 /** As páginas de um item (a própria, ou todas as de dentro da seção). */
 export function pagesOf(item: NavItem): string[] {
   return item.kind === 'page' ? [item.path] : item.kind === 'section' ? item.children.flatMap(pagesOf) : [];

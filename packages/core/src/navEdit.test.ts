@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { docsTree } from './docsTree';
-import { filesOnlyUsedBy, findPage, findSection, linkTargets, navFromTree, pagesLinkingTo, readNav, setPageTitle, writeNav, type NavItem } from './navEdit';
+import { filesOnlyUsedBy, findPage, findSection, linkTargets, listForPage, navFromTree, pagesLinkingTo, readNav, setPageTitle, writeNav, type NavItem } from './navEdit';
 
 const YML = `site_name: Wiki # o nome
 theme:
@@ -93,5 +93,22 @@ describe('setPageTitle', () => {
   it('sem título, põe um no começo', () => {
     expect(setPageTitle('texto', 'Novo')).toBe('# Novo\n\ntexto');
     expect(setPageTitle('---\na: 1\n---\ntexto', 'Novo')).toBe('---\na: 1\n---\n# Novo\n\ntexto');
+  });
+});
+
+describe('listForPage', () => {
+  const nav: NavItem[] = [
+    { kind: 'page', path: 'index.md' },
+    { kind: 'section', title: 'Guias', children: [{ kind: 'page', path: 'guias/a.md' }] },
+    { kind: 'section', title: 'Operação', children: [{ kind: 'page', path: 'operacao/alertas.md' }] },
+  ];
+
+  it('a seção com outra página da mesma pasta', () => {
+    expect(listForPage(nav, 'operacao/estorno.md')).toBe((nav[2] as Extract<NavItem, { kind: 'section' }>).children);
+  });
+
+  it('sem página da mesma pasta, a raiz do menu', () => {
+    expect(listForPage(nav, 'solta.md')).toBe(nav);
+    expect(listForPage(nav, 'outra/pagina.md')).toBe(nav);
   });
 });
