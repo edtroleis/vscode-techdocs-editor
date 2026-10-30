@@ -30,6 +30,10 @@ type Options = {
   /** Pasta onde gravar o vídeo da janela (e2e/videos); sem ela, não grava. */
   recordDir: string | undefined;
   windowSize: { width: number; height: number };
+  /** Pasta a abrir no lugar do workspace de teste (os cenários de usuário montam a sua). */
+  folder: string | undefined;
+  /** Língua do VS Code (`--locale`); a extensão segue ela nos textos. */
+  locale: string | undefined;
 };
 
 export const test = base.extend<Options & { vscode: VsCode }>({
@@ -37,9 +41,11 @@ export const test = base.extend<Options & { vscode: VsCode }>({
   settings: [{}, { option: true }],
   recordDir: [undefined, { option: true }],
   windowSize: [{ width: 1600, height: 1000 }, { option: true }],
-  vscode: async ({ theme, settings, recordDir, windowSize }, use, testInfo) => {
+  folder: [undefined, { option: true }],
+  locale: [undefined, { option: true }],
+  vscode: async ({ theme, settings, recordDir, windowSize, folder, locale }, use, testInfo) => {
     const executablePath = await downloadAndUnzipVSCode({ cachePath: join(ROOT, '.vscode-test') });
-    const workspace: string = createWorkspace();
+    const workspace: string = folder ?? createWorkspace();
     const userData = mkdtempSync(join(tmpdir(), 'techdocs-editor-user-'));
     mkdirSync(join(userData, 'User'), { recursive: true });
     writeFileSync(
@@ -56,6 +62,8 @@ export const test = base.extend<Options & { vscode: VsCode }>({
         'chat.disableAIFeatures': true,
         'window.restoreWindows': 'none',
         'files.autoSave': 'off',
+        // O menu do botão direito desenhado pelo VS Code (o nativo o teste não alcança)
+        'window.menuStyle': 'custom',
         ...settings,
       }),
     );
@@ -72,6 +80,7 @@ export const test = base.extend<Options & { vscode: VsCode }>({
         '--skip-release-notes',
         '--disable-telemetry',
         '--disable-gpu',
+        ...(locale ? [`--locale=${locale}`] : []),
         // Sem janela na tela: renderiza fora dela (Chromium ozone headless)
         ...(process.env.HEADED ? [] : ['--ozone-platform=headless']),
       ],

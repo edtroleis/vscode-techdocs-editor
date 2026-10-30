@@ -21,6 +21,7 @@
     "test:vscode": "npm run build && node packages/extension/test/vscode/run.mjs",
     "test:web": "npm run build && node packages/extension/test/vscode/run-web.mjs",
     "test:e2e": "npm run build && playwright test -c packages/extension/e2e/playwright.config.ts",
+    "test:scenarios": "node scripts/scenarios.mjs",
     "roundtrip": "npm run build && node packages/extension/test/webview/roundtrip.mjs",
     "prepare": "git config core.hooksPath .githooks || true",
     "test:bundle": "node packages/extension/test/bundle-size.mjs",

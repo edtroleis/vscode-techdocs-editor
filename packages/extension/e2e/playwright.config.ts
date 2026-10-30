@@ -7,8 +7,8 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: '.',
   testMatch: '*.spec.ts',
-  // Os vídeos do README têm a configuração deles (npm run record:videos)
-  testIgnore: 'videos/**',
+  // Os vídeos do README e os cenários de usuário têm a configuração deles (record:videos, test:scenarios)
+  testIgnore: ['videos/**', 'scenarios/**'],
   timeout: 120_000,
   expect: { timeout: 10_000 },
   workers: 2,

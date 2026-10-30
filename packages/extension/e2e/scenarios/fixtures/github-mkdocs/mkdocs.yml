@@ -1,0 +1,6 @@
+site_name: Cadastro de Clientes
+nav:
+  - Início: index.md
+  - Arquitetura: arquitetura.md
+plugins:
+  - techdocs-core

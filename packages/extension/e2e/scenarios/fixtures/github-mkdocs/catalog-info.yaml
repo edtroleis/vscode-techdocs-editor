@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cadastro-de-clientes
+  title: Cadastro de Clientes
+  description: Serviço que guarda os dados dos clientes.
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: service
+  owner: platform-team
+  lifecycle: production

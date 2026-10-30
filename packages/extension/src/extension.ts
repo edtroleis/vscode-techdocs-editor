@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { useE2eToken } from './publish/githubAuth';
 import { chooseSites, hideSite, useTestSiteChoice } from './chooseSites';
 import { REMOTE_SCHEME } from '@edtroleis/techdocs-editor-core';
 import { CatalogOptions, repositoryFolder } from './catalogOptions';
@@ -26,6 +27,8 @@ import { TreeActions, useTestAnswers } from './treeActions';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
+  // Cenários de usuário (e2e/scenarios): login no GitHub por token, nunca na extensão publicada
+  if (context.extensionMode !== vscode.ExtensionMode.Production) useE2eToken(process.env.TECHDOCS_EDITOR_E2E_GITHUB_TOKEN);
   const sites = new LocalSites();
   const remotes = new RemoteRepos(context.globalState);
   const remoteFs = new RemoteFileSystem(remotes);

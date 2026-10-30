@@ -1,0 +1,11 @@
+site_name: Plataforma de Pagamentos
+repo_url: https://example.com/pagamentos
+nav:
+  - Início: index.md
+  - Guias:
+      - guias/primeiros-passos.md
+      - guias/deploy-antigo.md
+  - Operação:
+      - operacao/alertas.md
+plugins:
+  - techdocs-core
