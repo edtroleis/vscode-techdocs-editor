@@ -14,6 +14,13 @@ describe('textLanguage', () => {
     expect(textLanguage(text)).toBe('pt-br');
   });
 
+  test('README curto: as palavras com acento do português também contam', () => {
+    expect(textLanguage('# Tarefas API\n\nAPI simples de tarefas (FastAPI), usada como exemplo de serviço com documentação no TechDocs.\n')).toBe('pt-br');
+    expect(textLanguage('# techdocs-cenario-vazio\n\nRepositório de teste dos cenários do TechDocs Editor: começa só com este README.\n')).toBe('pt-br');
+    // "Café" não puxa para o português (só til e cedilha contam)
+    expect(textLanguage('# Café API\n\nA small API to order coffee for the team.\n')).not.toBe('pt-br');
+  });
+
   test('pouco texto ou só título: não decide', () => {
     expect(textLanguage('# Tarefas API\n')).toBeUndefined();
     expect(textLanguage('')).toBeUndefined();
