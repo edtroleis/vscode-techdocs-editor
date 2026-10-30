@@ -47,8 +47,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
     const panel = await previewPanel(page);
     await story.check('os templates seguem a língua do README', () => expect(panel.locator('#f-template option')).toContainText(['Docs de serviço']));
     await panel.locator('#f-template').selectOption({ index: 2 });
-    await expect(previewRow(panel, 'architecture.md')).toBeVisible();
-    story.suggest('O template em português cria architecture.md e operations.md: nomes de arquivo em inglês num site em português (os títulos estão em português).');
+    await expect(previewRow(panel, 'arquitetura.md')).toBeVisible();
     await pause(page, 1_500);
   });
 
@@ -74,7 +73,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
     await click(page, question.locator('.monaco-list-row', { hasText: /^No\s*Backstage registers/ }));
     await expect(page.locator('.tab.active')).toContainText('index.md', { timeout: 30_000 });
     await editorOf(page);
-    for (const file of ['mkdocs.yml', 'docs/index.md', 'docs/architecture.md', 'docs/como-rodar-localmente.md', 'docs/referencia-da-api.md', '.markdownlint.yaml']) {
+    for (const file of ['mkdocs.yml', 'docs/index.md', 'docs/arquitetura.md', 'docs/como-rodar-localmente.md', 'docs/referencia-da-api.md', '.markdownlint.yaml']) {
       expect(() => read(file), file).not.toThrow();
     }
     expect(() => read('catalog-info.yaml'), 'catalog-info.yaml criado sem pedir').toThrow();

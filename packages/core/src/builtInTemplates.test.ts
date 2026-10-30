@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { BUILT_IN_SITES, BUILT_IN_TEMPLATES, templateLanguage } from './builtInTemplates';
 import { lintFindings } from './lint';
 import { buildSitePages, parseSiteTemplate, siteUsedFields } from './siteTemplates';
-import { AUTOMATIC_FIELDS, fillTemplate, firstToFill, parseTemplate, usedFields } from './templates';
+import { AUTOMATIC_FIELDS, fileNameFor, fillTemplate, firstToFill, parseTemplate, usedFields } from './templates';
 
 /** Valores de exemplo: os automáticos e um texto para cada campo do template. */
 const SAMPLE_VALUES = { title: 'Página de exemplo', date: '2026-10-28', site_name: 'Wiki', owner: 'time-docs' };
@@ -91,6 +91,14 @@ describe('templates da extensão', () => {
     for (const [id, files] of Object.entries(BUILT_IN_SITES.en)) {
       const shape = (yml: string) => parseSiteTemplate(id, yml)!.files.map(f => ({ page: f.page, source: f.source, section: Boolean(f.section) }));
       expect(shape(BUILT_IN_SITES['pt-br'][id]['template.yml'])).toEqual(shape(files['template.yml']));
+    }
+  });
+
+  it('sites em português: o nome do arquivo vem do título, não do inglês (ADR com o número na frente)', () => {
+    for (const [id, files] of Object.entries(BUILT_IN_SITES['pt-br'])) {
+      for (const file of parseSiteTemplate(id, files['template.yml'])!.files.filter(f => !f.path.endsWith('index.md'))) {
+        expect(file.path.split('/').pop()!.replace(/^\d+-/, ''), `${id}/${file.path}`).toBe(fileNameFor(file.title));
+      }
     }
   });
 

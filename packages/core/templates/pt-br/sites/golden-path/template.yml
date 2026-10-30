@@ -5,7 +5,7 @@ files:
   - path: index.md
     title: "{{site_name}}"
     page: golden-path
-  - path: tutorial.md
+  - path: primeiros-passos.md
     title: Primeiros passos
     page: tutorial
   - path: solucao-de-problemas.md

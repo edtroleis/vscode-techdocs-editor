@@ -5,10 +5,10 @@ files:
   - path: index.md
     title: "{{site_name}}"
     page: service-home
-  - path: architecture.md
+  - path: arquitetura.md
     title: Arquitetura
     page: architecture
-  - path: operations.md
+  - path: operacao-e-suporte.md
     title: Operação e suporte
     page: operations
   - path: adr/0001-registrar-decisoes-de-arquitetura.md
