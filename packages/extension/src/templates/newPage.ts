@@ -32,6 +32,7 @@ import type { CentralTemplates } from './centralTemplates';
 import {
   builtInEnabled,
   builtInPageTemplates,
+  siteTemplateLanguage,
   exists,
   fileNames,
   gitUserName,
@@ -324,7 +325,10 @@ export class NewPageCommand {
     const repository = await repositoryPageTemplates(destination.templateFolders);
     const company = await this.central?.get(destination.scope);
     const central = (company?.pages ?? []).map(template => ({ template, origin: 'central' as const, source: company!.label }));
-    return mergeTemplates<PageChoice>(repository, central, builtInEnabled(destination.scope) ? builtInPageTemplates() : []);
+    const builtIn = builtInEnabled(destination.scope)
+      ? builtInPageTemplates(await siteTemplateLanguage(await destination.mkdocs(), [destination.docsDir]))
+      : [];
+    return mergeTemplates<PageChoice>(repository, central, builtIn);
   }
 
   /**

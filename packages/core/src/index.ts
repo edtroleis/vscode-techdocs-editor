@@ -17,6 +17,7 @@ export * from './setup';
 export * from './siteCheck';
 export * from './sitePlan';
 export * from './siteTemplates';
+export * from './docsLanguage';
 export * from './syncMain';
 export * from './templates';
 export * from './verification';

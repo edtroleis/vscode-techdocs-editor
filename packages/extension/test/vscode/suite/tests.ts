@@ -827,6 +827,19 @@ export function defineTests() {
       }
     });
 
+    test('templates da extensão na língua do site, não na do VS Code', async () => {
+      const { newPage } = await api();
+      try {
+        // VS Code em inglês, wiki com theme.language: pt-BR (o caso pelo texto do README está nos testes do core)
+        equal(vscode.env.language, 'en', 'os testes rodam com o VS Code em inglês');
+        await newPage.run(file('wiki/docs'), { template: 'guide', title: 'Fazer deploy', path: 'fazer-deploy.md', values: { owner: 'time' } });
+        const text = await read('wiki/docs/fazer-deploy.md');
+        ok(text.includes('## Objetivo'), `template em inglês num site em português:\n${text.slice(0, 200)}`);
+      } finally {
+        await remove('wiki/docs/fazer-deploy.md');
+      }
+    });
+
     test('ADR na pasta do template, numerado; arquivo existente não é sobrescrito', async () => {
       const { newPage } = await api();
       try {

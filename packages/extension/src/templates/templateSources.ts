@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { catalogOwner, DocTemplate, parseSiteTemplate, parseTemplate, SiteTemplate } from '@edtroleis/techdocs-editor-core';
-import { BUILT_IN_SITES, BUILT_IN_TEMPLATES, templateLanguage } from '@edtroleis/techdocs-editor-core/src/builtInTemplates';
+import { catalogOwner, DocTemplate, docsLanguage, parseSiteTemplate, parseTemplate, SiteTemplate } from '@edtroleis/techdocs-editor-core';
+import { BUILT_IN_SITES, BUILT_IN_TEMPLATES, templateLanguage, type TemplateLanguage } from '@edtroleis/techdocs-editor-core/src/builtInTemplates';
 import { gitApi } from '../publish/vscodeGit';
 
 /** Template de página da lista: da extensão, ou do repositório ou da empresa (TA3), com a origem (TP2). */
@@ -77,9 +77,25 @@ export async function repositoryPageTemplates(folders: vscode.Uri[]): Promise<Pa
   return found;
 }
 
-/** Templates de página da extensão, na língua do VS Code (TP9). */
-export const builtInPageTemplates = (): PageChoice[] =>
-  Object.entries(BUILT_IN_TEMPLATES[templateLanguage(vscode.env.language)])
+/** Páginas lidas para saber a língua do site: bastam umas poucas. */
+const LANGUAGE_SAMPLE = 10;
+
+/**
+ * Língua dos templates da extensão para um site (TP9): a do tema no `mkdocs.yml`, senão a do texto dos `.md` das
+ * pastas (README, páginas), senão a do VS Code.
+ */
+export async function siteTemplateLanguage(mkdocs: string | undefined, folders: vscode.Uri[]): Promise<TemplateLanguage> {
+  const texts: string[] = [];
+  for (const folder of folders) {
+    const names = (await fileNames(folder)).filter(n => n.toLowerCase().endsWith('.md')).sort().slice(0, LANGUAGE_SAMPLE);
+    for (const name of names) texts.push((await readText(vscode.Uri.joinPath(folder, name))) ?? '');
+  }
+  return docsLanguage(mkdocs, texts, templateLanguage(vscode.env.language));
+}
+
+/** Templates de página da extensão, na língua do site (ver siteTemplateLanguage). */
+export const builtInPageTemplates = (language: TemplateLanguage): PageChoice[] =>
+  Object.entries(BUILT_IN_TEMPLATES[language])
     .map(([id, text]) => parseTemplate(id, text))
     .filter((t): t is DocTemplate => Boolean(t))
     .map(template => ({ template, origin: 'builtIn' as const }));
@@ -103,9 +119,9 @@ export async function repositorySiteTemplates(folders: vscode.Uri[]): Promise<Si
   return found;
 }
 
-/** Templates de site da extensão, na língua do VS Code. */
-export const builtInSiteTemplates = (): SiteChoice[] =>
-  Object.entries(BUILT_IN_SITES[templateLanguage(vscode.env.language)]).flatMap(([id, files]) => {
+/** Templates de site da extensão, na língua do site (ver siteTemplateLanguage). */
+export const builtInSiteTemplates = (language: TemplateLanguage): SiteChoice[] =>
+  Object.entries(BUILT_IN_SITES[language]).flatMap(([id, files]) => {
     const template = parseSiteTemplate(id, files['template.yml']);
     return template ? [{ template, origin: 'builtIn' as const, files }] : [];
   });

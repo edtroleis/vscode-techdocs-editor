@@ -22,6 +22,7 @@ import {
   builtInEnabled,
   builtInPageTemplates,
   builtInSiteTemplates,
+  siteTemplateLanguage,
   exists,
   gitUserName,
   ownerFromCatalog,
@@ -221,7 +222,7 @@ export class NewSiteCommand {
       .filter(s => !ids.has(s.template.id))
       .map(s => ({ ...s, origin: 'central', source: company!.label }));
     central.forEach(c => ids.add(c.template.id));
-    const builtIn = builtInEnabled(root) ? builtInSiteTemplates().filter(c => !ids.has(c.template.id)) : [];
+    const builtIn = builtInEnabled(root) ? builtInSiteTemplates(await this.language(root)).filter(c => !ids.has(c.template.id)) : [];
     return { repository, central, builtIn };
   }
 
@@ -231,8 +232,15 @@ export class NewSiteCommand {
     return [
       ...(await repositoryPageTemplates(folders)),
       ...(company?.pages ?? []).map(template => ({ template, origin: 'central' as const, source: company!.label })),
-      ...builtInPageTemplates(),
+      ...builtInPageTemplates(await this.language(root)),
     ];
+  }
+
+  /** Língua dos templates da extensão: a do que já está escrito no site, no README do repositório ou nas páginas. */
+  private language(root: vscode.Uri) {
+    const workspace = vscode.workspace.getWorkspaceFolder(root)?.uri;
+    const folders = [root, vscode.Uri.joinPath(root, 'docs'), ...(workspace ? [workspace] : [])];
+    return siteTemplateLanguage(undefined, folders.filter((f, i) => folders.findIndex(o => o.toString() === f.toString()) === i));
   }
 
   private async pickTemplate(folders: vscode.Uri[], root: vscode.Uri, id: string | undefined): Promise<SiteChoice | undefined> {
