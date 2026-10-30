@@ -27,8 +27,12 @@ import { TreeActions, useTestAnswers } from './treeActions';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
-  // Cenários de usuário (e2e/scenarios): login no GitHub por token, nunca na extensão publicada
-  if (context.extensionMode !== vscode.ExtensionMode.Production) useE2eToken(process.env.TECHDOCS_EDITOR_E2E_GITHUB_TOKEN);
+  // Cenários de usuário (e2e/scenarios): login no GitHub por token, nunca na extensão publicada. No navegador não há
+  // `process`: lido pelo globalThis
+  if (context.extensionMode !== vscode.ExtensionMode.Production) {
+    const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env;
+    useE2eToken(env?.TECHDOCS_EDITOR_E2E_GITHUB_TOKEN);
+  }
   const sites = new LocalSites();
   const remotes = new RemoteRepos(context.globalState);
   const remoteFs = new RemoteFileSystem(remotes);
