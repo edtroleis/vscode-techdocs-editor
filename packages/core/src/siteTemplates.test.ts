@@ -5,6 +5,7 @@ import {
   buildSitePages,
   hasTechdocsRef,
   parseSiteTemplate,
+  readableSiteName,
   readmeAsHome,
   siteMkdocsYml,
   siteUsedFields,
@@ -161,6 +162,17 @@ describe('adoptedMkdocsYml', () => {
   it('sem título 1, o nome do arquivo; README.md conta como página inicial', () => {
     const yml = adoptedMkdocsYml('X', ['README.md', 'como-usar.md'], () => undefined);
     expect(parseDocument(yml).toJS().nav).toEqual([{ Home: 'README.md' }, { 'Como usar': 'como-usar.md' }]);
+  });
+});
+
+describe('readableSiteName', () => {
+  it('nome de repositório ou de pasta vira palavras; título de verdade fica', () => {
+    expect(readableSiteName('techdocs-cenario-vazio')).toBe('Techdocs cenario vazio');
+    expect(readableSiteName('api_core')).toBe('Api core');
+    expect(readableSiteName('payments')).toBe('Payments');
+    expect(readableSiteName('Serviço de Pagamentos')).toBe('Serviço de Pagamentos');
+    expect(readableSiteName('PaymentsAPI')).toBe('PaymentsAPI');
+    expect(readableSiteName('2026')).toBe('2026');
   });
 });
 

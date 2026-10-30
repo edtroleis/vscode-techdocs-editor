@@ -489,5 +489,6 @@
   "create \"{0}\"": "criar \"{0}\"",
   "\"{0}\" created.": "\"{0}\" criada.",
   "remove \"{0}\" from the menu": "tirar \"{0}\" do menu",
-  "\"{0}\" no longer appears in the menu of the site.": "\"{0}\" não aparece mais no menu do site."
+  "\"{0}\" no longer appears in the menu of the site.": "\"{0}\" não aparece mais no menu do site.",
+  "Suggested from {0}. It is the name at the top of the site.": "Sugerido do {0}. É o nome que aparece no topo do site."
 }

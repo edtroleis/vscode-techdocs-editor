@@ -80,7 +80,7 @@ function fields(v: PreviewView) {
     <div class="field"><label for="f-template">${escape(l.template)}</label><select id="f-template">${templates
       .map(t => `<option value="${escape(t.id)}"${t.id === v.template ? ' selected' : ''}>${escape(t.name)}</option>`)
       .join('')}</select></div>
-    ${field('f-siteName', l.siteName, v.siteName, v.siteName.trim() ? format(l.suggestedFrom, v.siteNameFrom) : '', v.missing.includes('siteName'))}
+    ${field('f-siteName', l.siteName, v.siteName, v.siteName.trim() ? format(l.siteNameFrom, v.siteNameFrom) : '', v.missing.includes('siteName'))}
     ${field('f-owner', l.owner, v.owner, ownerHelp, v.missing.includes('owner'), !v.ownerRequired, v.owners.length ? ' list="owners" autocomplete="off"' : '', owner && !known && v.owners.length && !v.ownerFrom ? ' warn' : '')}${ownerList}
     ${description}
     ${

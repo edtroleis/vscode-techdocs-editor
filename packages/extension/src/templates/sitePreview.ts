@@ -10,6 +10,7 @@ import {
   newPagePath,
   newSectionPage,
   pageTitle,
+  readableSiteName,
   PlanEdits,
   PlanFile,
   PlanInput,
@@ -198,7 +199,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
       description: readmeDescription((readme ?? (await findReadme(root)))?.text ?? ''),
     };
     this.template = existing.length ? '' : (choices[0]?.template.id ?? '');
-    this.siteName = readmeTitle ?? folderName(root);
+    this.siteName = readableSiteName(readmeTitle ?? folderName(root));
     this.owner = owner ?? '';
     this.description = this.context.description ?? '';
     this.catalogToggled = false;
@@ -515,6 +516,7 @@ export function previewLabels() {
     owner: vscode.l10n.t('Owner'),
     optional: vscode.l10n.t('optional'),
     suggestedFrom: vscode.l10n.t('Suggested from {0}'),
+    siteNameFrom: vscode.l10n.t('Suggested from {0}. It is the name at the top of the site.'),
     notFoundOwner: vscode.l10n.t('No CODEOWNERS or catalog-info.yaml found'),
     ownersInWorkspace: vscode.l10n.t('Used in other catalog-info.yaml files: {0}'),
     ownerUnknown: vscode.l10n.t('No other catalog-info.yaml in the workspace uses this owner. Check that the group exists in Backstage.'),

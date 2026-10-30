@@ -141,6 +141,16 @@ export function readmeAsHome(readme: string): string {
   return readme.replace(/(\]\(\s*<?)(?:\.\/)?docs\//g, '$1').replace(/^(\[[^\]]+\]:\s*<?)(?:\.\/)?docs\//gm, '$1');
 }
 
+/**
+ * Nome do site para quem lê: um nome de repositório ou de pasta (`servico-de-pagamentos`, `api_core`) vira palavras
+ * com maiúscula no começo (`Servico de pagamentos`); um título de verdade (com espaço ou maiúscula) fica como está.
+ */
+export function readableSiteName(name: string): string {
+  if (!/^[a-z0-9]+(?:[-_.][a-z0-9]+)*$/.test(name) || !/[a-z]/.test(name)) return name;
+  const words = name.split(/[-_.]+/).join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /** Anotação que o TechDocs lê no `catalog-info.yaml`. */
 export const TECHDOCS_REF = 'backstage.io/techdocs-ref';
 
