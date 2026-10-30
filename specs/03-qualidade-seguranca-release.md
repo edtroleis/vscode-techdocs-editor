@@ -19,6 +19,25 @@ Regras herdadas:
 - Teste de corrida é determinístico (atrasar a resposta no simulado), nunca `sleep`.
 - Toda funcionalidade testada inserindo **e** removendo; textos em inglês e pt-BR.
 
+### Quando cada suíte roda (2026-10-30)
+
+A suíte completa (~6 min local e ~6 min no CI) só roda na publicação. No dia a dia, só o que a mudança toca:
+
+| Quando | O que roda | Tempo |
+|--------|------------|-------|
+| A cada edição (hook do Claude Code, `.claude/hooks/test-after-edit.sh`) | Typecheck incremental (estado do `tsc` em `node_modules/.cache`) e os unitários ligados ao arquivo editado (`vitest related`). Sem build nem webview: não disputa o `dist/` com os testes do VS Code | ~5–8 s |
+| Durante a feature (à mão) | Só o teste da mudança: `TEST_GREP=<texto> npm run test:vscode`, o spec no Playwright (`npx playwright test -c <config> <arquivo>`), o webview só quando a mudança mexe nele, `npm run test:scenarios -- <nº>` quando muda um fluxo de usuário | 20 s a 1 min |
+| Commit (`.githooks/pre-commit`) | Typecheck e todos os unitários | ~10 s |
+| Push de branch | Nada local. No CI, só o job rápido: typecheck, unitários, webview e tamanho do bundle | ~2 min no CI |
+| Publicação (push da tag `v*`) | `.githooks/pre-push`: `npm run test:all`. No CI (`release.yml` chama o `ci.yml`): também as suítes do editor e do VS Code (desktop, web e e2e) | ~6 min local e ~6 min no CI |
+
+As suítes lentas do CI também rodam à mão (`workflow_dispatch` do CI), por exemplo depois de uma mudança grande no
+editor ou na publicação. Teste instável que aparece só na suíte completa é corrigido antes da release, não ignorado.
+
+Testes e2e visuais (o VS Code com janela, como uma pessoa usaria: `npm run test:scenarios` sem `HEADLESS`, com o
+relatório de capturas, ou os e2e com `HEADED=1`) só rodam quando o dono do projeto pede, em momentos que ele
+escolhe. Ninguém os roda por conta própria durante o desenvolvimento.
+
 ## Segurança
 
 | Área | Requisito |
@@ -71,3 +90,10 @@ Regras herdadas:
 | Pré-release | Canal pre-release do Marketplace para as fases 2 a 5 |
 | Documentação | README em inglês + `README.pt-BR.md`, GIFs gravados pelos testes (como o `yarn record:videos` do plugin), seção de segurança (escopos, OAuth Apps da organização) |
 | Licença | Apache-2.0, `THIRD_PARTY_NOTICES.md` para o markdownlint empacotado |
+
+### Versão de teste antes de cada release
+
+Antes de cada release no GitHub (antes da tag `v*`), gerar um `.vsix` de teste e instalar no VS Code do dono do
+projeto (`npx vsce package --no-dependencies` em `packages/extension`, depois `code --install-extension <arquivo>.vsix`).
+A versão de teste usa um número que não vai para o Marketplace, como a 0.6.99 antes da 0.7.0. A tag só sai depois
+que ele testar e aprovar; quando a release sai, a versão do Marketplace substitui a de teste.

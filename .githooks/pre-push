@@ -1,7 +1,13 @@
 #!/bin/sh
-# Antes de cada push: todas as suítes, inclusive o VS Code de verdade (desktop, web e e2e), ~6 min.
+# Antes do push de uma tag de versão (v*, a publicação): todas as suítes, inclusive o VS Code de verdade, ~6 min.
+# No push de branches, nada: o pre-commit já rodou typecheck e unitários, e o CI roda os testes rápidos.
 # Pular numa emergência: git push --no-verify
 set -e
+release=
+while read -r _local _sha remote _rsha; do
+  case "$remote" in refs/tags/v*) release=1 ;; esac
+done
+[ -n "$release" ] || exit 0
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
   . "$HOME/.nvm/nvm.sh" >/dev/null
   nvm use >/dev/null 2>&1 || true

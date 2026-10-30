@@ -123,7 +123,7 @@ Material UI) e `packages/extension`. Mudanças no código que veio do plugin: `s
 
 Comandos (raiz): `npm run test:fast` (typecheck, unitários e webview, ~1 min), `npm run test:all` (tudo, inclusive o
 VS Code de verdade); separados: `test:unit`, `test:webview`, `test:editor`, `test:vscode`, `test:web`, `test:e2e`
-(Playwright dirigindo o VS Code desktop sem janela) e `npm run roundtrip -- <pasta>`. F5 no VS Code abre a extensão com as wikis de teste.
+(Playwright dirigindo o VS Code desktop sem janela) e `npm run roundtrip -- <pasta>`. Quando cada suíte roda (edição, commit, push, publicação): spec 03, "Quando cada suíte roda". F5 no VS Code abre a extensão com as wikis de teste.
 
 ## Fase 2: plano (2026-10-27)
 

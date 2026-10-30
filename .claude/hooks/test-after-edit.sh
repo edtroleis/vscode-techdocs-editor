@@ -1,6 +1,7 @@
 #!/bin/bash
-# Hook do Claude Code (PostToolUse em Edit|Write): depois de cada edição de código em packages/, roda
-# `npm run test:fast` em segundo plano. Falhou: sai com 2 e a saída vai para o Claude corrigir.
+# Hook do Claude Code (PostToolUse em Edit|Write): depois de cada edição de código em packages/, roda em segundo
+# plano o typecheck e os unitários ligados ao arquivo (vitest related), segundos. Sem build nem webview: não disputa
+# o dist/ com os testes do VS Code (spec 03, "Quando cada suíte roda"). Falhou: sai com 2 e a saída vai para o Claude.
 # Edições em rajada rodam os testes uma vez só, depois da última.
 set -u
 root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
@@ -33,11 +34,11 @@ if [ -s "$HOME/.nvm/nvm.sh" ]; then
   nvm use >/dev/null 2>&1 || true
 fi
 cd "$root"
-if output=$(npm run --silent test:fast 2>&1); then
+if output=$(npm run --silent typecheck 2>&1 && npx vitest related --run --passWithNoTests "$file" 2>&1); then
   exit 0
 fi
 {
-  echo "npm run test:fast falhou depois da edição de ${file#"$root"/}:"
+  echo "typecheck ou unitários falharam depois da edição de ${file#"$root"/}:"
   echo "$output" | grep -vE '^\s*$|MESA: error' | tail -60
 } >&2
 exit 2
