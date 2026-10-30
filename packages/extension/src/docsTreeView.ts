@@ -180,7 +180,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         break;
       case 'missing':
         tree.iconPath = new vscode.ThemeIcon('warning');
-        tree.tooltip = vscode.l10n.t('The nav in mkdocs.yml points to a page that does not exist: {0}', item.description!);
+        tree.tooltip = vscode.l10n.t('The nav in mkdocs.yml points to a page that does not exist: {0}. Right-click to create the page or remove it from the menu.', item.description!);
         break;
       case 'link':
         tree.iconPath = new vscode.ThemeIcon('link-external');

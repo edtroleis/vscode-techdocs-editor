@@ -378,6 +378,33 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     this.done(vscode.l10n.t('"{0}" now appears in the menu of the site.', item.label), undo);
   }
 
+  // ---------- página do menu que não existe ----------
+
+  /** "Criar a página": o arquivo que o `nav` aponta, com o título do menu, aberto no editor visual. */
+  async createMissing(target?: unknown) {
+    const item = this.itemOf(target);
+    if (item?.kind !== 'missing' || !item.description) return;
+    const site = this.siteOf(item);
+    if (!site) return;
+    const page = vscode.Uri.joinPath(site.docsDir, item.description);
+    const undo = await this.change(vscode.l10n.t('create "{0}"', item.label), [page], () => writeText(page, `# ${item.label}\n`));
+    await vscode.commands.executeCommand('techdocsEditor.openVisual', page);
+    this.done(vscode.l10n.t('"{0}" created.', item.label), undo);
+  }
+
+  /** "Tirar do menu": a entrada do `nav` que aponta para a página que não existe sai; o resto do menu fica. */
+  async removeFromMenu(target?: unknown) {
+    const item = this.itemOf(target);
+    if (item?.kind !== 'missing' || !item.description) return;
+    const site = this.siteOf(item);
+    if (!site) return;
+    const yml = await this.readYml(site.mkdocs);
+    const nav = readNav(yml);
+    if (!nav || !removePages(nav, new Set([item.description]))) return;
+    const undo = await this.change(vscode.l10n.t('remove "{0}" from the menu', item.label), [site.mkdocs], () => writeText(site.mkdocs, writeNav(yml, nav)));
+    this.done(vscode.l10n.t('"{0}" no longer appears in the menu of the site.', item.label), undo);
+  }
+
   // ---------- excluir ----------
 
   async delete(target?: unknown) {

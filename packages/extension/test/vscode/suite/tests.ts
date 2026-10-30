@@ -639,6 +639,14 @@ export function defineTests() {
         await run('techdocsEditor.deleteItem', 'Referência', t('Section and pages', 'Seção e páginas'));
         ok(!(await exists('acoes/docs/referencia')), 'a pasta da seção ficou');
 
+        // Página do menu que não existe: criar (com o título do menu) ou tirar do menu
+        const before = await read('acoes/mkdocs.yml');
+        await write('acoes/mkdocs.yml', `${before}  - Sumida: sumida.md\n  - Velha: guias/velha.md\n`);
+        await run('techdocsEditor.createMissingPage', 'Sumida');
+        equal(await read('acoes/docs/sumida.md'), '# Sumida\n', 'página criada');
+        await run('techdocsEditor.removeFromMenu', 'Velha');
+        equal(await read('acoes/mkdocs.yml'), `${before}  - Sumida: sumida.md\n`, 'só a entrada da página que não existe sai');
+
         // Site sem nav: mover pergunta e escreve o menu de hoje (sem páginas do outro site abertas, que puxam a árvore)
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
         await until(

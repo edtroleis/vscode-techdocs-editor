@@ -96,6 +96,8 @@
   "command.deleteItem": "Delete",
   "command.newSection": "New Section",
   "command.addToMenu": "Add to the Menu",
+  "command.createMissingPage": "Create the Page",
+  "command.removeFromMenu": "Remove from the Menu",
   "command.undoTreeEdit": "Undo Last Change in the Documentation Tree",
   "command.filterTree": "Filter Pages",
   "command.treeOpenVisual": "Open in the Visual Editor",

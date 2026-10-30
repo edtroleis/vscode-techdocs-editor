@@ -142,6 +142,8 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.deleteItem', (item?: DocsItem) => treeActions.delete(item)),
     vscode.commands.registerCommand('techdocsEditor.newSection', (item?: DocsItem) => treeActions.newSection(item)),
     vscode.commands.registerCommand('techdocsEditor.addToMenu', (item?: DocsItem) => treeActions.addToMenu(item)),
+    vscode.commands.registerCommand('techdocsEditor.createMissingPage', (item?: DocsItem) => treeActions.createMissing(item)),
+    vscode.commands.registerCommand('techdocsEditor.removeFromMenu', (item?: DocsItem) => treeActions.removeFromMenu(item)),
     // Os mesmos comandos com os nomes do menu ⋯ da árvore ("Nova página nesta seção", "Excluir seção"…)
     vscode.commands.registerCommand('techdocsEditor.tree.openVisual', (item?: DocsItem) => {
       const page = item ?? docs.selected();

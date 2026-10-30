@@ -49,14 +49,12 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
     await pause(page, 2_000);
   });
 
-  await story.step('"Deploy antigo" (a página que não existe): o botão direito não oferece nada', async () => {
+  await story.step('"Deploy antigo" (a página que não existe): o botão direito oferece criar a página ou tirá-la do menu', async () => {
     await treeRow(page, 'Deploy antigo').click({ button: 'right' });
-    await page.waitForTimeout(500);
-    if (!(await page.locator('.context-view .action-item').count())) {
-      story.suggest(
-        'A página do menu que não existe só tem o ⚠ com a dica. O botão direito não tem ação: faltam "Criar a página" e "Tirar do menu" ali mesmo. Hoje a correção está só na Manutenção (e só cria a página).',
-      );
-    }
+    await story.check('o botão direito tem "Criar a página" e "Tirar do menu"', async () => {
+      await expect(page.locator('.context-view .action-item', { hasText: 'Create the Page' })).toBeVisible();
+      await expect(page.locator('.context-view .action-item', { hasText: 'Remove from the Menu' })).toBeVisible();
+    });
     await page.keyboard.press('Escape');
     await pause(page);
   });

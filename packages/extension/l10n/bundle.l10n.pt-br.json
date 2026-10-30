@@ -11,7 +11,6 @@
   "\"{0}\" is larger than {1} MB. Use a smaller image.": "\"{0}\" passa de {1} MB. Use uma imagem menor.",
   "Could not save the image \"{0}\": {1}": "Não foi possível gravar a imagem \"{0}\": {1}",
   "Open": "Abrir",
-  "The nav in mkdocs.yml points to a page that does not exist: {0}": "O nav do mkdocs.yml aponta para uma página que não existe: {0}",
   "GitHub did not accept the saved sign-in. Sign in again to continue.": "O GitHub não aceitou o login salvo. Entre de novo para continuar.",
   "The organization requires single sign-on (SAML). Authorize your GitHub sign-in for the organization on github.com and try again.": "A organização exige login único (SAML). Autorize o seu login do GitHub para a organização no github.com e tente de novo.",
   "The organization restricts OAuth apps. Ask an organization owner to approve \"Visual Studio Code\" in the organization settings.": "A organização restringe apps OAuth. Peça a quem administra a organização para aprovar o \"Visual Studio Code\" nas configurações dela.",
@@ -485,5 +484,10 @@
   "Section \"{0}\" created, with a page of the same name open for you to write.": "Seção \"{0}\" criada, com uma página de mesmo nome já aberta para você escrever.",
   "The home page always stays first.": "A página inicial fica sempre no topo.",
   "{0} and {1}": "{0} e {1}",
-  "Markdown rules, used here and in the pipeline": "regras do Markdown, usadas aqui e na pipeline"
+  "Markdown rules, used here and in the pipeline": "regras do Markdown, usadas aqui e na pipeline",
+  "The nav in mkdocs.yml points to a page that does not exist: {0}. Right-click to create the page or remove it from the menu.": "O nav do mkdocs.yml aponta para uma página que não existe: {0}. Clique com o botão direito para criar a página ou tirá-la do menu.",
+  "create \"{0}\"": "criar \"{0}\"",
+  "\"{0}\" created.": "\"{0}\" criada.",
+  "remove \"{0}\" from the menu": "tirar \"{0}\" do menu",
+  "\"{0}\" no longer appears in the menu of the site.": "\"{0}\" não aparece mais no menu do site."
 }
