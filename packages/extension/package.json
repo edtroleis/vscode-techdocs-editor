@@ -891,7 +891,7 @@
         {
           "id": "techdocsEditor.check",
           "name": "%view.maintenance%",
-          "when": "techdocsEditor.hasDocs && config.techdocsEditor.maintainer",
+          "when": "techdocsEditor.hasDocs && (config.techdocsEditor.maintainer || techdocsEditor.checkAsked)",
           "icon": "$(tools)"
         }
       ]

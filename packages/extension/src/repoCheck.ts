@@ -85,7 +85,11 @@ export class RepoCheck implements vscode.Disposable {
     this.show(results);
     this.last = results;
     this.checkedEmitter.fire(results);
-    if (!quiet) void vscode.commands.executeCommand(`${CHECK_VIEW}.focus`);
+    if (!quiet) {
+      // Sem a Manutenção ligada a seção fica escondida: quem pediu a conferência vê o resultado mesmo assim
+      await vscode.commands.executeCommand('setContext', 'techdocsEditor.checkAsked', true);
+      void vscode.commands.executeCommand(`${CHECK_VIEW}.focus`);
+    }
     return results;
   }
 
