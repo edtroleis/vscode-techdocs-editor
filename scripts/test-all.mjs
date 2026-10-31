@@ -81,7 +81,8 @@ function runStep(step) {
   const [command, args] = step.run;
   const limit = limitOf(step.name);
   console.log(`\n▶ ${step.name} (limite ${limit}s)`);
-  const started = Date.now();
+  // Relógio monotônico: o do sistema dá saltos no WSL ao sincronizar, e o tempo da tabela saía maior que o real
+  const started = performance.now();
   const tail = [];
   return new Promise(resolve => {
     const child = spawn(command, args, {
@@ -105,7 +106,7 @@ function runStep(step) {
     child.on('close', code => {
       clearTimeout(timer);
       current = undefined;
-      resolve({ name: step.name, code: timedOut ? 124 : code ?? 1, timedOut, elapsed: Date.now() - started, limit, tail });
+      resolve({ name: step.name, code: timedOut ? 124 : code ?? 1, timedOut, elapsed: performance.now() - started, limit, tail });
     });
   });
 }
