@@ -105,5 +105,9 @@
   "command.treeNewPage": "New Page in This Section",
   "command.treeNewSection": "New Section Below",
   "command.treeDeleteSection": "Delete Section",
-  "submenu.itemMenu": "More Actions"
+  "submenu.itemMenu": "More Actions",
+  "command.usePageTitle": "Use the Page Title in the Menu",
+  "command.showFiles": "Show the Files",
+  "command.showMenu": "Show the Site Menu",
+  "command.newFolder": "New Folder"
 }

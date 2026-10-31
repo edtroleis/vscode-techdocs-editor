@@ -156,13 +156,13 @@ function checkPages(site: SiteSnapshot, title: string, createIndex: SiteFix, add
   }
   for (const node of tree.notInNav) {
     if (node.kind !== 'page') continue;
-    const canAdd = addToNav(site.mkdocsYml, node.path, node.title) !== undefined;
+    const canAdd = addToNav(site.mkdocsYml, node.path) !== undefined;
     add({
       code: 'page-not-in-nav',
       severity: 'warning',
       file: join(site.docsDir, node.path),
       target: node.path,
-      ...(canAdd && { fix: { file: site.mkdocsFile, apply: (yml: string | undefined) => addToNav(yml ?? '', node.path, node.title)?.yml ?? yml ?? '' } }),
+      ...(canAdd && { fix: { file: site.mkdocsFile, apply: (yml: string | undefined) => addToNav(yml ?? '', node.path)?.yml ?? yml ?? '' } }),
     });
   }
 

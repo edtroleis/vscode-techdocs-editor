@@ -82,6 +82,20 @@ const categoryLabel = (category: TemplateCategory) =>
     explanation: vscode.l10n.t('Understand (explanation)'),
   })[category];
 
+const BLANK_ID = 'blank';
+
+/** Só o título: para escrever do zero ou colar o conteúdo de outra ferramenta. */
+const blankTemplate = (): DocTemplate => ({
+  id: BLANK_ID,
+  name: vscode.l10n.t('Blank page'),
+  description: vscode.l10n.t('Just the title, to write or paste the content'),
+  category: 'reference',
+  numbered: false,
+  version: 1,
+  fields: [],
+  body: '# {{title}}\n',
+});
+
 /**
  * "TechDocs: Nova página a partir de template…" (spec 04, T1): escolhe o template, o título e o
  * arquivo, preenche os campos, grava no `docs_dir` e abre no editor visual.
@@ -221,7 +235,7 @@ export class NewPageCommand {
     const at = (path: string) => remoteUri(ref.host, ref.slug, path);
     const inDocs = (path: string) => (site.docsDir ? `${site.docsDir}/${path}` : path);
     // Pasta clicada (ou da página ativa) dentro do docs_dir
-    const isFolder = target instanceof DocsItem && (target.kind === 'remote' || target.kind === 'section');
+    const isFolder = target instanceof DocsItem && (target.kind === 'remote' || target.kind === 'section' || target.kind === 'dir');
     const folderPath = isFolder && target.kind === 'remote' ? site.docsDir : isFolder ? ref.path : ref.path.replace(/\/?[^/]*$/, '');
     const folder = folderPath.startsWith(`${site.docsDir}/`) ? folderPath.slice(site.docsDir.length + 1) : '';
     const mkdocsPath = site.root ? `${site.root}/mkdocs.yml` : 'mkdocs.yml';
@@ -286,7 +300,7 @@ export class NewPageCommand {
     let uri: vscode.Uri | undefined;
     let isFolder = false;
     if (target instanceof DocsItem) {
-      if (target.kind === 'site') {
+      if (target.kind === 'site' || target.kind === 'dir') {
         uri = target.uri;
         isFolder = true;
       } else {
@@ -337,18 +351,14 @@ export class NewPageCommand {
    */
   private async pickTemplate(destination: Destination, id: string | undefined): Promise<PageChoice | undefined> {
     const choices = await this.templates(destination);
-    if (!choices.length) {
-      void vscode.window.showWarningMessage(
-        vscode.l10n.t('There are no page templates: the built-in ones are turned off and the repository has none.'),
-      );
-      return undefined;
-    }
+    // Página em branco: sempre no topo, também com os templates da extensão desligados (para colar conteúdo)
+    const blank: PageChoice = { template: blankTemplate(), origin: 'builtIn' };
     let choice: PageChoice | undefined;
     if (id) {
-      choice = choices.find(c => c.template.id === id);
+      choice = choices.find(c => c.template.id === id) ?? (id === BLANK_ID ? blank : undefined);
     } else {
       type Item = vscode.QuickPickItem & { choice?: PageChoice };
-      const items: Item[] = [];
+      const items: Item[] = [{ label: blank.template.name, detail: blank.template.description, choice: blank }];
       let group: string | undefined;
       for (const c of choices) {
         const label =
@@ -422,7 +432,7 @@ export class NewPageCommand {
    */
   private async navChange(destination: Destination, page: string, title: string, section: string[] | undefined, answers?: NewPageAnswers) {
     const yml = await destination.mkdocs();
-    const insertion = yml === undefined ? undefined : addToNav(yml, page, title, section);
+    const insertion = yml === undefined ? undefined : addToNav(yml, page, section);
     if (!insertion) return undefined;
     if (answers) return answers.nav ? insertion.yml : undefined;
     const choice = await askNav(insertion.section);
@@ -433,7 +443,8 @@ export class NewPageCommand {
 
 /** Seção do `nav` de um item da árvore (títulos desde a raiz): a própria seção ou a da página. */
 function navSection(item: DocsItem): string[] | undefined {
-  if (item.kind === 'site' || item.kind === 'notInNav' || item.parent?.kind === 'notInNav') return undefined;
+  // Visão dos arquivos: a seção vem da pasta (a das outras páginas dela no menu)
+  if (item.kind === 'site' || item.kind === 'dir' || item.file || item.kind === 'notInNav' || item.parent?.kind === 'notInNav') return undefined;
   const trail: string[] = [];
   for (let at: DocsItem | undefined = item.kind === 'section' ? item : item.parent; at?.kind === 'section'; at = at.parent) {
     trail.unshift(at.label);
@@ -479,7 +490,7 @@ function rootItem(item: DocsItem): DocsItem {
 
 /** Endereço `techdocs:` do item: o do site, o da página, ou o da primeira página da seção. */
 function remoteItemUri(item: DocsItem): vscode.Uri | undefined {
-  if (item.kind === 'remote' || item.kind === 'page') return item.uri;
+  if (item.kind === 'remote' || item.kind === 'page' || item.kind === 'dir') return item.uri;
   const page = firstPage(item)?.uri;
   return page && page.with({ path: page.path.replace(/\/[^/]*$/, '') });
 }

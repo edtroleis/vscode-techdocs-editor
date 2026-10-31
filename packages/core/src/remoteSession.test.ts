@@ -48,7 +48,7 @@ describe('loadRemoteSiteTree', () => {
     const tree = await loadRemoteSiteTree(client(github), site, 'main');
     expect(tree.pages).toEqual(['guias/deploy.md', 'guias/rollback.md', 'index.md']);
     expect(tree.tree.nodes).toEqual([
-      { kind: 'page', title: 'Início', path: 'index.md' },
+      { kind: 'page', title: 'Início', path: 'index.md', fixedTitle: true },
       { kind: 'section', title: 'Guias', children: [{ kind: 'page', title: 'Deploy', path: 'guias/deploy.md' }] },
     ]);
     expect(tree.tree.notInNav).toEqual([{ kind: 'page', title: 'Rollback', path: 'guias/rollback.md' }]);

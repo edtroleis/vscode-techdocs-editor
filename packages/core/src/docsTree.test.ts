@@ -55,9 +55,9 @@ nav:
         kind: 'section',
         title: 'Guias',
         children: [
-          { kind: 'page', title: 'Começo', path: 'guias/primeiros-passos.md' },
+          { kind: 'page', title: 'Começo', path: 'guias/primeiros-passos.md', fixedTitle: true },
           { kind: 'page', title: 'B', path: 'guias/avancado/b.md' },
-          { kind: 'page', title: 'Some', path: 'guias/nao-existe.md', missing: true },
+          { kind: 'page', title: 'Some', path: 'guias/nao-existe.md', missing: true, fixedTitle: true },
         ],
       },
       { kind: 'link', title: 'GitHub', url: 'https://github.com/x' },
@@ -108,32 +108,32 @@ markdown_extensions:
 `;
 
   it('na seção dada, só uma linha nova, com o recuo da lista e o resto intacto', () => {
-    const result = addToNav(yml, 'guias/rollback.md', 'Rollback', ['Guias']);
+    const result = addToNav(yml, 'guias/rollback.md', ['Guias']);
     expect(result).toEqual({
       section: ['Guias'],
-      yml: yml.replace('      - Deploy: guias/deploy.md\n', '      - Deploy: guias/deploy.md\n      - Rollback: guias/rollback.md\n'),
+      yml: yml.replace('      - Deploy: guias/deploy.md\n', '      - Deploy: guias/deploy.md\n      - guias/rollback.md\n'),
     });
   });
 
   it('sem seção dada: a seção com páginas da mesma pasta; senão, o fim do nav', () => {
-    expect(addToNav(yml, 'guias/rollback.md', 'Rollback')?.section).toEqual(['Guias']);
-    const top = addToNav(yml, 'sobre.md', 'Sobre')!;
+    expect(addToNav(yml, 'guias/rollback.md')?.section).toEqual(['Guias']);
+    const top = addToNav(yml, 'sobre.md')!;
     expect(top.section).toEqual([]);
-    expect(top.yml).toContain('  - GitHub: https://github.com\n  - Sobre: sobre.md\nmarkdown_extensions:');
+    expect(top.yml).toContain('  - GitHub: https://github.com\n  - sobre.md\nmarkdown_extensions:');
   });
 
   it('seção que não existe mais cai na regra da pasta', () => {
-    expect(addToNav(yml, 'guias/x.md', 'X', ['Sumiu'])?.section).toEqual(['Guias']);
+    expect(addToNav(yml, 'guias/x.md', ['Sumiu'])?.section).toEqual(['Guias']);
   });
 
-  it('título com caracteres do YAML vai entre aspas; arquivo sem quebra de linha no fim', () => {
-    const result = addToNav('nav:\n  - index.md', 'faq.md', 'FAQ: dúvidas #1');
-    expect(result?.yml).toBe('nav:\n  - index.md\n  - "FAQ: dúvidas #1": faq.md\n');
+  it('sem título no nav (o menu usa o da página); arquivo sem quebra de linha no fim', () => {
+    const result = addToNav('nav:\n  - index.md', 'faq.md');
+    expect(result?.yml).toBe('nav:\n  - index.md\n  - faq.md\n');
   });
 
   it('sem nav, nav em fluxo ou página já no nav: nada a fazer', () => {
-    expect(addToNav('site_name: X\n', 'a.md', 'A')).toBeUndefined();
-    expect(addToNav('nav: [index.md]\n', 'a.md', 'A')).toBeUndefined();
-    expect(addToNav(yml, 'guias/deploy.md', 'Deploy')).toBeUndefined();
+    expect(addToNav('site_name: X\n', 'a.md')).toBeUndefined();
+    expect(addToNav('nav: [index.md]\n', 'a.md')).toBeUndefined();
+    expect(addToNav(yml, 'guias/deploy.md')).toBeUndefined();
   });
 });

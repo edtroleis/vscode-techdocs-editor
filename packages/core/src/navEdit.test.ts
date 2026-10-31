@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { docsTree } from './docsTree';
-import { filesOnlyUsedBy, findPage, findSection, linkTargets, listForPage, navFromTree, pagesLinkingTo, readNav, setPageTitle, writeNav, type NavItem } from './navEdit';
+import { filesOnlyUsedBy, findPage, findSection, linkTargets, listForPage, moveLinks, movePagesInNav, navFromTree, pagesLinkingTo, readNav, setPageTitle, writeNav, type NavItem } from './navEdit';
 
 const YML = `site_name: Wiki # o nome
 theme:
@@ -115,5 +115,40 @@ describe('listForPage', () => {
   it('página da raiz vai para a raiz, mesmo com outra da raiz numa seção', () => {
     const mixed: NavItem[] = [{ kind: 'section', title: 'Guias', children: [{ kind: 'page', path: 'c.md' }] }];
     expect(listForPage(mixed, 'solta.md')).toBe(mixed);
+  });
+});
+
+describe('moveLinks e movePagesInNav: arquivo com outro nome ou em outra pasta', () => {
+  const moved = new Map([['guias/a.md', 'guias/inicio-rapido.md']]);
+
+  it('os links das outras páginas para o arquivo mudado apontam para o novo, com âncora e <…>', () => {
+    const text = 'Veja [A](guias/a.md#passo-2), [B](guias/b.md), <https://x.y/a.md> e [c]: <guias/a.md>\n![x](img/a.png)\n';
+    expect(moveLinks(text, 'index.md', 'index.md', moved)).toBe(
+      'Veja [A](guias/inicio-rapido.md#passo-2), [B](guias/b.md), <https://x.y/a.md> e [c]: <guias/a.md>\n![x](img/a.png)\n',
+    );
+    expect(moveLinks('[c]: <guias/a.md>\n', 'index.md', 'index.md', moved)).toBe('[c]: <guias/inicio-rapido.md>\n');
+    expect(moveLinks('[A](./a.md) [I](../index.md)', 'guias/b.md', 'guias/b.md', moved)).toBe('[A](inicio-rapido.md) [I](../index.md)');
+  });
+
+  it('a página que mudou de pasta continua chegando aos mesmos arquivos', () => {
+    const text = '[B](b.md) ![d](../img/d.png) <img src="./c.png"> [web](https://x.y) [aqui](#topo)';
+    expect(moveLinks(text, 'guias/a.md', 'a.md', new Map([['guias/a.md', 'a.md']]))).toBe(
+      '[B](guias/b.md) ![d](img/d.png) <img src="guias/c.png"> [web](https://x.y) [aqui](#topo)',
+    );
+  });
+
+  it('sem nada a mudar, o texto fica igual (inclusive ./ e %20)', () => {
+    const text = '[B](./b.md) [E](meu%20arquivo.md)';
+    expect(moveLinks(text, 'guias/x.md', 'guias/x.md', moved)).toBe(text);
+  });
+
+  it('o menu troca o caminho, dentro das seções, e diz se mudou', () => {
+    const nav: NavItem[] = [
+      { kind: 'page', path: 'index.md', title: 'Início' },
+      { kind: 'section', title: 'Guias', children: [{ kind: 'page', path: 'guias/a.md' }] },
+    ];
+    expect(movePagesInNav(nav, moved)).toBe(true);
+    expect(nav[1]).toEqual({ kind: 'section', title: 'Guias', children: [{ kind: 'page', path: 'guias/inicio-rapido.md' }] });
+    expect(movePagesInNav(nav, moved)).toBe(false);
   });
 });

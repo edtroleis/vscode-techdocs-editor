@@ -75,7 +75,10 @@ type Api = {
 async function api(): Promise<Api> {
   const extension = vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor');
   ok(extension, 'extensão não encontrada');
-  return extension!.activate();
+  const result = await extension!.activate();
+  // Os testes da árvore olham o menu do site (a visão dos arquivos tem o teste dela)
+  await result.docs.setMode('menu');
+  return result;
 }
 
 const provider = async () => (await api()).provider;
@@ -631,7 +634,7 @@ export function defineTests() {
         await run('techdocsEditor.deleteItem', 'Guias', t('Only the section', 'Só a seção'));
         equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, solta.md', 'menu depois de excluir a seção');
         await run('techdocsEditor.newSection', 'Página C', 'Referência');
-        equal(await read('acoes/docs/referencia/index.md'), '# Referência\n\n', 'primeira página da seção');
+        equal(await read('acoes/docs/referencia/index.md'), '# Referência\n', 'primeira página da seção');
         equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, solta.md, Referência[referencia/index.md]', 'menu com a seção nova');
         await run('techdocsEditor.duplicatePage', 'Página C', 'Página C2');
         ok((await read('acoes/docs/pagina-c2.md')).startsWith('# Página C2\n'), 'cópia sem o título novo');
@@ -671,6 +674,78 @@ export function defineTests() {
       // O próximo teste conta os sites: espera estes saírem
       await until(() => sites.all().filter(s => /\/(acoes|semnav)$/.test(s.site.root)).length, n => n === 0, 'os sites do teste não saíram');
       await docs.refreshNow();
+    });
+
+    test('visão dos arquivos: pastas e .md pelo nome, fora do menu marcado; usar o título da página no menu', async () => {
+      const { docs, useTestAnswers } = await api();
+      const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const yml = await read('wiki/mkdocs.yml');
+      const names = (items: DocsItem[]): string[] =>
+        items.flatMap(item => [
+          item.kind === 'dir' ? `${item.label}/` : `${item.uri!.path.split('/').pop()}${item.outside ? ' (fora)' : ''}${item.fixedTitle ? ' (título fixo)' : ''}`,
+          ...names(item.children).map(name => `  ${name}`),
+        ]);
+      try {
+        await write('wiki/mkdocs.yml', `${yml}\nnav:\n  - Início: index.md\n  - Guias:\n    - guias/primeiros-passos.md\n`);
+        await docs.setMode('files');
+        const tree = await until(
+          async () => {
+            await docs.refreshNow();
+            const site = siteItem(docs, 'wiki');
+            return site ? names(docs.getChildren(site)).join('\n') : '';
+          },
+          found => found.includes('título fixo'),
+          'a visão dos arquivos não montou',
+        );
+        equal(
+          tree,
+          ['guias/', '  imagens.md (fora)', '  primeiros-passos.md', 'processos/', '  aprovacao.md (fora)', 'index.md (título fixo)'].join('\n'),
+          'visão dos arquivos',
+        );
+        const index = docs.pageItem(file('wiki/docs/index.md'))!;
+        equal(index.label, 'Início', 'o título continua no item (dica, links)');
+
+        useTestAnswers([]);
+        await vscode.commands.executeCommand('techdocsEditor.usePageTitle', index);
+        ok((await read('wiki/mkdocs.yml')).includes('  - index.md\n'), 'o nav continuou com o título fixo');
+        ok(!docs.pageItem(file('wiki/docs/index.md'))!.fixedTitle, 'a árvore continuou com o título fixo');
+
+        // Renomear o arquivo: o nav e o link do index.md acompanham
+        const exists = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
+        const home = await read('wiki/docs/index.md');
+        useTestAnswers(['comecar.md']);
+        await vscode.commands.executeCommand('techdocsEditor.renameItem', docs.pageItem(file('wiki/docs/guias/primeiros-passos.md')));
+        ok((await exists('wiki/docs/guias/comecar.md')) && !(await exists('wiki/docs/guias/primeiros-passos.md')), 'o arquivo não mudou de nome');
+        ok((await read('wiki/mkdocs.yml')).includes('    - guias/comecar.md\n'), 'o nav ficou com o nome velho');
+        ok((await read('wiki/docs/index.md')).includes('](guias/comecar.md)'), 'o link do index.md ficou com o nome velho');
+
+        // Mover para a raiz das docs: o nav e os links (os dela também) acompanham
+        useTestAnswers(['docs']);
+        await vscode.commands.executeCommand('techdocsEditor.moveItem', docs.pageItem(file('wiki/docs/guias/comecar.md')));
+        ok(await exists('wiki/docs/comecar.md'), 'o arquivo não mudou de pasta');
+        ok((await read('wiki/docs/index.md')).includes('](comecar.md)'), 'o link do index.md não acompanhou a pasta');
+
+        // Desfazer as duas
+        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
+        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
+        ok((await exists('wiki/docs/guias/primeiros-passos.md')) && !(await exists('wiki/docs/comecar.md')) && !(await exists('wiki/docs/guias/comecar.md')), 'desfazer não voltou o arquivo');
+        equal(await read('wiki/docs/index.md'), home, 'desfazer não voltou o link');
+
+        // Nova pasta dentro da pasta clicada: index.md sem problema de formatação e a seção junto das páginas dela
+        const guias = docs.getChildren(siteItem(docs, 'wiki')!).find(item => item.kind === 'dir' && item.label === 'guias')!;
+        useTestAnswers(['Rotinas']);
+        await vscode.commands.executeCommand('techdocsEditor.newFolder', guias);
+        equal(await read('wiki/docs/guias/rotinas/index.md'), '# Rotinas\n', 'página da pasta nova');
+        ok((await read('wiki/mkdocs.yml')).includes('      - guias/primeiros-passos.md\n      - Rotinas:\n          - guias/rotinas/index.md\n'), `seção da pasta nova: ${await read('wiki/mkdocs.yml')}`);
+        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
+        ok(!(await exists('wiki/docs/guias/rotinas')), 'desfazer não tirou a pasta nova');
+      } finally {
+        useTestAnswers(undefined);
+        await write('wiki/mkdocs.yml', yml);
+        await docs.setMode('menu');
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      }
     });
 
     test('vários sites: um de cada vez no seletor; escolher quais aparecem, esconder; cópias e esqueletos ficam de fora', async () => {
@@ -907,9 +982,11 @@ export function defineTests() {
         await config.update('builtIn', false, vscode.ConfigurationTarget.Workspace);
         equal(await newPage.run(file('wiki/docs'), { template: 'adr', title: 'Y', path: 'y.md' }), undefined, 'template da extensão com builtIn: false');
         ok(await newPage.run(file('wiki/docs'), { template: 'runbook', title: 'Z', path: 'z.md' }), 'o do repositório sumiu com builtIn: false');
+        const blank = await newPage.run(file('wiki/docs'), { template: 'blank', title: 'Colada', path: 'colada.md', nav: false });
+        equal(blank && (await read('wiki/docs/colada.md')), '# Colada\n', 'página em branco com builtIn: false');
       } finally {
         await config.update('builtIn', undefined, vscode.ConfigurationTarget.Workspace);
-        for (const path of ['.techdocs', 'wiki/.techdocs', 'wiki/docs/disco-cheio.md', 'wiki/docs/local.md', 'wiki/docs/z.md']) await remove(path);
+        for (const path of ['.techdocs', 'wiki/.techdocs', 'wiki/docs/disco-cheio.md', 'wiki/docs/local.md', 'wiki/docs/z.md', 'wiki/docs/colada.md']) await remove(path);
       }
     });
 
@@ -1275,7 +1352,7 @@ export function defineTests() {
         ok(uri?.path.endsWith('/nav-tpl/docs/guias/fazer-deploy.md'), `página: ${uri?.path}`);
         equal(
           await read('nav-tpl/mkdocs.yml'),
-          yml.replace('      - guias/a.md\n', '      - guias/a.md\n      - Fazer deploy: guias/fazer-deploy.md\n'),
+          yml.replace('      - guias/a.md\n', '      - guias/a.md\n      - guias/fazer-deploy.md\n'),
           'nav',
         );
         await closeAll();

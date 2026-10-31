@@ -73,7 +73,7 @@ describe('checkSite', () => {
     const findings = checkSite(site());
     let yml = MKDOCS;
     for (const code of ['techdocs-plugin-missing', 'page-not-in-nav']) yml = fixOf(findings, code).apply(yml);
-    expect(yml).toBe(MKDOCS.replace('  - search\n', '  - techdocs-core\n  - search\n').replace('# removida\n', '# removida\n  - Fora do nav: fora.md\n'));
+    expect(yml).toBe(MKDOCS.replace('  - search\n', '  - techdocs-core\n  - search\n').replace('# removida\n', '# removida\n  - fora.md\n'));
     // Aplicar de novo não muda nada
     expect(fixOf(findings, 'techdocs-plugin-missing').apply(yml)).toBe(yml);
     expect(fixOf(findings, 'nav-page-missing')).toMatchObject({ file: 'svc/docs/guias/sumiu.md' });

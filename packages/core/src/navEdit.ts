@@ -1,6 +1,6 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from 'yaml';
 import type { DocsNode } from './docsTree';
-import { dirOf, resolvePath } from './mkdocs';
+import { dirOf, relativePath, resolvePath } from './mkdocs';
 
 /**
  * Menu do site (`nav` do `mkdocs.yml`) como dados, para as ações da árvore: mover, renomear e excluir páginas e
@@ -143,6 +143,55 @@ export function linkTargets(markdown: string, pagePath: string): string[] {
   for (const match of markdown.matchAll(/^\s*\[[^\]]+\]:\s*(\S+)/gm)) add(match[1]);
   for (const match of markdown.matchAll(/<img\b[^>]*\bsrc=["']([^"']+)["']/gi)) add(match[1]);
   return [...found];
+}
+
+/**
+ * O texto da página `pagePath` (que passa a ser `newPagePath`) com os links acertados depois de mudar arquivos de
+ * nome ou de pasta (`moved`: caminho antigo → novo, relativos ao `docs_dir`): os links para um arquivo mudado
+ * apontam para o caminho novo, e os relativos de uma página que mudou de pasta continuam chegando ao mesmo arquivo.
+ * Os outros links ficam como estão (o texto, a âncora, o `<…>`).
+ */
+export function moveLinks(markdown: string, pagePath: string, newPagePath: string, moved: ReadonlyMap<string, string>): string {
+  const dir = dirOf(pagePath);
+  const newDir = dirOf(newPagePath);
+  const fix = (raw: string): string => {
+    const wrapped = raw.startsWith('<') && raw.endsWith('>');
+    const inner = wrapped ? raw.slice(1, -1) : raw;
+    const cut = inner.search(/[#?]/);
+    const target = cut < 0 ? inner : inner.slice(0, cut);
+    if (!target || isUrl(target) || target.startsWith('/')) return raw;
+    let decoded = target;
+    try {
+      decoded = decodeURI(target);
+    } catch {
+      // Endereço com % solto: fica como está
+    }
+    const resolved = resolvePath(dir, decoded);
+    const to = moved.get(resolved) ?? resolved;
+    if (to === resolved && dir === newDir) return raw;
+    const relative = relativePath(newDir, to);
+    if (relative === decoded) return raw;
+    // Espaço no caminho quebraria o link do Markdown (dentro de `<…>` pode ficar)
+    const text = `${wrapped ? relative : relative.replace(/ /g, '%20')}${cut < 0 ? '' : inner.slice(cut)}`;
+    return wrapped ? `<${text}>` : text;
+  };
+  return markdown
+    .replace(/(\]\(\s*)(<[^>]*>|[^)\s]+)/g, (_, before: string, url: string) => before + fix(url))
+    .replace(/^(\s*\[[^\]]+\]:\s*)(\S+)/gm, (_, before: string, url: string) => before + fix(url))
+    .replace(/(<img\b[^>]*\bsrc=["'])([^"']+)/gi, (_, before: string, url: string) => before + fix(url));
+}
+
+/** O menu com os caminhos das páginas mudados (`moved`: antigo → novo); diz se mudou alguma. */
+export function movePagesInNav(nav: NavItem[], moved: ReadonlyMap<string, string>): boolean {
+  let changed = false;
+  for (const item of nav) {
+    if (item.kind === 'section') changed = movePagesInNav(item.children, moved) || changed;
+    else if (item.kind === 'page' && moved.has(item.path)) {
+      item.path = moved.get(item.path)!;
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 /** As páginas (caminhos) que têm link para `target`. */

@@ -1,10 +1,13 @@
 import * as vscode from 'vscode';
 import {
+  dirOf,
   fileNameFor,
   filesOnlyUsedBy,
   findPage,
   findSection,
   listForPage,
+  moveLinks,
+  movePagesInNav,
   navFromTree,
   pageTitle,
   pagesLinkingTo,
@@ -163,6 +166,7 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
 
   async rename(target?: unknown) {
     const item = this.itemOf(target);
+    if (item?.kind === 'page' && item.file) return this.renameFile(item);
     if (item?.kind === 'page') return this.renamePage(item);
     if (item?.kind === 'section') return this.renameSection(item);
   }
@@ -227,6 +231,24 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     this.done(vscode.l10n.t('Section renamed to "{0}".', title.trim()), undo);
   }
 
+  // ---------- título no menu ----------
+
+  /** "Usar o título da página no menu": tira o título escrito no `nav`; o menu passa a seguir o título 1 da página. */
+  async usePageTitle(target?: unknown) {
+    const item = this.itemOf(target);
+    if (item?.kind !== 'page' || !item.fixedTitle || !item.path) return;
+    const site = this.siteOf(item);
+    if (!site) return;
+    const yml = await this.readYml(site.mkdocs);
+    const nav = readNav(yml);
+    const place = nav && findPage(nav, item.path);
+    const entry = place && place.list[place.index];
+    if (!nav || entry?.kind !== 'page') return;
+    delete entry.title;
+    const undo = await this.change(vscode.l10n.t('use the title of "{0}" in the menu', item.label), [site.mkdocs], () => writeText(site.mkdocs, writeNav(yml, nav)));
+    this.done(vscode.l10n.t('The menu now shows the title of the page. Changing the title in the page changes the menu.'), undo);
+  }
+
   // ---------- duplicar ----------
 
   async duplicate(target?: unknown) {
@@ -269,6 +291,7 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
   async moveTo(target?: unknown) {
     const item = this.itemOf(target);
     if (!item || (item.kind !== 'page' && item.kind !== 'section') || item.home) return;
+    if (item.file) return this.moveFile(item);
     const site = this.siteOf(item);
     if (!site) return;
     if (item.outside) return this.addToMenu(item);
@@ -556,7 +579,7 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     const folder = fileNameFor(title).replace(/\.md$/, '');
     const page = vscode.Uri.joinPath(site.docsDir, folder, 'index.md');
     const undo = await this.change(vscode.l10n.t('create the section "{0}"', title), [page, site.mkdocs], async () => {
-      await writeText(page, `# ${title}\n\n`);
+      await writeText(page, `# ${title}\n`);
       const yml = await this.readYml(site.mkdocs);
       const nav = readNav(yml);
       if (!nav) return;
@@ -569,6 +592,140 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     });
     await vscode.commands.executeCommand('techdocsEditor.openVisual', page);
     this.done(vscode.l10n.t('Section "{0}" created, with a page of the same name open for you to write.', title), undo);
+  }
+
+  /**
+   * "Nova pasta" (visão dos arquivos): dentro da pasta clicada (ou da do arquivo), com um `index.md`; no menu, uma
+   * seção junto das páginas da pasta de cima (sem página, a pasta não aparece no site).
+   */
+  async newFolder(target?: unknown) {
+    const item = target instanceof DocsItem ? target : undefined;
+    const site = this.siteOf(item);
+    if (!site) {
+      if (!item) void vscode.window.showInformationMessage(vscode.l10n.t('Choose a documentation site of this workspace first.'));
+      return;
+    }
+    const parent = item?.kind === 'dir' ? item.path! : item?.file ? dirOf(item.path!) : '';
+    const pathOf = (name: string) => {
+      const folder = fileNameFor(name.trim()).replace(/\.md$/, '');
+      return parent ? `${parent}/${folder}` : folder;
+    };
+    const name = await this.input({
+      title: vscode.l10n.t('New folder'),
+      placeHolder: vscode.l10n.t('Name of the folder'),
+      prompt: parent
+        ? vscode.l10n.t('Inside {0}. It starts with an index.md page, and in the menu of the site it is a section.', parent)
+        : vscode.l10n.t('It starts with an index.md page, and in the menu of the site it is a section.'),
+      validateInput: async value => {
+        if (!value.trim()) return vscode.l10n.t('Write a name.');
+        const path = pathOf(value);
+        return (await readBytes(vscode.Uri.joinPath(site.docsDir, path, 'index.md'))) ? vscode.l10n.t('There is already a folder {0} with a page.', path) : undefined;
+      },
+    });
+    if (!name?.trim()) return;
+    const title = name.trim();
+    const path = pathOf(title);
+    const page = vscode.Uri.joinPath(site.docsDir, path, 'index.md');
+    const undo = await this.change(vscode.l10n.t('create the folder {0}', path), [page, site.mkdocs], async () => {
+      await writeText(page, `# ${title}\n`);
+      const yml = await this.readYml(site.mkdocs);
+      const nav = readNav(yml);
+      if (!nav) return;
+      (parent ? listForPage(nav, `${parent}/index.md`) : nav).push({ kind: 'section', title, children: [{ kind: 'page', path: `${path}/index.md` }] });
+      await writeText(site.mkdocs, writeNav(yml, nav));
+    });
+    await vscode.commands.executeCommand('techdocsEditor.openVisual', page);
+    this.done(vscode.l10n.t('Folder {0} created, with the page index.md open for you to write.', path), undo);
+  }
+
+  // ---------- arquivos (visão dos arquivos) ----------
+
+  /** Renomear na visão dos arquivos: o nome do arquivo (o menu e os links das páginas acompanham). */
+  private async renameFile(item: DocsItem) {
+    if (item.home) return void vscode.window.showInformationMessage(vscode.l10n.t('The home page of the site keeps its name: it is the page the portal opens first.'));
+    const site = this.siteOf(item);
+    if (!site || !item.path) return;
+    const name = item.path.split('/').pop()!;
+    const folder = dirOf(item.path);
+    const pathOf = (value: string) => (folder ? `${folder}/${value.trim()}` : value.trim());
+    const answer = await this.input({
+      title: vscode.l10n.t('Rename file'),
+      value: name,
+      valueSelection: [0, name.length - 3],
+      prompt: vscode.l10n.t('The menu and the links of the other pages follow the new name.'),
+      validateInput: async value => {
+        const clean = value.trim();
+        if (!/^[^/\\]+\.md$/i.test(clean)) return /[/\\]/.test(clean) ? vscode.l10n.t('Only the name. To change the folder, use Move or drag the file.') : vscode.l10n.t('The name ends with .md.');
+        if (clean !== name && (await readBytes(vscode.Uri.joinPath(site.docsDir, pathOf(clean))))) return vscode.l10n.t('{0} already exists. Choose another name.', pathOf(clean));
+        return undefined;
+      },
+    });
+    if (!answer?.trim() || answer.trim() === name) return;
+    await this.relocate(item, pathOf(answer));
+  }
+
+  /** Mover na visão dos arquivos: escolhe a pasta. */
+  private async moveFile(item: DocsItem) {
+    const site = this.siteOf(item);
+    if (!site || !item.path) return;
+    const current = dirOf(item.path);
+    const folders = new Set(['']);
+    for (const page of await this.allPages(site.docsDir)) for (let dir = dirOf(page.path); dir; dir = dirOf(dir)) folders.add(dir);
+    const root = site.docsDir.path.split('/').pop()!;
+    type Choice = vscode.QuickPickItem & { folder: string };
+    const choice = await this.pick<Choice>(
+      [...folders].sort().map(folder => ({
+        label: `$(folder) ${folder || root}`,
+        description: folder === current ? vscode.l10n.t('current') : undefined,
+        folder,
+      })),
+      { title: vscode.l10n.t('Move {0} to the folder', item.path.split('/').pop()!) },
+    );
+    if (choice) await this.moveFileTo(item, choice.folder);
+  }
+
+  private async moveFileTo(item: DocsItem, folder: string) {
+    const site = this.siteOf(item);
+    if (!site || !item.path || item.home) return;
+    const name = item.path.split('/').pop()!;
+    const path = folder ? `${folder}/${name}` : name;
+    if (path === item.path) return;
+    if (await readBytes(vscode.Uri.joinPath(site.docsDir, path))) return void vscode.window.showWarningMessage(vscode.l10n.t('{0} already exists. Choose another name.', path));
+    await this.relocate(item, path);
+  }
+
+  /** O arquivo da página com outro nome ou em outra pasta: o menu e os links das páginas (e os dela) acertados. */
+  private async relocate(item: DocsItem, path: string) {
+    const site = this.siteOf(item);
+    if (!site || !item.uri || !item.path || path === item.path) return;
+    const from = item.path;
+    const old = item.uri;
+    const target = vscode.Uri.joinPath(site.docsDir, path);
+    const moved = new Map([[from, path]]);
+    // O texto não salvo vai junto
+    await vscode.workspace.textDocuments.find(d => d.uri.toString() === old.toString() && d.isDirty)?.save();
+    const pages = await this.allPages(site.docsDir);
+    const own = pages.find(p => p.path === from);
+    const others = pages
+      .filter(p => p.path !== from)
+      .map(page => ({ page, text: moveLinks(page.text, page.path, page.path, moved) }))
+      .filter(({ page, text }) => text !== page.text);
+    const wasOpen = vscode.window.tabGroups.all.some(g => g.tabs.some(t => (t.input instanceof vscode.TabInputText || t.input instanceof vscode.TabInputCustom) && t.input.uri.toString() === old.toString()));
+    const undo = await this.change(vscode.l10n.t('move {0}', from), [old, target, site.mkdocs, ...others.map(o => o.page.uri)], async () => {
+      await closeTabs([old]);
+      await writeText(target, moveLinks(own?.text ?? '', from, path, moved));
+      await vscode.workspace.fs.delete(old, { useTrash: false });
+      await removeIfEmpty(vscode.Uri.joinPath(old, '..'));
+      for (const { page, text } of others) await writeText(page.uri, text);
+      const yml = await this.readYml(site.mkdocs);
+      const nav = readNav(yml);
+      if (nav && movePagesInNav(nav, moved)) await writeText(site.mkdocs, writeNav(yml, nav));
+    });
+    if (wasOpen) await vscode.commands.executeCommand('techdocsEditor.openVisual', target);
+    await this.docs.revealItem(other => other.uri?.toString() === target.toString());
+    const links =
+      others.length === 1 ? ` ${vscode.l10n.t('The link in 1 page was updated.')}` : others.length ? ` ${vscode.l10n.t('The links in {0} pages were updated.', others.length)}` : '';
+    this.done(vscode.l10n.t('{0} is now {1}.', from, path) + links, undo);
   }
 
   // ---------- arrastar ----------
@@ -586,6 +743,12 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
   async handleDrop(target: DocsItem | undefined, data: vscode.DataTransfer) {
     const item = data.get(MIME)?.value as DocsItem | undefined;
     if (!item || item === target) return;
+    // Visão dos arquivos: soltar numa pasta (no site: a raiz; num arquivo: a pasta dele) muda o arquivo de pasta
+    if (item.file) {
+      if (target && !target.local) return;
+      const folder = !target || target.kind === 'site' ? '' : target.kind === 'dir' ? target.path! : dirOf(target.path ?? '');
+      return this.moveFileTo(item, folder);
+    }
     if (target && (!target.local || target.kind === 'notInNav' || target.outside || target.kind === 'link')) return;
     if (target?.kind === 'page' && target.home) return void vscode.window.showInformationMessage(vscode.l10n.t('The home page always stays first.'));
     if (item.kind === 'section' && target?.trail && target.trail.join('\u0000').startsWith(item.trail!.join('\u0000'))) return;

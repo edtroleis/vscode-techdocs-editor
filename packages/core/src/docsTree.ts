@@ -5,7 +5,8 @@ import { isMap, isScalar, isSeq, parseDocument, stringify, type YAMLSeq } from '
  * `mkdocs.yml` ou, sem ele, pelas pastas do `docs_dir`. Caminhos relativos ao `docs_dir`, com `/`.
  */
 export type DocsNode =
-  | { kind: 'page'; title: string; path: string; missing?: boolean }
+  /** `fixedTitle`: o `nav` dá o título (`- Título: pagina.md`), e mudar o título 1 da página não muda o menu. */
+  | { kind: 'page'; title: string; path: string; missing?: boolean; fixedTitle?: boolean }
   | { kind: 'section'; title: string; children: DocsNode[] }
   | { kind: 'link'; title: string; url: string };
 
@@ -90,7 +91,7 @@ export function docsTree(
       if (isUrl(value) || !/\.md$/i.test(value)) return { kind: 'link', title: name ?? value, url: value };
       const path = normalize(value);
       inNav.add(path);
-      return { kind: 'page', title: name ?? title(path), path, ...(existing.has(path) ? {} : { missing: true }) };
+      return { kind: 'page', title: name ?? title(path), path, ...(existing.has(path) ? {} : { missing: true }), ...(name !== undefined && { fixedTitle: true }) };
     }
     if (value && typeof value === 'object') {
       const [entry] = Object.entries(value);
@@ -137,11 +138,12 @@ export type NavInsertion = { yml: string; section: string[] };
 
 /**
  * Põe a página no fim de uma seção do `nav`: a seção dada (títulos desde a raiz, como na árvore); sem ela, a
- * seção com outra página da mesma pasta; senão, o fim do `nav`. Só insere uma linha, com o recuo da lista:
+ * seção com outra página da mesma pasta; senão, o fim do `nav`. Sem título (`- pagina.md`): o menu usa o título 1
+ * da página, e mudar o título na página muda o menu. Só insere uma linha, com o recuo da lista:
  * comentários, tags do MkDocs e a formatação do resto do arquivo ficam como estão. Sem `nav` (o menu vem das
  * pastas), com `nav` em formato de fluxo (`[a, b]`) ou a página já no `nav`: undefined.
  */
-export function addToNav(yml: string, path: string, title: string, section?: string[]): NavInsertion | undefined {
+export function addToNav(yml: string, path: string, section?: string[]): NavInsertion | undefined {
   const doc = parseDocument(yml);
   const nav = doc.get('nav', true);
   if (!isSeq(nav) || nav.flow || !nav.items.length || !nav.range) return undefined;
@@ -182,7 +184,7 @@ export function addToNav(yml: string, path: string, title: string, section?: str
   // A lista termina no começo da linha seguinte (com os comentários da última linha); o recuo é o do primeiro `-`
   const [start, end] = target.seq.range!;
   const indent = start - (yml.lastIndexOf('\n', start - 1) + 1);
-  const entry = stringify({ [title]: path }, { lineWidth: 0 }).trimEnd();
+  const entry = stringify(path, { lineWidth: 0 }).trimEnd();
   const line = `${' '.repeat(indent)}- ${entry}\n`;
   const at = yml[end - 1] === '\n' ? end : yml.length;
   const before = yml.slice(0, at);

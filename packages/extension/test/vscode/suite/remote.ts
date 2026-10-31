@@ -46,7 +46,12 @@ async function until<T>(read: () => T | Promise<T>, accept: (value: T) => boolea
   return value;
 }
 
-const api = async () => (await vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor')!.activate()) as Api;
+const api = async () => {
+  const result = (await vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor')!.activate()) as Api;
+  // A árvore pelo menu do site, como os testes esperam
+  await result.docs.setMode('menu');
+  return result;
+};
 const text = (bytes: Uint8Array) => new TextDecoder().decode(bytes);
 const labels = (items: DocsItem[]): string[] => items.flatMap(item => [item.label, ...labels(item.children).map(l => `  ${l}`)]);
 
