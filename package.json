@@ -14,7 +14,7 @@
     "build": "npm run build -w packages/extension",
     "typecheck": "tsc -p packages/core --incremental --tsBuildInfoFile node_modules/.cache/tsc/core.tsbuildinfo && tsc -p packages/ui --incremental --tsBuildInfoFile node_modules/.cache/tsc/ui.tsbuildinfo && tsc -p packages/extension --incremental --tsBuildInfoFile node_modules/.cache/tsc/extension.tsbuildinfo && tsc -p tsconfig.test.json --incremental --tsBuildInfoFile node_modules/.cache/tsc/test.tsbuildinfo",
     "test:fast": "npm run typecheck && npm run test:unit && npm run test:webview",
-    "test:all": "npm run test:fast && npm run test:bundle && npm run test:editor && npm run test:vscode && npm run test:web && playwright test -c packages/extension/e2e/playwright.config.ts",
+    "test:all": "node scripts/test-all.mjs",
     "test:unit": "vitest run",
     "test:editor": "playwright test -c packages/ui/e2e/playwright.config.ts",
     "test:webview": "npm run build && playwright test -c packages/extension/test/webview/playwright.config.ts",

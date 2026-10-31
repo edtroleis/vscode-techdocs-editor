@@ -21,7 +21,7 @@ Regras herdadas:
 
 ### Quando cada suíte roda (2026-10-30)
 
-A suíte completa (~6 min local e ~6 min no CI) só roda na publicação. No dia a dia, só o que a mudança toca:
+A suíte completa (~9 min local e ~6 min no CI) só roda na publicação. No dia a dia, só o que a mudança toca:
 
 | Quando | O que roda | Tempo |
 |--------|------------|-------|
@@ -29,7 +29,25 @@ A suíte completa (~6 min local e ~6 min no CI) só roda na publicação. No dia
 | Durante a feature (à mão) | Só o teste da mudança: `TEST_GREP=<texto> npm run test:vscode`, o spec no Playwright (`npx playwright test -c <config> <arquivo>`), o webview só quando a mudança mexe nele, `npm run test:scenarios -- <nº>` quando muda um fluxo de usuário | 20 s a 1 min |
 | Commit (`.githooks/pre-commit`) | Typecheck e todos os unitários | ~10 s |
 | Push de branch | Nada local. No CI, só o job rápido: typecheck, unitários, webview e tamanho do bundle | ~2 min no CI |
-| Publicação (push da tag `v*`) | `.githooks/pre-push`: `npm run test:all`. No CI (`release.yml` chama o `ci.yml`): também as suítes do editor e do VS Code (desktop, web e e2e) | ~6 min local e ~6 min no CI |
+| Publicação (push da tag `v*`) | `.githooks/pre-push`: `npm run test:all` (`scripts/test-all.mjs`, com o limite de tempo abaixo). No CI (`release.yml` chama o `ci.yml`): também as suítes do editor e do VS Code (desktop, web e e2e) | ~9 min local e ~6 min no CI |
+
+### Limite de tempo das suítes (2026-10-31)
+
+Suíte travada não segura a publicação por uma hora: `scripts/test-all.mjs` roda as suítes uma depois da outra, cada uma
+com limite de média + 10% (mínimo de 30 s). Passou do limite: mata a suíte e os filhos dela (VS Code, Chromium), mostra
+o fim da saída e para com o código 124; o próximo passo é investigar a causa, não aumentar o limite. As médias são uma
+estimativa das execuções de 2026-10-31 no WSL2 e ficam no topo do script; a tabela do fim de cada execução é a base
+para refazer a conta quando as suítes crescerem. `TEST_TIMEOUT_SCALE=2` dobra os limites numa máquina mais lenta, e
+`node scripts/test-all.mjs vscode e2e` roda só essas suítes (com o build antes, uma vez só).
+
+| Suíte | Média | Limite |
+|-------|-------|--------|
+| typecheck, unit, build, bundle | < 10 s | 30 s |
+| webview | 31 s | 34 s |
+| editor | 148 s | 164 s |
+| vscode | 86 s | 96 s |
+| web | 52 s | 58 s |
+| e2e | 205 s | 226 s |
 
 As suítes lentas do CI também rodam à mão (`workflow_dispatch` do CI), por exemplo depois de uma mudança grande no
 editor ou na publicação. Teste instável que aparece só na suíte completa é corrigido antes da release, não ignorado.
