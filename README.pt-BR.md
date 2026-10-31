@@ -67,10 +67,15 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
   opcional **Publicação**. Num repositório ainda sem `mkdocs.yml`, mas com `README.md`, uma pasta `docs/` com
   páginas ou um `catalog-info.yaml`, o ícone abre uma tela de boas-vindas que diz o que achou, com **Preparar a
   documentação**.
-- **Árvore Documentação:** as páginas de cada site do MkDocs do workspace, na ordem do `nav` do `mkdocs.yml`
-  (ou das pastas, sem `nav`), com o título de cada página. Um clique abre a página no editor visual. As páginas
-  fora do `nav` ficam em **Fora do menu**, cada uma com um **+** para entrar nele, e os itens do `nav` que
-  apontam para páginas que não existem aparecem marcados. **Filtrar** acha uma página pelo título.
+- **Árvore Documentação, visão dos arquivos (a padrão):** o repositório como no disco, igual ao Explorer, com a
+  pasta `docs` aberta: as páginas pelo nome do arquivo, as imagens, e ao lado o README, o código e o `mkdocs.yml`
+  para consultar (**Abrir ao lado**). **Copiar para uma página** transforma o README numa página, com as imagens
+  copiadas para `docs` e os links do código apontando para o GitHub. As páginas *fora do menu* ficam marcadas, e um
+  ⚠ no `mkdocs.yml` avisa quando o menu aponta para páginas que não existem. Um clique na página abre o editor visual.
+- **Árvore Documentação, visão do menu** (**Mostrar o menu do site**): as páginas na ordem do `nav` do
+  `mkdocs.yml` (ou das pastas, sem `nav`), com o título de cada página. As páginas fora do `nav` ficam em **Fora
+  do menu**, cada uma com um **+** para entrar nele, e os itens do `nav` que apontam para páginas que não existem
+  aparecem marcados. **Filtrar** acha uma página pelo título.
 - **Organize pela árvore:** o **⋯** de uma página ou seção abre um menu com *Renomear* (`F2`), *Duplicar*,
   *Mover para…*, *Mover para cima/baixo* (`Alt+↑`/`Alt+↓`), *Excluir* e *Nova seção*; páginas e seções também
   podem ser arrastadas. Excluir uma página diz quais páginas apontam para ela. Toda mudança mostra **Desfazer**

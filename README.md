@@ -66,10 +66,15 @@ the page. Never a temporary `blob:` address, and never larger than you allow
   optional **Publishing** panel. In a repository with no `mkdocs.yml` yet but with a `README.md`, a `docs/`
   folder with pages or a `catalog-info.yaml`, the icon opens a welcome screen that says what was found, with
   **Prepare the documentation**.
-- **Documentation tree:** the pages of each MkDocs site in the workspace, in the order of the `nav` in
-  `mkdocs.yml` (or of the folders, without a `nav`), with the page titles. A click opens the page in the visual
-  editor. Pages missing from the `nav` are grouped under **Not in the menu**, each with a **+** to add it, and
-  `nav` entries pointing to missing pages are flagged. **Filter** finds a page by its title.
+- **Documentation tree, files view (the default):** the repository as on disk, like the Explorer, with the `docs`
+  folder open: pages by file name, images, and the README, the code and `mkdocs.yml` next to it to consult
+  (**Open to the Side**). **Copy to a Page** turns the README into a page, with images copied into `docs` and
+  links to code pointing to GitHub. Pages *not in the menu* are marked, and a ⚠ on `mkdocs.yml` says when the menu
+  points to pages that do not exist. A click on a page opens it in the visual editor.
+- **Documentation tree, menu view** (**Show the Site Menu**): the pages in the order of the `nav` in `mkdocs.yml`
+  (or of the folders, without a `nav`), with the page titles. Pages missing from the `nav` are grouped under
+  **Not in the menu**, each with a **+** to add it, and `nav` entries pointing to missing pages are flagged.
+  **Filter** finds a page by its title.
 - **Organize from the tree:** the **⋯** on a page or section opens a menu with *Rename* (`F2`), *Duplicate*,
   *Move to…*, *Move up/down* (`Alt+↑`/`Alt+↓`), *Delete* and *New section*; pages and sections can also be
   dragged. Deleting a page says which pages link to it. Every change shows **Undo** (also `Ctrl+Z` in the tree).

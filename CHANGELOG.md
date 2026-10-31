@@ -6,6 +6,62 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-31
+
+The sidebar shows the folder as it is on disk, with the README and the code at hand while you write, and a local
+folder without GitHub works from start to end.
+
+### Added
+
+- **Files view in the sidebar (the default).** The tree shows the repository like the Explorer: the folders, the
+  `docs` folder open with a book icon, the pages by file name, and the images. The README, the code and
+  `mkdocs.yml` are there to consult. **Show the Site Menu** in the title bar switches to the menu of the site (by
+  titles, as before), and the choice is kept per workspace.
+- **Open to the Side** on any file outside `docs`, to read the README or the code next to the page you write.
+- **Copy to a Page** on a Markdown file outside `docs` (the README, most of the time): it becomes a new page at the
+  end of the menu, with its links fixed (see below). The original stays as it is, and **Undo** takes it all back.
+- **New Folder, Rename and Move for files** in the files view (menu or drag and drop), with the menu and the links
+  of the other pages following the file, and Undo.
+- **Blank page** at the top of the templates list. New pages and **Add to the Menu** go into the menu without a
+  fixed title, so the menu follows the page's heading; **Use the Page Title in the Menu** removes a fixed one.
+- **A missing page of the menu** has **Create the Page** and **Remove from the Menu** on the right-click menu.
+- **The link box of the visual editor lists the pages of the site** and writes the relative link, with the page
+  title as the text.
+- **Extension templates in the language of the site** (the theme in `mkdocs.yml`, the README and the pages), not
+  the one of VS Code. Portuguese sites get file names from the titles (`primeiros-passos.md`).
+- **New documentation** suggests a readable site name from the repository or folder, and the `catalog-info.yaml`
+  box explains what it is for, suggests owners from the workspace and takes the name, title and description of
+  the site.
+
+### Changed
+
+- **Links of a README brought into the docs** (Copy to a Page, and the README as the home page of new
+  documentation): images from outside `docs` are copied to `docs/assets/`; links to code and other files become
+  their address on GitHub (`repo_url` of `mkdocs.yml`, or the Git `origin`). Without GitHub they become text with
+  the path, because `mkdocs build --strict` (what TechDocs runs) stops on a link outside `docs`.
+- **The files view shows what is wrong with the menu:** a ⚠ on `mkdocs.yml` when the menu points to pages that do
+  not exist (a click shows them in the menu view), and *not in the menu* on pages and closed folders.
+- **Publishing details in a folder without Git or GitHub** says the changes stay only in this folder and offers
+  **Publish to GitHub**.
+- Without a `catalog-info.yaml` anywhere in the workspace (no Backstage), the check does not ask for one, and
+  creating documentation does not ask about it.
+- The **Collapse All** button left the Documentation tree.
+
+### Fixed
+
+- **Tab** in the last cell of a table adds a row.
+- **+ Page** asks for the page name, not a file path, and goes away when there is no documentation; a new page
+  of the root of `docs` goes to the root of the menu.
+- **Add to the Menu** puts the page in the section of its folder, not at the end of the menu.
+- The ⚠ tip in the tree mentions **Fix Now** only when it fixes the problem.
+- **Check the documentation** shows the Maintenance section even without the maintainer mode.
+- Without a Markdown rules file, line length is not checked (the visual editor does not wrap paragraphs).
+- A short Portuguese README no longer comes out as English in the templates.
+- The site name field of new documentation no longer loses letters.
+- Publishing: the pull request carries the new site and its menu entry, the merge shows without a pipeline, the
+  strip comes back after the settings, and another page of the draft goes to its own branch.
+- On VS Code for the Web, the extension activates.
+
 ## [0.7.0] - 2026-10-29
 
 Organize the documentation from the tree, a status strip on every page, and send for review in one step.
