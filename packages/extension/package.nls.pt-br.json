@@ -109,5 +109,7 @@
   "command.usePageTitle": "Usar o título da página no menu",
   "command.showFiles": "Mostrar os arquivos",
   "command.showMenu": "Mostrar o menu do site",
-  "command.newFolder": "Nova pasta"
+  "command.newFolder": "Nova pasta",
+  "command.treeOpenToSide": "Abrir ao lado",
+  "command.copyToPage": "Copiar para uma página"
 }

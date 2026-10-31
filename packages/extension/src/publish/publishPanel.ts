@@ -37,7 +37,7 @@ export type PanelState =
 
 export type PanelMessage =
   | { type: 'ready' }
-  | { type: 'action'; action: 'submit' | 'saveDraft' | 'saveAndVerify' | 'send' | 'discard' | 'signIn' | 'refresh' | 'setUp' | 'resolve' }
+  | { type: 'action'; action: 'submit' | 'saveDraft' | 'saveAndVerify' | 'send' | 'discard' | 'signIn' | 'refresh' | 'setUp' | 'resolve' | 'publishRepo' }
   | { type: 'openUrl'; url: string }
   | { type: 'showLine'; path: string; line: number };
 
@@ -193,6 +193,22 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
     this.follow();
   }
 
+  /**
+   * Pasta sem Git ou sem GitHub: "Publicar no GitHub" do VS Code (cria o repositório e liga o remoto); depois, o
+   * painel olha a página de novo.
+   */
+  private async publishRepository() {
+    const commands = await vscode.commands.getCommands(true);
+    if (!commands.includes('github.publish')) {
+      void vscode.window.showInformationMessage(vscode.l10n.t('Publish the folder to GitHub from the Source Control view, then open the page again.'));
+      return;
+    }
+    await vscode.commands.executeCommand('github.publish');
+    const document = this.activeDocument() ?? vscode.workspace.textDocuments.find(d => d.uri.toString() === this.key);
+    if (document) this.loading = this.open(document, false);
+    return this.loading;
+  }
+
   private async open(document: vscode.TextDocument, signIn: boolean) {
     this.publisher?.dispose();
     this.publisher = undefined;
@@ -337,6 +353,8 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
       }
       case 'refresh':
         return publisher?.refreshChecks();
+      case 'publishRepo':
+        return this.publishRepository();
       case 'saveDraft':
         return publisher?.saveDraft();
       case 'saveAndVerify':
@@ -484,6 +502,8 @@ export function panelLabels() {
     noPage: vscode.l10n.t('Open a documentation page to publish it.'),
     noGit: vscode.l10n.t('This page is not in a Git repository.'),
     noRemote: vscode.l10n.t('The repository has no GitHub remote.'),
+    localOnly: vscode.l10n.t('Your changes are saved only in this folder. To publish the documentation (TechDocs in Backstage reads it from GitHub), the folder needs a repository on GitHub.'),
+    publishRepo: vscode.l10n.t('Publish to GitHub'),
     loading: vscode.l10n.t('Loading…'),
     signIn: vscode.l10n.t('Sign in to GitHub'),
     signInHint: vscode.l10n.t('Publishing creates a branch and a pull request on GitHub.'),

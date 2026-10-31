@@ -24,6 +24,7 @@ import {
   techdocsRefAnnotation,
   today,
 } from '@edtroleis/techdocs-editor-core';
+import { bringFileIntoDocs, copyImages } from '../repoLinks';
 import { catalogModeFor, repositoryFolder } from '../catalogOptions';
 import { configDirs } from '../lintProblems';
 import { existingPages, findReadme, folderName, isHome, NewSiteCommand, relative } from './newSite';
@@ -412,8 +413,16 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
     try {
       for (const file of [...writes.filter(f => f.path !== 'mkdocs.yml'), ...writes.filter(f => f.path === 'mkdocs.yml')]) {
         const uri = vscode.Uri.joinPath(context.root, file.path);
+        let content = file.content!;
+        // A página que veio do README: imagens de fora copiadas para docs/assets/, código pelo endereço no GitHub
+        if (file.readme && context.readme && file.path.startsWith(`${DOCS_DIR}/`)) {
+          const docsDir = vscode.Uri.joinPath(context.root, DOCS_DIR);
+          const brought = await bringFileIntoDocs(context.readme.uri, context.readme.text, uri, docsDir, undefined);
+          content = brought.text;
+          await copyImages(brought.images);
+        }
         await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
-        await vscode.workspace.fs.writeFile(uri, encoder.encode(file.content!));
+        await vscode.workspace.fs.writeFile(uri, encoder.encode(content));
       }
     } catch (error) {
       this.busy = false;

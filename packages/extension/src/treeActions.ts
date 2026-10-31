@@ -18,6 +18,7 @@ import {
   type NavPlace,
 } from '@edtroleis/techdocs-editor-core';
 import { DocsItem, type DocsTreeView } from './docsTreeView';
+import { bringFileIntoDocs, copyImages } from './repoLinks';
 
 const MIME = 'application/vnd.code.tree.techdocseditor.docs';
 const UNDO_LIMIT = 30;
@@ -401,6 +402,49 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     this.done(vscode.l10n.t('"{0}" now appears in the menu of the site.', item.label), undo);
   }
 
+  /**
+   * "Copiar para uma página": um `.md` de fora do `docs_dir` (o README, quase sempre) vira uma página nova no
+   * `docs_dir`, no fim do menu, com os links acertados: imagens de fora copiadas para `assets/`, código e outros
+   * arquivos pelo endereço no GitHub (`bringFileIntoDocs`). O original fica como está; desfazer tira tudo.
+   */
+  async copyToPage(target?: unknown) {
+    const item = this.itemOf(target);
+    if (item?.kind !== 'repoFile' || !item.uri) return;
+    const site = this.siteOf(item);
+    const text = await readText(item.uri);
+    if (!site || text === undefined) return;
+    const docsPath = vscode.workspace.asRelativePath(site.docsDir, false);
+    const name = await this.input({
+      title: vscode.l10n.t('Copy to a page'),
+      value: fileNameFor(pageTitle(text) ?? item.label.replace(/\.md$/i, '')),
+      prompt: vscode.l10n.t('Name of the page file in {0}. {1} stays as it is.', docsPath, item.label),
+      validateInput: async value => {
+        const clean = value.trim();
+        if (!/^[^/\\]+\.md$/i.test(clean)) return vscode.l10n.t('The name ends with .md.');
+        return (await readBytes(vscode.Uri.joinPath(site.docsDir, clean))) ? vscode.l10n.t('There is already a file {0} here. Choose another name.', clean) : undefined;
+      },
+    });
+    if (!name?.trim()) return;
+    const path = name.trim();
+    const page = vscode.Uri.joinPath(site.docsDir, path);
+    const yml = await this.readYml(site.mkdocs);
+    const brought = await bringFileIntoDocs(item.uri, text, page, site.docsDir, yml);
+    const touched = [page, site.mkdocs, ...brought.images.map(image => image.to)];
+    const undo = await this.change(vscode.l10n.t('copy {0} to the page {1}', item.label, path), touched, async () => {
+      await writeText(page, brought.text);
+      await copyImages(brought.images);
+      const nav = readNav(yml);
+      if (!nav) return;
+      nav.push({ kind: 'page', path });
+      await writeText(site.mkdocs, writeNav(yml, nav));
+    });
+    await vscode.commands.executeCommand('techdocsEditor.openVisual', page);
+    const images = brought.images.length ? ` ${vscode.l10n.t('Images copied to {0}: {1}.', `${docsPath}/assets`, brought.images.length)}` : '';
+    const asText = brought.asText.length ? ` ${vscode.l10n.t('Links to files outside the docs became text, with the path: {0}.', brought.asText.join(', '))}` : '';
+    const left = brought.left.length ? ` ${vscode.l10n.t('Links outside the docs that break on the published site: {0}', brought.left.join(', '))}` : '';
+    this.done(`${vscode.l10n.t('{0} copied to the page {1}, at the end of the menu.', item.label, path)}${images}${asText}${left}`, undo);
+  }
+
   // ---------- página do menu que não existe ----------
 
   /** "Criar a página": o arquivo que o `nav` aponta, com o título do menu, aberto no editor visual. */
@@ -745,7 +789,8 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     if (!item || item === target) return;
     // Visão dos arquivos: soltar numa pasta (no site: a raiz; num arquivo: a pasta dele) muda o arquivo de pasta
     if (item.file) {
-      if (target && !target.local) return;
+      // Fora do docs_dir (README, código) não é lugar de página
+      if (target && (!target.local || target.kind === 'repoDir' || target.kind === 'repoFile')) return;
       const folder = !target || target.kind === 'site' ? '' : target.kind === 'dir' ? target.path! : dirOf(target.path ?? '');
       return this.moveFileTo(item, folder);
     }

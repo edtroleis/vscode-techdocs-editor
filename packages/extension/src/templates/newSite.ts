@@ -5,7 +5,6 @@ import {
   hasTechdocsRef,
   isTemplateSupported,
   pageTitle,
-  readmeAsHome,
   SitePage,
   SiteSources,
   siteMkdocsYml,
@@ -14,6 +13,7 @@ import {
   TemplateField,
   today,
 } from '@edtroleis/techdocs-editor-core';
+import { bringFileIntoDocs, copyImages } from '../repoLinks';
 import { backstageInWorkspace, catalogModeFor, type CatalogOptions, type CatalogUsageAnswer, repositoryFolder } from '../catalogOptions';
 import type { ProposedChanges } from '../proposedChange';
 import { VisualEditorProvider } from '../visualEditorProvider';
@@ -122,7 +122,9 @@ export class NewSiteCommand {
       return undefined;
     }
     const home = pages.find(page => page.path === 'index.md');
-    if (readme && home && readmeUse !== 'skip') home.content = readmeAsHome(readme.text);
+    // O README como página inicial: imagens de fora copiadas para docs/assets/, código pelo endereço no GitHub
+    const brought = readme && home && readmeUse !== 'skip' ? await bringFileIntoDocs(readme.uri, readme.text, vscode.Uri.joinPath(docsDir, 'index.md'), docsDir, undefined) : undefined;
+    if (brought && home) home.content = brought.text;
     // TP4: nunca sobrescreve (uma pasta docs/ pode já existir, com outras páginas)
     const taken = [];
     for (const page of pages) if (await exists(vscode.Uri.joinPath(docsDir, page.path))) taken.push(`${DOCS_DIR}/${page.path}`);
@@ -137,6 +139,7 @@ export class NewSiteCommand {
       await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
       await vscode.workspace.fs.writeFile(uri, encoder.encode(page.content));
     }
+    if (brought) await copyImages(brought.images);
     // Por último: quem acompanha os mkdocs.yml (árvore, lint) já acha as páginas
     const mkdocs = vscode.Uri.joinPath(root, 'mkdocs.yml');
     await vscode.workspace.fs.writeFile(mkdocs, encoder.encode(siteMkdocsYml(values.site_name, pages, template)));

@@ -676,18 +676,24 @@ export function defineTests() {
       await docs.refreshNow();
     });
 
-    test('visão dos arquivos: pastas e .md pelo nome, fora do menu marcado; usar o título da página no menu', async () => {
+    test('visão dos arquivos: a pasta do site, com as pastas e .md pelo nome, fora do menu marcado; usar o título da página no menu; README para uma página', async () => {
       const { docs, useTestAnswers } = await api();
       const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
       const yml = await read('wiki/mkdocs.yml');
       const names = (items: DocsItem[]): string[] =>
         items.flatMap(item => [
-          item.kind === 'dir' ? `${item.label}/` : `${item.uri!.path.split('/').pop()}${item.outside ? ' (fora)' : ''}${item.fixedTitle ? ' (título fixo)' : ''}`,
+          item.kind === 'dir' ? `${item.label}/` : item.kind !== 'page' ? `${item.label} (${item.kind}${item.missingInMenu ? `, ${item.missingInMenu} do menu sem página` : ''})` : `${item.uri!.path.split('/').pop()}${item.outside ? ' (fora)' : ''}${item.fixedTitle ? ' (título fixo)' : ''}`,
           ...names(item.children).map(name => `  ${name}`),
         ]);
       try {
-        await write('wiki/mkdocs.yml', `${yml}\nnav:\n  - Início: index.md\n  - Guias:\n    - guias/primeiros-passos.md\n`);
+        await write('wiki/mkdocs.yml', `${yml}\nnav:\n  - Início: index.md\n  - Guias:\n    - guias/primeiros-passos.md\n  - Sumiu: sumiu.md\n`);
+        await write('wiki/README.md', '# Leia-me\n\nVeja [o diagrama](docs/assets/diagrama.png), ![o logo](img/logo.png) e [o código](app/main.py).\n');
+        await write('wiki/app/main.py', 'print(1)\n');
+        await write('wiki/img/logo.png', 'png');
+        // Um repositório Git: a árvore começa na raiz dele; o código vira o endereço no GitHub (o repo_url do mkdocs.yml vence o origin)
+        await write('wiki/.git/config', '[remote "origin"]\n\turl = git@github.com:acme/wiki.git\n');
+        await write('wiki/.git/refs/remotes/origin/HEAD', 'ref: refs/remotes/origin/main\n');
         await docs.setMode('files');
         const tree = await until(
           async () => {
@@ -700,7 +706,24 @@ export function defineTests() {
         );
         equal(
           tree,
-          ['guias/', '  imagens.md (fora)', '  primeiros-passos.md', 'processos/', '  aprovacao.md (fora)', 'index.md (título fixo)'].join('\n'),
+          [
+            // O repositório como no disco (sem o .git): o código para consultar (lido quando abre) e o docs_dir aberto
+            'app (repoDir)',
+            'docs/',
+            '  assets/',
+            '    diagrama.png (asset)',
+            '  guias/',
+            '    imagens.md (fora)',
+            '    primeiros-passos.md',
+            '  processos/',
+            '    aprovacao.md (fora)',
+            '  index.md (título fixo)',
+            'img (repoDir)',
+            '.markdownlint.yaml (repoFile)',
+            // A página do menu que não existe: o ⚠ no mkdocs.yml leva à visão do menu
+            'mkdocs.yml (repoFile, 1 do menu sem página)',
+            'README.md (repoFile)',
+          ].join('\n'),
           'visão dos arquivos',
         );
         const index = docs.pageItem(file('wiki/docs/index.md'))!;
@@ -733,15 +756,34 @@ export function defineTests() {
         equal(await read('wiki/docs/index.md'), home, 'desfazer não voltou o link');
 
         // Nova pasta dentro da pasta clicada: index.md sem problema de formatação e a seção junto das páginas dela
-        const guias = docs.getChildren(siteItem(docs, 'wiki')!).find(item => item.kind === 'dir' && item.label === 'guias')!;
+        const docsFolder = docs.getChildren(siteItem(docs, 'wiki')!).find(item => item.docsRoot)!;
+        const guias = docs.getChildren(docsFolder).find(item => item.kind === 'dir' && item.label === 'guias')!;
         useTestAnswers(['Rotinas']);
         await vscode.commands.executeCommand('techdocsEditor.newFolder', guias);
         equal(await read('wiki/docs/guias/rotinas/index.md'), '# Rotinas\n', 'página da pasta nova');
         ok((await read('wiki/mkdocs.yml')).includes('      - guias/primeiros-passos.md\n      - Rotinas:\n          - guias/rotinas/index.md\n'), `seção da pasta nova: ${await read('wiki/mkdocs.yml')}`);
         await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
         ok(!(await exists('wiki/docs/guias/rotinas')), 'desfazer não tirou a pasta nova');
+
+        // README para uma página: os links refeitos a partir do docs_dir, a imagem de fora copiada, o código pelo
+        // endereço no GitHub, a página no fim do menu, o README intacto
+        const readme = docs.getChildren(siteItem(docs, 'wiki')!).find(item => item.kind === 'repoFile' && item.label === 'README.md')!;
+        useTestAnswers(['leia-me.md']);
+        await vscode.commands.executeCommand('techdocsEditor.copyToPage', readme);
+        equal(
+          await read('wiki/docs/leia-me.md'),
+          '# Leia-me\n\nVeja [o diagrama](assets/diagrama.png), ![o logo](assets/logo.png) e [o código](https://github.com/edtroleis/docs-editor-wiki-demo/blob/main/app/main.py).\n',
+          'página copiada do README',
+        );
+        equal(await read('wiki/docs/assets/logo.png'), 'png', 'a imagem de fora não foi copiada');
+        ok((await read('wiki/mkdocs.yml')).includes('  - leia-me.md\n'), `a página não entrou no menu: ${await read('wiki/mkdocs.yml')}`);
+        ok((await read('wiki/README.md')).startsWith('# Leia-me'), 'o README mudou');
+        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
+        ok(!(await exists('wiki/docs/leia-me.md')) && !(await exists('wiki/docs/assets/logo.png')), 'desfazer não tirou a página e a imagem copiadas');
       } finally {
         useTestAnswers(undefined);
+        await vscode.workspace.fs.delete(file('wiki/README.md')).then(undefined, () => undefined);
+        for (const folder of ['wiki/app', 'wiki/img', 'wiki/.git']) await vscode.workspace.fs.delete(file(folder), { recursive: true }).then(undefined, () => undefined);
         await write('wiki/mkdocs.yml', yml);
         await docs.setMode('menu');
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
@@ -1084,7 +1126,7 @@ export function defineTests() {
       await write('move-readme/README.md', readme);
       try {
         ok(await newSite.run(undefined, { template: 'service-docs', folder: file('com-readme'), values: { site_name: 'Pagamentos', owner: 'time-pag' }, readme: 'copy' }), 'não criou (copiar)');
-        equal(await read('com-readme/docs/index.md'), '# Pagamentos\n\nVeja o [deploy](deploy.md) e o [código](src/main.ts).\n', 'página inicial do README');
+        equal(await read('com-readme/docs/index.md'), '# Pagamentos\n\nVeja o [deploy](deploy.md) e o código (`src/main.ts`).\n', 'página inicial do README');
         equal(await read('com-readme/README.md'), readme, 'copiar mudou o README');
         ok((await read('com-readme/docs/architecture.md')).startsWith('# Architecture\n'), 'as outras páginas do template continuam');
 

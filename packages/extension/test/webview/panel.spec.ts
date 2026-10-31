@@ -123,6 +123,16 @@ test('sem login: botão de entrar', async ({ page }) => {
   expect((await sent(page)).at(-1)).toEqual({ type: 'action', action: 'signIn' });
 });
 
+test('pasta local sem GitHub: as mudanças ficam só na pasta, e o caminho para publicar', async ({ page }) => {
+  for (const status of ['noGit', 'noRemote'] as const) {
+    await show(page, { status });
+    await expect(page.getByText(LABELS[status])).toBeVisible();
+    await expect(page.getByText(LABELS.localOnly)).toBeVisible();
+    await page.getByRole('button', { name: 'Publish to GitHub' }).click();
+    expect((await sent(page)).at(-1)).toEqual({ type: 'action', action: 'publishRepo' });
+  }
+});
+
 test('admin: o que falta no repositório e o botão de configurar (P7)', async ({ page }) => {
   await show(page, { status: 'ready', view: { ...VIEW, setup: { steps: ['workflow', 'markdownlint'] } } });
   await expect(page.getByText('automatic checks on pull requests')).toBeVisible();

@@ -71,13 +71,15 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
       expect(() => read(file), file).not.toThrow();
     }
     expect(() => read('catalog-info.yaml'), 'catalog-info.yaml criado sem pedir').toThrow();
-    await expect(treeRow(page, 'Como rodar localmente')).toBeVisible();
-    await expect(treeRow(page, 'Referência da API')).toBeVisible();
+    // A árvore mostra a pasta como no disco: o código ao lado e as páginas em docs/, pelo nome do arquivo
+    await expect(treeRow(page, 'app')).toBeVisible();
+    await expect(treeRow(page, 'como-rodar-localmente.md')).toBeVisible();
+    await expect(treeRow(page, 'referencia-da-api.md')).toBeVisible();
     await pause(page, 1_500);
   });
 
   await story.step('Escrever "Como rodar localmente": título, lista numerada e bloco de código', async () => {
-    const editor = await openFromTree(page, 'Como rodar localmente');
+    const editor = await openFromTree(page, 'como-rodar-localmente.md', 'Como rodar localmente');
     await story.check('o guia vem em português', () => expect(editor.locator('h2').first()).toHaveText('Objetivo'));
     await editor.locator('.ProseMirror').click();
     await page.keyboard.press('Control+A');
@@ -96,7 +98,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
   });
 
   await story.step('Escrever "Referência da API": tabela de endpoints, com Tab criando as linhas', async () => {
-    const editor = await openFromTree(page, 'Referência da API');
+    const editor = await openFromTree(page, 'referencia-da-api.md', 'Referência da API');
     await editor.locator('.ProseMirror').click();
     await page.keyboard.press('Control+A');
     await type(page, '# Referência da API\n');
@@ -124,7 +126,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
   });
 
   await story.step('Na página inicial, ligar à Referência da API pela caixa de link', async () => {
-    const editor = await openFromTree(page, 'Tarefas API');
+    const editor = await openFromTree(page, 'index.md', 'Tarefas API');
     const last = editor.locator('.ProseMirror > p').last();
     await last.click();
     await page.keyboard.press('Control+End');
@@ -141,7 +143,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
   });
 
   await story.step('Nenhum aviso de formatação na árvore', async () => {
-    for (const page_ of ['Tarefas API', 'Como rodar localmente', 'Referência da API']) {
+    for (const page_ of ['index.md', 'como-rodar-localmente.md', 'referencia-da-api.md']) {
       await story.check(`sem ⚠ em ${page_}`, async () => expect(await hasWarning(page, page_)).toBe(false));
     }
     await pause(page);

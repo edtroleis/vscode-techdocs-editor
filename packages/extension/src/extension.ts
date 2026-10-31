@@ -154,6 +154,11 @@ export function activate(context: vscode.ExtensionContext) {
       if (page?.kind === 'page') return vscode.commands.executeCommand('techdocsEditor.openVisual', page);
     }),
     vscode.commands.registerCommand('techdocsEditor.tree.openText', (item?: DocsItem) => vscode.commands.executeCommand('techdocsEditor.openText', item ?? docs.selected())),
+    vscode.commands.registerCommand('techdocsEditor.tree.openToSide', (item?: DocsItem) => {
+      const target = item ?? docs.selected();
+      if (target?.uri) return vscode.commands.executeCommand('vscode.open', target.uri, vscode.ViewColumn.Beside);
+    }),
+    vscode.commands.registerCommand('techdocsEditor.copyToPage', (item?: DocsItem) => treeActions.copyToPage(item)),
     vscode.commands.registerCommand('techdocsEditor.tree.newPage', (item?: DocsItem) => vscode.commands.executeCommand('techdocsEditor.newPage', item ?? docs.selected())),
     vscode.commands.registerCommand('techdocsEditor.tree.newSection', (item?: DocsItem) => treeActions.newSection(item)),
     vscode.commands.registerCommand('techdocsEditor.tree.deleteSection', (item?: DocsItem) => treeActions.delete(item)),

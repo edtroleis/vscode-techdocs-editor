@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { click, expect, folderFrom, pause, test, type } from './story';
-import { buildSite, checkPane, checkRow, contextMenu, editorOf, fixFinding, hasWarning, openFromTree, palette, quickInput, techdocsIcon, treeRow } from './ui';
+import { buildSite, checkPane, treeRows, checkRow, contextMenu, editorOf, fixFinding, hasWarning, openFromTree, palette, quickInput, techdocsIcon, treeRow } from './ui';
 
 const folder = folderFrom('site-legado', 'pagamentos');
 const read = (path: string) => readFileSync(join(folder, path), 'utf8');
@@ -34,6 +34,13 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
   await story.step('Abrir a barra lateral TechDocs: o menu do site, com o que está errado', async () => {
     await expect(techdocsIcon(page)).toBeVisible({ timeout: 30_000 });
     await click(page, techdocsIcon(page));
+    // De saída, a pasta como no disco: o mkdocs.yml avisa que o menu aponta para página que não existe, e o
+    // clique nele leva à visão do menu do site, onde se corrige
+    const mkdocs = treeRow(page, 'mkdocs.yml');
+    await story.check('o ⚠ no mkdocs.yml', () => expect(mkdocs).toContainText(/pages? of the menu do(es)? not exist/));
+    // A pasta (fechada) diz quantas páginas dentro dela estão fora do menu
+    await story.check('a página fora do menu marcada', () => expect(treeRow(page, 'operacao')).toContainText('1 not in the menu'));
+    await click(page, mkdocs);
     for (const section of ['Guias', 'Operação', /^Not in the menu/]) {
       await expect(treeRow(page, section)).toBeVisible();
       if ((await treeRow(page, section).getAttribute('aria-expanded')) === 'false') await click(page, treeRow(page, section));

@@ -295,6 +295,16 @@
         "icon": "$(markdown)"
       },
       {
+        "command": "techdocsEditor.tree.openToSide",
+        "title": "%command.treeOpenToSide%",
+        "category": "TechDocs"
+      },
+      {
+        "command": "techdocsEditor.copyToPage",
+        "title": "%command.copyToPage%",
+        "category": "TechDocs"
+      },
+      {
         "command": "techdocsEditor.tree.newPage",
         "title": "%command.treeNewPage%",
         "category": "TechDocs",
@@ -332,6 +342,14 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "techdocsEditor.tree.openToSide",
+          "when": "false"
+        },
+        {
+          "command": "techdocsEditor.copyToPage",
+          "when": "false"
+        },
         {
           "command": "techdocsEditor.openVisual",
           "when": "techdocsEditor.activeIsDocs"
@@ -558,6 +576,16 @@
           "command": "techdocsEditor.tree.openText",
           "when": "view == techdocsEditor.docs && viewItem =~ /^page\\b/",
           "group": "1_open@2"
+        },
+        {
+          "command": "techdocsEditor.tree.openToSide",
+          "when": "view == techdocsEditor.docs && viewItem =~ /^(repoFile|asset)\\b/",
+          "group": "1_open@3"
+        },
+        {
+          "command": "techdocsEditor.copyToPage",
+          "when": "view == techdocsEditor.docs && viewItem =~ /^repoFile\\b/ && viewItem =~ /\\bmarkdown\\b/",
+          "group": "2_page@1"
         },
         {
           "command": "techdocsEditor.pageHistory",

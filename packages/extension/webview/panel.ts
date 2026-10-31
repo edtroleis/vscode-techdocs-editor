@@ -17,10 +17,11 @@ function render(state: PanelState, l: PanelLabels): string {
       return '';
     case 'noPage':
       return `<p class="muted">${escape(l.noPage)}</p>`;
+    // Pasta local, sem GitHub: o que acontece com as mudanças e o caminho para publicar
     case 'noGit':
-      return `<p class="muted">${escape(l.noGit)}</p>`;
     case 'noRemote':
-      return `<p class="muted">${escape(l.noRemote)}</p>`;
+      return `<p class="muted">${escape(state.status === 'noGit' ? l.noGit : l.noRemote)}</p><p>${escape(l.localOnly)}</p>
+    <div class="actions"><button data-action="publishRepo">${escape(l.publishRepo)}</button></div>`;
     case 'loading':
       return `<p class="muted">${escape(l.loading)}</p>`;
     case 'error':
