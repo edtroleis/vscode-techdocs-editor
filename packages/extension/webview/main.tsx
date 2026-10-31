@@ -133,7 +133,8 @@ function App({ content }: { content: Content }) {
           void chooseImage(message.name, message.mime, message.data);
           return;
         case 'test:getSaved':
-          post({ type: 'test:saved', id: message.id, text: fromEditor(editor.current!.getMarkdown()) });
+          // Editor ainda montando: sem resposta (o host desiste e pergunta de novo)
+          if (editor.current) post({ type: 'test:saved', id: message.id, text: fromEditor(editor.current.getMarkdown()) });
           return;
         case 'test:insert':
           editor.current!.insertMarkdown(message.markdown);

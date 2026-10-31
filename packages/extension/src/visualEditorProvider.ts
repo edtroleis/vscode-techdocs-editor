@@ -151,11 +151,22 @@ export class EditorSession {
     this.post({ type: 'select', text });
   }
 
-  /** Testes: o que o editor gravaria agora, no formato do arquivo. */
-  saved(): Promise<string> {
+  /**
+   * Testes: o que o editor gravaria agora, no formato do arquivo. Sem resposta em `timeoutMs` (o webview montando um
+   * editor novo, como depois de resolver um conflito, perde o pedido), undefined: quem espera tenta de novo, em vez
+   * de ficar parado até o limite do teste.
+   */
+  saved(timeoutMs = 3_000): Promise<string | undefined> {
     const id = this.nextRequest++;
     return new Promise(resolve => {
-      this.requests.set(id, text => resolve(toEol(text, this.eol)));
+      const timer = setTimeout(() => {
+        this.requests.delete(id);
+        resolve(undefined);
+      }, timeoutMs);
+      this.requests.set(id, text => {
+        clearTimeout(timer);
+        resolve(toEol(text, this.eol));
+      });
       this.post({ type: 'test:getSaved', id });
     });
   }
