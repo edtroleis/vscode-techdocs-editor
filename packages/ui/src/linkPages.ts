@@ -109,11 +109,14 @@ export function attachLinkPages(root: HTMLElement, view: () => EditorView, pages
     field.dispatchEvent(new Event('input', { bubbles: true }));
     field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     const editor = view();
-    // O que a pessoa digita depois do link fica fora dele (a marca de link continua no texto digitado no fim dela)
+    // O que a pessoa digita depois do link fica fora dele (a marca de link continua no texto digitado no fim dela).
+    // O foco volta já, com o cursor no fim do link: o Crepe só devolve no próximo quadro, com o focus() do DOM, e o que
+    // fosse digitado antes disso ia para o início do documento
     const outside = () => {
       const { state } = editor;
       const link = state.schema.marks.link;
       if (link) editor.dispatch(state.tr.setStoredMarks(state.selection.$from.marks().filter(mark => mark.type !== link)));
+      editor.focus();
     };
     if (from !== to) return outside();
     // Sem seleção, o Crepe escreve o endereço como texto do link: troca pelo título
