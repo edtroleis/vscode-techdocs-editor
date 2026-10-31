@@ -1225,7 +1225,7 @@ export function defineTests() {
         equal(applied, 3, 'correções aplicadas: plugin, página do nav e página fora do nav');
         equal(
           await read('check-site/mkdocs.yml'),
-          'site_name: Conferir\nnav:\n  - Início: index.md\n  - Sumiu: sumiu.md\n  - Fora: fora.md\nplugins:\n  - techdocs-core\n  - search\n',
+          'site_name: Conferir\nnav:\n  - Início: index.md\n  - Sumiu: sumiu.md\n  - fora.md\nplugins:\n  - techdocs-core\n  - search\n',
           'mkdocs.yml',
         );
         equal(await read('check-site/docs/sumiu.md'), '# Sumiu\n', 'página do nav criada');

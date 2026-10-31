@@ -22,10 +22,11 @@ export function repositoryFolder(uri?: vscode.Uri): vscode.Uri | undefined {
 
 /**
  * Há algum `catalog-info.yaml` no workspace: sinal de que o Backstage é usado. Sem ele, o modo `auto` não fala do
- * arquivo. Limite acima de 1: no navegador, o findFiles com maxResults 1 não acha nada.
+ * arquivo. Sem maxResults: no navegador (@vscode/test-web), a busca ignora o padrão e corta pelo limite antes de
+ * filtrar (microsoft/vscode#200892), e com qualquer limite o resultado depende de quais arquivos vêm primeiro.
  */
 export async function backstageInWorkspace(): Promise<boolean> {
-  return (await vscode.workspace.findFiles('**/catalog-info.yaml', '**/node_modules/**', 5)).length > 0;
+  return (await vscode.workspace.findFiles('**/catalog-info.yaml', '**/node_modules/**')).length > 0;
 }
 
 /**

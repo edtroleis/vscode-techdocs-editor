@@ -40,6 +40,10 @@ test('"Ver linha": o número ao lado do bloco abre o texto ao lado, com o cursor
   await visual(page).locator('.docs-editor-line', { hasText: new RegExp(`^${line}$`) }).click();
   // Editor de texto ao lado, com o cursor no começo da linha
   await expect(page.locator('.editor-group-container')).toHaveCount(2);
-  await expect(page.locator('.statusbar-item', { hasText: /^Ln \d+, Col \d+$/ })).toHaveText(`Ln ${line}, Col 1`);
-  await expect(page.locator('.monaco-editor .view-lines').last()).toContainText('## Como editar');
+  // A linha do cursor pelo próprio editor de texto: o "Ln, Col" da barra de status do VS Code às vezes não aparece,
+  // mesmo com o foco no editor
+  const text = page.locator('.editor-group-container').last();
+  await expect(text.locator('.native-edit-context, textarea.inputarea').first()).toBeFocused();
+  await expect(text.locator('.line-numbers.active-line-number')).toHaveText(String(line));
+  await expect(text.locator('.monaco-editor .view-lines')).toContainText('## Como editar');
 });
