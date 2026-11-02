@@ -115,6 +115,9 @@ test('catalog-info.yaml: diz para que serve, sugere os donos do workspace e a de
   await expect(p.getByRole('button', { name: 'Create' })).toBeEnabled();
   await show(p, { owner: 'platform-team', ownerFrom: undefined, owners });
   await expect(p.getByText(/Check that the group exists/)).toHaveCount(0);
+  // Os donos do mesmo repositório vêm primeiro, com a dica própria
+  await show(p, { owner: '', ownerFrom: undefined, owners: [{ owner: 'squad-checkout', count: 1, here: true }, ...owners.filter(o => o.owner !== 'squad-checkout')] });
+  await expect(p.getByText('Used in this repository: squad-checkout')).toBeVisible();
 });
 
 test('menu: subir, renomear com dois cliques e acrescentar página na seção com o tipo', async ({ page: p }) => {

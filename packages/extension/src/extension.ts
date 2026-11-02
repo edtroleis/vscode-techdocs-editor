@@ -3,6 +3,7 @@ import { useE2eToken } from './publish/githubAuth';
 import { chooseSites, hideSite, useTestSiteChoice } from './chooseSites';
 import { REMOTE_SCHEME } from '@edtroleis/techdocs-editor-core';
 import { CatalogOptions, repositoryFolder } from './catalogOptions';
+import { timing } from './timing';
 import { CheckItem, CheckView } from './checkView';
 import { DocsItem, DocsTreeView, useTestSitePick } from './docsTreeView';
 import { LintActions } from './lintActions';
@@ -61,10 +62,10 @@ export function activate(context: vscode.ExtensionContext) {
   const newPage = new NewPageCommand(sites, provider, central, remotes);
   const proposals = new ProposedChanges();
   const newSite = new NewSiteCommand(central, proposals);
+  newSite.useSites(sites);
   const repoCheck = new RepoCheck(sites, lint, newSite, proposals);
   const checkView = new CheckView(repoCheck);
   const catalogOptions = new CatalogOptions(repoCheck);
-  newSite.useCatalogOptions(catalogOptions);
   const preview = new SitePreview(context.extensionUri, newSite);
   newSite.usePreview(preview);
   const prepare = new PrepareContext(sites);
@@ -84,6 +85,24 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.chooseSites', () => chooseSites(sites)),
     vscode.commands.registerCommand('techdocsEditor.hideSite', (item?: DocsItem) => hideSite(sites, item?.siteRoot)),
     vscode.commands.registerCommand('techdocsEditor.chooseSite', () => docs.chooseSite()),
+    // A tela da pasta sem documentação: criar num clique ou escolher o template
+    vscode.commands.registerCommand('techdocsEditor.createHere', () => {
+      const folder = docs.folderWithoutDocs;
+      if (!folder) return undefined;
+      // A barra de progresso na seção desde o clique; os tempos no canal "TechDocs Editor"
+      return vscode.window.withProgress({ location: { viewId: 'techdocsEditor.docs' } }, async () => {
+        timing.begin('Criar a documentação');
+        try {
+          const result = await newSite.quick(folder);
+          await docs.ready;
+          timing.step('árvore montada');
+          return result;
+        } finally {
+          timing.end();
+        }
+      });
+    }),
+    vscode.commands.registerCommand('techdocsEditor.newSiteHere', () => docs.folderWithoutDocs && newSite.run(docs.folderWithoutDocs)),
     vscode.commands.registerCommand('techdocsEditor.closeRemote', (item?: DocsItem) => item?.remote && remotes.remove(item.remote)),
     vscode.commands.registerCommand('techdocsEditor.refreshRemote', (item?: DocsItem) =>
       item?.remote ? remotes.refresh(item.remote.host, item.remote.slug) : remotes.refresh(),

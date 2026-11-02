@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { checkSite, LINT_CONFIG_FILES, SiteFinding, SiteSnapshot } from '@edtroleis/techdocs-editor-core';
-import { backstageInWorkspace, catalogModeFor } from './catalogOptions';
+import { backstageInWorkspace, catalogModeFor, siteRepository } from './catalogOptions';
 import type { DocsSite } from './docsSite';
 import { configDirs } from './lintProblems';
 import type { LintService } from './lintService';
@@ -202,7 +202,7 @@ export class RepoCheck implements vscode.Disposable {
       const text = catalog ? undefined : await this.currentText(uri);
       if (text !== undefined) catalog = { file: rel(uri), text };
     }
-    const { mode: catalogMode } = await catalogModeFor(base);
+    const { mode: catalogMode } = await catalogModeFor(await siteRepository(root));
     // Sem catalog-info.yaml no site, o modo auto só dá a dica se outro repositório do workspace tem um
     const backstageSignal = catalog || catalogMode !== 'auto' ? undefined : await backstageInWorkspace();
     // O dono só entra no catalog-info.yaml novo: o Git só é consultado quando ele pode ser criado

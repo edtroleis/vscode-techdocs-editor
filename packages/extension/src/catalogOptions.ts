@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { repoDirOf } from './chooseSites';
 import { CatalogMode, parseRepoConfig, REPO_CONFIG_FILE, setCatalogMode } from '@edtroleis/techdocs-editor-core';
 import type { RepoCheck } from './repoCheck';
 import { readText } from './templates/templateSources';
@@ -12,12 +13,17 @@ export type CatalogModeScope = 'team' | 'me';
 /** Respostas prontas para os testes de integração (sem as listas nem o diff). */
 export type CatalogOptionsAnswers = { mode: CatalogMode; scope: CatalogModeScope };
 
-/** Resposta pronta para `askUsage` nos testes. */
-export type CatalogUsageAnswer = 'yes' | 'no' | 'unknown';
-
 /** Pasta do repositório: a do workspace do arquivo, senão a primeira do workspace. */
 export function repositoryFolder(uri?: vscode.Uri): vscode.Uri | undefined {
   return (uri && vscode.workspace.getWorkspaceFolder(uri)?.uri) ?? vscode.workspace.workspaceFolders?.[0]?.uri;
+}
+
+/**
+ * Onde fica o `.techdocs-editor.yaml` que vale para o site: o repositório Git dele; sem Git, a própria pasta do
+ * site. A pasta aberta no VS Code (`~`, uma pasta de repositórios) só vale quando ela mesma é o repositório.
+ */
+export async function siteRepository(root: vscode.Uri): Promise<vscode.Uri> {
+  return (await repoDirOf(root)) ?? root;
 }
 
 /**
@@ -64,35 +70,6 @@ export class CatalogOptions {
     const saved = scope === 'team' ? await this.saveForTeam(folder, mode, Boolean(answers)) : await saveForMe(mode);
     if (!saved) return undefined;
     await this.repoCheck.check(true);
-    return mode;
-  }
-
-  /**
-   * Pergunta uma vez se o Backstage usa o `catalog-info.yaml` do repositório (para o "Preparar"): sim grava
-   * `catalog: required`, não grava `catalog: off` no `.techdocs-editor.yaml`; "não sei" não grava nada e fica o
-   * `auto`. A resposta já é a decisão: grava sem diff. Devolve o modo (undefined: cancelou).
-   */
-  async askUsage(folder = repositoryFolder(), answer?: CatalogUsageAnswer): Promise<CatalogMode | undefined> {
-    if (!folder) return undefined;
-    type Item = vscode.QuickPickItem & { value: CatalogUsageAnswer };
-    const picked =
-      answer ??
-      (
-        await vscode.window.showQuickPick<Item>(
-          [
-            { label: vscode.l10n.t('Yes'), description: vscode.l10n.t('check the TechDocs annotation and offer to create the file'), value: 'yes' },
-            { label: vscode.l10n.t('No'), description: vscode.l10n.t('Backstage registers the docs some other way: no more talk of catalog-info.yaml'), value: 'no' },
-            { label: vscode.l10n.t('Not sure'), description: vscode.l10n.t('check catalog-info.yaml only if it exists'), value: 'unknown' },
-          ],
-          { title: vscode.l10n.t('Does your Backstage use a catalog-info.yaml in the repository?'), ignoreFocusOut: true },
-        )
-      )?.value;
-    if (!picked) return undefined;
-    if (picked === 'unknown') return 'auto';
-    const mode: CatalogMode = picked === 'yes' ? 'required' : 'off';
-    await this.saveForTeam(folder, mode, true);
-    // A Verificação já conferiu nesta sessão: ela mostra o modo novo sem esperar o próximo salvamento
-    if (this.repoCheck.last) await this.repoCheck.check(true);
     return mode;
   }
 

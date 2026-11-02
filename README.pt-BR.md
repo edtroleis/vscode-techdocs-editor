@@ -64,16 +64,16 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
 
 - **TechDocs na barra de atividades:** um ícone próprio, que só aparece em workspaces com `mkdocs.yml`, para o
   resto do seu Markdown não atrapalhar. Ele tem três seções: **Documentação**, **Verificação** e o painel
-  opcional **Publicação**. Num repositório ainda sem `mkdocs.yml`, mas com `README.md`, uma pasta `docs/` com
+  opcional **Publicação**. Num repositório ainda sem `mkdocs.yml`, mas com `README.md`, um diretório `docs/` com
   páginas ou um `catalog-info.yaml`, o ícone abre uma tela de boas-vindas que diz o que achou, com **Preparar a
   documentação**.
 - **Árvore Documentação, visão dos arquivos (a padrão):** o repositório como no disco, igual ao Explorer, com a
-  pasta `docs` aberta: as páginas pelo nome do arquivo, as imagens, e ao lado o README, o código e o `mkdocs.yml`
+  diretório `docs` aberto: as páginas pelo nome do arquivo, as imagens, e ao lado o README, o código e o `mkdocs.yml`
   para consultar (**Abrir ao lado**). **Copiar para uma página** transforma o README numa página, com as imagens
   copiadas para `docs` e os links do código apontando para o GitHub. As páginas *fora do menu* ficam marcadas, e um
   ⚠ no `mkdocs.yml` avisa quando o menu aponta para páginas que não existem. Um clique na página abre o editor visual.
 - **Árvore Documentação, visão do menu** (**Mostrar o menu do site**): as páginas na ordem do `nav` do
-  `mkdocs.yml` (ou das pastas, sem `nav`), com o título de cada página. As páginas fora do `nav` ficam em **Fora
+  `mkdocs.yml` (ou dos diretórios, sem `nav`), com o título de cada página. As páginas fora do `nav` ficam em **Fora
   do menu**, cada uma com um **+** para entrar nele, e os itens do `nav` que apontam para páginas que não existem
   aparecem marcados. **Filtrar** acha uma página pelo título.
 - **Organize pela árvore:** o **⋯** de uma página ou seção abre um menu com *Renomear* (`F2`), *Duplicar*,
@@ -89,7 +89,7 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
 ![Nova página a partir de uma seção da árvore Documentação: escolha o tipo de página, dê um título, e ela abre no editor visual pronta para preencher](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-page.gif)
 
 **TechDocs: Nova página a partir de template…** (paleta de comandos, o **+** num site ou seção da árvore
-**Documentação** ou clique direito numa pasta das docs) cria uma página com as seções que aquele tipo de página precisa, já com o título, a data
+**Documentação** ou clique direito num diretório das docs) cria uma página com as seções que aquele tipo de página precisa, já com o título, a data
 e o dono do `catalog-info.yaml`, e abre no editor visual.
 
 | Para… | Templates |
@@ -99,7 +99,7 @@ e o dono do `catalog-info.yaml`, e abre no editor visual.
 | Consultar | Página inicial do serviço, Operação e suporte, Referência de API, Página de wiki |
 | Entender | Arquitetura, Registro de decisão de arquitetura (numerado: `adr/0001-…`), Postmortem |
 
-O nome do arquivo sai do título, nunca sobrescreve uma página existente e nunca sai da pasta das docs. Os
+O nome do arquivo sai do título, nunca sobrescreve uma página existente e nunca sai do diretório das docs. Os
 templates seguem a língua do VS Code (inglês ou português), passam na verificação de formatação e abrem no
 editor visual sem nenhuma alteração. Num site com `nav`, a página já pode entrar nele, na seção clicada na
 árvore; só essa linha é acrescentada ao `mkdocs.yml`.
@@ -109,16 +109,16 @@ editor visual sem nenhuma alteração. Num site com `nav`, a página já pode en
 | Camada | Onde | Como muda |
 |--------|------|-----------|
 | Da extensão | Esta extensão | Versão nova da extensão, atualizada automaticamente pelo Marketplace |
-| Da empresa ou do time | `.techdocs/templates/` no repositório das docs (ou na pasta do site, que vale mais) | Pull request nesse repositório: nada a publicar |
+| Da empresa ou do time | `.techdocs/templates/` no repositório das docs (ou no diretório do site, que vale mais) | Pull request nesse repositório: nada a publicar |
 | Da empresa inteira | Um repositório do GitHub com os templates de todos os repositórios de docs (`techdocsEditor.templates.repository`) | Pull request nesse repositório: chega a todos em até uma hora |
 
 Um template é uma página Markdown com um bloco `template:` no front matter. Os do repositório aparecem
-primeiro na lista e substituem o da extensão de mesmo nome de arquivo (`runbook.md`). Outras pastas vão em
+primeiro na lista e substituem o da extensão de mesmo nome de arquivo (`runbook.md`). Outros diretórios vão em
 `techdocsEditor.templates.paths`, e `techdocsEditor.templates.builtIn: false` oferece só os seus. Páginas já
 criadas nunca mudam quando o template muda.
 
-Os templates da empresa ficam numa pasta de um repositório do GitHub, no mesmo formato, e vêm entre os do
-repositório e os da extensão. Aponte `techdocsEditor.templates.repository` para `dono/repo`, com a pasta e uma
+Os templates da empresa ficam num diretório de um repositório do GitHub, no mesmo formato, e vêm entre os do
+repositório e os da extensão. Aponte `techdocsEditor.templates.repository` para `dono/repo`, com o diretório e uma
 branch ou tag opcionais (`acme/docs-templates/templates@v3`; com tag, você escolhe quando atualizar), e o host no
 GitHub Enterprise (`ghe.acme.com/acme/docs-templates`). A extensão tenta primeiro sem login (repositório
 público) e só pede o login do GitHub se precisar. Confere no máximo uma vez por hora, guarda uma cópia para usar
@@ -147,7 +147,7 @@ Alerta: {{alert}}. Dono: {{owner}}. Revisado em {{date}}.
 ![Novo site de documentação a partir de template: dê o nome, responda às perguntas, e o mkdocs.yml e as páginas ficam prontos](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-site.gif)
 
 **TechDocs: Novo site de documentação…** (paleta de comandos, menu da seção Documentação ou clique direito numa
-pasta) e **Criar a documentação** na barra lateral abrem uma **prévia** na barra lateral TechDocs, antes de
+diretório) e **Criar a documentação** na barra lateral abrem uma **prévia** na barra lateral TechDocs, antes de
 gravar qualquer coisa:
 
 - **No topo:** o template, o nome do site (sugerido pelo título do README) e o dono (do `catalog-info.yaml` ou
@@ -166,15 +166,15 @@ gravar qualquer coisa:
 
 - **O README como página inicial:** ao lado de um `README.md`, escolha **Copiar para docs/index.md**, **Mover
   para docs/index.md** (o README fica com um link para as docs) ou não usar. Links para `docs/…` passam a ser
-  relativos à pasta das docs.
+  relativos ao diretório das docs.
 - **As páginas que você já tem:** com páginas em `docs/` e sem `mkdocs.yml`, **Usar as páginas que já existem**
-  cria só o `mkdocs.yml`, com o `nav` pelas pastas e títulos das páginas e o plugin `techdocs-core`, mostrado
+  cria só o `mkdocs.yml`, com o `nav` pelos diretórios e títulos das páginas e o plugin `techdocs-core`, mostrado
   num diff antes. Nenhuma página muda.
 - **Uma pergunta só:** sem `catalog-info.yaml`, pergunta se o seu Backstage usa um no repositório. **Não** faz a
   extensão parar de falar nele; **Sim** leva à Verificação, que oferece criá-lo. A resposta vai para o
   `.techdocs-editor.yaml`, para o time todo.
 
-![Páginas em docs/ sem mkdocs.yml: usá-las, e só o mkdocs.yml é criado, com o nav pelas pastas e títulos](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/adopt-docs.gif)
+![Páginas em docs/ sem mkdocs.yml: usá-las, e só o mkdocs.yml é criado, com o nav pelos diretórios e títulos](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/adopt-docs.gif)
 
 | Site | Páginas |
 |------|---------|
@@ -182,8 +182,8 @@ gravar qualquer coisa:
 | Wiki de time | Início (como usar a wiki), Onboarding, Guias, uma página de wiki de exemplo |
 | Golden path | Visão geral, tutorial de primeiros passos, Solução de problemas |
 
-Os seus templates de site são pastas em `.techdocs/templates/` com um `template.yml`: cada arquivo vem de um
-template de página (`page`, seu ou da extensão) ou de um arquivo da pasta (`source`).
+Os seus templates de site são diretórios em `.techdocs/templates/` com um `template.yml`: cada arquivo vem de um
+template de página (`page`, seu ou da extensão) ou de um arquivo do diretório (`source`).
 
 ```yaml
 version: 1
@@ -207,7 +207,7 @@ files:
 ![A seção Verificação agrupa por tipo o que o TechDocs precisa; um clique leva à linha; Corrigir mostra o diff antes de aplicar](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/check-and-fix.gif)
 
 A seção **Verificação** da barra lateral TechDocs lista, agrupado por tipo, o que falta ou está errado para o
-TechDocs montar cada site: `site_name` e o plugin `techdocs-core` no `mkdocs.yml`, a pasta das docs e o
+TechDocs montar cada site: `site_name` e o plugin `techdocs-core` no `mkdocs.yml`, o diretório das docs e o
 `index.md` dela, itens do `nav` que apontam para páginas que não existem e páginas fora do `nav`, a anotação
 `backstage.io/techdocs-ref` no `catalog-info.yaml`, a configuração do markdownlint, problemas de formatação,
 links para arquivos que não existem e imagens que faltam. Ela confere sozinha quando aparece pela primeira vez e
@@ -281,8 +281,8 @@ painel **Publicação** aparece na barra lateral TechDocs, com o mesmo fluxo do 
 ## Como começar
 
 1. Instale o **TechDocs Editor** pelo Marketplace do VS Code.
-2. Abra uma pasta que tenha um `mkdocs.yml` (a extensão começa sozinha ali). Ainda sem `mkdocs.yml`? O ícone
-   TechDocs também aparece ao lado de um `README.md`, de uma pasta `docs/` ou de um `catalog-info.yaml`, com
+2. Abra um diretório que tenha um `mkdocs.yml` (a extensão começa sozinha ali). Ainda sem `mkdocs.yml`? O ícone
+   TechDocs também aparece ao lado de um `README.md`, de um diretório `docs/` ou de um `catalog-info.yaml`, com
    **Preparar a documentação**.
 3. Abra uma página:
    - pela seção **Documentação** do ícone TechDocs na barra de atividades, ou
@@ -300,9 +300,10 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 | Configuração | Padrão | O que faz |
 |--------------|--------|-----------|
 | `techdocsEditor.openVisualByDefault` | `false` | Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto |
-| `techdocsEditor.sites` | todos | Sites de documentação mostrados na view TechDocs e conferidos: pastas de um `mkdocs.yml` (ou uma pasta acima delas). Escolha com **Escolher Documentação…** na view |
+| `techdocsEditor.siteDepth` | `2` | Até quantos diretórios abaixo do diretório do workspace vai a busca pelos sites (`mkdocs.yml`). Os mais fundos aparecem ao abrir uma página deles ou ao entrar no diretório deles pelo **Trocar Diretório ou Repo…** |
+| `techdocsEditor.sites` | todos | Sites de documentação mostrados na view TechDocs e conferidos: diretórios de um `mkdocs.yml` (ou um diretório acima deles). Escolha com **Filtrar Sites da Árvore…** no menu `…` da view |
 | `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
-| `techdocsEditor.templates.paths` | `[]` | Mais pastas com templates de página e de site, relativas à pasta do workspace (o `.techdocs/templates/` é sempre lido) |
+| `techdocsEditor.templates.paths` | `[]` | Mais diretórios com templates de página e de site, relativos ao diretório do workspace (o `.techdocs/templates/` é sempre lido) |
 | `techdocsEditor.templates.repository` | `""` | Templates da empresa num repositório do GitHub: `dono/repo[/pasta][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Oferece os templates que vêm com a extensão |
 | `techdocsEditor.catalog` | `auto` | Como a verificação trata o `catalog-info.yaml`: `auto` (confere só se existir), `required` ou `off`. Também pela engrenagem da seção Verificação; o `catalog:` do `.techdocs-editor.yaml` vale sobre esta |
@@ -343,12 +344,12 @@ Corrigir a formatação ao salvar:
 
 ## Onde o lint acha a configuração
 
-Para cada página, a extensão procura `.markdownlint.jsonc`, `.json`, `.yaml` ou `.yml` da pasta do
-`mkdocs.yml` da página até a pasta do workspace e usa o primeiro que encontrar (senão, o padrão do
+Para cada página, a extensão procura `.markdownlint.jsonc`, `.json`, `.yaml` ou `.yml` do diretório do
+`mkdocs.yml` da página até o diretório do workspace e usa o primeiro que encontrar (senão, o padrão do
 markdownlint). Só as páginas de um `docs_dir` são verificadas.
 
 - **Modo restrito:** num workspace não confiável, a configuração do repositório não é lida e as páginas
-  não são verificadas até você confiar na pasta.
+  não são verificadas até você confiar no diretório.
 - **Com a [extensão do markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint)
   instalada,** os diagnósticos dela valem no painel Problemas, para você não ver cada problema duas vezes.
   O editor visual continua mostrando a lista.
@@ -360,16 +361,16 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
   gravadas pelo VS Code; os únicos acessos são às imagens que as suas páginas já apontam com `https://`. O
   painel só fala com o GitHub do remote do seu repositório, a partir do host da extensão: o token nunca chega
   ao webview. Com `techdocsEditor.templates.repository` configurado, a extensão também lê esse repositório, no
-  máximo uma vez por hora; em workspace não confiável, só vale a sua configuração de usuário, nunca a da pasta.
+  máximo uma vez por hora; em workspace não confiável, só vale a sua configuração de usuário, nunca a do diretório.
 - **O modo remoto** fala só com o GitHub do repositório que você abriu. A lista de sites abertos guarda só o
-  host, `dono/repo` e a pasta do `mkdocs.yml`, nunca token.
+  host, `dono/repo` e o diretório do `mkdocs.yml`, nunca token.
 - O editor visual roda num webview com política de segurança de conteúdo restrita: só os scripts da
   própria extensão rodam.
 
 ## Requisitos e limitações
 
 - VS Code 1.100 ou mais novo.
-- Funciona em pastas locais e clones (modo local). O Git continua com o controle de versão do VS Code.
+- Funciona em diretórios locais e clones (modo local). O Git continua com o controle de versão do VS Code.
 - No modo local, o painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
 - Modo remoto, ainda não: o VS Code para a Web. Veja o [plano](specs/00-visao-geral.md#fases).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.

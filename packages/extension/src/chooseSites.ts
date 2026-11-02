@@ -14,8 +14,9 @@ export function useTestSiteChoice(choose: typeof testChoice) {
 export type SiteChoice = vscode.QuickPickItem & { path: string; repo: string };
 
 /**
- * "Escolher quais sites aparecem…" (workspaces com muitos sites): a lista dos sites achados, agrupada pelo
- * repositório Git, com os que o seletor oferece marcados. Guarda em `techdocsEditor.sites` do workspace; tudo ou nada marcado = todos.
+ * "Filtrar sites da árvore…" (workspaces com muitos sites): a lista dos sites achados, agrupada pelo repositório
+ * Git, com os que a troca de diretório e a árvore mostram marcados (sem escolha, todos). Guarda em
+ * `techdocsEditor.sites` do workspace; tudo ou nada marcado = todos.
  */
 export async function chooseSites(sites: LocalSites) {
   await sites.ready;
@@ -29,7 +30,7 @@ export async function chooseSites(sites: LocalSites) {
         description: path,
         path,
         repo: await repoOf(root),
-        picked: Boolean(chosen?.length) && isShownSite(path, chosen),
+        picked: isShownSite(path, chosen),
       };
     }),
   );
@@ -58,8 +59,8 @@ function save(paths: string[]) {
 
 function pick(items: SiteChoice[]): Promise<SiteChoice[] | undefined> {
   const quickPick = vscode.window.createQuickPick<SiteChoice>();
-  quickPick.title = vscode.l10n.t('Documentation to show in this workspace');
-  quickPick.placeholder = vscode.l10n.t('Filter by name or folder');
+  quickPick.title = vscode.l10n.t('Sites shown in the tree');
+  quickPick.placeholder = vscode.l10n.t('Uncheck the ones you do not want to see. All checked = all of them.');
   quickPick.canSelectMany = true;
   quickPick.matchOnDescription = true;
   const grouped: SiteChoice[] = [];

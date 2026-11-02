@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { logLine } from './timing';
+import { filesUnder } from './docsFiles';
 import { dirOf, DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, parseRemoteUri, relativePath, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
 import { repoDirOf, repoOf } from './chooseSites';
 import type { DocsSite } from './docsSite';
@@ -40,7 +42,7 @@ export type SiteCandidate = {
   repo: string;
   /** A linha da pasta no topo da árvore: o repositório (`repo-x`, `dono/repo`) e, num site de subpasta, `› pasta`. */
   place: string;
-  /** `repoDir`: a raiz do repositório Git do site (senão a pasta do workspace), onde a visão dos arquivos começa. */
+  /** `repoDir`: a raiz do repositório Git do site (senão a pasta do site), onde a visão dos arquivos começa. */
   local?: { mkdocs: vscode.Uri; site: DocsSite; yml: string | undefined; repoDir: vscode.Uri };
   remote?: RemoteEntry;
 };
@@ -118,6 +120,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   private timer: ReturnType<typeof setTimeout> | undefined;
   private diagnosticsTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly diagnosed = new Set<string>();
+  /** A conferência periódica do site mostrado (`checkShown`). */
+  private readonly watch = setInterval(() => void this.checkShown(), CHECK_SHOWN_MS);
   private runs = 0;
   private latest: Promise<void> = Promise.resolve();
   /** Última montagem da árvore (os testes esperam por ela). */
@@ -129,6 +133,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   private drafts: () => readonly DraftRef[] = () => [];
   /** Página aberta de outro site, ainda por seguir (o site dela pode entrar na lista só na próxima montagem). */
   private follow: vscode.Uri | undefined;
+  /** Pasta sem documentação escolhida na troca de diretório: a árvore fica vazia, com a tela de criar. */
+  private emptyFolder: vscode.Uri | undefined;
   private treeMode: TreeMode;
 
   constructor(
@@ -162,7 +168,11 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     const watcher = vscode.workspace.createFileSystemWatcher('**/*.md');
     // Pasta apagada (ou renomeada): o VS Code avisa só a pasta, não os `.md` de dentro
     const deletions = vscode.workspace.createFileSystemWatcher('**/*', true, true, false);
-    const later = () => this.refreshLater();
+    // Só o que muda dentro de um site (ou numa pasta acima dele) remonta a árvore: aberto no ~, o resto do home
+    // (caches, logs, outros projetos) não tem nada a ver com ela
+    const later = (uri?: vscode.Uri) => {
+      if (!uri || this.concerns(uri)) this.refreshLater(uri ? uri.path.split('/').slice(-2).join('/') : undefined);
+    };
     this.statusItem.name = vscode.l10n.t('Current documentation');
     this.statusItem.command = 'techdocsEditor.chooseSite';
     this.disposables.push(
@@ -170,14 +180,14 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       this.statusItem,
       this.changeEmitter,
       watcher,
-      watcher.onDidCreate(later),
-      watcher.onDidDelete(later),
+      watcher.onDidCreate(uri => later(uri)),
+      watcher.onDidDelete(uri => later(uri)),
       // O título da página vem do título 1: mudou ao salvar
-      watcher.onDidChange(later),
+      watcher.onDidChange(uri => later(uri)),
       deletions,
-      deletions.onDidDelete(later),
-      sites.onDidChange(later),
-      remotes.onDidChange(later),
+      deletions.onDidDelete(uri => later(uri)),
+      sites.onDidChange(() => later()),
+      remotes.onDidChange(() => later()),
       vscode.window.tabGroups.onDidChangeTabs(() => {
         this.followActive();
         this.revealActive();
@@ -221,8 +231,13 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         const about = item.file ? [item.label, where, item.outside && vscode.l10n.t('Not in the menu of the site')].filter(Boolean).join('\n') : where;
         const fix = problems ? problemsTooltip(problems, this.lint?.problems(item.uri!).filter(p => p.fixable).length ?? 0) : undefined;
         tree.tooltip = !fix ? about : item.file ? `${about}\n${fix}` : fix;
-        // Na visão dos arquivos, a página fora do menu se vê sem abrir a dica
-        if (item.file && item.outside) tree.description = vscode.l10n.t('not in the menu');
+        // Na visão dos arquivos: o título ao lado do nome do arquivo (vários index.md se distinguem), e a página fora do
+        // menu se vê sem abrir a dica. O título igual ao nome do arquivo não se repete
+        if (item.file) {
+          const stem = item.uri!.path.split('/').pop()!.replace(/\.md$/i, '');
+          const title = item.label.trim().toLowerCase() === stem.toLowerCase() ? '' : item.label;
+          tree.description = [title, item.outside && vscode.l10n.t('not in the menu')].filter(Boolean).join(' · ') || undefined;
+        }
         // Clicar abre no editor visual
         tree.command = { command: 'techdocsEditor.openVisual', title: vscode.l10n.t('Open'), arguments: [item.uri] };
         break;
@@ -250,8 +265,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       case 'dir': {
         // A pasta das páginas se destaca com o livro
         tree.iconPath = item.docsRoot ? new vscode.ThemeIcon('book') : vscode.ThemeIcon.Folder;
-        const where = item.uri!.scheme === REMOTE_SCHEME ? item.path : vscode.workspace.asRelativePath(item.uri!);
-        tree.tooltip = item.docsRoot ? `${where}\n${vscode.l10n.t('The pages of the site (docs_dir in mkdocs.yml)')}` : where;
+        // Sem o caminho na dica (a árvore já mostra onde a pasta está); só a das páginas explica o que ela é
+        tree.tooltip = item.docsRoot ? vscode.l10n.t('The pages of the site (docs_dir in mkdocs.yml)') : '';
         // Pasta fechada não esconde página fora do menu: quantas há dentro dela
         const outside = countOutside(item.children);
         if (outside) tree.description = outside === 1 ? vscode.l10n.t('1 not in the menu') : vscode.l10n.t('{0} not in the menu', outside);
@@ -260,7 +275,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       case 'repoDir':
         tree.iconPath = vscode.ThemeIcon.Folder;
         tree.resourceUri = item.uri;
-        tree.tooltip = vscode.workspace.asRelativePath(item.uri!);
+        // Sem o caminho na dica, como nas pastas da docs
+        tree.tooltip = '';
         break;
       // O mkdocs.yml com páginas do menu que não existem: o ⚠ e o clique levam à visão do menu, onde se corrige
       case 'repoFile':
@@ -288,7 +304,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         tree.description = undefined;
         const where = item.kind === 'remote' ? vscode.l10n.t('Read from GitHub: {0}', item.description!) : item.siteRoot?.fsPath;
         tree.tooltip = [item.label, where, vscode.l10n.t('Click to switch the documentation.')].filter(Boolean).join('\n');
-        tree.command = { command: 'techdocsEditor.chooseSite', title: vscode.l10n.t('Switch documentation') };
+        tree.command = { command: 'techdocsEditor.chooseSite', title: vscode.l10n.t('Switch directory or repo') };
         break;
       }
       case 'remoteError':
@@ -322,9 +338,23 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     return this.currentKey;
   }
 
+  /** A pasta sem documentação mostrada (a tela "Criar a documentação" dela). */
+  get folderWithoutDocs(): vscode.Uri | undefined {
+    return this.emptyFolder;
+  }
+
+  /** Mostra uma pasta sem documentação: a árvore vazia, com a tela de criar nela. */
+  selectFolder(folder: vscode.Uri): Promise<void> {
+    this.follow = undefined;
+    this.emptyFolder = folder;
+    this.ready = this.refresh();
+    return this.ready;
+  }
+
   /** Mostra o site (a chave de `siteCandidates`). */
   select(key: string): Promise<void> {
     this.follow = undefined;
+    this.emptyFolder = undefined;
     this.setCurrent(key);
     this.ready = this.refresh();
     return this.ready;
@@ -349,7 +379,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     this.drafts = drafts;
   }
 
-  /** "Trocar documentação" (ver sitePicker.ts). */
+  /** "Trocar diretório ou repo" (ver sitePicker.ts). */
   async chooseSite() {
     await this.ready;
     if (testSitePick) {
@@ -357,8 +387,18 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       if (key) await this.select(key);
       return;
     }
+    // Começa na pasta de cima do repositório mostrado (aberto em ~, com um repo de ~/code: em ~/code)
+    const shown = this.emptyFolder ?? this.candidates.find(c => c.key === this.currentKey)?.local?.repoDir;
+    const above = shown && shown.with({ path: shown.path.replace(/\/+$/, '').replace(/\/[^/]*$/, '') || '/' });
     await pickSite({
+      start: above && vscode.workspace.getWorkspaceFolder(above) ? above : undefined,
       candidates: this.candidates,
+      selectFolder: folder => this.selectFolder(folder),
+      refresh: async () => {
+        this.ready = this.refresh();
+        await this.ready;
+        return this.candidates;
+      },
       currentKey: this.currentKey,
       select: key => this.select(key),
       drafts: () => this.draftsBySite(),
@@ -448,13 +488,45 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     return found;
   }
 
+  /**
+   * Confere o site mostrado sem esperar o observador de arquivos, que perde eventos num workspace grande (o `~`, no
+   * WSL): o `mkdocs.yml` do site atual sumiu, ou apareceu um na pasta sem documentação. Uma consulta só (o arquivo
+   * do site mostrado), barata o bastante para rodar sempre.
+   */
+  private async checkShown() {
+    const local = this.candidates.find(c => c.key === this.currentKey)?.local;
+    if (this.emptyFolder) {
+      for (const name of ['mkdocs.yml', 'mkdocs.yaml']) {
+        const mkdocs = vscode.Uri.joinPath(this.emptyFolder, name);
+        if (await exists(mkdocs)) {
+          await this.sites.add(mkdocs);
+          return;
+        }
+      }
+    } else if (local && !(await exists(local.mkdocs))) this.refreshLater();
+    // O site atual já saiu da lista, mas a montagem não passou à pasta dele (o aviso chegou no meio de outra)
+    else if (!local && (await this.vanishedFolder(this.candidates))) this.refreshLater();
+  }
+
   dispose() {
+    clearInterval(this.watch);
     clearTimeout(this.timer);
     clearTimeout(this.diagnosticsTimer);
     this.disposables.forEach(d => d.dispose());
   }
 
-  private refreshLater() {
+  /** O arquivo é de um site (ou da pasta mostrada), ou é uma pasta acima de um: o que muda nele pode mudar a árvore. */
+  private concerns(uri: vscode.Uri): boolean {
+    const path = uri.path;
+    // Só o site mostrado conta: os outros sites (e o resto do ~) não aparecem na árvore. Um site novo ou apagado
+    // chega pela lista dos sites (sites.onDidChange)
+    const shown = this.candidates.find(c => c.key === this.currentKey)?.local;
+    const roots = [shown?.repoDir.path, shown?.site.root, this.emptyFolder?.path].filter((r): r is string => Boolean(r));
+    return roots.some(root => path === root || path.startsWith(`${root}/`) || root.startsWith(`${path}/`));
+  }
+
+  private refreshLater(reason?: string) {
+    if (reason) this.refreshReason = reason;
     invalidatePages();
     clearTimeout(this.timer);
     this.timer = setTimeout(() => {
@@ -472,16 +544,38 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     return latest;
   }
 
+  /** O que pediu a próxima montagem (para o registro no canal "TechDocs Editor"). */
+  private refreshReason: string | undefined;
+  /** Quanto cada etapa da última montagem levou (para o registro). */
+  private buildSteps = '';
+
   private async build(run: number): Promise<void> {
+    const started = performance.now();
+    const reason = this.refreshReason;
+    this.refreshReason = undefined;
+    try {
+      await this.buildTree(run);
+    } finally {
+      logLine(`árvore montada em ${Math.round(performance.now() - started)} ms [${this.buildSteps}]${reason ? ` (mudou: ${reason})` : ''}`);
+    }
+  }
+
+  private async buildTree(run: number): Promise<void> {
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasDocs', this.sites.all().length > 0);
     const remotes = this.remotes.list();
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasRemote', remotes.length > 0);
+    const started = performance.now();
     const candidates = await this.loadCandidates();
+    this.buildSteps = `sites ${Math.round(performance.now() - started)} ms`;
     const pages = new Map<string, DocsItem>();
     // A página aberta de outro site; senão o escolhido; senão o único
     const followed = this.follow && keyOf(candidates, this.sites, this.follow);
-    let current = candidates.find(c => c.key === followed) ?? candidates.find(c => c.key === this.currentKey);
-    if (!current && candidates.length === 1) current = candidates[0];
+    // A pasta sem documentação continua até virar site (criado nela) ou até abrir a página de outro site
+    let empty = this.emptyFolder ?? (followed ? undefined : await this.vanishedFolder(candidates));
+    const created = empty && candidates.find(c => c.local?.site.root === empty!.path);
+    if (followed || created) empty = undefined;
+    let current = empty ? undefined : (candidates.find(c => c.key === followed) ?? created ?? candidates.find(c => c.key === this.currentKey));
+    if (!current && !empty && candidates.length === 1) current = candidates[0];
     const roots: DocsItem[] = [];
     let shown: typeof this.shownSite;
     if (current?.local) {
@@ -491,7 +585,9 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       parent.siteRoot = mkdocs.with({ path: site.root });
       parent.local = true;
       parent.place = current.place;
+      const before = performance.now();
       const { tree, items } = await this.siteItems(yml, site, docsDir, parent, pages, repoDir);
+      this.buildSteps += `, páginas ${Math.round(performance.now() - before)} ms`;
       shown = { mkdocs, docsDir, tree };
       parent.children.push(...items);
       roots.push(parent);
@@ -503,14 +599,22 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     if (run !== this.runs) return this.latest;
     this.candidates = candidates;
     if (followed) this.follow = undefined;
+    this.emptyFolder = empty;
     if (current && current.key !== this.currentKey) this.setCurrent(current.key);
-    void vscode.commands.executeCommand('setContext', 'techdocsEditor.needsSite', candidates.length > 1 && !current);
+    void vscode.commands.executeCommand('setContext', 'techdocsEditor.emptyFolder', Boolean(empty));
+    // O nome da pasta no título da seção (uma mensagem na árvore esconderia a tela com os botões de criar)
+    this.view.description = empty ? folderLabel(empty) : undefined;
+    void vscode.commands.executeCommand('setContext', 'techdocsEditor.needsSite', candidates.length > 1 && !current && !empty);
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.manySites', candidates.length > 1);
     this.roots = roots;
     this.pages = pages;
     this.shownSite = shown;
     // O site atual na barra de status: um clique troca (com mais de um)
-    if (current && candidates.length > 1) {
+    if (empty) {
+      this.statusItem.text = `$(folder) ${folderLabel(empty)}`;
+      this.statusItem.tooltip = vscode.l10n.t('Folder without documentation shown in the TechDocs sidebar. Click to switch.');
+      this.statusItem.show();
+    } else if (current && candidates.length > 1) {
       this.statusItem.text = `$(book) ${current.label}`;
       this.statusItem.tooltip = vscode.l10n.t('Documentation shown in the TechDocs sidebar. Click to switch.');
       this.statusItem.show();
@@ -519,13 +623,29 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     this.revealActive();
   }
 
+  /** A pasta do site atual cujo `mkdocs.yml` foi apagado, se ela ainda existe: a árvore fica nela, com a tela de criar. */
+  private async vanishedFolder(candidates: SiteCandidate[]): Promise<vscode.Uri | undefined> {
+    const key = this.currentKey;
+    if (!key || candidates.some(c => c.key === key)) return undefined;
+    const mkdocs = vscode.Uri.parse(key);
+    if (!vscode.workspace.getWorkspaceFolder(mkdocs) || !/\/mkdocs\.ya?ml$/.test(mkdocs.path) || (await exists(mkdocs))) return undefined;
+    const folder = mkdocs.with({ path: mkdocs.path.replace(/\/[^/]*$/, '') });
+    return (await exists(folder)) ? folder : undefined;
+  }
+
   /** Os sites do workspace (os escolhidos em `techdocsEditor.sites`) e os abertos do GitHub. */
   private async loadCandidates(): Promise<SiteCandidate[]> {
-    const local = await Promise.all(
-      this.sites.list().map(async ({ mkdocs, site }): Promise<SiteCandidate> => {
+    const found = await Promise.all(
+      this.sites.list().map(async ({ mkdocs, site }): Promise<SiteCandidate | undefined> => {
         const yml = await readText(mkdocs);
         const root = mkdocs.with({ path: site.root });
-        const repoDir = (await repoDirOf(root)) ?? vscode.workspace.getWorkspaceFolder(root)?.uri ?? root;
+        // O mkdocs.yml sumiu sem aviso (o observador do VS Code perde eventos num workspace grande, como o ~)
+        if (yml === undefined && !(await exists(mkdocs))) {
+          this.sites.forget(mkdocs);
+          return undefined;
+        }
+        // Sem Git, a visão dos arquivos é a pasta do site (não a pasta aberta, que pode ser o ~)
+        const repoDir = (await repoDirOf(root)) ?? root;
         const inRepo = root.path.slice(repoDir.path.replace(/\/$/, '').length + 1);
         const repoName = repoDir.path.replace(/\/$/, '').split('/').pop() || site.root.split('/').pop()!;
         return {
@@ -538,6 +658,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         };
       }),
     );
+    const local = found.filter((c): c is SiteCandidate => c !== undefined);
     const remote = this.remotes.list().map((entry): SiteCandidate => {
       const where = entry.root ? `${entry.slug}/${entry.root}` : entry.slug;
       const place = entry.root ? `${entry.slug} › ${entry.root}` : entry.slug;
@@ -567,11 +688,10 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   }
 
   private async siteItems(yml: string | undefined, site: DocsSite, docsDir: vscode.Uri, parent: DocsItem | undefined, pages: Map<string, DocsItem>, repoDir: vscode.Uri) {
-    const files = this.treeMode === 'files' ? '**/*' : '**/*.md';
     // Só os do site (um site dentro do docs_dir de outro fica com os dele)
     // (o siteOf só aceita página: um arquivo que não é página conta pelo site da pasta dele)
     const siteOfFile = (uri: vscode.Uri) => this.sites.siteOf(isPage(uri) ? uri : uri.with({ path: `${dirOf(uri.path)}/index.md` }));
-    const own = (await vscode.workspace.findFiles(new vscode.RelativePattern(docsDir, files))).filter(uri => siteOfFile(uri)?.docsDir === site.docsDir);
+    const own = (await filesUnder(docsDir, this.treeMode !== 'files')).filter(uri => siteOfFile(uri)?.docsDir === site.docsDir);
     const relative = (uri: vscode.Uri) => uri.path.slice(site.docsDir.length + 1);
     const titles = new Map<string, string | undefined>();
     await Promise.all(own.filter(isPage).map(async uri => titles.set(relative(uri), pageTitle((await readText(uri)) ?? ''))));
@@ -644,6 +764,13 @@ function activeUri(): vscode.Uri | undefined {
 }
 
 /** O site da página, entre os candidatos. */
+const exists = (uri: vscode.Uri) => Promise.resolve(vscode.workspace.fs.stat(uri)).then(() => true, () => false);
+
+/** De quanto em quanto tempo a árvore confere o `mkdocs.yml` do site mostrado. */
+const CHECK_SHOWN_MS = 3000;
+
+const folderLabel = (folder: vscode.Uri) => folder.path.replace(/\/+$/, '').split('/').pop() || folder.path;
+
 function keyOf(candidates: SiteCandidate[], sites: LocalSites, uri: vscode.Uri): string | undefined {
   if (uri.scheme === REMOTE_SCHEME) {
     const ref = parseRemoteUri(uri.authority, uri.path);

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { filesUnder } from './docsFiles';
 import {
   dirOf,
   fileNameFor,
@@ -125,7 +126,8 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
       if (data) await vscode.workspace.fs.writeFile(uri, data);
       else {
         await vscode.workspace.fs.delete(uri, { useTrash: false }).then(undefined, () => {});
-        await removeIfEmpty(vscode.Uri.joinPath(uri, '..'));
+        // Desfazer uma pasta movida: as pastas que ficaram vazias saem também
+        for (let dir = vscode.Uri.joinPath(uri, '..'), i = 0; i < 10 && (await removeIfEmpty(dir)); dir = vscode.Uri.joinPath(dir, '..'), i++);
       }
     }
     await this.docs.refreshNow();
@@ -167,6 +169,7 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
 
   async rename(target?: unknown) {
     const item = this.itemOf(target);
+    if (item && isFolder(item)) return this.renameFolder(item);
     if (item?.kind === 'page' && item.file) return this.renameFile(item);
     if (item?.kind === 'page') return this.renamePage(item);
     if (item?.kind === 'section') return this.renameSection(item);
@@ -291,6 +294,7 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
   /** "Mover para…": para cima, para baixo, fora de seção ou uma seção. */
   async moveTo(target?: unknown) {
     const item = this.itemOf(target);
+    if (item && isFolder(item)) return this.moveFolder(item);
     if (!item || (item.kind !== 'page' && item.kind !== 'section') || item.home) return;
     if (item.file) return this.moveFile(item);
     const site = this.siteOf(item);
@@ -478,11 +482,12 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     const item = this.itemOf(target);
     if (item?.kind === 'page') return this.deletePage(item);
     if (item?.kind === 'section') return this.deleteSection(item);
+    if (item && isFolder(item)) return this.deleteFolder(item);
   }
 
   /** As páginas do site com o texto (para achar links e imagens). */
   private async allPages(docsDir: vscode.Uri) {
-    const files = await vscode.workspace.findFiles(new vscode.RelativePattern(docsDir, '**/*.md'));
+    const files = await filesUnder(docsDir, true);
     return Promise.all(files.map(async uri => ({ uri, path: uri.path.slice(docsDir.path.length + 1), text: (await readText(uri)) ?? '' })));
   }
 
@@ -772,11 +777,153 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     this.done(vscode.l10n.t('{0} is now {1}.', from, path) + links, undo);
   }
 
+  // ---------- pastas (visão dos arquivos) ----------
+
+  /** Os arquivos da pasta (páginas, imagens, anexos), relativos ao `docs_dir`. */
+  private async folderFiles(docsDir: vscode.Uri, folder: string): Promise<string[]> {
+    const files = await filesUnder(vscode.Uri.joinPath(docsDir, folder));
+    return files.map(uri => uri.path.slice(docsDir.path.length + 1)).sort();
+  }
+
+  /** "Renomear…" da pasta: o nome novo, com as páginas, o menu e os links acertados. */
+  private async renameFolder(item: DocsItem) {
+    const site = this.siteOf(item);
+    if (!site) return;
+    const from = item.path!;
+    const name = from.split('/').pop()!;
+    const parent = dirOf(from);
+    const typed = await this.input({
+      title: vscode.l10n.t('Rename folder'),
+      value: name,
+      prompt: vscode.l10n.t('The pages inside keep working: the menu and the links are updated.'),
+      validateInput: async value => {
+        const text = value.trim();
+        if (!text) return vscode.l10n.t('Write a name.');
+        if (/[\\/]/.test(text)) return vscode.l10n.t('Use a name without / or \\.');
+        if (text !== name && (await exists(vscode.Uri.joinPath(site.docsDir, parent ? `${parent}/${text}` : text)))) return vscode.l10n.t('There is already a folder "{0}" here.', text);
+        return undefined;
+      },
+    });
+    if (!typed?.trim() || typed.trim() === name) return;
+    await this.relocateFolder(item, parent ? `${parent}/${typed.trim()}` : typed.trim());
+  }
+
+  /** "Mover para…" da pasta: para dentro de outra pasta do `docs_dir` (ou para a raiz dele). */
+  private async moveFolder(item: DocsItem) {
+    const site = this.siteOf(item);
+    if (!site) return;
+    const from = item.path!;
+    const folders = new Set(['']);
+    for (const path of await this.folderFiles(site.docsDir, '')) for (let dir = dirOf(path); dir; dir = dirOf(dir)) folders.add(dir);
+    const root = site.docsDir.path.split('/').pop()!;
+    type Choice = vscode.QuickPickItem & { folder: string };
+    const choice = await this.pick<Choice>(
+      [...folders]
+        .filter(folder => folder !== from && !folder.startsWith(`${from}/`))
+        .sort()
+        .map(folder => ({ label: `$(folder) ${folder || root}`, description: folder === dirOf(from) ? vscode.l10n.t('current') : undefined, folder })),
+      { title: vscode.l10n.t('Move the folder {0} to', from.split('/').pop()!) },
+    );
+    if (choice) await this.moveFolderTo(item, choice.folder);
+  }
+
+  /** A pasta para dentro de `folder` (`''`: a raiz do `docs_dir`); pelo menu "Mover para…" ou arrastando. */
+  async moveFolderTo(item: DocsItem, folder: string) {
+    const from = item.path!;
+    if (folder === from || folder.startsWith(`${from}/`)) return;
+    const name = from.split('/').pop()!;
+    await this.relocateFolder(item, folder ? `${folder}/${name}` : name);
+  }
+
+  /** A pasta com outro caminho: os arquivos mudam de lugar, o menu e os links das páginas acompanham. */
+  private async relocateFolder(item: DocsItem, to: string) {
+    const site = this.siteOf(item);
+    const from = item.path!;
+    if (!site || to === from) return;
+    if (await exists(vscode.Uri.joinPath(site.docsDir, to))) {
+      return void vscode.window.showWarningMessage(vscode.l10n.t('{0} already exists. Choose another name.', to));
+    }
+    const files = await this.folderFiles(site.docsDir, from);
+    const moved = new Map(files.map(path => [path, to + path.slice(from.length)]));
+    const uri = (path: string) => vscode.Uri.joinPath(site.docsDir, path);
+    // O texto não salvo vai junto
+    for (const document of vscode.workspace.textDocuments) if (document.isDirty && moved.has(document.uri.path.slice(site.docsDir.path.length + 1))) await document.save();
+    const pages = await this.allPages(site.docsDir);
+    const others = pages
+      .filter(p => !moved.has(p.path))
+      .map(page => ({ page, text: moveLinks(page.text, page.path, page.path, moved) }))
+      .filter(({ page, text }) => text !== page.text);
+    const olds = files.map(uri);
+    const news = files.map(path => uri(moved.get(path)!));
+    const undo = await this.change(vscode.l10n.t('move the folder {0}', from), [...olds, ...news, site.mkdocs, ...others.map(o => o.page.uri)], async () => {
+      await closeTabs(olds);
+      for (const path of files) {
+        const target = uri(moved.get(path)!);
+        if (/\.md$/i.test(path)) await writeText(target, moveLinks((await readText(uri(path))) ?? '', path, moved.get(path)!, moved));
+        else await vscode.workspace.fs.copy(uri(path), target, { overwrite: false });
+      }
+      await vscode.workspace.fs.delete(uri(from), { recursive: true, useTrash: false });
+      for (const { page, text } of others) await writeText(page.uri, text);
+      const yml = await this.readYml(site.mkdocs);
+      const nav = readNav(yml);
+      if (nav && movePagesInNav(nav, moved)) await writeText(site.mkdocs, writeNav(yml, nav));
+    });
+    await this.docs.revealItem(other => other.uri?.toString() === uri(to).toString());
+    const links =
+      others.length === 1 ? ` ${vscode.l10n.t('The link in 1 page was updated.')}` : others.length ? ` ${vscode.l10n.t('The links in {0} pages were updated.', others.length)}` : '';
+    this.done(vscode.l10n.t('{0} is now {1}.', from, to) + links, undo);
+  }
+
+  /** "Excluir pasta…": a pasta e o que tem dentro vão para a lixeira; as páginas saem do menu. */
+  private async deleteFolder(item: DocsItem) {
+    const site = this.siteOf(item);
+    if (!site) return;
+    const from = item.path!;
+    const files = await this.folderFiles(site.docsDir, from);
+    const inside = new Set(files);
+    const pages = await this.allPages(site.docsDir);
+    const own = pages.filter(p => inside.has(p.path));
+    const outside = pages.filter(p => !inside.has(p.path));
+    const linking = [...new Set(own.flatMap(p => pagesLinkingTo(p.path, outside)))].map(path => pages.find(p => p.path === path)!);
+    const names = linking.map(p => pageTitle(p.text) ?? p.path);
+    const remove = vscode.l10n.t('Delete');
+    const answer = await this.ask(
+      vscode.l10n.t('Delete the folder "{0}"?', from.split('/').pop()!),
+      [
+        own.length === 1
+          ? vscode.l10n.t('It has 1 page: {0}.', pageTitle(own[0].text) ?? own[0].path)
+          : own.length
+            ? vscode.l10n.t('It has {0} pages: {1}.', own.length, joinNames(own.map(p => pageTitle(p.text) ?? p.path)))
+            : '',
+        vscode.l10n.t('Everything inside goes to the trash, and the pages leave the menu. You can undo.'),
+        linking.length === 1
+          ? vscode.l10n.t('{0} links to it. That link will break.', names[0])
+          : linking.length
+            ? vscode.l10n.t('{0} link to it. Those links will break.', joinNames(names))
+            : '',
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+      remove,
+    );
+    if (answer !== remove) return;
+    const uris = files.map(path => vscode.Uri.joinPath(site.docsDir, path));
+    const undo = await this.change(vscode.l10n.t('delete the folder {0}', from), [...uris, site.mkdocs], async () => {
+      await closeTabs(uris);
+      await trash(vscode.Uri.joinPath(site.docsDir, from));
+      const yml = await this.readYml(site.mkdocs);
+      const nav = readNav(yml);
+      if (nav && removePages(nav, new Set(own.map(p => p.path)))) await writeText(site.mkdocs, writeNav(yml, nav));
+    });
+    const broken = linking.length ? ` ${linking.length === 1 ? vscode.l10n.t('1 page now has a broken link.') : vscode.l10n.t('{0} pages now have a broken link.', linking.length)}` : '';
+    this.done(vscode.l10n.t('Folder "{0}" deleted.', from.split('/').pop()!) + broken, undo);
+  }
+
   // ---------- arrastar ----------
 
   handleDrag(source: readonly DocsItem[], data: vscode.DataTransfer) {
     const [item] = source;
-    if (!item?.local || item.home || (item.kind !== 'page' && item.kind !== 'section')) return;
+    if (!item?.local || item.home || (item.kind !== 'page' && item.kind !== 'section' && !isFolder(item))) return;
     data.set(MIME, new vscode.DataTransferItem(item));
   }
 
@@ -787,6 +934,12 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
   async handleDrop(target: DocsItem | undefined, data: vscode.DataTransfer) {
     const item = data.get(MIME)?.value as DocsItem | undefined;
     if (!item || item === target) return;
+    // Pasta da visão dos arquivos: para dentro da pasta onde soltou (num arquivo: a pasta dele; no site: a raiz)
+    if (isFolder(item)) {
+      if (target && (!target.local || target.kind === 'repoDir' || target.kind === 'repoFile')) return;
+      const folder = !target || target.kind === 'site' ? '' : target.kind === 'dir' ? target.path! : dirOf(target.path ?? '');
+      return this.moveFolderTo(item, folder);
+    }
     // Visão dos arquivos: soltar numa pasta (no site: a raiz; num arquivo: a pasta dele) muda o arquivo de pasta
     if (item.file) {
       // Fora do docs_dir (README, código) não é lugar de página
@@ -853,14 +1006,20 @@ async function closeTabs(uris: vscode.Uri[]) {
 }
 
 /** Para a lixeira; sem lixeira (navegador, alguns Linux), apagado (o "Desfazer" guarda o conteúdo). */
+/** Para a lixeira (sem lixeira, apagado); uma pasta vai com o que tem dentro. */
 async function trash(uri: vscode.Uri) {
-  await vscode.workspace.fs.delete(uri, { useTrash: true }).then(undefined, () => vscode.workspace.fs.delete(uri).then(undefined, () => {}));
+  await vscode.workspace.fs.delete(uri, { recursive: true, useTrash: true }).then(undefined, () => vscode.workspace.fs.delete(uri, { recursive: true }).then(undefined, () => {}));
 }
 
-async function removeIfEmpty(dir: vscode.Uri) {
+/** Apaga a pasta se está vazia; diz se apagou. */
+async function removeIfEmpty(dir: vscode.Uri): Promise<boolean> {
   const entries = await vscode.workspace.fs.readDirectory(dir).then(e => e, () => undefined);
-  if (entries && !entries.length) await vscode.workspace.fs.delete(dir, { useTrash: false }).then(undefined, () => {});
+  if (!entries || entries.length) return false;
+  return vscode.workspace.fs.delete(dir, { useTrash: false }).then(() => true, () => false);
 }
+
+/** Pasta dentro do `docs_dir` na visão dos arquivos (não a própria `docs`): renomear, mover e excluir. */
+const isFolder = (item: DocsItem) => item.kind === 'dir' && item.local && !item.docsRoot && Boolean(item.path);
 
 async function readBytes(uri: vscode.Uri): Promise<Uint8Array | undefined> {
   const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
@@ -889,3 +1048,5 @@ async function writeText(uri: vscode.Uri, text: string) {
   await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
 }
 
+
+const exists = (uri: vscode.Uri) => Promise.resolve(vscode.workspace.fs.stat(uri)).then(() => true, () => false);

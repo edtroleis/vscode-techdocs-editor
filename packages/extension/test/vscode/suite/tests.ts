@@ -16,7 +16,7 @@ import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { CatalogOptions } from '../../../src/catalogOptions';
 import type { useTestSiteChoice } from '../../../src/chooseSites';
 import type { useTestSitePick } from '../../../src/docsTreeView';
-import type { useTestAnswers } from '../../../src/treeActions';
+import type { TreeActions, useTestAnswers } from '../../../src/treeActions';
 import { foldersWithoutDocs } from '../../../src/sitePicker';
 import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
@@ -55,6 +55,7 @@ function siteItem(docs: DocsTreeView, folder: string) {
 
 type Api = {
   provider: VisualEditorProvider;
+  treeActions: TreeActions;
   sites: LocalSites;
   lint: LintService;
   docs: DocsTreeView;
@@ -676,6 +677,103 @@ export function defineTests() {
       await docs.refreshNow();
     });
 
+    test('visão dos arquivos: pasta da docs movida (menu e arrastando), renomeada e excluída, com o menu, os links e o desfazer', async () => {
+      const { docs, sites, useTestAnswers, treeActions } = await api();
+      await sites.ready;
+      const t = (en: string, pt: string) => (vscode.env.language.startsWith('pt') ? pt : en);
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
+      const exists = (path: string) => Promise.resolve(vscode.workspace.fs.stat(file(path))).then(() => true, () => false);
+      const menu = async () => {
+        const show = (items: NavItem[]): string => items.map(i => (i.kind === 'section' ? `${i.title}[${show(i.children)}]` : i.kind === 'page' ? i.path : i.url)).join(', ');
+        return show(readNav(await read('pastas/mkdocs.yml')) ?? []);
+      };
+      const find = (label: string, kind = 'dir') => {
+        const walk = (items: DocsItem[]): DocsItem | undefined => {
+          for (const item of items) {
+            if (item.label === label && item.kind === kind) return item;
+            const inner = walk(docs.getChildren(item));
+            if (inner) return inner;
+          }
+          return undefined;
+        };
+        return walk(docs.getChildren());
+      };
+      const run = async (command: string, label: string, ...answers: string[]) => {
+        const item = await until(() => find(label), Boolean, `"${label}" não está na árvore`);
+        useTestAnswers(answers);
+        try {
+          await vscode.commands.executeCommand(command, item);
+        } finally {
+          useTestAnswers(undefined);
+        }
+        await docs.ready;
+      };
+      const yml = 'site_name: Pastas\nnav:\n  - Início: index.md\n  - Manual:\n      - manual/a.md\n      - manual/b.md\n  - Destino:\n      - destino/x.md\n';
+      await write('pastas/docs/index.md', '# Início\n\nVeja [A](manual/a.md).\n');
+      await write('pastas/docs/manual/a.md', '# Página A\n\nVeja [X](../destino/x.md) e ![fig](fig.png).\n');
+      await write('pastas/docs/manual/b.md', '# Página B\n');
+      await vscode.workspace.fs.writeFile(file('pastas/docs/manual/fig.png'), new Uint8Array([0x89, 0x50]));
+      await write('pastas/docs/destino/x.md', '# Página X\n');
+      await docs.setMode('files');
+      try {
+        await until(
+          async () => {
+            // Gravado de novo a cada tentativa: logo depois de abrir, o observador dos mkdocs.yml pode não estar ativo
+            if (!siteItem(docs, 'pastas')) await write('pastas/mkdocs.yml', yml);
+            await docs.refreshNow();
+            await new Promise(resolve => setTimeout(resolve, 400));
+            return siteItem(docs, 'pastas') && find('manual');
+          },
+          Boolean,
+          'site pastas não entrou na árvore',
+          20_000,
+        );
+
+        // A página mostra o nome do arquivo e, ao lado, o título (vários index.md se distinguem)
+        const shown = docs.getTreeItem(find('Página A', 'page')!);
+        equal(`${shown.label} | ${shown.description}`, 'a.md | Página A', 'a linha da página');
+
+        // Mover pelo menu: a pasta inteira, com o menu e os links (de fora e de dentro) acertados
+        await run('techdocsEditor.moveItem', 'manual', 'destino');
+        ok(await exists('pastas/docs/destino/manual/a.md'), 'a página não foi junto');
+        ok(await exists('pastas/docs/destino/manual/fig.png'), 'a imagem não foi junto');
+        ok(!(await exists('pastas/docs/manual')), 'a pasta antiga ficou');
+        equal(await menu(), 'index.md, Manual[destino/manual/a.md, destino/manual/b.md], Destino[destino/x.md]', 'menu depois de mover');
+        ok((await read('pastas/docs/index.md')).includes('(destino/manual/a.md)'), 'o link de fora não acompanhou');
+        ok((await read('pastas/docs/destino/manual/a.md')).includes('[X](../x.md)'), 'o link de dentro não acompanhou');
+
+        // Desfazer: tudo de volta, sem pasta vazia sobrando
+        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
+        ok(await exists('pastas/docs/manual/a.md'), 'desfazer não voltou a página');
+        ok(!(await exists('pastas/docs/destino/manual')), 'desfazer deixou a pasta movida');
+        equal(await menu(), 'index.md, Manual[manual/a.md, manual/b.md], Destino[destino/x.md]', 'menu depois de desfazer');
+
+        // Arrastar a pasta para cima de outra
+        await until(() => find('manual'), Boolean, 'manual não voltou à árvore');
+        const data = new vscode.DataTransfer();
+        treeActions.handleDrag([find('manual')!], data);
+        await treeActions.handleDrop(find('destino'), data);
+        ok(await exists('pastas/docs/destino/manual/b.md'), 'arrastar não moveu a pasta');
+        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
+        await until(() => find('manual'), Boolean, 'manual não voltou à árvore depois de desfazer o arrastar');
+
+        // Renomear: a pasta, o menu e o link de fora
+        await run('techdocsEditor.renameItem', 'manual', 'guia');
+        ok(await exists('pastas/docs/guia/a.md'), 'renomear não mudou a pasta');
+        equal(await menu(), 'index.md, Manual[guia/a.md, guia/b.md], Destino[destino/x.md]', 'menu depois de renomear');
+        ok((await read('pastas/docs/index.md')).includes('(guia/a.md)'), 'o link não acompanhou o nome novo');
+
+        // Excluir: a pasta vai embora e as páginas saem do menu
+        await run('techdocsEditor.deleteItem', 'guia', t('Delete', 'Excluir'));
+        ok(!(await exists('pastas/docs/guia')), 'a pasta não foi excluída');
+        equal(await menu(), 'index.md, Manual[], Destino[destino/x.md]', 'menu depois de excluir');
+      } finally {
+        await docs.setMode('menu');
+        await vscode.workspace.fs.delete(file('pastas'), { recursive: true }).then(undefined, () => undefined);
+      }
+    });
+
     test('visão dos arquivos: a pasta do site, com as pastas e .md pelo nome, fora do menu marcado; usar o título da página no menu; README para uma página', async () => {
       const { docs, useTestAnswers } = await api();
       const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
@@ -874,6 +972,73 @@ export function defineTests() {
         ok(!found.some(path => path.startsWith('wiki') || path.includes('vazia-dentro')), `entrou num site ou num repositório: ${found.join(', ')}`);
       } finally {
         for (const folder of ['vazia', 'repo-sem-docs']) await vscode.workspace.fs.delete(file(folder), { recursive: true }).then(undefined, () => undefined);
+      }
+    });
+
+    test('pasta sem documentação na árvore: "Criar a documentação" cria num clique e a árvore passa ao site', async () => {
+      const { docs, sites } = await api();
+      await docs.ready;
+      const before = docs.current;
+      const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
+      const exists = (path: string) => Promise.resolve(vscode.workspace.fs.stat(file(path))).then(() => true, () => false);
+      await vscode.workspace.fs.createDirectory(file('pasta-vazia'));
+      try {
+        await docs.selectFolder(file('pasta-vazia'));
+        equal(docs.folderWithoutDocs?.path, file('pasta-vazia').path, 'a pasta não virou a atual');
+        equal(docs.getChildren().length, 0, 'a árvore mostrou um site');
+        await vscode.commands.executeCommand('techdocsEditor.createHere');
+        await until(() => sites.all().some(s => s.mkdocs.path.endsWith('/pasta-vazia/mkdocs.yml')), Boolean, 'o site não foi criado');
+        ok((await read('pasta-vazia/mkdocs.yml')).startsWith('site_name: Pasta vazia\n'), `mkdocs.yml: ${await read('pasta-vazia/mkdocs.yml')}`);
+        ok(await exists('pasta-vazia/docs/index.md'), 'sem a página inicial');
+        ok(!(await exists('pasta-vazia/catalog-info.yaml')), 'criou o catalog-info.yaml');
+        await until(() => [docs.current, docs.folderWithoutDocs] as const, ([key, folder]) => Boolean(key?.endsWith('/pasta-vazia/mkdocs.yml')) && !folder, 'a árvore não passou ao site novo');
+        // Apagar o site mostrado: a árvore volta à pasta, com a tela de criar
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await vscode.workspace.fs.delete(file('pasta-vazia/mkdocs.yml'));
+        await vscode.workspace.fs.delete(file('pasta-vazia/docs'), { recursive: true });
+        await until(() => docs.folderWithoutDocs?.path, path => path === file('pasta-vazia').path, 'apagar o site não levou à tela de criar');
+      } finally {
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        await vscode.workspace.fs.delete(file('pasta-vazia'), { recursive: true }).then(undefined, () => undefined);
+        await until(() => sites.all().some(s => s.mkdocs.path.endsWith('/pasta-vazia/mkdocs.yml')), found => !found, 'o site apagado continuou');
+        if (before) await docs.select(before);
+      }
+    });
+
+    test('a busca vai até 2 pastas abaixo do workspace; os sites mais fundos entram ao abrir uma página ou entrar na pasta', async () => {
+      const { sites } = await api();
+      await sites.ready;
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const remove = (path: string) => vscode.workspace.fs.delete(file(path), { recursive: true }).then(undefined, () => undefined);
+      const has = (path: string) => sites.all().some(s => s.mkdocs.path.endsWith(`/${path}`));
+      try {
+        await write('fundo/a/b/docs/index.md', '# Fundo\n');
+        await write('fundo/a/b/mkdocs.yml', 'site_name: Fundo\n');
+        await write('pasta/x/y/z/mkdocs.yml', 'site_name: Pasta\n');
+        await write('pasta/x/y/z/w/v/mkdocs.yml', 'site_name: Mais fundo\n');
+        // O observador ativo: um site a 2 pastas entra (gravado de novo a cada tentativa, como a sonda abaixo)
+        let probe = 0;
+        await until(
+          async () => {
+            await write('raso/x/mkdocs.yml', `site_name: Raso ${++probe}\n`);
+            await new Promise(resolve => setTimeout(resolve, 400));
+            return has('raso/x/mkdocs.yml');
+          },
+          Boolean,
+          'o site a 2 pastas não entrou',
+        );
+        ok(!has('fundo/a/b/mkdocs.yml'), 'o site a 3 pastas entrou na busca');
+
+        await vscode.workspace.openTextDocument(file('fundo/a/b/docs/index.md'));
+        await until(() => has('fundo/a/b/mkdocs.yml'), Boolean, 'abrir a página não trouxe o site');
+        ok(sites.siteOf(file('fundo/a/b/docs/index.md')), 'a página aberta não é do site');
+
+        await sites.discover(file('pasta/x'));
+        ok(has('pasta/x/y/z/mkdocs.yml'), 'entrar na pasta não trouxe o site 2 pastas abaixo dela');
+        ok(!has('pasta/x/y/z/w/v/mkdocs.yml'), 'entrar na pasta trouxe o site 4 pastas abaixo dela');
+      } finally {
+        await Promise.all(['fundo', 'pasta', 'raso'].map(remove));
+        await until(() => has('fundo/a/b/mkdocs.yml') || has('pasta/x/y/z/mkdocs.yml') || has('raso/x/mkdocs.yml'), found => !found, 'os sites de teste ficaram');
       }
     });
 
@@ -1155,7 +1320,9 @@ export function defineTests() {
         const view = (preview as unknown as { state(): { view: { siteName: string; owner: string; ownerFrom?: string } } }).state().view;
         equal(view.siteName, 'Pagamentos', 'nome do título do README');
         equal(`${view.owner} (${view.ownerFrom})`, 'time-pagamentos (CODEOWNERS)', 'dono do CODEOWNERS');
-        ok(plan!.files.some(f => f.path === 'catalog-info.yaml' && f.included), 'sem catalog-info.yaml na prévia');
+        // O catalog-info.yaml começa desmarcado mesmo com o dono achado: marcá-lo grava com o dono
+        ok(plan!.files.some(f => f.path === 'catalog-info.yaml' && !f.included), 'catalog-info.yaml marcado de início');
+        await preview.send({ type: 'toggle', path: 'catalog-info.yaml', on: true });
         ok(plan!.files.some(f => f.path === '.markdownlint.yaml' && f.included), 'sem .markdownlint.yaml na prévia (o repositório não tem um)');
         ok(!(await exists('previa/mkdocs.yml')), 'gravou antes do Criar');
 
@@ -1182,7 +1349,7 @@ export function defineTests() {
       }
     });
 
-    test('prévia sem dono achado: catalog-info.yaml começa desmarcado e continua ao trocar de template', async () => {
+    test('prévia: catalog-info.yaml começa desmarcado, continua ao trocar de template e ao preencher o dono', async () => {
       const { preview } = await api();
       await vscode.workspace.fs.writeFile(file('sem-dono/README.md'), new TextEncoder().encode('# Sem dono\n\nPagamentos do time, por cartão e Pix.\n'));
       try {
@@ -1193,9 +1360,12 @@ export function defineTests() {
         await preview.send({ type: 'set', field: 'template', value: 'golden-path' });
         await until(() => preview.current, p => (p?.files.filter(f => f.origin === 'template').length ?? 0) > 1, 'prévia sem as páginas do golden path');
         equal(catalog()!.included, false, 'trocar de template marcou o catalog-info.yaml');
-        // Preencher o dono marca o arquivo; o componente leva o nome, o título e a descrição do README
+        // Preencher o dono não marca o arquivo (o dono serve também aos templates de página); marcado, o componente
+        // leva o nome, o título e a descrição do README
         await preview.send({ type: 'set', field: 'owner', value: 'time-pagamentos' });
-        await until(catalog, f => f!.included, 'preencher o dono não marcou o catalog-info.yaml');
+        equal(catalog()!.included, false, 'preencher o dono marcou o catalog-info.yaml');
+        await preview.send({ type: 'toggle', path: 'catalog-info.yaml', on: true });
+        await until(catalog, f => f!.included, 'marcar não incluiu o catalog-info.yaml');
         const metadata = (yaml: string) => yaml.slice(yaml.indexOf('metadata:'), yaml.indexOf('  annotations:'));
         equal(
           metadata(catalog()!.content!),
@@ -1214,27 +1384,24 @@ export function defineTests() {
       }
     });
 
-    test('no fim, sem catalog-info.yaml: pergunta se o Backstage usa (só com Backstage no workspace); "não" grava catalog: off', async () => {
+    test('no fim, sem catalog-info.yaml: não pergunta nada; com catalog: off no repositório, sem anotação a sugerir', async () => {
       const { newSite } = await api();
       await vscode.workspace.fs.writeFile(file('catalogo/docs/index.md'), new TextEncoder().encode('# Catálogo\n'));
-      const config = '.techdocs-editor.yaml';
-      const before = await read(config).catch(() => undefined);
+      // Outro repositório com catalog-info.yaml (Backstage no workspace): antes, aqui vinha a pergunta
+      await vscode.workspace.fs.writeFile(file('catalogo-outro/catalog-info.yaml'), new TextEncoder().encode('kind: Component\n'));
       try {
-        // Sem nenhum catalog-info.yaml no workspace (sem Backstage), não pergunta nem grava nada
-        await newSite.run(undefined, { folder: file('catalogo'), adopt: true, values: { site_name: 'Catálogo' }, catalog: 'no' });
-        equal(await read(config).catch(() => before), before, 'perguntou sem Backstage no workspace');
+        const result = await newSite.run(undefined, { folder: file('catalogo'), adopt: true, values: { site_name: 'Catálogo' } });
+        ok(result?.annotation, 'sem a anotação a sugerir');
+        ok(!(await read('catalogo/.techdocs-editor.yaml').then(() => true, () => false)), 'gravou o .techdocs-editor.yaml sem perguntar');
+        // A pasta sem Git: o .techdocs-editor.yaml dela vale para o site
         await remove('catalogo/mkdocs.yml');
-        // Com o de outro repositório, pergunta
-        await vscode.workspace.fs.writeFile(file('catalogo-outro/catalog-info.yaml'), new TextEncoder().encode('kind: Component\n'));
-        const result = await newSite.run(undefined, { folder: file('catalogo'), adopt: true, values: { site_name: 'Catálogo' }, catalog: 'no' });
-        ok(result, 'não criou');
-        equal(result!.annotation, undefined, 'com catalog: off, não há anotação a sugerir');
-        ok((await read(config)).includes('catalog: off'), `${config} sem catalog: off`);
+        await vscode.workspace.fs.writeFile(file('catalogo/.techdocs-editor.yaml'), new TextEncoder().encode('catalog: off\n'));
+        const off = await newSite.run(undefined, { folder: file('catalogo'), adopt: true, values: { site_name: 'Catálogo' } });
+        ok(off, 'não criou');
+        equal(off!.annotation, undefined, 'com catalog: off, não há anotação a sugerir');
       } finally {
         await remove('catalogo');
         await remove('catalogo-outro');
-        if (before === undefined) await remove(config);
-        else await vscode.workspace.fs.writeFile(file(config), new TextEncoder().encode(before));
       }
     });
 
@@ -1285,6 +1452,8 @@ export function defineTests() {
       const config = () => vscode.workspace.getConfiguration('techdocsEditor');
       const catalogFindings = async () =>
         (await repoCheck.check(true)).find(r => r.mkdocs.path.endsWith('/wiki/mkdocs.yml'))!.findings.filter(f => f.code.startsWith('catalog-'));
+      // A pasta aberta é o repositório do site (o .techdocs-editor.yaml da raiz vale para ele)
+      await vscode.workspace.fs.createDirectory(file('.git'));
       try {
         // Padrão (auto): sem o arquivo e sem outro catalog-info.yaml no workspace (sem Backstage), nada
         equal((await catalogFindings()).length, 0, 'modo auto sem sinal de Backstage');
@@ -1304,14 +1473,9 @@ export function defineTests() {
         await repoCheck.prepare(file('wiki'), { apply: f => f.code === 'catalog-missing' });
         const created = await read('catalog-info.yaml');
         ok(created.includes('kind: Component') && created.includes('backstage.io/techdocs-ref: dir:./wiki'), `catalog-info.yaml: ${created}`);
-        // A pergunta do "Preparar": não usa catalog-info.yaml
-        equal(await catalogOptions.askUsage(undefined, 'no'), 'off', 'askUsage');
-        equal(await read('.techdocs-editor.yaml'), 'catalog: off\n', 'catalog: off gravado para o time');
-        equal(await catalogOptions.askUsage(undefined, 'unknown'), 'auto', 'não sei: fica o auto, sem gravar');
-        equal(await read('.techdocs-editor.yaml'), 'catalog: off\n', '"não sei" não grava');
       } finally {
         await config().update('catalog', undefined, vscode.ConfigurationTarget.Global);
-        for (const path of ['.techdocs-editor.yaml', 'catalog-info.yaml', 'outro-repo']) await remove(path);
+        for (const path of ['.techdocs-editor.yaml', 'catalog-info.yaml', 'outro-repo', '.git']) await remove(path);
       }
     });
 

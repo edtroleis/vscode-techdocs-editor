@@ -303,7 +303,8 @@ To always open documentation pages in the visual editor, turn on `techdocsEditor
 | Setting | Default | What it does |
 |---------|---------|--------------|
 | `techdocsEditor.openVisualByDefault` | `false` | Open pages inside a MkDocs `docs_dir` in the visual editor instead of the text |
-| `techdocsEditor.sites` | all | Documentation sites offered by **Switch documentation…** and checked: folders of a `mkdocs.yml` (or a folder above them). Set it with **Choose Which Sites Appear…** in the view's `…` menu |
+| `techdocsEditor.siteDepth` | `2` | How many folders below the workspace folder the search for sites (`mkdocs.yml`) goes. Deeper sites appear when you open one of their pages or enter their folder with **Switch Directory or Repo…** |
+| `techdocsEditor.sites` | all | Documentation sites offered by **Switch Directory or Repo…** and checked: folders of a `mkdocs.yml` (or a folder above them). Set it with **Filter Sites in the Tree…** in the view's `…` menu |
 | `techdocsEditor.maintainer` | `false` | Show the **Maintenance** section (checking the documentation, preparing the repository and its options), for whoever maintains the documentation |
 | `techdocsEditor.images.maxSizeMB` | `5` | Largest image the visual editor saves to `assets`. Images go into the repository: large files weigh on every clone |
 | `techdocsEditor.templates.paths` | `[]` | More folders with page and site templates, relative to the workspace folder (`.techdocs/templates/` is always read) |

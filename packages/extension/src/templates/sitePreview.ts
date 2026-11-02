@@ -25,7 +25,9 @@ import {
   today,
 } from '@edtroleis/techdocs-editor-core';
 import { bringFileIntoDocs, copyImages } from '../repoLinks';
-import { catalogModeFor, repositoryFolder } from '../catalogOptions';
+import { isIgnoredMkdocs } from '../docsSite';
+import { depthBelow, siteDepth } from '../localSites';
+import { catalogModeFor, siteRepository } from '../catalogOptions';
 import { configDirs } from '../lintProblems';
 import { existingPages, findReadme, folderName, isHome, NewSiteCommand, relative } from './newSite';
 import { exists, ownerFromCatalog, PageChoice, readText, SiteChoice, templateFolders } from './templateSources';
@@ -46,7 +48,7 @@ export type PreviewView = {
   /** O dono é pedido: o `catalog-info.yaml` vai ser criado. */
   ownerRequired: boolean;
   /** Donos dos outros `catalog-info.yaml` do workspace, do mais usado para o menos, com quantos arquivos usam cada um. */
-  owners: { owner: string; count: number }[];
+  owners: { owner: string; count: number; here?: boolean }[];
   /** Descrição do componente no `catalog-info.yaml`; undefined quando a prévia não cria esse arquivo. */
   description?: string;
   descriptionFrom?: string;
@@ -91,13 +93,13 @@ type Context = {
   lint: boolean;
   siteNameFrom: string;
   ownerFrom?: string;
-  owners: { owner: string; count: number }[];
+  owners: { owner: string; count: number; here?: boolean }[];
   /** 1º parágrafo do README, sugerido como descrição do componente. */
   description?: string;
 };
 
 /** Quantos `catalog-info.yaml` do workspace são lidos para sugerir o dono. */
-const OWNER_SCAN_LIMIT = 200;
+const OWNER_SCAN_LIMIT = 1000;
 
 const CATALOG_FILE = 'catalog-info.yaml';
 const LINT_FILE = '.markdownlint.yaml';
@@ -117,7 +119,6 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
   private owner = '';
   private description = '';
   /** A pessoa marcou ou desmarcou o `catalog-info.yaml`: digitar o dono não o marca mais. */
-  private catalogToggled = false;
   private readmeUse: ReadmeUse = 'copy';
   private edits: PlanEdits = emptyEdits();
   private selected: string | undefined;
@@ -150,7 +151,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
   /** Abre a prévia para criar a documentação na pasta `root`. */
   async open(root: vscode.Uri) {
     const workspace = vscode.workspace.getWorkspaceFolder(root)?.uri;
-    const repository = repositoryFolder(root);
+    const repository = await siteRepository(root);
     const folders = templateFolders(root, root);
     const { repository: own, central, builtIn } = await this.newSite.siteChoices(folders, root);
     const choices = [...own, ...central, ...builtIn].filter(c => isTemplateSupported(c.template));
@@ -196,18 +197,18 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
       lint: !lintFound,
       siteNameFrom: readmeTitle ? 'README.md' : vscode.l10n.t('folder name'),
       ownerFrom,
-      owners: await workspaceOwners(),
+      owners: await workspaceOwners(repository),
       description: readmeDescription((readme ?? (await findReadme(root)))?.text ?? ''),
     };
     this.template = existing.length ? '' : (choices[0]?.template.id ?? '');
     this.siteName = readableSiteName(readmeTitle ?? folderName(root));
     this.owner = owner ?? '';
     this.description = this.context.description ?? '';
-    this.catalogToggled = false;
     this.readmeUse = 'copy';
     this.edits = emptyEdits();
-    // Sem dono achado, o catalog-info.yaml começa desmarcado: o Criar já vale (quem quer o catálogo marca e preenche)
-    if (this.context.catalogName !== undefined && !owner && catalogMode !== 'required') this.edits.off = [CATALOG_FILE];
+    // O catalog-info.yaml começa desmarcado (muitos Backstages registram o componente por fora): quem quer o catálogo
+    // marca e preenche o dono. Só o modo `required` do repositório o deixa marcado
+    if (this.context.catalogName !== undefined && catalogMode !== 'required') this.edits.off = [CATALOG_FILE];
     this.selected = 'docs/index.md';
     this.error = undefined;
     this.busy = false;
@@ -245,14 +246,12 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
           this.edits = { ...emptyEdits(), added: edits.added, off: edits.off.filter(p => p === CATALOG_FILE || p === LINT_FILE) };
         } else if (message.field === 'siteName') this.siteName = message.value;
         else if (message.field === 'owner') {
+          // O dono também serve aos templates de página ({{owner}}): preenchê-lo não marca o catalog-info.yaml
           this.owner = message.value;
-          // Quem preenche o dono quer o catálogo: marca o arquivo (a não ser que a pessoa já tenha mexido nele)
-          if (message.value.trim() && !this.catalogToggled) edits.off = edits.off.filter(p => p !== CATALOG_FILE);
         } else if (message.field === 'description') this.description = message.value;
         else this.readmeUse = message.value as ReadmeUse;
         break;
       case 'toggle':
-        if (message.path === CATALOG_FILE) this.catalogToggled = true;
         edits.off = edits.off.filter(p => p !== message.path).concat(message.on ? [] : [message.path]);
         break;
       case 'replace':
@@ -431,7 +430,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
     const home = plan.files.find(f => f.included && f.path.startsWith(`${DOCS_DIR}/`) && isHome(f.path.slice(DOCS_DIR.length + 1)))
       ?? plan.files.find(f => f.included && f.path.startsWith(`${DOCS_DIR}/`));
     await this.close();
-    await this.newSite.finish(context.root, mkdocs, home && vscode.Uri.joinPath(context.root, home.path), undefined, this.catalogToggled);
+    await this.newSite.finish(context.root, mkdocs, home && vscode.Uri.joinPath(context.root, home.path), undefined, true);
   }
 
   private fail(message: string) {
@@ -528,6 +527,7 @@ export function previewLabels() {
     siteNameFrom: vscode.l10n.t('Suggested from {0}. It is the name at the top of the site.'),
     notFoundOwner: vscode.l10n.t('No CODEOWNERS or catalog-info.yaml found'),
     ownersInWorkspace: vscode.l10n.t('Used in other catalog-info.yaml files: {0}'),
+    ownersInRepository: vscode.l10n.t('Used in this repository: {0}'),
     ownerUnknown: vscode.l10n.t('No other catalog-info.yaml in the workspace uses this owner. Check that the group exists in Backstage.'),
     ownerFiles: vscode.l10n.t('{0} files'),
     description: vscode.l10n.t('Description'),
@@ -644,13 +644,24 @@ input.missing { border-color: var(--vscode-inputValidation-warningBorder); backg
 `;
 
 /** Donos (`spec.owner`) dos `catalog-info.yaml` do workspace, do mais usado para o menos: sugestões para o campo Dono. */
-async function workspaceOwners(): Promise<{ owner: string; count: number }[]> {
-  const counts = new Map<string, number>();
-  const files = await vscode.workspace.findFiles('**/catalog-info.yaml', '**/node_modules/**', OWNER_SCAN_LIMIT);
+async function workspaceOwners(repository: vscode.Uri | undefined): Promise<{ owner: string; count: number; here?: boolean }[]> {
+  const counts = new Map<string, { count: number; here: boolean }>();
+  const depth = siteDepth();
+  const files = await vscode.workspace.findFiles('**/catalog-info.{yaml,yml}', '**/node_modules/**', OWNER_SCAN_LIMIT);
   for (const uri of files) {
+    const here = Boolean(repository && uri.path.startsWith(`${repository.path.replace(/\/$/, '')}/`));
+    // Como a busca dos sites: até `siteDepth` pastas abaixo do workspace (o próprio repositório, inteiro)
+    const folder = vscode.workspace.getWorkspaceFolder(uri);
+    if (!here && folder && depthBelow(uri.path, folder.uri.path) > depth) continue;
     const text = await readText(uri);
-    const owner = text && catalogOwner(text);
-    if (owner) counts.set(owner, (counts.get(owner) ?? 0) + 1);
+    // Fixtures, pastas ocultas e esqueletos de template (`${{ values.owner }}`) não são donos de verdade
+    if (!text || isIgnoredMkdocs(vscode.workspace.asRelativePath(uri, false), text)) continue;
+    const owner = catalogOwner(text);
+    if (!owner || owner.includes('{{')) continue;
+    const entry = counts.get(owner) ?? { count: 0, here: false };
+    counts.set(owner, { count: entry.count + 1, here: entry.here || here });
   }
-  return [...counts].map(([owner, count]) => ({ owner, count })).sort((a, b) => b.count - a.count || a.owner.localeCompare(b.owner));
+  return [...counts]
+    .map(([owner, { count, here }]) => ({ owner, count, ...(here ? { here } : {}) }))
+    .sort((a, b) => Number(Boolean(b.here)) - Number(Boolean(a.here)) || b.count - a.count || a.owner.localeCompare(b.owner));
 }

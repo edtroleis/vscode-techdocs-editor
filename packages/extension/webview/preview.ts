@@ -53,7 +53,7 @@ function fields(v: PreviewView) {
   const field = (id: string, label: string, value: string, help: string, missing: boolean, optional = false, extra = '', helpClass = '') =>
     `<div class="field"><label for="${id}">${escape(label)}${optional ? ` <span class="from">(${escape(l.optional)})</span>` : ''}</label>
       <input id="${id}" type="text" value="${escape(value)}" class="${missing ? 'missing' : ''}"${extra}><span class="from${helpClass}">${help}</span></div>`;
-  // Os donos dos outros catalog-info.yaml do workspace: sugestões no campo e na dica
+  // Os donos dos outros catalog-info.yaml (os do repositório primeiro): sugestões no campo e na dica
   const owner = v.owner.trim();
   const known = v.owners.some(o => o.owner === owner);
   const ownerHelp =
@@ -63,11 +63,13 @@ function fields(v: PreviewView) {
         ? escape(l.ownerUnknown)
         : owner
           ? ''
-          : v.owners.length
-            ? format(l.ownersInWorkspace, v.owners.slice(0, 3).map(o => o.owner).join(', '))
-            : v.ownerRequired
-              ? escape(l.notFoundOwner)
-              : '';
+          : v.owners.some(o => o.here)
+            ? format(l.ownersInRepository, v.owners.filter(o => o.here).slice(0, 3).map(o => o.owner).join(', '))
+            : v.owners.length
+              ? format(l.ownersInWorkspace, v.owners.slice(0, 3).map(o => o.owner).join(', '))
+              : v.ownerRequired
+                ? escape(l.notFoundOwner)
+                : '';
   const ownerList = v.owners.length
     ? `<datalist id="owners">${v.owners.map(o => `<option value="${escape(o.owner)}">${format(l.ownerFiles, o.count)}</option>`).join('')}</datalist>`
     : '';

@@ -167,6 +167,16 @@
         "icon": "$(arrow-swap)"
       },
       {
+        "command": "techdocsEditor.createHere",
+        "title": "%command.createHere%",
+        "category": "TechDocs"
+      },
+      {
+        "command": "techdocsEditor.newSiteHere",
+        "title": "%command.newSiteHere%",
+        "category": "TechDocs"
+      },
+      {
         "command": "techdocsEditor.refreshMine",
         "title": "%command.refreshMine%",
         "category": "TechDocs",
@@ -381,6 +391,14 @@
         {
           "command": "techdocsEditor.hideSite",
           "when": "false"
+        },
+        {
+          "command": "techdocsEditor.createHere",
+          "when": "techdocsEditor.emptyFolder"
+        },
+        {
+          "command": "techdocsEditor.newSiteHere",
+          "when": "techdocsEditor.emptyFolder"
         },
         {
           "command": "techdocsEditor.pageHistory",
@@ -614,7 +632,7 @@
         },
         {
           "command": "techdocsEditor.renameItem",
-          "when": "view == techdocsEditor.docs && (viewItem =~ /^page\\b/ || (viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/))",
+          "when": "view == techdocsEditor.docs && (((viewItem =~ /^page\\b/ || (viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/))) || (viewItem =~ /^dir\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bdocsRoot\\b)/))",
           "group": "3_edit@1"
         },
         {
@@ -639,7 +657,7 @@
         },
         {
           "command": "techdocsEditor.moveItem",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bhome\\b)/ && (viewItem =~ /\\bfile\\b/ || viewItem =~ /^(?!.*\\boutside\\b)/)",
+          "when": "view == techdocsEditor.docs && ((viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bhome\\b)/ && (viewItem =~ /\\bfile\\b/ || viewItem =~ /^(?!.*\\boutside\\b)/)) || (viewItem =~ /^dir\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bdocsRoot\\b)/))",
           "group": "3_edit@4"
         },
         {
@@ -654,7 +672,7 @@
         },
         {
           "command": "techdocsEditor.deleteItem",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bhome\\b)/",
+          "when": "view == techdocsEditor.docs && ((viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bhome\\b)/) || (viewItem =~ /^dir\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bdocsRoot\\b)/))",
           "group": "5_delete@1"
         },
         {
@@ -949,6 +967,13 @@
           "minimum": 10,
           "markdownDescription": "%config.polling.idleIntervalSeconds%"
         },
+        "techdocsEditor.siteDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 2,
+          "scope": "resource",
+          "markdownDescription": "%config.siteDepth%"
+        },
         "techdocsEditor.sites": {
           "type": [
             "array",
@@ -1023,37 +1048,42 @@
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.empty%",
-        "when": "workbenchState != empty && techdocsEditor.scanned && !techdocsEditor.hasDocs && !techdocsEditor.canPrepare && !techdocsEditor.hasRemote"
+        "when": "workbenchState != empty && techdocsEditor.scanned && !techdocsEditor.hasDocs && !techdocsEditor.canPrepare && !techdocsEditor.hasRemote && !techdocsEditor.emptyFolder"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.chooseSite%",
-        "when": "techdocsEditor.needsSite"
+        "when": "techdocsEditor.needsSite && !techdocsEditor.emptyFolder"
+      },
+      {
+        "view": "techdocsEditor.docs",
+        "contents": "%viewsWelcome.emptyFolder%",
+        "when": "techdocsEditor.emptyFolder"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.intro%",
-        "when": "techdocsEditor.canPrepare"
+        "when": "techdocsEditor.canPrepare && !techdocsEditor.emptyFolder"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.readme%",
-        "when": "techdocsEditor.canPrepare && techdocsEditor.found.readme"
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.readme && !techdocsEditor.emptyFolder"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.docs%",
-        "when": "techdocsEditor.canPrepare && techdocsEditor.found.docs"
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.docs && !techdocsEditor.emptyFolder"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.catalog%",
-        "when": "techdocsEditor.canPrepare && techdocsEditor.found.catalog"
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.catalog && !techdocsEditor.emptyFolder"
       },
       {
         "view": "techdocsEditor.docs",
         "contents": "%viewsWelcome.prepare.action%",
-        "when": "techdocsEditor.canPrepare"
+        "when": "techdocsEditor.canPrepare && !techdocsEditor.emptyFolder"
       },
       {
         "view": "techdocsEditor.check",

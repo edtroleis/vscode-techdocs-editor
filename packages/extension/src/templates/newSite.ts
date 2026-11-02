@@ -5,6 +5,7 @@ import {
   hasTechdocsRef,
   isTemplateSupported,
   pageTitle,
+  readableSiteName,
   SitePage,
   SiteSources,
   siteMkdocsYml,
@@ -14,9 +15,10 @@ import {
   today,
 } from '@edtroleis/techdocs-editor-core';
 import { bringFileIntoDocs, copyImages } from '../repoLinks';
-import { backstageInWorkspace, catalogModeFor, type CatalogOptions, type CatalogUsageAnswer, repositoryFolder } from '../catalogOptions';
+import { catalogModeFor, siteRepository } from '../catalogOptions';
 import type { ProposedChanges } from '../proposedChange';
 import { VisualEditorProvider } from '../visualEditorProvider';
+import { timing } from '../timing';
 import type { CentralTemplates } from './centralTemplates';
 import {
   builtInEnabled,
@@ -44,8 +46,8 @@ export type NewSiteAnswers = {
   values?: Record<string, string>;
   adopt?: boolean;
   readme?: ReadmeUse;
-  /** A resposta a "Seu Backstage usa catalog-info.yaml?" (sem ela, nos testes, não pergunta). */
-  catalog?: CatalogUsageAnswer;
+  /** A pessoa já decidiu sobre o `catalog-info.yaml` (o clique único): sem o aviso da anotação no fim. */
+  decided?: boolean;
 };
 
 /** O README.md como página inicial: copiado, movido (fica um link para as docs) ou não usado. */
@@ -66,13 +68,26 @@ const DOCS_DIR = 'docs';
  * README.md, pode usá-lo como página inicial (0.4.0).
  */
 export class NewSiteCommand {
-  private catalogOptions: CatalogOptions | undefined;
   private preview: { open(root: vscode.Uri): Promise<void> } | undefined;
+  private sites: { add(mkdocs: vscode.Uri): Promise<void> } | undefined;
+
+  /** Os sites do workspace: o criado entra na hora (a árvore passa a ele antes de a página abrir). */
+  useSites(sites: { add(mkdocs: vscode.Uri): Promise<void> }) {
+    this.sites = sites;
+  }
 
   constructor(
     private readonly central?: CentralTemplates,
     private readonly proposals?: ProposedChanges,
   ) {}
+
+  /**
+   * "Criar a documentação" da pasta sem documentação, num clique: o template em branco, o nome do site pelo nome da
+   * pasta, as páginas que já houver em `docs/` adotadas e o README como página inicial. Sem `catalog-info.yaml`.
+   */
+  quick(root: vscode.Uri): Promise<NewSiteResult | undefined> {
+    return this.run(root, { template: 'blank', folder: root, values: { site_name: readableSiteName(folderName(root)) }, adopt: true, readme: 'copy', decided: true });
+  }
 
   async run(target?: vscode.Uri, answers?: NewSiteAnswers): Promise<NewSiteResult | undefined> {
     const root = await this.resolveFolder(answers?.folder ?? target, Boolean(answers));
@@ -101,11 +116,13 @@ export class NewSiteCommand {
     const readme = existing.some(isHome) ? undefined : await findReadme(root);
     const readmeUse = !readme ? 'skip' : answers ? (answers.readme ?? 'skip') : await askReadme();
     if (!readmeUse) return undefined;
+    timing.step('diretório, docs/ e README lidos');
 
     const folders = templateFolders(root, root);
     const choice = await this.pickTemplate(folders, root, answers?.template);
     if (!choice) return undefined;
     const { template } = choice;
+    timing.step('templates lidos');
 
     const { sources, pageFields } = await this.sources(choice, folders, root);
     const used = siteUsedFields(template, sources);
@@ -143,13 +160,14 @@ export class NewSiteCommand {
     // Por último: quem acompanha os mkdocs.yml (árvore, lint) já acha as páginas
     const mkdocs = vscode.Uri.joinPath(root, 'mkdocs.yml');
     await vscode.workspace.fs.writeFile(mkdocs, encoder.encode(siteMkdocsYml(values.site_name, pages, template)));
+    timing.step('páginas e mkdocs.yml gravados');
     if (readme && home && readmeUse === 'move') {
       const title = pageTitle(readme.text) ?? values.site_name;
       const pointer = vscode.l10n.t('The documentation of this repository is in [docs/](docs/index.md), published by TechDocs.');
       await vscode.workspace.fs.writeFile(readme.uri, encoder.encode(`# ${title}\n\n${pointer}\n`));
     }
 
-    return this.finish(root, mkdocs, vscode.Uri.joinPath(docsDir, pages[0].path), answers);
+    return this.finish(root, mkdocs, vscode.Uri.joinPath(docsDir, pages[0].path), answers, answers?.decided);
   }
 
   /**
@@ -183,7 +201,7 @@ export class NewSiteCommand {
       if (decision !== 'apply') return undefined;
     }
     await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(yml));
-    return this.finish(root, mkdocs, home ? vscode.Uri.joinPath(docsDir, home) : undefined, answers);
+    return this.finish(root, mkdocs, home ? vscode.Uri.joinPath(docsDir, home) : undefined, answers, answers?.decided);
   }
 
   /**
@@ -359,35 +377,21 @@ export class NewSiteCommand {
     this.preview = preview;
   }
 
-  /** As opções da verificação, para a pergunta do `catalog-info.yaml` no fim (criadas depois, com o `RepoCheck`). */
-  useCatalogOptions(options: CatalogOptions) {
-    this.catalogOptions = options;
-  }
-
   /**
-   * Depois de criar o site: a anotação do TechDocs a pôr no `catalog-info.yaml` (TP11). Sem o arquivo e sem o modo
-   * definido, pergunta uma vez se o Backstage usa o `catalog-info.yaml` do repositório: "não" grava `catalog: off`
-   * e não fala mais nele; "sim" grava `required` e leva à Verificação, que oferece criar o arquivo. A pergunta vem
-   * antes de abrir a página `home` (o editor visual abrindo tira o foco da lista). Sem nenhum `catalog-info.yaml` no
-   * workspace (sem Backstage), ou com a caixa do arquivo mexida na prévia (`catalogDecided`), não pergunta.
+   * Depois de criar o site: a anotação do TechDocs a pôr no `catalog-info.yaml` (TP11). Não pergunta se o Backstage
+   * usa o arquivo: na prévia, a caixa do `catalog-info.yaml` já é a decisão, e a Verificação lembra dele depois.
+   * `decided` (a prévia e o "Criar a documentação" da pasta): a pessoa já escolheu, então sem aviso da anotação.
    */
-  async finish(
-    root: vscode.Uri,
-    mkdocs: vscode.Uri,
-    home: vscode.Uri | undefined,
-    answers?: NewSiteAnswers,
-    catalogDecided = false,
-  ): Promise<NewSiteResult> {
+  async finish(root: vscode.Uri, mkdocs: vscode.Uri, home: vscode.Uri | undefined, answers?: NewSiteAnswers, decided = false): Promise<NewSiteResult> {
+    await this.sites?.add(mkdocs);
+    timing.step('site na lista');
     const annotation = await this.catalogAnnotation(root);
-    const folder = repositoryFolder(root);
-    const current = await catalogModeFor(folder);
-    let mode = current.mode;
-    const ask = annotation && !annotation.catalog && current.source === 'default' && this.catalogOptions && (!answers || answers.catalog) && !catalogDecided;
-    if (ask && (await backstageInWorkspace())) {
-      mode = (await this.catalogOptions!.askUsage(folder, answers?.catalog)) ?? 'auto';
-    }
+    const { mode } = await catalogModeFor(await siteRepository(root));
+    timing.step('catálogo conferido');
     if (home) await vscode.commands.executeCommand('vscode.openWith', home, VisualEditorProvider.viewType);
+    timing.step('página inicial aberta');
     if (mode === 'off') return { mkdocs };
+    if (decided) return { mkdocs, annotation: annotation?.text };
     if (annotation && !annotation.catalog && mode === 'required') {
       if (!answers) void this.showCreateCatalog();
       return { mkdocs, annotation: annotation.text };

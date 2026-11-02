@@ -14,9 +14,15 @@ const SKIPPED = new Set(['node_modules', 'site', 'out', 'dist', 'build', 'target
 
 /** O que a lista precisa da árvore. */
 export type PickerHost = {
+  /** Onde a lista começa (a pasta de cima do repositório mostrado); sem ela, na pasta aberta. */
+  start?: vscode.Uri;
   candidates: readonly SiteCandidate[];
+  /** Monta a árvore de novo (com os sites achados ao entrar numa pasta) e devolve os sites. */
+  refresh(): Promise<readonly SiteCandidate[]>;
   currentKey: string | undefined;
   select(key: string): Promise<void>;
+  /** Mostra uma pasta sem documentação na árvore (com a tela de criar nela). */
+  selectFolder(folder: vscode.Uri): Promise<void>;
   /** Rascunhos da pessoa por site (de "Minhas alterações"). */
   drafts(): Map<string, { draft: number; review: number }>;
   sites: LocalSites;
@@ -30,7 +36,11 @@ type Item = vscode.QuickPickItem & {
   folder?: vscode.Uri;
   /** Entrar na pasta (`to` undefined: a lista das pastas do workspace). */
   enter?: { to: vscode.Uri | undefined };
-  action?: 'create' | 'createHere' | 'undo';
+  action?: 'create' | 'useHere' | 'undo' | 'goto';
+  /** Pasta fora do workspace: abri-la no VS Code (a extensão só edita o que está aberto). */
+  open?: vscode.Uri;
+  /** "Ir para" um caminho digitado. */
+  path?: string;
 };
 
 /** Páginas lidas de cada site local (título e arquivo), até a árvore mudar. */
@@ -40,58 +50,64 @@ export function invalidatePages() {
 }
 
 /**
- * "Trocar documentação" pelas pastas: começa na pasta aberta no VS Code e mostra o que tem dentro, com ou sem
- * documentação. Uma pasta que é um site mostra o nome dele (clicar o abre na árvore); uma pasta com sites dentro
+ * "Trocar diretório ou repo" pelas pastas: começa na pasta aberta no VS Code e mostra o que tem dentro, com ou sem
+ * documentação. "Voltar" sobe além da pasta aberta, até `/`; digitar um caminho (`/opt`, `~/projetos`) vai direto
+ * a ele. Fora do workspace, um site ou a pasta abrem no VS Code (nesta janela ou em outra). Uma pasta que é um site mostra o nome dele (clicar o abre na árvore); uma pasta com sites dentro
  * diz quantos (clicar entra); uma sem nada diz "sem documentação" (dentro, "Criar documentação aqui"). "Voltar"
  * sobe. Ao digitar, a busca vale para todos os sites, as páginas deles e as pastas sem documentação.
  */
 export async function pickSite(host: PickerHost) {
   const quickPick = vscode.window.createQuickPick<Item>();
-  quickPick.placeholder = vscode.l10n.t('Search sites, pages and folders');
+  quickPick.placeholder = vscode.l10n.t('Search sites, pages and folders, or type a path (/opt, ~/code)');
   quickPick.matchOnDescription = true;
   const titleButtons = {
     create: { iconPath: new vscode.ThemeIcon('new-folder'), tooltip: vscode.l10n.t('Create documentation in a folder…') },
     github: { iconPath: new vscode.ThemeIcon('github'), tooltip: vscode.l10n.t('Open from GitHub by link…') },
     folder: { iconPath: new vscode.ThemeIcon('folder-opened'), tooltip: vscode.l10n.t('Open another folder…') },
-    choose: { iconPath: new vscode.ThemeIcon('list-filter'), tooltip: vscode.l10n.t('Choose which sites of this workspace appear…') },
   };
-  quickPick.buttons = [titleButtons.create, titleButtons.github, titleButtons.folder, ...(host.sites.all().length > 1 ? [titleButtons.choose] : [])];
+  quickPick.buttons = [titleButtons.create, titleButtons.github, titleButtons.folder];
   const folderButton = (tooltip: string) => ({ iconPath: new vscode.ThemeIcon('folder'), tooltip });
   const hideButton = { iconPath: new vscode.ThemeIcon('close'), tooltip: vscode.l10n.t('Hide from this list') };
 
   const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
   // Com uma pasta só no workspace, começa nela; com várias, na lista delas
   const top = workspaceFolders.length === 1 ? workspaceFolders[0].uri : undefined;
-  let here = top;
+  let here = host.start ?? top;
   let entries: Array<{ uri: vscode.Uri; name: string }> | undefined;
   let candidates = [...host.candidates];
   let pages: Array<{ title: string; uri: vscode.Uri; site: SiteCandidate }> = [];
   let empty: vscode.Uri[] | undefined;
+  /** Fora do workspace: as pastas (a atual e as de dentro) que têm um `mkdocs.yml`. */
+  let outsideSites = new Set<string>();
+  /** O caminho digitado que não é uma pasta. */
+  let notFound: string | undefined;
   /** O último site escondido pelo ×, para desfazer. */
   let undo: { site: SiteCandidate; run: () => Thenable<unknown> } | undefined;
   const drafts = host.drafts();
   /** Os sites locais dentro da pasta (ou nela mesma). */
   const sitesIn = (path: string) => candidates.filter(c => c.local && (c.local.site.root === path || c.local.site.root.startsWith(`${path}/`)));
 
-  const siteItem = (site: SiteCandidate, extra?: string): Item => {
+  /** `folder`: na navegação, o nome da pasta vem primeiro e o do site ao lado. */
+  const siteItem = (site: SiteCandidate, extra?: string, folder?: string): Item => {
     const showing = site.key === host.currentKey;
     const count = drafts.get(site.key);
     const parts = [
+      folder ? site.label : '',
       extra,
       count?.draft ? (count.draft === 1 ? vscode.l10n.t('1 draft') : vscode.l10n.t('{0} drafts', count.draft)) : '',
       count?.review ? vscode.l10n.t('{0} in review', count.review) : '',
       showing ? vscode.l10n.t('showing now') : '',
     ];
     return {
-      label: `$(${showing ? 'check' : site.remote ? 'github' : 'book'}) ${site.label}`,
+      label: `$(${showing ? 'check' : site.remote ? 'github' : 'book'}) ${folder ?? site.label}`,
       description: parts.filter(Boolean).join(' · '),
       buttons: [folderButton(site.remote ? `${site.remote.host}/${site.description}` : `~/${site.description}`), ...(showing ? [] : [hideButton])],
       site,
     };
   };
   const folderItem = (folder: vscode.Uri): Item => ({
-    label: `$(add) ${folder.path.split('/').pop()}`,
-    description: vscode.l10n.t('create documentation here'),
+    label: `$(folder) ${folder.path.split('/').pop()}`,
+    description: vscode.l10n.t('no documentation'),
     buttons: [folderButton(vscode.workspace.asRelativePath(folder))],
     folder,
   });
@@ -102,31 +118,57 @@ export async function pickSite(host: PickerHost) {
     action: 'create',
     alwaysShow: true,
   });
-  /** A pasta de cima, ou undefined na pasta do workspace (com várias, volta à lista delas). */
-  const parentOf = (uri: vscode.Uri) => (workspaceFolders.some(f => f.uri.path === uri.path) ? undefined : uri.with({ path: uri.path.slice(0, uri.path.lastIndexOf('/')) }));
+  /**
+   * A pasta de cima: undefined numa das pastas de um workspace com várias (volta à lista delas), null na raiz `/`.
+   * Numa pasta só, sobe além dela (fora do workspace).
+   */
+  const parentOf = (uri: vscode.Uri): vscode.Uri | undefined | null => {
+    if (workspaceFolders.length > 1 && workspaceFolders.some(f => f.uri.path === uri.path)) return undefined;
+    const path = uri.path.replace(/\/+$/, '');
+    if (!path) return null;
+    return uri.with({ path: path.slice(0, path.lastIndexOf('/')) || '/' });
+  };
+  const inWorkspace = (uri: vscode.Uri) => Boolean(vscode.workspace.getWorkspaceFolder(uri));
+  const nameOf = (uri: vscode.Uri) => uri.path.replace(/\/+$/, '').split('/').pop() || '/';
+
+  /** Fora do workspace: as pastas com `mkdocs.yml` abrem no VS Code; as outras, entra. */
+  const browseOutside = (at: vscode.Uri, items: Item[]): Item[] => {
+    const opens = vscode.l10n.t('opens in VS Code');
+    if (outsideSites.has(at.path)) items.push({ label: `$(book) ${nameOf(at)}`, description: `${vscode.l10n.t('this folder')} · ${opens}`, open: at });
+    for (const row of entries ?? []) {
+      items.push(
+        outsideSites.has(row.uri.path)
+          ? { label: `$(book) ${row.name}`, description: `${vscode.l10n.t('documentation')} · ${opens}`, open: row.uri }
+          : { label: `$(folder) ${row.name}`, enter: { to: row.uri } },
+      );
+    }
+    if (!outsideSites.has(at.path)) items.push({ label: `$(folder-opened) ${vscode.l10n.t('Open this folder in VS Code')}`, description: shortPath(at), open: at, alwaysShow: true });
+    return items;
+  };
 
   const browse = (): Item[] => {
     const items: Item[] = [];
-    if (here && here.path !== top?.path) {
-      const up = parentOf(here);
+    const up = here ? parentOf(here) : null;
+    if (up !== null) {
       items.push({ label: `$(arrow-up) ${vscode.l10n.t('Back to {0}', up ? shortPath(up) : vscode.l10n.t('the workspace folders'))}`, enter: { to: up }, alwaysShow: true });
     }
+    if (here && !inWorkspace(here)) return browseOutside(here, items);
     const self = here && candidates.find(c => c.local?.site.root === here!.path);
     if (self) items.push(siteItem(self, vscode.l10n.t('this folder')));
     const rows = (entries ?? []).map(entry => ({ ...entry, sites: sitesIn(entry.uri.path) }));
     for (const row of rows.filter(r => r.sites.length)) {
       const [only] = row.sites;
-      if (row.sites.length === 1 && only.local!.site.root === row.uri.path) items.push(siteItem(only, row.name));
+      if (row.sites.length === 1 && only.local!.site.root === row.uri.path) items.push(siteItem(only, undefined, row.name));
       else {
-        const count = row.sites.length === 1 ? vscode.l10n.t('1 site') : vscode.l10n.t('{0} sites', row.sites.length);
-        items.push({ label: `$(folder) ${row.name}`, description: count, enter: { to: row.uri } });
+        // Sem número: os sites mais fundos que o limite da busca só entram ao chegar na pasta deles
+        items.push({ label: `$(folder) ${row.name}`, description: vscode.l10n.t('has documentation'), enter: { to: row.uri } });
       }
     }
     const without = rows.filter(r => !r.sites.length);
     if (without.length) items.push(separator(vscode.l10n.t('without documentation')));
     items.push(...without.map((row): Item => ({ label: `$(folder) ${row.name}`, description: vscode.l10n.t('no documentation'), enter: { to: row.uri } })));
     if (here && !self && !sitesIn(here.path).length) {
-      items.push({ label: `$(add) ${vscode.l10n.t('Create documentation here')}`, description: shortPath(here), action: 'createHere', alwaysShow: true });
+      items.push({ label: `$(check) ${vscode.l10n.t('Use this folder')}`, description: `${shortPath(here)} · ${vscode.l10n.t('to create its documentation')}`, action: 'useHere', alwaysShow: true });
     }
     // Os sites abertos do GitHub ficam na pasta de cima
     const remote = candidates.filter(c => c.remote);
@@ -138,9 +180,18 @@ export async function pickSite(host: PickerHost) {
   const render = () => {
     const items: Item[] = [];
     if (undo) items.push({ label: `$(discard) ${vscode.l10n.t('Undo: {0} left the list', undo.site.label)}`, action: 'undo', alwaysShow: true });
-    if (quickPick.value) {
+    const typed = pathOf(quickPick.value, here ?? top ?? workspaceFolders[0]?.uri);
+    if (typed) {
+      // Um caminho digitado: ir direto à pasta
+      quickPick.title = vscode.l10n.t('Switch directory or repo');
+      items.push(
+        notFound === typed.path
+          ? { label: `$(error) ${vscode.l10n.t('Folder not found: {0}', shortPath(typed))}`, alwaysShow: true }
+          : { label: `$(arrow-right) ${vscode.l10n.t('Go to {0}', shortPath(typed))}`, action: 'goto', path: typed.path, alwaysShow: true },
+      );
+    } else if (quickPick.value) {
       // Busca: todos os sites, as páginas e as pastas sem documentação (o VS Code filtra)
-      quickPick.title = vscode.l10n.t('Documentation to edit');
+      quickPick.title = vscode.l10n.t('Switch directory or repo');
       items.push(separator(vscode.l10n.t('sites')), ...sorted(candidates).map(site => siteItem(site)));
       if (pages.length) {
         items.push(separator(vscode.l10n.t('pages')));
@@ -166,18 +217,36 @@ export async function pickSite(host: PickerHost) {
           .map(([name]) => ({ uri: vscode.Uri.joinPath(at, name), name }))
           .sort((a, b) => a.name.localeCompare(b.name))
       : workspaceFolders.map(f => ({ uri: f.uri, name: f.name }));
+    if (at && !inWorkspace(at)) {
+      // Fora do workspace: só se a pasta e as de dentro têm um mkdocs.yml (a extensão não as acompanha)
+      const withSite = await Promise.all([at, ...found.map(f => f.uri)].map(async uri => ((await hasMkdocs(uri)) ? uri.path : '')));
+      if (at !== here) return;
+      outsideSites = new Set(withSite.filter(Boolean));
+      entries = found;
+      return render();
+    }
     if (at !== here) return;
     entries = found;
     render();
+    // Sites mais fundos que o limite da busca do workspace: entram ao chegar na pasta deles
+    if (!at) return;
+    const before = host.sites.all().length;
+    await host.sites.discover(at);
+    if (host.sites.all().length === before || at !== here) return;
+    const hidden = new Set(host.candidates.map(c => c.key).filter(key => !candidates.some(c => c.key === key)));
+    candidates = (await host.refresh()).filter(c => !hidden.has(c.key));
+    if (at === here) render();
   };
 
-  quickPick.onDidChangeValue(() => render());
+  quickPick.onDidChangeValue(() => {
+    notFound = undefined;
+    render();
+  });
   quickPick.onDidTriggerButton(async button => {
     quickPick.hide();
     if (button === titleButtons.create) await newSiteInFolder();
     else if (button === titleButtons.github) await vscode.commands.executeCommand('techdocsEditor.openRemote');
     else if (button === titleButtons.folder) await vscode.commands.executeCommand('workbench.action.files.openFolder');
-    else if (button === titleButtons.choose) await vscode.commands.executeCommand('techdocsEditor.chooseSites');
   });
   quickPick.onDidTriggerItemButton(async ({ item, button }) => {
     const site = item.site;
@@ -209,6 +278,21 @@ export async function pickSite(host: PickerHost) {
       quickPick.value = '';
       return load();
     }
+    if (item.action === 'goto' && item.path) {
+      const target = (here ?? top ?? workspaceFolders[0]!.uri).with({ path: item.path });
+      const stat = await Promise.resolve(vscode.workspace.fs.stat(target)).then(s => s, () => undefined);
+      if (!stat || !(stat.type & vscode.FileType.Directory)) {
+        notFound = item.path;
+        return render();
+      }
+      here = target;
+      quickPick.value = '';
+      return load();
+    }
+    if (item.open) {
+      quickPick.hide();
+      return openFolder(item.open);
+    }
     if (item.action === 'undo' && undo) {
       const { site, run } = undo;
       undo = undefined;
@@ -221,8 +305,8 @@ export async function pickSite(host: PickerHost) {
     if (item.site) await host.select(item.site.key);
     else if (item.page) {
       await vscode.commands.executeCommand(item.page.remote ? 'techdocsEditor.openVisual' : 'vscode.open', item.page.uri);
-    } else if (item.folder) await createIn(item.folder);
-    else if (item.action === 'createHere' && here) await createIn(here);
+    } else if (item.folder) await host.selectFolder(item.folder);
+    else if (item.action === 'useHere' && here) await host.selectFolder(here);
     else if (item.action === 'create') await newSiteInFolder();
   });
   quickPick.onDidHide(() => quickPick.dispose());
@@ -246,6 +330,46 @@ export async function pickSite(host: PickerHost) {
 function shortPath(uri: vscode.Uri): string {
   const home = /^\/(?:home|Users)\/[^/]+/.exec(uri.path)?.[0];
   return home ? `~${uri.path.slice(home.length)}` : vscode.workspace.asRelativePath(uri, true) || uri.path;
+}
+
+/** O caminho digitado (`/opt`, `~/projetos`, `~`), com o esquema da pasta atual; undefined se não é um caminho. */
+export function pathOf(value: string, base: vscode.Uri | undefined): vscode.Uri | undefined {
+  const text = value.trim();
+  if (!base || !/^(\/|~(\/|$))/.test(text)) return undefined;
+  let path = text;
+  if (text.startsWith('~')) {
+    const home = homeDir(base);
+    if (!home) return undefined;
+    path = home + text.slice(1);
+  }
+  path = path.replace(/\/+$/, '') || '/';
+  return base.with({ path });
+}
+
+/** A pasta pessoal: a do ambiente, senão a de `/home/x` ou `/Users/x` na pasta aberta. */
+function homeDir(base: vscode.Uri): string | undefined {
+  const env = typeof process !== 'undefined' ? process.env?.HOME : undefined;
+  return env?.replace(/\/+$/, '') || /^\/(?:home|Users)\/[^/]+/.exec(base.path)?.[0];
+}
+
+const hasMkdocs = async (dir: vscode.Uri) => {
+  for (const name of ['mkdocs.yml', 'mkdocs.yaml']) {
+    if (await Promise.resolve(vscode.workspace.fs.stat(vscode.Uri.joinPath(dir, name))).then(() => true, () => false)) return true;
+  }
+  return false;
+};
+
+/** Abre a pasta fora do workspace: nesta janela ou numa nova. */
+async function openFolder(folder: vscode.Uri) {
+  const here = vscode.l10n.t('This window');
+  const other = vscode.l10n.t('New window');
+  const answer = await vscode.window.showInformationMessage(
+    vscode.l10n.t('{0} is outside the folder open in VS Code. Open it to edit its documentation?', folder.fsPath),
+    { modal: true },
+    here,
+    other,
+  );
+  if (answer) await vscode.commands.executeCommand('vscode.openFolder', folder, { forceNewWindow: answer === other });
 }
 
 const sorted = (list: SiteCandidate[]) => [...list].sort((a, b) => a.label.localeCompare(b.label) || a.description.localeCompare(b.description));
