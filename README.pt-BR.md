@@ -58,6 +58,22 @@ Escolha uma imagem do computador e ela é gravada em `docs/assets/<horário>-<no
 página. Nunca um endereço temporário `blob:`, e nunca maior do que você permitir
 (`techdocsEditor.images.maxSizeMB`).
 
+### Colar do Confluence, do Outline e da web
+
+Copie uma página do Confluence, do Outline ou de um site e cole no editor visual: ela entra como Markdown que o
+MkDocs monta como está.
+
+- **Blocos de código** ficam inteiros, com as linhas e a linguagem (não viram código numa linha só).
+- **Imagens** são baixadas e gravadas em `docs/assets`, como uma imagem do computador. Quando a imagem não abre
+  (pede login ou o endereço expirou), aparece um aviso e o endereço fica.
+- **Painéis de informação, nota, aviso e dica** viram avisos do MkDocs (`!!! info`, `!!! warning`…), com o título do painel.
+- **Tabelas** com células mescladas entram inteiras; tabelas largas são salvas compactas (`| a | b |`), aceitas pelo lint.
+- **Limpeza:** o sumário do Confluence sai (o MkDocs gera o dele), títulos em negrito perdem o negrito, os títulos
+  colados descem um nível quando a página já tem Título 1, e os links ficam com `&` e `@` sem `\`.
+- **No texto Markdown** também: cole e escolha **Colar como Markdown (TechDocs)** nas opções de colagem para ter o
+  mesmo Markdown em vez do texto puro.
+- Os espaços sobrando da colagem saem com **Ajustar agora**, como qualquer problema de formatação.
+
 ### Para se achar
 
 ![Ctrl+F no editor visual destaca e conta os resultados](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/search.gif)
@@ -214,6 +230,12 @@ links para arquivos que não existem e imagens que faltam. Ela confere sozinha q
 de novo depois que você salva; o ícone mostra quantos itens faltam. Um clique abre o arquivo na linha, e
 **Corrigir** mostra o diff daquela correção antes de gravar qualquer coisa. Os mesmos itens ficam no painel
 Problemas.
+
+O botão **Conferir a Documentação** (✓) no título da árvore Documentação, também na seção TechDocs do Explorer,
+confere o site mostrado e diz quantos itens ele ajusta sozinho e quantos precisam de você. **Ver** abre os itens
+no painel Problemas; **Ajustar automaticamente** aplica de uma vez os ajustes automáticos (formatação de todas as
+páginas, páginas fora do menu, o plugin, páginas do menu que faltam), e o aviso do fim tem **Desfazer**. Depois
+que você salva, ele confere de novo só os sites já conferidos.
 
 **TechDocs: Preparar a documentação neste repositório** cria um site de template quando não há `mkdocs.yml`.
 Se há, passa pelas correções uma por uma, com o diff antes, para você aplicar, pular ou parar. Links quebrados

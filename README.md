@@ -57,6 +57,22 @@ Choose an image from your computer and it is saved to `docs/assets/<timestamp>-<
 the page. Never a temporary `blob:` address, and never larger than you allow
 (`techdocsEditor.images.maxSizeMB`).
 
+### Paste from Confluence, Outline and the web
+
+Copy a page from Confluence, Outline or a web site and paste it into the visual editor: it comes in as Markdown
+that MkDocs builds as is.
+
+- **Code blocks** stay whole, with their lines and language (not inline code on one line).
+- **Images** are downloaded and saved to `docs/assets`, like an image from the computer. When an image cannot be
+  reached (it asks for a login, or the address expired), you get a warning and the address stays.
+- **Info, note, warning and tip panels** become MkDocs admonitions (`!!! info`, `!!! warning`…), with the panel title.
+- **Tables** with merged cells come in whole; wide tables are saved compact (`| a | b |`), accepted by the lint.
+- **Cleaned up:** the table of contents of Confluence goes away (MkDocs makes its own), bold headings lose the bold,
+  pasted headings go down a level when the page already has a Heading 1, and links keep `&` and `@` without a `\`.
+- **In the Markdown text** too: paste and pick **Paste as Markdown (TechDocs)** in the paste options to get the same
+  Markdown instead of plain text.
+- Extra spaces left by the paste are fixed by **Fix automatically**, like any formatting problem.
+
 ### Find your way around
 
 ![Ctrl+F in the visual editor highlights the matches and counts them](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/search.gif)
@@ -211,6 +227,12 @@ and its `index.md`, `nav` entries pointing to missing pages and pages left out o
 problems, links to missing files and missing images. It checks on its own when it first shows up and again
 after you save; the icon shows how many items are left. A click opens the file at the line, and **Fix** shows the
 diff of that one fix before writing anything. The same items are in the Problems panel.
+
+The **Check the Documentation** button (✓) in the title of the Documentation tree, also in the TechDocs section of
+the Explorer, checks the site shown and says how many items it fixes on its own and how many need you. **View**
+opens them in the Problems panel; **Fix all automatically** applies the automatic fixes at once (formatting of
+every page, pages left out of the menu, the plugin, missing pages of the menu), and the notice at the end has
+**Undo**. After you save, it checks again only the sites already checked.
 
 **TechDocs: Prepare the documentation in this repository** creates a site from a template when there is no
 `mkdocs.yml`. Otherwise it goes through the fixes one by one, showing the diff first, so you apply, skip or

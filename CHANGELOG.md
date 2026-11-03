@@ -6,6 +6,53 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-03
+
+Paste a page from Confluence, Outline or the web and get Markdown that MkDocs builds; the documentation is also in
+the VS Code Explorer, and one button checks and fixes a whole site.
+
+### Added
+
+- **Paste from Confluence, Outline and the web** into the visual editor: code blocks stay whole with their
+  language; images are downloaded to `docs/assets` (a warning when one cannot be reached, keeping the address);
+  info, note, warning and tip panels become MkDocs admonitions; tables with merged cells come in whole; the
+  Confluence table of contents goes away, bold headings lose the bold, and pasted headings go down a level when the
+  page already has a Heading 1. The image caption of Outline is not repeated.
+- **Paste as Markdown (TechDocs)** in the Markdown text editor: the same conversion from the clipboard HTML,
+  chosen in the paste options. A copy from inside VS Code stays as it is.
+- **TechDocs section in the Explorer**, under the files, with the pages in the order of the menu. Moving, renaming
+  or deleting pages and directories of `docs` in the Explorer updates the menu and the links, with **Undo**
+  (`techdocsEditor.syncExplorer`, on by default). Right-click a directory › **Open in TechDocs**; a `.md` outside
+  `docs` › **Copy to a Page**.
+- **Check the Documentation** button (✓) in the title of the tree: says how many items are fixed automatically and
+  how many need you, with **View** and **Fix all automatically**, which applies them at once and offers **Undo**.
+- **Switch Directory or Repo…** starts at the directory above the current repository, goes above the workspace,
+  takes a typed path (`/opt`, `~/code`) and opens outside directories in this window or another. It lists only
+  directories, by their name, with *documentation: <site>* or *documentation inside* next to them.
+- **A directory without documentation** shows **Create the documentation** in one click, **Choose a template…**
+  and **Switch Directory or Repo…**; a deleted site goes back to this screen.
+- `techdocsEditor.siteDepth` (default 2): how deep the search for sites goes; deeper ones show up when you open
+  one of their pages or enter their directory.
+
+### Changed
+
+- The files view left the TechDocs tree: the files are in the Explorer, with the TechDocs section under them.
+- Wide tables (a line over 120 characters) are saved compact (`| a | b |`); narrow ones stay aligned.
+- Creating documentation from a template leaves `catalog-info.yaml` unchecked and does not ask about it;
+  `.techdocs-editor.yaml` is read per repository, and owners of the same repository come first.
+- Portuguese texts say "diretório" instead of "pasta".
+- The tree is faster: `docs_dir` is read from disk, and the tree is built only when the site shown changes.
+
+### Fixed
+
+- Links and e-mails no longer get a `\` before `&` and `@`, which MkDocs kept and broke the link.
+- Extra spaces at the end of lines and inside inline code (common after a paste) are fixed by **Fix
+  automatically**.
+- Checking no longer stays stuck looking for `catalog-info.yaml` in the whole workspace (minutes in `~` or
+  `~/code`); the status bar says *Checking <site>…* meanwhile.
+- After choosing a page in the link box, the focus goes back to the editor at the end of the link (what you typed
+  went to the start of the document).
+
 ## [0.8.0] - 2026-10-31
 
 The sidebar shows the folder as it is on disk, with the README and the code at hand while you write, and a local
