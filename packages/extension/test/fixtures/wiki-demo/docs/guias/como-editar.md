@@ -37,12 +37,12 @@ O modo **Markdown** mostra a página como ela fica guardada. Use se quiser ajust
 
 Os botões ficam na lateral do editor. Passe o mouse sobre cada um para ver o que ele faz.
 
-| Botão                      | O que acontece                                                                                     | Quem vê                                     |
-| -------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| **Salvar rascunho**        | Guarda o que você escreveu, sem verificar nada                                                     | Só você                                     |
-| **Salvar e verificar**     | Guarda e roda as verificações automáticas: formatação, links, dados sensíveis e montagem da página | Só você e quem abrir o pedido de publicação |
-| **Enviar para publicação** | Envia a alteração para quem cuida da wiki publicar                                                 | O time                                      |
-| **Descartar rascunho**     | Apaga as alterações que ainda não foram publicadas                                                 | —                                           |
+| Botão | O que acontece | Quem vê |
+| --- | --- | --- |
+| **Salvar rascunho** | Guarda o que você escreveu, sem verificar nada | Só você |
+| **Salvar e verificar** | Guarda e roda as verificações automáticas: formatação, links, dados sensíveis e montagem da página | Só você e quem abrir o pedido de publicação |
+| **Enviar para publicação** | Envia a alteração para quem cuida da wiki publicar | O time |
+| **Descartar rascunho** | Apaga as alterações que ainda não foram publicadas | — |
 
 Quando a wiki exige aprovação, o botão de envio se chama **Enviar para revisão**: alguém do time precisa aprovar antes de publicar.
 
