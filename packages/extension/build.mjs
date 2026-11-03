@@ -60,6 +60,9 @@ const builds = [
     outfile: 'dist/web/extension.js',
     plugins: [rawImports],
     platform: 'browser',
+    // O host do navegador é um web worker, sem `document`: pacotes com versão "worker" (como o
+    // decode-named-character-reference, que na versão "browser" cria um elemento ao carregar) usam essa
+    conditions: ['worker'],
     format: 'cjs',
     target: 'es2022',
     external: ['vscode'],
@@ -125,6 +128,9 @@ const builds = [
     outfile: 'out-test/web/index.js',
     plugins: [rawImports],
     platform: 'browser',
+    // O host do navegador é um web worker, sem `document`: pacotes com versão "worker" (como o
+    // decode-named-character-reference, que na versão "browser" cria um elemento ao carregar) usam essa
+    conditions: ['worker'],
     // O Mocha de navegador é UMD e troca o module.exports do bundle pelo dele (o VS Code chamaria o
     // run do Mocha): IIFE e o module.exports definido no fim, depois do Mocha
     format: 'iife',
