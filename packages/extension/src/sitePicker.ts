@@ -87,19 +87,19 @@ export async function pickSite(host: PickerHost) {
   /** Os sites locais dentro da pasta (ou nela mesma). */
   const sitesIn = (path: string) => candidates.filter(c => c.local && (c.local.site.root === path || c.local.site.root.startsWith(`${path}/`)));
 
-  /** `folder`: na navegação, o nome da pasta vem primeiro e o do site ao lado. */
+  /** `folder`: na navegação, a linha é o diretório (pelo nome dele) e o nome do site vai na descrição. */
   const siteItem = (site: SiteCandidate, extra?: string, folder?: string): Item => {
     const showing = site.key === host.currentKey;
     const count = drafts.get(site.key);
     const parts = [
-      folder ? site.label : '',
+      folder && !showing ? vscode.l10n.t('documentation: {0}', site.label) : '',
       extra,
       count?.draft ? (count.draft === 1 ? vscode.l10n.t('1 draft') : vscode.l10n.t('{0} drafts', count.draft)) : '',
       count?.review ? vscode.l10n.t('{0} in review', count.review) : '',
       showing ? vscode.l10n.t('showing now') : '',
     ];
     return {
-      label: `$(${showing ? 'check' : site.remote ? 'github' : 'book'}) ${folder ?? site.label}`,
+      label: `$(${showing ? 'check' : folder ? 'folder' : site.remote ? 'github' : 'book'}) ${folder ?? site.label}`,
       description: parts.filter(Boolean).join(' · '),
       buttons: [folderButton(site.remote ? `${site.remote.host}/${site.description}` : `~/${site.description}`), ...(showing ? [] : [hideButton])],
       site,
@@ -161,12 +161,12 @@ export async function pickSite(host: PickerHost) {
       if (row.sites.length === 1 && only.local!.site.root === row.uri.path) items.push(siteItem(only, undefined, row.name));
       else {
         // Sem número: os sites mais fundos que o limite da busca só entram ao chegar na pasta deles
-        items.push({ label: `$(folder) ${row.name}`, description: vscode.l10n.t('has documentation'), enter: { to: row.uri } });
+        items.push({ label: `$(folder) ${row.name}`, description: vscode.l10n.t('documentation inside'), enter: { to: row.uri } });
       }
     }
-    const without = rows.filter(r => !r.sites.length);
-    if (without.length) items.push(separator(vscode.l10n.t('without documentation')));
-    items.push(...without.map((row): Item => ({ label: `$(folder) ${row.name}`, description: vscode.l10n.t('no documentation'), enter: { to: row.uri } })));
+    // Sem separador nem descrição: o VS Code desenha o texto do separador ao lado da primeira linha, e a falta da
+    // descrição já diz que o diretório não tem documentação
+    items.push(...rows.filter(r => !r.sites.length).map((row): Item => ({ label: `$(folder) ${row.name}`, enter: { to: row.uri } })));
     if (here && !self && !sitesIn(here.path).length) {
       items.push({ label: `$(check) ${vscode.l10n.t('Use this folder')}`, description: `${shortPath(here)} · ${vscode.l10n.t('to create its documentation')}`, action: 'useHere', alwaysShow: true });
     }
