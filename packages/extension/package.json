@@ -107,6 +107,12 @@
         "icon": "$(checklist)"
       },
       {
+        "command": "techdocsEditor.checkShown",
+        "title": "%command.checkShown%",
+        "category": "TechDocs",
+        "icon": "$(checklist)"
+      },
+      {
         "command": "techdocsEditor.prepareDocs",
         "title": "%command.prepareDocs%",
         "category": "TechDocs",
@@ -654,6 +660,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "techdocsEditor.checkShown",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && techdocsEditor.hasDocs",
+          "group": "navigation@0"
+        },
         {
           "command": "techdocsEditor.filterTree",
           "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && (techdocsEditor.hasDocs || techdocsEditor.hasRemote)",

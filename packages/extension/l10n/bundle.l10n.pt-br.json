@@ -513,5 +513,13 @@
   "the links of {0} pages": "os links de {0} páginas",
   "\"{0}\" deleted and taken out of the menu of the site.": "\"{0}\" excluído e tirado do menu do site.",
   "\"{0}\" moved. Also updated: {1}.": "\"{0}\" movido. Atualizados junto: {1}.",
-  "{0} is already a page of the site.": "{0} já é uma página do site."
+  "{0} is already a page of the site.": "{0} já é uma página do site.",
+  "{0}: documentation without problems.": "{0}: documentação sem problemas.",
+  "View": "Ver",
+  "{0}: {1} adjustments. {2} automatic, {3} need you.": "{0}: {1} ajustes. {2} automáticos, {3} precisam de você.",
+  "{0}: {1} adjustments, all automatic.": "{0}: {1} ajustes, todos automáticos.",
+  "{0}: {1} adjustments that need you.": "{0}: {1} ajustes que precisam de você.",
+  "{0} adjustments made in {1} files. {2} left that need you: they are in the Problems panel.": "{0} ajustes feitos em {1} arquivos. Faltam {2} que precisam de você: estão no painel Problemas.",
+  "{0} adjustments made in {1} files.": "{0} ajustes feitos em {1} arquivos.",
+  "Fix all automatically": "Ajustar automaticamente"
 }

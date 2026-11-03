@@ -47,11 +47,11 @@ export class RepoCheck implements vscode.Disposable {
       vscode.workspace.onDidSaveTextDocument(() => {
         if (!this.last) return;
         clearTimeout(this.recheckTimer);
-        this.recheckTimer = setTimeout(() => void this.check(true), RECHECK_DELAY_MS);
+        this.recheckTimer = setTimeout(() => void this.recheck(), RECHECK_DELAY_MS);
       }),
       // O modo do catalog-info.yaml mudou na configuração: o que a conferência mostra também muda
       vscode.workspace.onDidChangeConfiguration(event => {
-        if (this.last && event.affectsConfiguration('techdocsEditor.catalog')) void this.check(true);
+        if (this.last && event.affectsConfiguration('techdocsEditor.catalog')) void this.recheck();
       }),
     );
   }
@@ -91,6 +91,91 @@ export class RepoCheck implements vscode.Disposable {
       void vscode.commands.executeCommand(`${CHECK_VIEW}.focus`);
     }
     return results;
+  }
+
+  /** Confere de novo só os sites já conferidos (o workspace pode ser o ~/code, com dezenas de sites). */
+  private async recheck() {
+    const checked = new Set((this.last ?? []).map(r => r.mkdocs.toString()));
+    for (const site of this.sites.list().filter(s => checked.has(s.mkdocs.toString()))) await this.checkOne(site);
+  }
+
+  /** Confere um site e junta o resultado ao dos outros já conferidos. */
+  private async checkOne(site: Site): Promise<SiteCheck> {
+    const { snapshot, base } = await this.snapshot(site);
+    const result: SiteCheck = { mkdocs: site.mkdocs, base, findings: checkSite(snapshot) };
+    this.last = [...(this.last ?? []).filter(r => r.mkdocs.toString() !== site.mkdocs.toString()), result];
+    this.show(this.last);
+    this.checkedEmitter.fire(this.last);
+    return result;
+  }
+
+  /**
+   * O botão Conferir da árvore: confere o site mostrado e diz quantos ajustes são automáticos e quantos precisam
+   * da pessoa, com Ver (o painel Problemas) e Ajustar automaticamente (todos de uma vez, com Desfazer depois).
+   * `ask`: a resposta pronta dos testes.
+   */
+  async checkShown(target?: vscode.Uri, ask: Ask = showMessage): Promise<CheckOutcome | undefined> {
+    await this.sites.ready;
+    const site = await this.pickSite(target);
+    if (!site) {
+      if (site === undefined) await this.check();
+      return undefined;
+    }
+    const name = decodeURIComponent(site.site.root.split('/').filter(Boolean).pop() ?? '');
+    const { base, findings } = await this.checkOne(site);
+    const auto = findings.filter(f => f.fix);
+    const manual = needsYou(findings);
+    if (!auto.length && !manual.length) {
+      void ask('info', vscode.l10n.t('{0}: documentation without problems.', name));
+      return { auto: 0, manual: 0, applied: 0 };
+    }
+    const view = vscode.l10n.t('View');
+    const fixAll = vscode.l10n.t('Fix all automatically');
+    const message =
+      auto.length && manual.length
+        ? vscode.l10n.t('{0}: {1} adjustments. {2} automatic, {3} need you.', name, auto.length + manual.length, auto.length, manual.length)
+        : auto.length
+          ? vscode.l10n.t('{0}: {1} adjustments, all automatic.', name, auto.length)
+          : vscode.l10n.t('{0}: {1} adjustments that need you.', name, manual.length);
+    const choice = await ask('warning', message, ...(auto.length ? [view, fixAll] : [view]));
+    if (choice === view) await showProblems();
+    if (choice !== fixAll) return { auto: auto.length, manual: manual.length, applied: 0 };
+    return this.fixAll(site, base, auto, ask);
+  }
+
+  /** Aplica todas as correções sem perguntar uma por uma; o aviso no fim tem Desfazer (volta os arquivos como estavam). */
+  private async fixAll(site: Site, base: vscode.Uri, fixes: SiteFinding[], ask: Ask): Promise<CheckOutcome> {
+    const before = new Map<string, { uri: vscode.Uri; text: string | undefined }>();
+    let applied = 0;
+    for (const finding of fixes) {
+      const uri = vscode.Uri.joinPath(base, finding.fix!.file);
+      // O texto do momento: várias correções no mesmo arquivo (o mkdocs.yml) vão uma sobre a outra
+      const current = await this.currentText(uri);
+      const next = finding.fix!.apply(current);
+      if (next === current) continue;
+      if (!before.has(uri.toString())) before.set(uri.toString(), { uri, text: current });
+      await this.write(uri, current, next);
+      applied++;
+    }
+    const left = needsYou((await this.checkOne(site)).findings).length;
+    const undo = vscode.l10n.t('Undo');
+    const files = before.size;
+    const message = left
+      ? vscode.l10n.t('{0} adjustments made in {1} files. {2} left that need you: they are in the Problems panel.', applied, files, left)
+      : vscode.l10n.t('{0} adjustments made in {1} files.', applied, files);
+    const outcome: CheckOutcome = { auto: fixes.length, manual: left, applied };
+    if (!applied) return outcome;
+    const choice = await ask('info', message, undo);
+    if (left && choice !== undo) await showProblems();
+    if (choice === undo) {
+      for (const { uri, text } of before.values()) {
+        if (text === undefined) await vscode.workspace.fs.delete(uri).then(undefined, () => undefined);
+        else await this.write(uri, await this.currentText(uri), text);
+      }
+      await this.checkOne(site);
+      outcome.undone = true;
+    }
+    return outcome;
   }
 
   /**
@@ -265,6 +350,17 @@ export class RepoCheck implements vscode.Disposable {
     for (const { uri, list } of byFile.values()) this.diagnostics.set(uri, list);
   }
 }
+
+/** Pergunta do aviso (nos testes, a resposta pronta). */
+export type Ask = (kind: 'info' | 'warning', message: string, ...items: string[]) => Thenable<string | undefined>;
+/** O que o botão Conferir achou e fez. */
+export type CheckOutcome = { auto: number; manual: number; applied: number; undone?: boolean };
+
+const showMessage: Ask = (kind, message, ...items) =>
+  kind === 'warning' ? vscode.window.showWarningMessage(message, ...items) : vscode.window.showInformationMessage(message, ...items);
+const showProblems = () => vscode.commands.executeCommand('workbench.actions.view.problems');
+/** O que não tem ajuste automático e pede uma decisão: as dicas (ex.: catalog-info.yaml opcional) não contam. */
+const needsYou = (findings: SiteFinding[]) => findings.filter(f => !f.fix && (f.severity === 'error' || f.severity === 'warning'));
 
 const SEVERITY = {
   error: vscode.DiagnosticSeverity.Error,

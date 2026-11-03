@@ -1308,6 +1308,39 @@ export function defineTests() {
       }
     });
 
+    test('botão Conferir: diz o que é automático e o que precisa da pessoa; Ajustar automaticamente e Desfazer', async () => {
+      const { repoCheck, sites } = await api();
+      await sites.ready;
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const yml = 'site_name: Conferir\nnav:\n  - Início: index.md\n  - Sumiu: sumiu.md\nplugins:\n  - search\n';
+      await write('check-all/docs/index.md', '# Conferir\n\nVeja [a outra](nada.md) e a [fora](fora.md).\n');
+      await write('check-all/docs/fora.md', '# Fora\n');
+      await write('check-all/mkdocs.yml', yml);
+      const messages: string[] = [];
+      let fixed: { mkdocs: string; sumiu: string } | undefined;
+      try {
+        await until(() => sites.list().some(s => s.mkdocs.path.endsWith('/check-all/mkdocs.yml')), Boolean, 'site não reconhecido', 20_000);
+        const outcome = await repoCheck.checkShown(file('check-all/mkdocs.yml'), async (_kind, message, ...items) => {
+          messages.push(message);
+          if (items.includes('Fix all automatically')) return 'Fix all automatically';
+          // O aviso do fim: confere o que foi ajustado antes de desfazer
+          fixed = { mkdocs: await read('check-all/mkdocs.yml'), sumiu: await read('check-all/docs/sumiu.md') };
+          return 'Undo';
+        });
+        ok(/^check-all: \d+ adjustments\. \d+ automatic, 1 need you\.$/.test(messages[0]), `1º aviso: ${messages[0]}`);
+        ok(/adjustments made in \d+ files\. 1 left that need you/.test(messages[1]), `2º aviso: ${messages[1]}`);
+        ok(fixed?.mkdocs.includes('techdocs-core') && fixed.mkdocs.includes('- fora.md'), `mkdocs.yml ajustado: ${fixed?.mkdocs}`);
+        equal(fixed?.sumiu, '# Sumiu\n', 'página do nav criada');
+        ok(outcome?.undone && outcome.applied >= 3, `resultado: ${JSON.stringify(outcome)}`);
+        // Desfazer: tudo como antes, e o que foi criado sai
+        equal(await read('check-all/mkdocs.yml'), yml, 'mkdocs.yml de volta');
+        ok(!(await read('check-all/docs/sumiu.md').then(() => true, () => false)), 'a página criada saiu');
+        ok(vscode.languages.getDiagnostics(file('check-all/mkdocs.yml')).some(d => d.code === 'nav-page-missing'), 'o painel voltou a mostrar o achado');
+      } finally {
+        await remove('check-all');
+      }
+    });
+
     test('conferir: achados no painel Problemas; preparar: aplica as correções e sobra o que precisa de uma pessoa', async () => {
       const { repoCheck, sites, checkView } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));

@@ -164,6 +164,8 @@ export function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand('techdocsEditor.refreshTemplates', () => refreshCentralTemplates(central)),
     vscode.commands.registerCommand('techdocsEditor.checkDocs', () => repoCheck.check()),
+    // O botão da árvore: o site mostrado nela
+    vscode.commands.registerCommand('techdocsEditor.checkShown', () => repoCheck.checkShown(docs.localSite?.mkdocs)),
     // A engrenagem da seção Verificação e o "Configurar…" do item sem catalog-info.yaml
     vscode.commands.registerCommand('techdocsEditor.checkOptions', (item?: CheckItem) =>
       catalogOptions.choose(repositoryFolder(item instanceof CheckItem ? item.base : undefined)),
