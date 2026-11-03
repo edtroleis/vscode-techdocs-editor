@@ -1,15 +1,13 @@
 import * as vscode from 'vscode';
+import { filesUnder } from './docsFiles';
 import type { LocalSites } from './localSites';
 
 /** O que o repositório já tem e a extensão pode usar para criar a documentação (o "Encontrei:" da tela). */
 export type Found = { readme: boolean; docs: boolean; catalog: boolean };
 
 /** Os mesmos arquivos do `workspaceContains` do package.json, na raiz de cada pasta do workspace. */
-const PATTERNS: Record<keyof Found, string> = {
-  readme: '{README.md,readme.md,Readme.md}',
-  docs: 'docs/**/*.md',
-  catalog: 'catalog-info.{yaml,yml}',
-};
+const README = /^readme\.md$/i;
+const CATALOG = /^catalog-info\.ya?ml$/;
 
 /** Repositório com algo do que se procura e sem site: a barra lateral mostra a tela de boas-vindas. */
 export const canPrepare = (found: Found, hasSites: boolean) => !hasSites && (found.readme || found.docs || found.catalog);
@@ -34,13 +32,24 @@ export class PrepareContext implements vscode.Disposable {
       clearTimeout(this.timer);
       this.timer = setTimeout(() => (this.ready = this.update()), 300);
     };
-    for (const pattern of Object.values(PATTERNS)) {
-      const watcher = vscode.workspace.createFileSystemWatcher(`**/${pattern}`, false, true, false);
-      this.disposables.push(watcher, watcher.onDidCreate(later), watcher.onDidDelete(later));
-    }
-    // Pasta apagada: o VS Code avisa só a pasta, não os `.md` de dentro
-    const deletions = vscode.workspace.createFileSystemWatcher('**/*', true, true, false);
-    this.disposables.push(deletions, deletions.onDidDelete(later), sites.onDidChange(later), vscode.workspace.onDidChangeWorkspaceFolders(later));
+    // Só a raiz de cada pasta do workspace e o docs/ dela: com o workspace no ~, um `**/*` avisava a cada arquivo
+    // apagado em qualquer canto (caches, temporários) e cada aviso refazia a procura no ~ inteiro
+    const watch = (folder: vscode.WorkspaceFolder) =>
+      ['*', 'docs/**'].map(glob => {
+        const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(folder, glob), false, true, false);
+        this.disposables.push(watcher.onDidCreate(later), watcher.onDidDelete(later));
+        return watcher;
+      });
+    let watchers = (vscode.workspace.workspaceFolders ?? []).flatMap(watch);
+    this.disposables.push(
+      sites.onDidChange(later),
+      vscode.workspace.onDidChangeWorkspaceFolders(() => {
+        watchers.forEach(w => w.dispose());
+        watchers = (vscode.workspace.workspaceFolders ?? []).flatMap(watch);
+        later();
+      }),
+      { dispose: () => watchers.forEach(w => w.dispose()) },
+    );
     this.ready = sites.ready.then(() => this.update());
   }
 
@@ -51,14 +60,17 @@ export class PrepareContext implements vscode.Disposable {
 
   private async update() {
     const folders = vscode.workspace.workspaceFolders ?? [];
-    // Sem maxResults: no VS Code para navegador, findFiles com maxResults 1 não acha nada
-    const has = async (pattern: string) => {
-      for (const folder of folders) {
-        if ((await vscode.workspace.findFiles(new vscode.RelativePattern(folder, pattern), '**/node_modules/**')).length) return true;
-      }
+    // Lido direto do disco, sem o findFiles: a busca do VS Code percorre o workspace inteiro mesmo para um arquivo
+    // da raiz (no ~, minutos de ripgrep a cada mudança)
+    const roots = await Promise.all(
+      folders.map(folder => vscode.workspace.fs.readDirectory(folder.uri).then(list => list.map(([name]) => name), () => [] as string[])),
+    );
+    const atRoot = (name: RegExp) => roots.some(names => names.some(n => name.test(n)));
+    const hasDocs = async () => {
+      for (const folder of folders) if ((await filesUnder(vscode.Uri.joinPath(folder.uri, 'docs'), true)).length) return true;
       return false;
     };
-    this.found = { readme: await has(PATTERNS.readme), docs: await has(PATTERNS.docs), catalog: await has(PATTERNS.catalog) };
+    this.found = { readme: atRoot(README), docs: await hasDocs(), catalog: atRoot(CATALOG) };
     this.active = canPrepare(this.found, this.sites.all().length > 0);
     const set = (key: string, value: boolean) => vscode.commands.executeCommand('setContext', `techdocsEditor.${key}`, value);
     await Promise.all([
