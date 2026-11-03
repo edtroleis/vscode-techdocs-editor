@@ -48,6 +48,8 @@ the VS Code Explorer, and one button checks and fixes a whole site.
 - Links and e-mails no longer get a `\` before `&` and `@`, which MkDocs kept and broke the link.
 - Extra spaces at the end of lines and inside inline code (common after a paste) are fixed by **Fix
   automatically**.
+- With the workspace in a large directory (such as `~`), the sidebar no longer keeps searching the whole of it
+  for a README, `docs` and `catalog-info.yaml` every time a file is deleted anywhere, which kept the CPU busy.
 - Checking no longer stays stuck looking for `catalog-info.yaml` in the whole workspace (minutes in `~` or
   `~/code`); the status bar says *Checking <site>…* meanwhile.
 - After choosing a page in the link box, the focus goes back to the editor at the end of the link (what you typed
