@@ -1,3 +1,4 @@
+import { DEFAULT_LINT_CONFIG, lintMarkdown } from './lint';
 import {
   defaultCodeLanguage,
   docsDirFromMkdocs,
@@ -34,6 +35,17 @@ describe('toEditor / fromEditor (blocos do MkDocs)', () => {
 });
 
 describe('fromEditor (ajustes ao salvar)', () => {
+  it('tabela larga sai compacta; a estreita continua alinhada; código não muda', () => {
+    const long = 'x'.repeat(130);
+    const wide = `| A    | B${' '.repeat(129)} |\n| :--- | :${'-'.repeat(129)}: |\n| um   | ${long} |\n| d\\|x | e${' '.repeat(129)} |\n|      |${' '.repeat(131)} |\n`;
+    expect(fromEditor(wide)).toBe(`| A | B |\n| :-- | :-: |\n| um | ${long} |\n| d\\|x | e |\n| | |\n`);
+    // O lint aceita a tabela compacta (estilo único na tabela)
+    expect(lintMarkdown(`# T\n\n${fromEditor(wide)}`, DEFAULT_LINT_CONFIG)).toEqual([]);
+    const narrow = '| A  | B |\n| :- | - |\n| um | 2 |\n';
+    expect(fromEditor(narrow)).toBe(narrow);
+    const code = '```text\n' + wide + '```\n';
+    expect(fromEditor(code)).toBe(code);
+  });
   it('tira as barras antes de & e @ que o MkDocs não entende, fora do código', () => {
     const editor = '![x](https://a.com/i.png?a=1\\&b=2) e [l](https://a.com/?x=1\\&y=2) e hello\\@getoutline.com\n\n`a\\&b` e \\&amp; e R\\&D\n';
     expect(fromEditor(editor)).toBe('![x](https://a.com/i.png?a=1&b=2) e [l](https://a.com/?x=1&y=2) e hello@getoutline.com\n\n`a\\&b` e \\&amp; e R&D\n');

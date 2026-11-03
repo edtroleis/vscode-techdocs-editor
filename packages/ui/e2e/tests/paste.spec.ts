@@ -59,7 +59,7 @@ const IMAGES =
 // Começo de página do Confluence: sumário (macro toc) e título em negrito
 const CONFLUENCE_TOC =
   '<div class="toc-macro client-side-toc-macro conf-macro output-block hidden-outline" data-headerelements="H1,H2" data-hasbody="false" data-macro-name="toc"><ul><li><span class="toc-item-body" data-outline="1"><a href="https://cwiki.example.org/confluence/spaces/X/pages/1/P#P-Status">Status</a></span></li></ul></div>' +
-  '<h2 id="P-Status"><strong>Status</strong><span class="copy-heading-link-container"></span></h2><p>Aceito, com <strong>negrito</strong> no meio.</p>';
+  '<h2 id="P-Status"><strong>Status</strong><span class="copy-heading-link-container"></span></h2><p>Aceito, com <strong>negrito</strong> no meio.</p><h3><span style="font-weight: bold;">Por estilo</span><span class="copy-heading-link-container"></span></h3><p>Fim.</p>';
 
 // Outline: seções em H1 e imagem com a legenda repetida
 const OUTLINE_SECTIONS =
@@ -69,7 +69,21 @@ const OUTLINE_SECTIONS =
 const CONFLUENCE_TABLE_HEADINGS =
   '<table class="confluenceTable"><thead><tr><th class="confluenceTh">Version</th><th class="confluenceTh"><h3 id="x">Non-reserved Keywords</h3></th></tr></thead><tbody><tr><td class="confluenceTd">Hive 1.2.0</td><td class="confluenceTd"><h4>ALL</h4> e mais</td></tr></tbody></table><p>Depois da tabela.</p>';
 
+// Tabela do Hive: a primeira linha é o título sobre as 3 colunas; e uma célula ocupando 2 linhas
+const CONFLUENCE_MERGED =
+  '<table class="confluenceTable"><thead><tr><th class="confluenceTh"><br></th><th class="confluenceTh" colspan="2"><h3>All Keywords</h3></th></tr></thead><tbody><tr><th class="confluenceTh">Version</th><th class="confluenceTh">Non-reserved</th><th class="confluenceTh">Reserved</th></tr>' +
+  '<tr><td class="confluenceTd" rowspan="2">Hive 1.2.0</td><td class="confluenceTd">ADD</td><td class="confluenceTd">ALL</td></tr><tr><td class="confluenceTd">ADMIN</td><td class="confluenceTd">ALTER</td></tr></tbody></table><p>Depois da tabela mesclada.</p>';
+
 test.describe('colar do Confluence e do Outline (spec 05)', () => {
+  test('C8: células mescladas: o título da tabela vira parágrafo e a tabela fica inteira', async ({ page }) => {
+    await openEditor(page, PAGE);
+    await paste(page, CONFLUENCE_MERGED);
+    const md = await savedWith(page, 'Depois da tabela mesclada.');
+    expect(md).toContain('**All Keywords**:\n\n|');
+    expect(md).toMatch(/\| Version +\| Non-reserved +\| Reserved +\|/);
+    expect(md).toMatch(/\| Hive 1\.2\.0 +\| ADD +\| ALL +\|\n\| +\| ADMIN +\| ALTER +\|/);
+  });
+
   test('C7: títulos dentro das células da tabela viram o texto da célula, e a tabela fica inteira', async ({ page }) => {
     await openEditor(page, PAGE);
     await paste(page, CONFLUENCE_TABLE_HEADINGS);
@@ -86,6 +100,7 @@ test.describe('colar do Confluence e do Outline (spec 05)', () => {
     expect(md).not.toContain('cwiki.example.org');
     expect(md).toContain('## Status\n');
     expect(md).toContain('Aceito, com **negrito** no meio.');
+    expect(md).toContain('### Por estilo\n');
   });
 
   test('C9 e C10: seções do Outline descem um nível (a página já tem título) e a legenda não se repete', async ({ page }) => {

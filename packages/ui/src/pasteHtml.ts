@@ -15,6 +15,8 @@ export function cleanPastedHtml(html: string, pageHasTitle = false): string {
   doc.querySelectorAll('.toc-macro, [data-macro-name="toc"]').forEach(e => e.remove());
   // C10: a legenda da imagem do Outline repete o texto alternativo
   doc.querySelectorAll('.image > img + .caption, .image > .caption').forEach(e => e.remove());
+  // C8: células mescladas não existem no Markdown (a tabela saía partida)
+  doc.querySelectorAll('table').forEach(table => unmergeCells(doc, table));
   // C7: título dentro de célula de tabela (Confluence) não cabe no Markdown: o título saltava para fora e a tabela
   // ficava vazia. Vira o texto da célula (o cabeçalho já é negrito; na célula comum, negrito)
   for (const heading of [...doc.querySelectorAll('td :is(h1, h2, h3, h4, h5, h6), th :is(h1, h2, h3, h4, h5, h6)')]) {
@@ -24,6 +26,8 @@ export function cleanPastedHtml(html: string, pageHasTitle = false): string {
   }
   // C7: título inteiro em negrito (Confluence): o negrito sai, o título já se destaca
   for (const heading of [...doc.querySelectorAll('h1, h2, h3, h4, h5, h6')]) {
+    // Negrito por estilo (`<span style="font-weight: bold">`, no Confluence) também vira negrito no editor
+    heading.querySelectorAll('[style]').forEach(e => e.removeAttribute('style'));
     // Sem contar os vazios (o botão de copiar o link do título, no Confluence)
     const filled = [...heading.children].filter(e => e.textContent?.trim());
     const [only] = filled;
@@ -55,6 +59,61 @@ export function cleanPastedHtml(html: string, pageHasTitle = false): string {
   // C4 depois do C2: o código dentro de um painel já é <pre> e vai para o corpo do aviso
   for (const panel of [...doc.querySelectorAll(PANELS)]) panel.replaceWith(admonition(doc, panel));
   return doc.body.innerHTML;
+}
+
+/**
+ * C8: tira as células mescladas. A linha de cima com uma célula só com texto, mesclada sobre as outras colunas (o
+ * título da tabela no Confluence), vira um parágrafo em negrito antes dela; as outras células mescladas ficam na primeira posição e as
+ * posições que ocupavam viram células vazias.
+ */
+function unmergeCells(doc: Document, table: HTMLTableElement) {
+  const rows = [...table.rows];
+  if (!rows.some(r => [...r.cells].some(c => c.colSpan > 1 || c.rowSpan > 1))) return;
+  // A grade com as posições ocupadas por cada célula
+  const grid: (HTMLTableCellElement | null)[][] = rows.map(() => []);
+  rows.forEach((row, r) => {
+    let col = 0;
+    for (const cell of [...row.cells]) {
+      while (grid[r][col] !== undefined) col++;
+      for (let dr = 0; dr < Math.max(1, cell.rowSpan); dr++) {
+        for (let dc = 0; dc < Math.max(1, cell.colSpan); dc++) {
+          if (grid[r + dr]) grid[r + dr][col + dc] = dr === 0 && dc === 0 ? cell : null;
+        }
+      }
+      col += Math.max(1, cell.colSpan);
+    }
+  });
+  const width = Math.max(...grid.map(g => g.length));
+  // A linha de título: uma célula só com texto, mesclada sobre as outras colunas (ao lado, só células vazias)
+  const filled = [...rows[0].cells].filter(c => c.textContent?.trim());
+  if (rows.length > 1 && filled.length === 1 && filled[0].colSpan > 1 && filled[0].rowSpan <= 1) {
+    const title = doc.createElement('p');
+    const strong = doc.createElement('strong');
+    strong.textContent = filled[0].textContent?.trim() ?? '';
+    // Com os dois-pontos fora do negrito: um parágrafo só de negrito o lint toma por título (MD036)
+    title.append(strong, ':');
+    table.before(title);
+    rows[0].remove();
+    rows.shift();
+    grid.shift();
+  }
+  // Colunas vazias em todas as linhas (sobras das células mescladas) saem
+  const used = Array.from({ length: width }, (_, c) => grid.some(g => g[c]?.textContent?.trim()));
+  rows.forEach((row, r) => {
+    const cells = [...grid[r]];
+    while (cells.length < width) cells.push(null);
+    for (let c = width - 1; c >= 0; c--) if (!used[c]) cells.splice(c, 1);
+    row.replaceChildren(
+      ...cells.map(cell => {
+        if (cell) {
+          cell.removeAttribute('colspan');
+          cell.removeAttribute('rowspan');
+          return cell;
+        }
+        return doc.createElement(row.querySelector('th') && !row.querySelector('td') ? 'th' : 'td');
+      }),
+    );
+  });
 }
 
 /** Painéis do Confluence (Data Center e Cloud) e avisos do Outline. */

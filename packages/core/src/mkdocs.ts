@@ -186,7 +186,45 @@ function restoreRawBlocks(lines: Line[]): Line[] {
 }
 
 // tidy antes de restaurar: os blocos do MkDocs ainda estão protegidos dentro de cercas
-const toRepoLines = (markdown: string) => restoreRawBlocks(renumberOrderedLists(tidy(toLines(markdown))));
+/** Largura a partir da qual a tabela sai compacta (spec 05, C8). */
+const WIDE_TABLE = 120;
+
+/** As células de uma linha de tabela (`| a | b |`), sem cortar no `\|` escapado. */
+const tableCells = (row: string) => row.trim().replace(/^\|/, '').replace(/(?<!\\)\|$/, '').split(/(?<!\\)\|/).map(c => c.trim());
+
+/**
+ * Tabela com alguma linha mais larga que `WIDE_TABLE` sai compacta: um espaço em volta de cada célula, em vez de
+ * todas completadas até a maior (tabelas coladas do Confluence davam linhas de centenas de caracteres, difíceis de
+ * ler e de revisar no PR). As estreitas continuam alinhadas, como o editor escreve.
+ */
+const compactWideTables = (lines: Line[]): Line[] => {
+  const out = [...lines];
+  let fence: string | undefined;
+  for (let i = 0; i < out.length; i++) {
+    const marker = out[i].text.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (marker) {
+      if (!fence) fence = marker[1][0];
+      else if (marker[1][0] === fence) fence = undefined;
+      continue;
+    }
+    if (fence || !/^\s*\|/.test(out[i].text) || !/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(out[i + 1]?.text ?? '')) continue;
+    let end = i + 2;
+    while (end < out.length && /^\s*\|/.test(out[end].text)) end++;
+    if (out.slice(i, end).some(l => l.text.length > WIDE_TABLE)) {
+      for (let j = i; j < end; j++) {
+        const cells = tableCells(out[j].text).map(c =>
+          j === i + 1 ? (c.startsWith(':') ? ':' : '-') + '-' + (c.endsWith(':') ? ':' : '-') : c,
+        );
+        // Célula vazia com um espaço só (`| |`): com dois, o lint reclama do estilo (MD060)
+        out[j] = { ...out[j], text: `|${cells.map(c => (c ? ` ${c} ` : ' ')).join('|')}|` };
+      }
+    }
+    i = end - 1;
+  }
+  return out;
+};
+
+const toRepoLines = (markdown: string) => restoreRawBlocks(compactWideTables(renumberOrderedLists(tidy(toLines(markdown)))));
 
 /** Markdown do editor → Markdown do repositório. */
 export function fromEditor(markdown: string): string {
