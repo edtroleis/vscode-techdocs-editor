@@ -32,6 +32,8 @@ type Harness = {
   changes: number;
   /** Nomes dos arquivos enviados pelo botão de imagem. */
   uploads: string[];
+  /** Imagens coladas de fora que o editor pediu para trazer ao repositório (as com "sem-acesso" ficam de fora). */
+  imports: string[];
   /** Endereços que o editor pediu para exibir. */
   resolved: string[];
   /** Markdown como seria salvo no repositório (fromEditor). */
@@ -66,6 +68,7 @@ const ref = createRef<MarkdownEditorHandle>();
 const harness: Harness = {
   changes: 0,
   uploads: [],
+  imports: [],
   resolved: [],
   saved: () => (harness.editorMarkdown === undefined ? undefined : fromEditor(harness.editorMarkdown)),
   lint: () => lintFindings(harness.saved() ?? fromEditor(toEditor(initial)), lintConfig),
@@ -89,6 +92,10 @@ createRoot(document.getElementById('root')!).render(
     onUploadImage={async file => {
       harness.uploads.push(file.name);
       return `../assets/${file.name}`;
+    }}
+    onImportImage={async url => {
+      harness.imports.push(url);
+      return url.includes('sem-acesso') ? undefined : `assets/${url.split('/').pop()!.split('?')[0]}`;
     }}
     resolveImage={async url => {
       harness.resolved.push(url);

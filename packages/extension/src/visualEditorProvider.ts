@@ -3,7 +3,7 @@ import { parseRemoteUri, REMOTE_SCHEME, remoteUriPath } from '@edtroleis/techdoc
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
 import type { RemoteFileSystem } from './remote/remoteFs';
-import { DEFAULT_MAX_IMAGE_MB, imageProblem, imageTarget } from './imageUpload';
+import { DEFAULT_MAX_IMAGE_MB, downloadImage, imageProblem, imageTarget } from './imageUpload';
 import type { HostMessage, LinkPageView, WebviewLabels, WebviewMessage } from './protocol';
 import type { Strip, StripAction } from './publish/strip';
 import { hasConflictMarkers } from './docsSite';
@@ -240,6 +240,9 @@ export class EditorSession {
       case 'linkPages':
         this.post({ type: 'linkPages', id: message.id, pages: this.status?.linkPages?.() ?? [] });
         return;
+      case 'importImage':
+        void this.importImage(message.url).then(link => this.post({ type: 'uploaded', id: message.id, link }));
+        return;
       case 'uploadImage':
         void this.uploadImage(message.name, message.mime, message.data).then(
           link => this.post({ type: 'uploaded', id: message.id, link }),
@@ -300,6 +303,24 @@ export class EditorSession {
       return link;
     } catch (e) {
       throw new Error(vscode.l10n.t('Could not save the image "{0}": {1}', name, e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  /**
+   * Imagem colada de outra ferramenta (spec 05, C3): baixa e grava como uma enviada. Sem acesso (login, fora do ar,
+   * não é imagem), avisa e fica o endereço de fora (undefined).
+   */
+  private async importImage(url: string): Promise<string | undefined> {
+    const maxMB = vscode.workspace.getConfiguration('techdocsEditor', this.document.uri).get<number>('images.maxSizeMB', DEFAULT_MAX_IMAGE_MB);
+    try {
+      const { name, mime, data } = await downloadImage(url, maxMB);
+      return await this.uploadImage(name, mime, data);
+    } catch (e) {
+      const reason = e instanceof Error && e.message === 'tooLarge' ? vscode.l10n.t('larger than {0} MB', maxMB) : e instanceof Error ? e.message : String(e);
+      void vscode.window.showWarningMessage(
+        vscode.l10n.t('The pasted image could not be copied to the repository ({0}). It still points to {1}, which may not work on the site.', reason, new URL(url).host),
+      );
+      return undefined;
     }
   }
 

@@ -62,6 +62,8 @@ export type WebviewMessage =
   | { type: 'showLine'; line: number }
   /** Imagem escolhida no editor visual: o host grava em `<docs>/assets/` e responde com `uploaded`. */
   | { type: 'uploadImage'; id: number; name: string; mime: string; data: Uint8Array }
+  /** Imagem colada de outra ferramenta (spec 05, C3): o host baixa, grava em `<docs>/assets/` e responde com `uploaded`. */
+  | { type: 'importImage'; id: number; url: string }
   /** A caixa de link abriu: o host responde com `linkPages`. */
   | { type: 'linkPages'; id: number }
   /**

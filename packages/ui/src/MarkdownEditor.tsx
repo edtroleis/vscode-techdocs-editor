@@ -13,7 +13,7 @@ import { headingLevelFixPlugin } from './headingLevelFix';
 import { tableTabRowPlugin } from './tableTabRow';
 import { attachLinkPages, LinkPage } from './linkPages';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
-import { pasteHtmlPlugin } from './pasteHtml';
+import { ImportImage, pasteHtmlPlugin } from './pasteHtml';
 import { buildTopBar } from './topBar';
 import { EditorText, headingOptions, labelTopBar, selectionToolbar, slashMenu } from './labels';
 import { SearchResult, moveSearch, search, searchResult, visualSearchPlugin } from './visualSearch';
@@ -72,6 +72,8 @@ type Props = {
   onChange: (markdown: string, previous: string) => void;
   /** Envia a imagem e devolve o endereço que vai no Markdown. */
   onUploadImage: (file: File) => Promise<string>;
+  /** Imagem colada de outra ferramenta (spec 05, C3): grava no repositório e devolve o link; sem ela, fica o endereço. */
+  onImportImage?: ImportImage;
   /** Endereço do Markdown → endereço que o navegador consegue exibir. */
   resolveImage: (url: string) => Promise<string>;
   /** Linhas do arquivo com problema apontado pela pipeline. */
@@ -107,6 +109,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       initialValue,
       onChange,
       onUploadImage,
+      onImportImage,
       resolveImage,
       problemLines,
       showsSavedVersion = true,
@@ -127,6 +130,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   // Refs: trocar os callbacks não deve recriar o editor
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const importRef = useRef(onImportImage);
+  importRef.current = onImportImage;
   const uploadRef = useRef(onUploadImage);
   uploadRef.current = onUploadImage;
   /** Nome (sem extensão) de cada imagem enviada, pelo link: o texto alternativo dela (ver imageAlt.ts). */
@@ -203,7 +208,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(defaultCodeLanguagePlugin)
       .use(headingLevelFixPlugin)
       .use(tableTabRowPlugin)
-      .use(pasteHtmlPlugin)
+      .use(pasteHtmlPlugin(() => importRef.current))
       .use(inlineCodeTypingPlugin)
       .use(listCaretFixPlugin)
       .use(visualSearchPlugin)

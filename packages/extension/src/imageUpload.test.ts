@@ -1,4 +1,4 @@
-import { imageFileName, imageProblem, imageTarget } from './imageUpload';
+import { imageFileName, imageProblem, imageTarget, downloadImage } from './imageUpload';
 
 describe('imageProblem', () => {
   it('só imagens, até o limite', () => {
@@ -35,5 +35,26 @@ describe('imageTarget', () => {
       path: '/w/notas/assets/7-a.png',
       link: 'assets/7-a.png',
     });
+  });
+});
+
+describe('downloadImage (spec 05, C3)', () => {
+  const reply = (body: string, type: string, status = 200) =>
+    (async () => new Response(body, { status, headers: { 'content-type': type } })) as unknown as typeof fetch;
+
+  it('baixa a imagem com o nome do arquivo do endereço', async () => {
+    const image = await downloadImage('https://wiki.example.org/download/attachments/1/diagrama.png?version=1&api=v2', 5, reply('png', 'image/png'));
+    expect(image).toMatchObject({ name: 'diagrama.png', mime: 'image/png' });
+    expect(image.data.byteLength).toBe(3);
+  });
+
+  it('põe a extensão pelo tipo quando o endereço não tem', async () => {
+    expect((await downloadImage('https://cdn.example.org/blob/abc123', 5, reply('x', 'image/jpeg'))).name).toBe('abc123.jpg');
+  });
+
+  it('página de login (HTML) volta com o tipo, para o envio recusar; erro HTTP e outro protocolo falham', async () => {
+    expect((await downloadImage('https://wiki.example.org/a.png', 5, reply('<html>', 'text/html; charset=utf-8'))).mime).toBe('text/html');
+    await expect(downloadImage('https://wiki.example.org/a.png', 5, reply('', 'text/html', 401))).rejects.toThrow('HTTP 401');
+    await expect(downloadImage('file:///etc/passwd', 5, reply('', 'image/png'))).rejects.toThrow();
   });
 });

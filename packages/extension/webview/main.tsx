@@ -43,6 +43,15 @@ async function uploadImage(file: File): Promise<string> {
   });
 }
 
+/** Imagem colada de outra ferramenta: o host baixa e grava; sem acesso, fica o endereço (undefined). */
+function importImage(url: string): Promise<string | undefined> {
+  const id = nextUpload++;
+  return new Promise(resolve => {
+    uploads.set(id, { resolve, reject: () => resolve(undefined) });
+    post({ type: 'importImage', id, url });
+  });
+}
+
 const linkRequests = new Map<number, (pages: LinkPageView[]) => void>();
 let nextLinkRequest = 0;
 
@@ -123,7 +132,7 @@ function App({ content }: { content: Content }) {
           const pending = uploads.get(message.id);
           uploads.delete(message.id);
           if (message.link !== undefined) pending?.resolve(message.link);
-          else pending?.reject(new Error(message.error));
+          else pending?.reject(new Error(message.error ?? 'no link'));
           return;
         }
         case 'select':
@@ -216,6 +225,7 @@ function App({ content }: { content: Content }) {
         search.refresh();
       }}
       onUploadImage={uploadImage}
+      onImportImage={importImage}
       resolveImage={resolveImage}
       problemLines={problemLines}
       text={text}

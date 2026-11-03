@@ -27,3 +27,24 @@ export function imageTarget(pagePath: string, docsDir: string | undefined, name:
   const path = `${docsDir ?? pageDir}/assets/${now}-${imageFileName(name)}`;
   return { path, link: relativePath(pageDir, path) };
 }
+
+const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg' };
+
+/**
+ * Baixa a imagem colada de outra ferramenta (spec 05, C3): só http(s), com limite de tempo e de tamanho. O nome é o
+ * do arquivo no endereço (com a extensão do tipo, se não tiver). Endereço que pede login responde com a página de
+ * entrada (HTML): recusado como "não é uma imagem".
+ */
+export async function downloadImage(url: string, maxMB: number, get: typeof fetch = fetch): Promise<{ name: string; mime: string; data: Uint8Array }> {
+  const parsed = new URL(url);
+  if (!/^https?:$/.test(parsed.protocol)) throw new Error('not http');
+  const response = await get(url, { redirect: 'follow', signal: AbortSignal.timeout(20_000) });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const mime = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+  const length = Number(response.headers.get('content-length') ?? 0);
+  if (length > maxMB * 1024 * 1024) throw new Error('tooLarge');
+  const data = new Uint8Array(await response.arrayBuffer());
+  let name = decodeURIComponent(parsed.pathname.split('/').pop() ?? '') || 'imagem';
+  if (!/\.[a-z0-9]{2,5}$/i.test(name) && EXTENSIONS[mime]) name = `${name}.${EXTENSIONS[mime]}`;
+  return { name, mime, data };
+}
