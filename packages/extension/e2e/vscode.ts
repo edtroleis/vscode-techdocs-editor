@@ -62,6 +62,8 @@ export const test = base.extend<Options & { vscode: VsCode }>({
         'chat.disableAIFeatures': true,
         'window.restoreWindows': 'none',
         'files.autoSave': 'off',
+        // Sem lixeira no /tmp do teste: excluir apaga de vez (senão vem a caixa "Failed to delete using the Trash")
+        'files.enableTrash': false,
         // O menu do botão direito desenhado pelo VS Code (o nativo o teste não alcança)
         'window.menuStyle': 'custom',
         ...settings,

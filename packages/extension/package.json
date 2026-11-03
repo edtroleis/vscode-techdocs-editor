@@ -167,6 +167,11 @@
         "icon": "$(arrow-swap)"
       },
       {
+        "command": "techdocsEditor.openInTechDocs",
+        "title": "%command.openInTechDocs%",
+        "category": "TechDocs"
+      },
+      {
         "command": "techdocsEditor.createHere",
         "title": "%command.createHere%",
         "category": "TechDocs"
@@ -241,12 +246,6 @@
         "icon": "$(new-folder)"
       },
       {
-        "command": "techdocsEditor.newFolder",
-        "title": "%command.newFolder%",
-        "category": "TechDocs",
-        "icon": "$(new-folder)"
-      },
-      {
         "command": "techdocsEditor.addToMenu",
         "title": "%command.addToMenu%",
         "category": "TechDocs",
@@ -256,18 +255,6 @@
         "command": "techdocsEditor.usePageTitle",
         "title": "%command.usePageTitle%",
         "category": "TechDocs"
-      },
-      {
-        "command": "techdocsEditor.showFiles",
-        "title": "%command.showFiles%",
-        "category": "TechDocs",
-        "icon": "$(files)"
-      },
-      {
-        "command": "techdocsEditor.showMenu",
-        "title": "%command.showMenu%",
-        "category": "TechDocs",
-        "icon": "$(list-tree)"
       },
       {
         "command": "techdocsEditor.createMissingPage",
@@ -393,6 +380,10 @@
           "when": "false"
         },
         {
+          "command": "techdocsEditor.openInTechDocs",
+          "when": "false"
+        },
+        {
           "command": "techdocsEditor.createHere",
           "when": "techdocsEditor.emptyFolder"
         },
@@ -457,10 +448,6 @@
           "when": "techdocsEditor.hasDocs"
         },
         {
-          "command": "techdocsEditor.newFolder",
-          "when": "techdocsEditor.hasDocs"
-        },
-        {
           "command": "techdocsEditor.undoTreeEdit",
           "when": "false"
         },
@@ -492,7 +479,7 @@
       "view/item/context": [
         {
           "command": "techdocsEditor.chooseSite",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|remote)\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^(site|remote)\\b/",
           "group": "inline@0"
         },
         {
@@ -517,27 +504,27 @@
         },
         {
           "command": "techdocsEditor.refreshRemote",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^remote\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^remote\\b/",
           "group": "inline@1"
         },
         {
           "command": "techdocsEditor.closeRemote",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^remote\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^remote\\b/",
           "group": "inline@2"
         },
         {
           "command": "techdocsEditor.refreshRemote",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^remote\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^remote\\b/",
           "group": "navigation@1"
         },
         {
           "command": "techdocsEditor.closeRemote",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^remote\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^remote\\b/",
           "group": "navigation@2"
         },
         {
           "command": "techdocsEditor.hideSite",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^site\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^site\\b/",
           "group": "4_site@1"
         },
         {
@@ -552,184 +539,154 @@
         },
         {
           "command": "techdocsEditor.newPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^(section|dir)\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^section\\b/",
           "group": "inline@1"
         },
         {
           "command": "techdocsEditor.addToMenu",
-          "when": "view == techdocsEditor.docs && viewItem =~ /\\boutside\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /\\boutside\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "inline@1"
         },
         {
           "command": "techdocsEditor.createMissingPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^missing\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^missing\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "inline@1"
         },
         {
           "command": "techdocsEditor.newPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|remote)\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^(site|remote)\\b/",
+          "group": "2_new@1"
+        },
+        {
+          "command": "techdocsEditor.newPage",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^section\\b/",
           "group": "2_new@1"
         },
         {
           "command": "techdocsEditor.newSection",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^site\\b/ && viewItem =~ /\\blocal\\b/ && techdocsEditor.treeMode == menu",
-          "group": "2_new@2"
-        },
-        {
-          "command": "techdocsEditor.newFolder",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^(site|dir)\\b/ && viewItem =~ /\\blocal\\b/ && techdocsEditor.treeMode != menu",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^site\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "2_new@2"
         },
         {
           "submenu": "techdocsEditor.itemMenu",
-          "when": "view == techdocsEditor.docs && (viewItem =~ /^page\\b/ || viewItem =~ /^section\\b/)",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && (viewItem =~ /^page\\b/ || viewItem =~ /^section\\b/)",
           "group": "inline@9"
         },
         {
           "command": "techdocsEditor.tree.openVisual",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^page\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^page\\b/",
           "group": "1_open@1"
         },
         {
           "command": "techdocsEditor.tree.openText",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^page\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^page\\b/",
           "group": "1_open@2"
         },
         {
-          "command": "techdocsEditor.tree.openToSide",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^(repoFile|asset)\\b/",
-          "group": "1_open@3"
-        },
-        {
-          "command": "techdocsEditor.copyToPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^repoFile\\b/ && viewItem =~ /\\bmarkdown\\b/",
-          "group": "2_page@1"
-        },
-        {
           "command": "techdocsEditor.pageHistory",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^page\\b/ && techdocsEditor.hasRemote",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^page\\b/ && techdocsEditor.hasRemote",
           "group": "1_open@3"
         },
         {
           "command": "techdocsEditor.tree.newPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^section\\b/",
-          "group": "2_new@1"
-        },
-        {
-          "command": "techdocsEditor.newPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^dir\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^section\\b/",
           "group": "2_new@1"
         },
         {
           "command": "techdocsEditor.usePageTitle",
-          "when": "view == techdocsEditor.docs && viewItem =~ /\\bfixedTitle\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /\\bfixedTitle\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "3_edit@3"
         },
         {
           "command": "techdocsEditor.tree.newSection",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "2_new@2"
         },
         {
           "command": "techdocsEditor.renameItem",
-          "when": "view == techdocsEditor.docs && (((viewItem =~ /^page\\b/ || (viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/))) || (viewItem =~ /^dir\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bdocsRoot\\b)/))",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && (viewItem =~ /^page\\b/ || (viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/))",
           "group": "3_edit@1"
         },
         {
           "command": "techdocsEditor.duplicatePage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "3_edit@2"
         },
         {
           "command": "techdocsEditor.addToMenu",
-          "when": "view == techdocsEditor.docs && viewItem =~ /\\boutside\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /\\boutside\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "3_edit@3"
         },
         {
           "command": "techdocsEditor.createMissingPage",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^missing\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^missing\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "2_new@1"
         },
         {
           "command": "techdocsEditor.removeFromMenu",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^missing\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^missing\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "5_delete@1"
         },
         {
           "command": "techdocsEditor.moveItem",
-          "when": "view == techdocsEditor.docs && ((viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bhome\\b)/ && (viewItem =~ /\\bfile\\b/ || viewItem =~ /^(?!.*\\boutside\\b)/)) || (viewItem =~ /^dir\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bdocsRoot\\b)/))",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && ((viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bhome\\b)/ && viewItem =~ /^(?!.*\\boutside\\b)/))",
           "group": "3_edit@4"
         },
         {
           "command": "techdocsEditor.moveUp",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "3_edit@5"
         },
         {
           "command": "techdocsEditor.moveDown",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "3_edit@6"
         },
         {
           "command": "techdocsEditor.deleteItem",
-          "when": "view == techdocsEditor.docs && ((viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bhome\\b)/) || (viewItem =~ /^dir\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bdocsRoot\\b)/))",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && ((viewItem =~ /^page\\b/ && viewItem =~ /\\blocal\\b/ && viewItem =~ /^(?!.*\\bhome\\b)/))",
           "group": "5_delete@1"
         },
         {
           "command": "techdocsEditor.tree.deleteSection",
-          "when": "view == techdocsEditor.docs && viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && viewItem =~ /^section\\b/ && viewItem =~ /\\blocal\\b/",
           "group": "5_delete@2"
         }
       ],
       "view/title": [
         {
           "command": "techdocsEditor.filterTree",
-          "when": "view == techdocsEditor.docs && (techdocsEditor.hasDocs || techdocsEditor.hasRemote)",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && (techdocsEditor.hasDocs || techdocsEditor.hasRemote)",
           "group": "navigation@1"
         },
         {
-          "command": "techdocsEditor.showMenu",
-          "when": "view == techdocsEditor.docs && (techdocsEditor.hasDocs || techdocsEditor.hasRemote) && techdocsEditor.treeMode != menu",
-          "group": "navigation@0"
-        },
-        {
-          "command": "techdocsEditor.showFiles",
-          "when": "view == techdocsEditor.docs && (techdocsEditor.hasDocs || techdocsEditor.hasRemote) && techdocsEditor.treeMode == menu",
-          "group": "navigation@0"
-        },
-        {
           "command": "techdocsEditor.newPage",
-          "when": "view == techdocsEditor.docs && (techdocsEditor.hasDocs || techdocsEditor.hasRemote)",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && (techdocsEditor.hasDocs || techdocsEditor.hasRemote)",
           "group": "navigation@2"
         },
         {
           "command": "techdocsEditor.newSection",
-          "when": "view == techdocsEditor.docs && techdocsEditor.hasDocs && techdocsEditor.treeMode == menu",
-          "group": "navigation@3"
-        },
-        {
-          "command": "techdocsEditor.newFolder",
-          "when": "view == techdocsEditor.docs && techdocsEditor.hasDocs && techdocsEditor.treeMode != menu",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && techdocsEditor.hasDocs",
           "group": "navigation@3"
         },
         {
           "command": "techdocsEditor.chooseSites",
-          "when": "view == techdocsEditor.docs && techdocsEditor.hasDocs",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && techdocsEditor.hasDocs",
           "group": "2_sites@1"
         },
         {
           "command": "techdocsEditor.newSite",
-          "when": "view == techdocsEditor.docs",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
           "group": "1_create@1"
         },
         {
           "command": "techdocsEditor.openRemote",
-          "when": "view == techdocsEditor.docs",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
           "group": "1_create@3"
         },
         {
           "command": "techdocsEditor.refreshTemplates",
-          "when": "view == techdocsEditor.docs",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
           "group": "1_create@2"
         },
         {
@@ -755,6 +712,11 @@
       ],
       "explorer/context": [
         {
+          "command": "techdocsEditor.openInTechDocs",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@9"
+        },
+        {
           "command": "techdocsEditor.newPage",
           "when": "explorerResourceIsFolder && techdocsEditor.hasDocs",
           "group": "navigation@9"
@@ -762,6 +724,11 @@
         {
           "command": "techdocsEditor.newSite",
           "when": "explorerResourceIsFolder",
+          "group": "navigation@9"
+        },
+        {
+          "command": "techdocsEditor.copyToPage",
+          "when": "resourceExtname == .md && techdocsEditor.hasDocs",
           "group": "navigation@9"
         }
       ],
@@ -967,6 +934,12 @@
           "minimum": 10,
           "markdownDescription": "%config.polling.idleIntervalSeconds%"
         },
+        "techdocsEditor.syncExplorer": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "%config.syncExplorer%"
+        },
         "techdocsEditor.siteDepth": {
           "type": "integer",
           "minimum": 0,
@@ -1037,6 +1010,14 @@
           "when": "techdocsEditor.hasDocs && (config.techdocsEditor.maintainer || techdocsEditor.checkAsked)",
           "icon": "$(tools)"
         }
+      ],
+      "explorer": [
+        {
+          "id": "techdocsEditor.docsExplorer",
+          "name": "%view.docsExplorer%",
+          "when": "workbenchState != empty",
+          "icon": "$(book)"
+        }
       ]
     },
     "viewsWelcome": [
@@ -1088,6 +1069,51 @@
       {
         "view": "techdocsEditor.check",
         "contents": "%viewsWelcome.check%"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.noFolder%",
+        "when": "workbenchState == empty"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.empty%",
+        "when": "workbenchState != empty && techdocsEditor.scanned && !techdocsEditor.hasDocs && !techdocsEditor.canPrepare && !techdocsEditor.hasRemote && !techdocsEditor.emptyFolder"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.chooseSite%",
+        "when": "techdocsEditor.needsSite && !techdocsEditor.emptyFolder"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.emptyFolder%",
+        "when": "techdocsEditor.emptyFolder"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.prepare.intro%",
+        "when": "techdocsEditor.canPrepare && !techdocsEditor.emptyFolder"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.prepare.readme%",
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.readme && !techdocsEditor.emptyFolder"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.prepare.docs%",
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.docs && !techdocsEditor.emptyFolder"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.prepare.catalog%",
+        "when": "techdocsEditor.canPrepare && techdocsEditor.found.catalog && !techdocsEditor.emptyFolder"
+      },
+      {
+        "view": "techdocsEditor.docsExplorer",
+        "contents": "%viewsWelcome.prepare.action%",
+        "when": "techdocsEditor.canPrepare && !techdocsEditor.emptyFolder"
       }
     ],
     "walkthroughs": [
@@ -1184,40 +1210,40 @@
       {
         "command": "techdocsEditor.renameItem",
         "key": "f2",
-        "when": "focusedView == techdocsEditor.docs && !inputFocus"
+        "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus"
       },
       {
         "command": "techdocsEditor.deleteItem",
         "key": "delete",
         "mac": "cmd+backspace",
-        "when": "focusedView == techdocsEditor.docs && !inputFocus && !treeElementHasChild"
+        "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus && !treeElementHasChild"
       },
       {
         "command": "techdocsEditor.moveUp",
         "key": "alt+up",
-        "when": "focusedView == techdocsEditor.docs && !inputFocus"
+        "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus"
       },
       {
         "command": "techdocsEditor.moveDown",
         "key": "alt+down",
-        "when": "focusedView == techdocsEditor.docs && !inputFocus"
+        "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus"
       },
       {
         "command": "techdocsEditor.undoTreeEdit",
         "key": "ctrl+z",
         "mac": "cmd+z",
-        "when": "focusedView == techdocsEditor.docs && !inputFocus"
+        "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus"
       },
       {
         "command": "techdocsEditor.tree.deleteSection",
         "key": "delete",
         "mac": "cmd+backspace",
-        "when": "focusedView == techdocsEditor.docs && !inputFocus && treeElementHasChild"
+        "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus && treeElementHasChild"
       },
       {
         "command": "techdocsEditor.tree.openVisual",
         "key": "enter",
-        "when": "focusedView == techdocsEditor.docs && !inputFocus && !treeElementHasChild"
+        "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus && !treeElementHasChild"
       }
     ],
     "submenus": [

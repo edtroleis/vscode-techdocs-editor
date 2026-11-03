@@ -16,7 +16,8 @@ try {
 export default defineConfig({
   testDir: '.',
   testMatch: '*.spec.ts',
-  timeout: 20 * 60_000,
+  // Com FAST=1 um cenário leva 1–3 min: 6 min já é travado
+  timeout: (process.env.FAST ? 6 : 20) * 60_000,
   expect: { timeout: 15_000 },
   workers: 1,
   retries: 0,

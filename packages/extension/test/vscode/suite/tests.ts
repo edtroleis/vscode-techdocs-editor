@@ -76,10 +76,7 @@ type Api = {
 async function api(): Promise<Api> {
   const extension = vscode.extensions.getExtension<Api>('edtroleis.techdocs-editor');
   ok(extension, 'extensão não encontrada');
-  const result = await extension!.activate();
-  // Os testes da árvore olham o menu do site (a visão dos arquivos tem o teste dela)
-  await result.docs.setMode('menu');
-  return result;
+  return extension!.activate();
 }
 
 const provider = async () => (await api()).provider;
@@ -677,197 +674,104 @@ export function defineTests() {
       await docs.refreshNow();
     });
 
-    test('visão dos arquivos: pasta da docs movida (menu e arrastando), renomeada e excluída, com o menu, os links e o desfazer', async () => {
-      const { docs, sites, useTestAnswers, treeActions } = await api();
+    test('Explorer do VS Code: mover e excluir nas docs acerta o menu e os links; Abrir no TechDocs troca o site', async () => {
+      const { docs, sites } = await api();
       await sites.ready;
-      const t = (en: string, pt: string) => (vscode.env.language.startsWith('pt') ? pt : en);
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
       const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
-      const exists = (path: string) => Promise.resolve(vscode.workspace.fs.stat(file(path))).then(() => true, () => false);
       const menu = async () => {
         const show = (items: NavItem[]): string => items.map(i => (i.kind === 'section' ? `${i.title}[${show(i.children)}]` : i.kind === 'page' ? i.path : i.url)).join(', ');
-        return show(readNav(await read('pastas/mkdocs.yml')) ?? []);
+        return show(readNav(await read('sinc/mkdocs.yml')) ?? []);
       };
-      const find = (label: string, kind = 'dir') => {
-        const walk = (items: DocsItem[]): DocsItem | undefined => {
-          for (const item of items) {
-            if (item.label === label && item.kind === kind) return item;
-            const inner = walk(docs.getChildren(item));
-            if (inner) return inner;
-          }
-          return undefined;
-        };
-        return walk(docs.getChildren());
-      };
-      const run = async (command: string, label: string, ...answers: string[]) => {
-        const item = await until(() => find(label), Boolean, `"${label}" não está na árvore`);
-        useTestAnswers(answers);
-        try {
-          await vscode.commands.executeCommand(command, item);
-        } finally {
-          useTestAnswers(undefined);
-        }
-        await docs.ready;
-      };
-      const yml = 'site_name: Pastas\nnav:\n  - Início: index.md\n  - Manual:\n      - manual/a.md\n      - manual/b.md\n  - Destino:\n      - destino/x.md\n';
-      await write('pastas/docs/index.md', '# Início\n\nVeja [A](manual/a.md).\n');
-      await write('pastas/docs/manual/a.md', '# Página A\n\nVeja [X](../destino/x.md) e ![fig](fig.png).\n');
-      await write('pastas/docs/manual/b.md', '# Página B\n');
-      await vscode.workspace.fs.writeFile(file('pastas/docs/manual/fig.png'), new Uint8Array([0x89, 0x50]));
-      await write('pastas/docs/destino/x.md', '# Página X\n');
-      await docs.setMode('files');
+      await write('sinc/docs/index.md', '# Início\n\nVeja [A](manual/a.md).\n');
+      await write('sinc/docs/manual/a.md', '# A\n\nVolte ao [início](../index.md).\n');
+      await write('sinc/docs/destino/x.md', '# X\n');
+      await write('sinc/mkdocs.yml', 'site_name: Sinc\nnav:\n  - Início: index.md\n  - Manual:\n      - manual/a.md\n  - Destino:\n      - destino/x.md\n');
+      await write('sinc-vazio/leia.txt', 'x');
       try {
-        await until(
-          async () => {
-            // Gravado de novo a cada tentativa: logo depois de abrir, o observador dos mkdocs.yml pode não estar ativo
-            if (!siteItem(docs, 'pastas')) await write('pastas/mkdocs.yml', yml);
-            await docs.refreshNow();
-            await new Promise(resolve => setTimeout(resolve, 400));
-            return siteItem(docs, 'pastas') && find('manual');
-          },
-          Boolean,
-          'site pastas não entrou na árvore',
-          20_000,
-        );
+        await sites.add(file('sinc/mkdocs.yml'));
 
-        // A página mostra o nome do arquivo e, ao lado, o título (vários index.md se distinguem)
-        const shown = docs.getTreeItem(find('Página A', 'page')!);
-        equal(`${shown.label} | ${shown.description}`, 'a.md | Página A', 'a linha da página');
+        // Mover um diretório como o Explorer faz (uma WorkspaceEdit): o menu e os links, de fora e de dentro
+        const move = new vscode.WorkspaceEdit();
+        move.renameFile(file('sinc/docs/manual'), file('sinc/docs/destino/manual'));
+        ok(await vscode.workspace.applyEdit(move), 'o VS Code não moveu o diretório');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        equal(await menu(), 'index.md, Manual[destino/manual/a.md], Destino[destino/x.md]', 'menu depois de mover pelo Explorer');
+        ok((await read('sinc/docs/index.md')).includes('(destino/manual/a.md)'), 'o link de fora não acompanhou');
+        ok((await read('sinc/docs/destino/manual/a.md')).includes('(../../index.md)'), 'o link de dentro não acompanhou');
 
-        // Mover pelo menu: a pasta inteira, com o menu e os links (de fora e de dentro) acertados
-        await run('techdocsEditor.moveItem', 'manual', 'destino');
-        ok(await exists('pastas/docs/destino/manual/a.md'), 'a página não foi junto');
-        ok(await exists('pastas/docs/destino/manual/fig.png'), 'a imagem não foi junto');
-        ok(!(await exists('pastas/docs/manual')), 'a pasta antiga ficou');
-        equal(await menu(), 'index.md, Manual[destino/manual/a.md, destino/manual/b.md], Destino[destino/x.md]', 'menu depois de mover');
-        ok((await read('pastas/docs/index.md')).includes('(destino/manual/a.md)'), 'o link de fora não acompanhou');
-        ok((await read('pastas/docs/destino/manual/a.md')).includes('[X](../x.md)'), 'o link de dentro não acompanhou');
+        // De volta (o que o Desfazer do aviso faz): o menu e os links voltam como eram
+        const back = new vscode.WorkspaceEdit();
+        back.renameFile(file('sinc/docs/destino/manual'), file('sinc/docs/manual'));
+        ok(await vscode.workspace.applyEdit(back), 'o VS Code não moveu de volta');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        equal(await menu(), 'index.md, Manual[manual/a.md], Destino[destino/x.md]', 'menu depois de mover de volta');
+        equal(await read('sinc/docs/manual/a.md'), '# A\n\nVolte ao [início](../index.md).\n', 'a página não voltou como era');
+        ok(await vscode.workspace.applyEdit(move), 'o VS Code não moveu de novo');
+        await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Desfazer: tudo de volta, sem pasta vazia sobrando
-        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
-        ok(await exists('pastas/docs/manual/a.md'), 'desfazer não voltou a página');
-        ok(!(await exists('pastas/docs/destino/manual')), 'desfazer deixou a pasta movida');
-        equal(await menu(), 'index.md, Manual[manual/a.md, manual/b.md], Destino[destino/x.md]', 'menu depois de desfazer');
+        // Excluir uma página pelo Explorer: sai do menu
+        // (sem lixeira no /tmp dos testes)
+        const files = vscode.workspace.getConfiguration('files');
+        await files.update('enableTrash', false, vscode.ConfigurationTarget.Global);
+        const remove = new vscode.WorkspaceEdit();
+        remove.deleteFile(file('sinc/docs/destino/x.md'));
+        const removed = await vscode.workspace.applyEdit(remove);
+        await files.update('enableTrash', undefined, vscode.ConfigurationTarget.Global);
+        ok(removed, 'o VS Code não excluiu a página');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        equal(await menu(), 'index.md, Manual[destino/manual/a.md], Destino[]', 'menu depois de excluir pelo Explorer');
 
-        // Arrastar a pasta para cima de outra
-        await until(() => find('manual'), Boolean, 'manual não voltou à árvore');
-        const data = new vscode.DataTransfer();
-        treeActions.handleDrag([find('manual')!], data);
-        await treeActions.handleDrop(find('destino'), data);
-        ok(await exists('pastas/docs/destino/manual/b.md'), 'arrastar não moveu a pasta');
-        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
-        await until(() => find('manual'), Boolean, 'manual não voltou à árvore depois de desfazer o arrastar');
+        // A árvore também é uma seção do Explorer (embaixo dos arquivos)
+        await vscode.commands.executeCommand('techdocsEditor.docsExplorer.focus');
+        ok(docs.visible, 'a seção TechDocs do Explorer não abriu');
 
-        // Renomear: a pasta, o menu e o link de fora
-        await run('techdocsEditor.renameItem', 'manual', 'guia');
-        ok(await exists('pastas/docs/guia/a.md'), 'renomear não mudou a pasta');
-        equal(await menu(), 'index.md, Manual[guia/a.md, guia/b.md], Destino[destino/x.md]', 'menu depois de renomear');
-        ok((await read('pastas/docs/index.md')).includes('(guia/a.md)'), 'o link não acompanhou o nome novo');
-
-        // Excluir: a pasta vai embora e as páginas saem do menu
-        await run('techdocsEditor.deleteItem', 'guia', t('Delete', 'Excluir'));
-        ok(!(await exists('pastas/docs/guia')), 'a pasta não foi excluída');
-        equal(await menu(), 'index.md, Manual[], Destino[destino/x.md]', 'menu depois de excluir');
+        // Abrir no TechDocs: um diretório sem documentação mostra a tela de criar; o do site mostra o site
+        await vscode.commands.executeCommand('techdocsEditor.openInTechDocs', file('sinc-vazio'));
+        equal(docs.folderWithoutDocs?.path, file('sinc-vazio').path, 'o diretório sem documentação não foi para a árvore');
+        await vscode.commands.executeCommand('techdocsEditor.openInTechDocs', file('sinc'));
+        equal(docs.current, file('sinc/mkdocs.yml').toString(), 'a árvore não passou ao site do diretório');
+        equal(docs.folderWithoutDocs, undefined, 'a tela de criar ficou');
       } finally {
-        await docs.setMode('menu');
-        await vscode.workspace.fs.delete(file('pastas'), { recursive: true }).then(undefined, () => undefined);
+        await vscode.workspace.fs.delete(file('sinc'), { recursive: true }).then(undefined, () => undefined);
+        await vscode.workspace.fs.delete(file('sinc-vazio'), { recursive: true }).then(undefined, () => undefined);
       }
     });
 
-    test('visão dos arquivos: a pasta do site, com as pastas e .md pelo nome, fora do menu marcado; usar o título da página no menu; README para uma página', async () => {
+    test('menu: usar o título da página; README para uma página pelo clique direito do Explorer', async () => {
       const { docs, useTestAnswers } = await api();
       const read = async (path: string) => new TextDecoder().decode(await vscode.workspace.fs.readFile(file(path)));
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const exists = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
       const yml = await read('wiki/mkdocs.yml');
-      const names = (items: DocsItem[]): string[] =>
-        items.flatMap(item => [
-          item.kind === 'dir' ? `${item.label}/` : item.kind !== 'page' ? `${item.label} (${item.kind}${item.missingInMenu ? `, ${item.missingInMenu} do menu sem página` : ''})` : `${item.uri!.path.split('/').pop()}${item.outside ? ' (fora)' : ''}${item.fixedTitle ? ' (título fixo)' : ''}`,
-          ...names(item.children).map(name => `  ${name}`),
-        ]);
       try {
-        await write('wiki/mkdocs.yml', `${yml}\nnav:\n  - Início: index.md\n  - Guias:\n    - guias/primeiros-passos.md\n  - Sumiu: sumiu.md\n`);
+        await write('wiki/mkdocs.yml', `${yml}\nnav:\n  - Início: index.md\n  - Guias:\n    - guias/primeiros-passos.md\n`);
         await write('wiki/README.md', '# Leia-me\n\nVeja [o diagrama](docs/assets/diagrama.png), ![o logo](img/logo.png) e [o código](app/main.py).\n');
         await write('wiki/app/main.py', 'print(1)\n');
         await write('wiki/img/logo.png', 'png');
-        // Um repositório Git: a árvore começa na raiz dele; o código vira o endereço no GitHub (o repo_url do mkdocs.yml vence o origin)
+        // Um repositório Git: o código vira o endereço no GitHub (o repo_url do mkdocs.yml vence o origin)
         await write('wiki/.git/config', '[remote "origin"]\n\turl = git@github.com:acme/wiki.git\n');
         await write('wiki/.git/refs/remotes/origin/HEAD', 'ref: refs/remotes/origin/main\n');
-        await docs.setMode('files');
-        const tree = await until(
+        await docs.select(file('wiki/mkdocs.yml').toString());
+        const index = await until(
           async () => {
             await docs.refreshNow();
-            const site = siteItem(docs, 'wiki');
-            return site ? names(docs.getChildren(site)).join('\n') : '';
+            return docs.pageItem(file('wiki/docs/index.md'));
           },
-          found => found.includes('título fixo'),
-          'a visão dos arquivos não montou',
+          item => Boolean(item?.fixedTitle),
+          'o menu do wiki não montou com o título fixo',
         );
-        equal(
-          tree,
-          [
-            // O repositório como no disco (sem o .git): o código para consultar (lido quando abre) e o docs_dir aberto
-            'app (repoDir)',
-            'docs/',
-            '  assets/',
-            '    diagrama.png (asset)',
-            '  guias/',
-            '    imagens.md (fora)',
-            '    primeiros-passos.md',
-            '  processos/',
-            '    aprovacao.md (fora)',
-            '  index.md (título fixo)',
-            'img (repoDir)',
-            '.markdownlint.yaml (repoFile)',
-            // A página do menu que não existe: o ⚠ no mkdocs.yml leva à visão do menu
-            'mkdocs.yml (repoFile, 1 do menu sem página)',
-            'README.md (repoFile)',
-          ].join('\n'),
-          'visão dos arquivos',
-        );
-        const index = docs.pageItem(file('wiki/docs/index.md'))!;
-        equal(index.label, 'Início', 'o título continua no item (dica, links)');
+        equal(index!.label, 'Início', 'o título do menu');
 
         useTestAnswers([]);
         await vscode.commands.executeCommand('techdocsEditor.usePageTitle', index);
         ok((await read('wiki/mkdocs.yml')).includes('  - index.md\n'), 'o nav continuou com o título fixo');
         ok(!docs.pageItem(file('wiki/docs/index.md'))!.fixedTitle, 'a árvore continuou com o título fixo');
 
-        // Renomear o arquivo: o nav e o link do index.md acompanham
-        const exists = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
-        const home = await read('wiki/docs/index.md');
-        useTestAnswers(['comecar.md']);
-        await vscode.commands.executeCommand('techdocsEditor.renameItem', docs.pageItem(file('wiki/docs/guias/primeiros-passos.md')));
-        ok((await exists('wiki/docs/guias/comecar.md')) && !(await exists('wiki/docs/guias/primeiros-passos.md')), 'o arquivo não mudou de nome');
-        ok((await read('wiki/mkdocs.yml')).includes('    - guias/comecar.md\n'), 'o nav ficou com o nome velho');
-        ok((await read('wiki/docs/index.md')).includes('](guias/comecar.md)'), 'o link do index.md ficou com o nome velho');
-
-        // Mover para a raiz das docs: o nav e os links (os dela também) acompanham
-        useTestAnswers(['docs']);
-        await vscode.commands.executeCommand('techdocsEditor.moveItem', docs.pageItem(file('wiki/docs/guias/comecar.md')));
-        ok(await exists('wiki/docs/comecar.md'), 'o arquivo não mudou de pasta');
-        ok((await read('wiki/docs/index.md')).includes('](comecar.md)'), 'o link do index.md não acompanhou a pasta');
-
-        // Desfazer as duas
-        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
-        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
-        ok((await exists('wiki/docs/guias/primeiros-passos.md')) && !(await exists('wiki/docs/comecar.md')) && !(await exists('wiki/docs/guias/comecar.md')), 'desfazer não voltou o arquivo');
-        equal(await read('wiki/docs/index.md'), home, 'desfazer não voltou o link');
-
-        // Nova pasta dentro da pasta clicada: index.md sem problema de formatação e a seção junto das páginas dela
-        const docsFolder = docs.getChildren(siteItem(docs, 'wiki')!).find(item => item.docsRoot)!;
-        const guias = docs.getChildren(docsFolder).find(item => item.kind === 'dir' && item.label === 'guias')!;
-        useTestAnswers(['Rotinas']);
-        await vscode.commands.executeCommand('techdocsEditor.newFolder', guias);
-        equal(await read('wiki/docs/guias/rotinas/index.md'), '# Rotinas\n', 'página da pasta nova');
-        ok((await read('wiki/mkdocs.yml')).includes('      - guias/primeiros-passos.md\n      - Rotinas:\n          - guias/rotinas/index.md\n'), `seção da pasta nova: ${await read('wiki/mkdocs.yml')}`);
-        await vscode.commands.executeCommand('techdocsEditor.undoTreeEdit');
-        ok(!(await exists('wiki/docs/guias/rotinas')), 'desfazer não tirou a pasta nova');
-
-        // README para uma página: os links refeitos a partir do docs_dir, a imagem de fora copiada, o código pelo
-        // endereço no GitHub, a página no fim do menu, o README intacto
-        const readme = docs.getChildren(siteItem(docs, 'wiki')!).find(item => item.kind === 'repoFile' && item.label === 'README.md')!;
+        // README para uma página (clique direito no Explorer): os links refeitos a partir do docs_dir, a imagem de fora
+        // copiada, o código pelo endereço no GitHub, a página no fim do menu, o README intacto
         useTestAnswers(['leia-me.md']);
-        await vscode.commands.executeCommand('techdocsEditor.copyToPage', readme);
+        await vscode.commands.executeCommand('techdocsEditor.copyToPage', file('wiki/README.md'));
         equal(
           await read('wiki/docs/leia-me.md'),
           '# Leia-me\n\nVeja [o diagrama](assets/diagrama.png), ![o logo](assets/logo.png) e [o código](https://github.com/edtroleis/docs-editor-wiki-demo/blob/main/app/main.py).\n',
@@ -883,7 +787,6 @@ export function defineTests() {
         await vscode.workspace.fs.delete(file('wiki/README.md')).then(undefined, () => undefined);
         for (const folder of ['wiki/app', 'wiki/img', 'wiki/.git']) await vscode.workspace.fs.delete(file(folder), { recursive: true }).then(undefined, () => undefined);
         await write('wiki/mkdocs.yml', yml);
-        await docs.setMode('menu');
         await vscode.commands.executeCommand('workbench.action.closeAllEditors');
       }
     });

@@ -67,15 +67,15 @@ página. Nunca um endereço temporário `blob:`, e nunca maior do que você perm
   opcional **Publicação**. Num repositório ainda sem `mkdocs.yml`, mas com `README.md`, um diretório `docs/` com
   páginas ou um `catalog-info.yaml`, o ícone abre uma tela de boas-vindas que diz o que achou, com **Preparar a
   documentação**.
-- **Árvore Documentação, visão dos arquivos (a padrão):** o repositório como no disco, igual ao Explorer, com a
-  diretório `docs` aberto: as páginas pelo nome do arquivo, as imagens, e ao lado o README, o código e o `mkdocs.yml`
-  para consultar (**Abrir ao lado**). **Copiar para uma página** transforma o README numa página, com as imagens
-  copiadas para `docs` e os links do código apontando para o GitHub. As páginas *fora do menu* ficam marcadas, e um
-  ⚠ no `mkdocs.yml` avisa quando o menu aponta para páginas que não existem. Um clique na página abre o editor visual.
-- **Árvore Documentação, visão do menu** (**Mostrar o menu do site**): as páginas na ordem do `nav` do
-  `mkdocs.yml` (ou dos diretórios, sem `nav`), com o título de cada página. As páginas fora do `nav` ficam em **Fora
-  do menu**, cada uma com um **+** para entrar nele, e os itens do `nav` que apontam para páginas que não existem
-  aparecem marcados. **Filtrar** acha uma página pelo título.
+- **Árvore Documentação:** as páginas na ordem do `nav` do `mkdocs.yml` (ou dos diretórios, sem `nav`), com o
+  título de cada página, também como a seção **TechDocs** no Explorer do VS Code, embaixo dos arquivos. As páginas
+  fora do `nav` ficam em **Fora do menu**, cada uma com um **+** para entrar nele, e os itens do `nav` que apontam
+  para páginas que não existem aparecem marcados. **Filtrar** acha uma página pelo título.
+- **Arquivos no Explorer do VS Code:** mover, renomear ou excluir páginas e diretórios de `docs` no Explorer
+  atualiza também o menu (`nav`) e os links das páginas, com **Desfazer** no aviso. Clique direito num diretório ›
+  **Abrir no TechDocs** mostra a documentação dele; clique direito num `.md` fora de `docs` (o README) › **Copiar
+  para uma página** o transforma numa página, com as imagens copiadas para `docs` e os links do código apontando
+  para o GitHub.
 - **Organize pela árvore:** o **⋯** de uma página ou seção abre um menu com *Renomear* (`F2`), *Duplicar*,
   *Mover para…*, *Mover para cima/baixo* (`Alt+↑`/`Alt+↓`), *Excluir* e *Nova seção*; páginas e seções também
   podem ser arrastadas. Excluir uma página diz quais páginas apontam para ela. Toda mudança mostra **Desfazer**
@@ -301,6 +301,7 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 |--------------|--------|-----------|
 | `techdocsEditor.openVisualByDefault` | `false` | Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto |
 | `techdocsEditor.siteDepth` | `2` | Até quantos diretórios abaixo do diretório do workspace vai a busca pelos sites (`mkdocs.yml`). Os mais fundos aparecem ao abrir uma página deles ou ao entrar no diretório deles pelo **Trocar Diretório ou Repo…** |
+| `techdocsEditor.syncExplorer` | `true` | Mover, renomear ou excluir páginas e diretórios das docs no Explorer do VS Code atualiza também o menu do site (`nav`) e os links das páginas; o **Ctrl+Z** do Explorer desfaz tudo junto. Clique direito num diretório do Explorer › **Abrir no TechDocs** para mostrá-lo na view TechDocs |
 | `techdocsEditor.sites` | todos | Sites de documentação mostrados na view TechDocs e conferidos: diretórios de um `mkdocs.yml` (ou um diretório acima deles). Escolha com **Filtrar Sites da Árvore…** no menu `…` da view |
 | `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
 | `techdocsEditor.templates.paths` | `[]` | Mais diretórios com templates de página e de site, relativos ao diretório do workspace (o `.techdocs/templates/` é sempre lido) |

@@ -37,3 +37,21 @@ export const timing = {
     current = undefined;
   },
 };
+
+/**
+ * Avisa no canal "TechDocs Editor" quando o processo das extensões fica parado (nenhum código roda) por mais de
+ * `LAG_MS`: as extensões do VS Code dividem o mesmo processo, e uma delas ocupada (indexando o ~, por exemplo)
+ * atrasa tudo, a árvore junto. Ajuda a separar "a extensão está lenta" de "o processo estava ocupado".
+ */
+export function watchLag(): { dispose(): void } {
+  const LAG_MS = 1000;
+  const TICK_MS = 250;
+  let last = performance.now();
+  const timer = setInterval(() => {
+    const now = performance.now();
+    const lag = now - last - TICK_MS;
+    if (lag > LAG_MS) log().warn(`processo das extensões parado por ${Math.round(lag)} ms (outra extensão ou a própria ocupada)`);
+    last = now;
+  }, TICK_MS);
+  return { dispose: () => clearInterval(timer) };
+}

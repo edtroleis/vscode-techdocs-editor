@@ -3,9 +3,9 @@ import { useE2eToken } from './publish/githubAuth';
 import { chooseSites, hideSite, useTestSiteChoice } from './chooseSites';
 import { REMOTE_SCHEME } from '@edtroleis/techdocs-editor-core';
 import { CatalogOptions, repositoryFolder } from './catalogOptions';
-import { timing } from './timing';
+import { timing, watchLag } from './timing';
 import { CheckItem, CheckView } from './checkView';
-import { DocsItem, DocsTreeView, useTestSitePick } from './docsTreeView';
+import { DOCS_EXPLORER_VIEW, DocsItem, DocsTreeView, useTestSitePick } from './docsTreeView';
 import { LintActions } from './lintActions';
 import { LintService } from './lintService';
 import { LocalSites } from './localSites';
@@ -25,6 +25,7 @@ import { NewPageCommand } from './templates/newPage';
 import { NewSiteCommand } from './templates/newSite';
 import { SitePreview } from './templates/sitePreview';
 import { TreeActions, useTestAnswers } from './treeActions';
+import { ExplorerSync } from './explorerSync';
 import { VisualEditorProvider } from './visualEditorProvider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -85,12 +86,29 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.chooseSites', () => chooseSites(sites)),
     vscode.commands.registerCommand('techdocsEditor.hideSite', (item?: DocsItem) => hideSite(sites, item?.siteRoot)),
     vscode.commands.registerCommand('techdocsEditor.chooseSite', () => docs.chooseSite()),
+    // Mexer nos arquivos das docs pelo Explorer do VS Code: o menu do site e os links acompanham
+    new ExplorerSync(sites),
+    // Parado sem rodar nada: registrado no canal, para separar lentidão da extensão de processo ocupado
+    watchLag(),
+    // Clique direito num diretório do Explorer: a árvore passa ao site dele (ou à tela de criar a documentação)
+    vscode.commands.registerCommand('techdocsEditor.openInTechDocs', async (uri?: vscode.Uri) => {
+      if (!(uri instanceof vscode.Uri)) return;
+      await sites.discover(uri);
+      const inside = sites.list().filter(({ site }) => site.root === uri.path || site.root.startsWith(`${uri.path.replace(/\/+$/, '')}/`));
+      // Do Explorer: a seção TechDocs dele, embaixo dos arquivos
+      await vscode.commands.executeCommand(`${DOCS_EXPLORER_VIEW}.focus`);
+      const own = inside.find(({ site }) => site.root === uri.path);
+      if (own ?? inside.length === 1) return docs.select((own ?? inside[0]).mkdocs.toString());
+      // Vários sites dentro: a troca de diretório, já nele
+      if (inside.length) return docs.chooseSite(uri);
+      return docs.selectFolder(uri);
+    }),
     // A tela da pasta sem documentação: criar num clique ou escolher o template
     vscode.commands.registerCommand('techdocsEditor.createHere', () => {
       const folder = docs.folderWithoutDocs;
       if (!folder) return undefined;
       // A barra de progresso na seção desde o clique; os tempos no canal "TechDocs Editor"
-      return vscode.window.withProgress({ location: { viewId: 'techdocsEditor.docs' } }, async () => {
+      return vscode.window.withProgress({ location: { viewId: docs.shownViewId } }, async () => {
         timing.begin('Criar a documentação');
         try {
           const result = await newSite.quick(folder);
@@ -161,10 +179,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.deleteItem', (item?: DocsItem) => treeActions.delete(item)),
     vscode.commands.registerCommand('techdocsEditor.newSection', (item?: DocsItem) => treeActions.newSection(item)),
     vscode.commands.registerCommand('techdocsEditor.addToMenu', (item?: DocsItem) => treeActions.addToMenu(item)),
-    vscode.commands.registerCommand('techdocsEditor.newFolder', (item?: DocsItem) => treeActions.newFolder(item)),
     vscode.commands.registerCommand('techdocsEditor.usePageTitle', (item?: DocsItem) => treeActions.usePageTitle(item)),
-    vscode.commands.registerCommand('techdocsEditor.showFiles', () => docs.setMode('files')),
-    vscode.commands.registerCommand('techdocsEditor.showMenu', () => docs.setMode('menu')),
     vscode.commands.registerCommand('techdocsEditor.createMissingPage', (item?: DocsItem) => treeActions.createMissing(item)),
     vscode.commands.registerCommand('techdocsEditor.removeFromMenu', (item?: DocsItem) => treeActions.removeFromMenu(item)),
     // Os mesmos comandos com os nomes do menu ⋯ da árvore ("Nova página nesta seção", "Excluir seção"…)
@@ -177,14 +192,14 @@ export function activate(context: vscode.ExtensionContext) {
       const target = item ?? docs.selected();
       if (target?.uri) return vscode.commands.executeCommand('vscode.open', target.uri, vscode.ViewColumn.Beside);
     }),
-    vscode.commands.registerCommand('techdocsEditor.copyToPage', (item?: DocsItem) => treeActions.copyToPage(item)),
+    vscode.commands.registerCommand('techdocsEditor.copyToPage', (uri?: vscode.Uri) => treeActions.copyToPage(uri)),
     vscode.commands.registerCommand('techdocsEditor.tree.newPage', (item?: DocsItem) => vscode.commands.executeCommand('techdocsEditor.newPage', item ?? docs.selected())),
     vscode.commands.registerCommand('techdocsEditor.tree.newSection', (item?: DocsItem) => treeActions.newSection(item)),
     vscode.commands.registerCommand('techdocsEditor.tree.deleteSection', (item?: DocsItem) => treeActions.delete(item)),
     vscode.commands.registerCommand('techdocsEditor.undoTreeEdit', () => treeActions.undo()),
     vscode.commands.registerCommand('techdocsEditor.filterTree', async () => {
       // A busca da própria árvore do VS Code (a mesma do Ctrl+F nela)
-      await vscode.commands.executeCommand('techdocsEditor.docs.focus');
+      await vscode.commands.executeCommand(`${docs.shownViewId}.focus`);
       await vscode.commands.executeCommand('list.find');
     }),
     vscode.commands.registerCommand('techdocsEditor.openText', (target?: vscode.Uri | DocsItem) => {

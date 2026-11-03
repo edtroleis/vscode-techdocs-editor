@@ -44,8 +44,9 @@ export async function contextMenu(page: Page, row: Locator, item: string | RegEx
 /** F1, o nome do comando e Enter, como quem procura um comando na paleta. */
 export async function palette(page: Page, command: string) {
   // Com o foco no editor visual, o F1 não chega ao VS Code, e o webview pega o foco de volta da paleta: antes, um
-  // clique na barra lateral, fora das linhas
-  const list = docsPane(page).locator('.monaco-list');
+  // clique na barra lateral, fora das linhas (na view Documentação, ou na última lista visível: o Explorer)
+  const docs = docsPane(page).locator('.monaco-list');
+  const list = (await docs.isVisible()) ? docs : page.locator('.part.sidebar .monaco-list:visible').last();
   const box = (await list.boundingBox())!;
   await list.click({ position: { x: box.width / 2, y: box.height - 8 } });
   await page.keyboard.press('F1');

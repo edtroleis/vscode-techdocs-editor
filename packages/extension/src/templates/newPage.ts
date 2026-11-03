@@ -235,7 +235,7 @@ export class NewPageCommand {
     const at = (path: string) => remoteUri(ref.host, ref.slug, path);
     const inDocs = (path: string) => (site.docsDir ? `${site.docsDir}/${path}` : path);
     // Pasta clicada (ou da página ativa) dentro do docs_dir
-    const isFolder = target instanceof DocsItem && (target.kind === 'remote' || target.kind === 'section' || target.kind === 'dir');
+    const isFolder = target instanceof DocsItem && (target.kind === 'remote' || target.kind === 'section');
     const folderPath = isFolder && target.kind === 'remote' ? site.docsDir : isFolder ? ref.path : ref.path.replace(/\/?[^/]*$/, '');
     const folder = folderPath.startsWith(`${site.docsDir}/`) ? folderPath.slice(site.docsDir.length + 1) : '';
     const mkdocsPath = site.root ? `${site.root}/mkdocs.yml` : 'mkdocs.yml';
@@ -300,7 +300,7 @@ export class NewPageCommand {
     let uri: vscode.Uri | undefined;
     let isFolder = false;
     if (target instanceof DocsItem) {
-      if (target.kind === 'site' || target.kind === 'dir') {
+      if (target.kind === 'site') {
         uri = target.uri;
         isFolder = true;
       } else {
@@ -443,8 +443,7 @@ export class NewPageCommand {
 
 /** Seção do `nav` de um item da árvore (títulos desde a raiz): a própria seção ou a da página. */
 function navSection(item: DocsItem): string[] | undefined {
-  // Visão dos arquivos: a seção vem da pasta (a das outras páginas dela no menu)
-  if (item.kind === 'site' || item.kind === 'dir' || item.file || item.kind === 'notInNav' || item.parent?.kind === 'notInNav') return undefined;
+  if (item.kind === 'site' || item.kind === 'notInNav' || item.parent?.kind === 'notInNav') return undefined;
   const trail: string[] = [];
   for (let at: DocsItem | undefined = item.kind === 'section' ? item : item.parent; at?.kind === 'section'; at = at.parent) {
     trail.unshift(at.label);
@@ -490,7 +489,7 @@ function rootItem(item: DocsItem): DocsItem {
 
 /** Endereço `techdocs:` do item: o do site, o da página, ou o da primeira página da seção. */
 function remoteItemUri(item: DocsItem): vscode.Uri | undefined {
-  if (item.kind === 'remote' || item.kind === 'page' || item.kind === 'dir') return item.uri;
+  if (item.kind === 'remote' || item.kind === 'page') return item.uri;
   const page = firstPage(item)?.uri;
   return page && page.with({ path: page.path.replace(/\/[^/]*$/, '') });
 }

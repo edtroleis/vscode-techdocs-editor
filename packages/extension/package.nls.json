@@ -7,6 +7,7 @@
   "config.openVisualByDefault": "Open pages of a MkDocs `docs_dir` in the visual editor instead of the Markdown text. Use **Reopen Editor With…** to switch to the text.",
   "config.images.maxSizeMB": "Largest image, in MB, that the visual editor saves to the `assets` folder of the docs. Images go into the repository: large files weigh on every clone and on publishing.",
   "view.docs": "Documentation",
+  "view.docsExplorer": "TechDocs",
   "view.preview": "New documentation",
   "view.publish": "Publishing details",
   "config.local.publishPanel": "Show the **Publishing** panel in the Explorer: save a draft to a branch, open a pull request, follow the checks and send it, without leaving VS Code. Needs a clone with a GitHub remote.",
@@ -84,6 +85,8 @@
   "view.mine": "My changes",
   "command.chooseSite": "Switch Directory or Repo…",
   "command.createHere": "Create the Documentation Here",
+  "command.openInTechDocs": "Open in TechDocs",
+  "config.syncExplorer": "Moving, renaming or deleting pages and directories of the docs in the VS Code Explorer also updates the menu of the site (`nav` in `mkdocs.yml`) and the links of the pages. **Ctrl+Z** in the Explorer undoes it all together. Changes made in the terminal (`mv`, `rm`) are not followed.",
   "command.newSiteHere": "Choose a Template Here…",
   "command.refreshMine": "Refresh",
   "command.openMine": "Open Page",
@@ -111,9 +114,6 @@
   "command.treeDeleteSection": "Delete Section",
   "submenu.itemMenu": "More Actions",
   "command.usePageTitle": "Use the Page Title in the Menu",
-  "command.showFiles": "Show the Files",
-  "command.showMenu": "Show the Site Menu",
-  "command.newFolder": "New Folder",
   "command.treeOpenToSide": "Open to the Side",
   "command.copyToPage": "Copy to a Page"
 }
