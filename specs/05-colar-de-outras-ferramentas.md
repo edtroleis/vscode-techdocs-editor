@@ -41,7 +41,7 @@ O Confluence Cloud gera outro HTML: falta testar.
 | C8 | Confluence | Tabelas largas: células completadas com espaços até a maior (linhas com mais de 400 caracteres). Célula mesclada (ex.: "All Keywords" sobre 2 colunas no Hive) parte a tabela em duas | Tabela com linha de mais de 120 caracteres sai compacta no Markdown salvo (`| a | b |`, aceita pelo lint); as estreitas continuam alinhadas. Na colagem, a linha de título mesclada vira `**Título**:` antes da tabela; as outras células mescladas ficam na primeira posição e as demais vazias; colunas vazias em todas as linhas saem | ✅ |
 | C9 | Outline | Seções são H1: vários H1 na página (MD025); o título da página não vem junto | Na colagem, se a página já tem H1 ou vêm vários, todos os títulos descem um nível | ✅ |
 | C10 | Outline | Legenda da imagem duplicada (no `title` e num parágrafo) | O parágrafo da legenda sai (ela fica no texto alternativo) | ✅ |
-| C11 | Ambos | Espaços no fim das linhas e dentro de trechos de código; realce de cor perdido | O lint e o Conferir já ajustam o espaço; realce fica de fora | |
+| C11 | Ambos | Espaços no fim das linhas e dentro de trechos de código; realce de cor perdido | O lint e o Conferir já ajustam o espaço (MD009 e MD038 no ajuste automático; blocos de código ficam como estão); realce fica de fora | ✅ |
 | C12 | Editor de texto | Colar no Markdown (texto) cola o texto puro | "Colar como Markdown (TechDocs)" (`DocumentPasteEditProvider`): o HTML da área de transferência vira Markdown com as mesmas limpezas (`cleanPastedHtml`, no `core`, com o DOM do `linkedom` na extensão) e os mesmos ajustes ao salvar (`fromEditor`); imagens baixadas para `assets/` (só em arquivos locais); cópia de dentro do VS Code fica como está | ✅ |
 
 ## Testes

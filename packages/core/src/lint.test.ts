@@ -104,6 +104,13 @@ describe('fixLintProblems', () => {
     expect(fixed).toBe('# T\n\nTexto\n\n- item\n\n```bash\nx\n```\n\nfim\n');
   });
 
+  it('texto colado do Confluence: espaços no fim e dentro do código no texto saem; bloco de código fica (spec 05, C11)', () => {
+    const page = '# T\n\nTexto com `codigo ` e fim   \n\n```text\nlinha  \n```\n';
+    const fixed = fixLintProblems(page, DEFAULT_LINT_CONFIG);
+    expect(fixed).toBe('# T\n\nTexto com `codigo` e fim\n\n```text\nlinha  \n```\n');
+    expect(lintMarkdown(fixed, DEFAULT_LINT_CONFIG)).toEqual([]);
+  });
+
   it('o que não tem correção automática continua apontado', () => {
     const page = '# T\n\n```\nx\n```\n';
     const [problem] = lintMarkdown(page, WIKI_CONFIG);
