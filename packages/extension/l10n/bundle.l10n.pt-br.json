@@ -524,5 +524,6 @@
   "Fix all automatically": "Ajustar automaticamente",
   "Checking {0}…": "Conferindo {0}…",
   "larger than {0} MB": "maior que {0} MB",
-  "The pasted image could not be copied to the repository ({0}). It still points to {1}, which may not work on the site.": "A imagem colada não pôde ser copiada para o repositório ({0}). Ela continua apontando para {1}, o que pode não funcionar no site."
+  "The pasted image could not be copied to the repository ({0}). It still points to {1}, which may not work on the site.": "A imagem colada não pôde ser copiada para o repositório ({0}). Ela continua apontando para {1}, o que pode não funcionar no site.",
+  "Paste as Markdown (TechDocs)": "Colar como Markdown (TechDocs)"
 }

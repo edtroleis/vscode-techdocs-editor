@@ -18,6 +18,7 @@ import type { useTestSiteChoice } from '../../../src/chooseSites';
 import type { useTestSitePick } from '../../../src/docsTreeView';
 import type { TreeActions, useTestAnswers } from '../../../src/treeActions';
 import { foldersWithoutDocs } from '../../../src/sitePicker';
+import { PasteAsMarkdown } from '../../../src/pasteMarkdown';
 import type { CheckView } from '../../../src/checkView';
 import type { RepoCheck } from '../../../src/repoCheck';
 import type { CentralTemplates } from '../../../src/templates/centralTemplates';
@@ -416,6 +417,48 @@ export function defineTests() {
       }
       await vscode.commands.executeCommand('workbench.action.files.revert');
       await closeAll();
+    });
+
+    test('colar HTML no editor de texto vira Markdown, com as imagens trazidas para assets (spec 05, C12)', async () => {
+      const { sites } = await api();
+      await sites.ready;
+      const document = await vscode.workspace.openTextDocument(file('wiki/docs/index.md'));
+      const fetched: string[] = [];
+      // Download simulado: o diagrama responde, o privado pede login
+      const get = (async (url: string) => {
+        fetched.push(url);
+        return url.includes('privado')
+          ? new Response('<html>login</html>', { status: 200, headers: { 'content-type': 'text/html' } })
+          : new Response(PNG, { status: 200, headers: { 'content-type': 'image/png' } });
+      }) as unknown as typeof fetch;
+      const data = new vscode.DataTransfer();
+      data.set(
+        'text/html',
+        new vscode.DataTransferItem(
+          '<div class="confluence-information-macro confluence-information-macro-note"><div class="confluence-information-macro-body"><p>Leia antes.</p></div></div>' +
+            '<p><img src="https://wiki.example.org/download/attachments/1/diagrama.png?version=1&amp;api=v2"></p>' +
+            '<p><img src="https://privado.example.org/foto.png"></p>',
+        ),
+      );
+      const source = new vscode.CancellationTokenSource();
+      const edits = await new PasteAsMarkdown(sites, get).provideDocumentPasteEdits(
+        document,
+        [new vscode.Range(0, 0, 0, 0)],
+        data,
+        { only: undefined, triggerKind: vscode.DocumentPasteTriggerKind.Automatic },
+        source.token,
+      );
+      const text = String(edits?.[0]?.insertText ?? '');
+      ok(text.includes('!!! note\n    Leia antes.\n'), `aviso: ${text}`);
+      const saved = (await assetNames()).filter(name => !before.includes(name));
+      equal(saved.length, 1, `imagens gravadas: ${saved}`);
+      ok(saved[0].endsWith('-diagrama.png'), saved[0]);
+      ok(text.includes(`![diagrama](assets/${saved[0]})`), `imagem trazida: ${text}`);
+      ok(text.includes('![foto](https://privado.example.org/foto.png)'), `imagem sem acesso fica com o endereço: ${text}`);
+      equal(fetched.length, 2, 'downloads');
+      // Copiar e colar dentro do VS Code fica como está
+      data.set('vscode-editor-data', new vscode.DataTransferItem('{}'));
+      equal(await new PasteAsMarkdown(sites, get).provideDocumentPasteEdits(document, [new vscode.Range(0, 0, 0, 0)], data, { only: undefined, triggerKind: vscode.DocumentPasteTriggerKind.Automatic }, source.token), undefined, 'colar de dentro do VS Code');
     });
 
     /** Página de uma subpasta com um bloco de imagem vazio, pronto para escolher o arquivo. */

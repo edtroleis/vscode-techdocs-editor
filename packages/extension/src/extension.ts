@@ -20,6 +20,7 @@ import { showPageHistory, useTestHistoryPick } from './remote/pageHistory';
 import { RemoteFileSystem } from './remote/remoteFs';
 import { RemoteRepos } from './remote/remoteRepos';
 import { RepoCheck } from './repoCheck';
+import { PASTE_KIND, PasteAsMarkdown } from './pasteMarkdown';
 import { CentralTemplates } from './templates/centralTemplates';
 import { NewPageCommand } from './templates/newPage';
 import { NewSiteCommand } from './templates/newSite';
@@ -163,6 +164,11 @@ export function activate(context: vscode.ExtensionContext) {
       newSite.run(target instanceof vscode.Uri ? target : undefined),
     ),
     vscode.commands.registerCommand('techdocsEditor.refreshTemplates', () => refreshCentralTemplates(central)),
+    // Colar HTML (Confluence, Outline, páginas web) no editor de texto: vira Markdown (spec 05, C12)
+    vscode.languages.registerDocumentPasteEditProvider({ language: 'markdown' }, new PasteAsMarkdown(sites), {
+      providedPasteEditKinds: [PASTE_KIND],
+      pasteMimeTypes: ['text/html'],
+    }),
     vscode.commands.registerCommand('techdocsEditor.checkDocs', () => repoCheck.check()),
     // O botão da árvore: o site mostrado nela
     vscode.commands.registerCommand('techdocsEditor.checkShown', () => repoCheck.checkShown(docs.localSite?.mkdocs)),

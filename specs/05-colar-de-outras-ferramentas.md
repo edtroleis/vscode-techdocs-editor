@@ -13,8 +13,7 @@ Colar uma página do Confluence (Data Center e Cloud) ou do Outline no editor vi
 MkDocs gera certo, sem depender da ferramenta de origem (imagens, links internos), e que passa no lint ou que o
 **Conferir** ajusta sozinho.
 
-Fora do escopo por enquanto: importar um espaço inteiro (várias páginas e o `nav`) e colar no editor de texto
-Markdown (C12).
+Fora do escopo por enquanto: importar um espaço inteiro (várias páginas e o `nav`).
 
 ## Como foi testado (2026-11-03)
 
@@ -43,7 +42,7 @@ O Confluence Cloud gera outro HTML: falta testar.
 | C9 | Outline | Seções são H1: vários H1 na página (MD025); o título da página não vem junto | Na colagem, se a página já tem H1 ou vêm vários, todos os títulos descem um nível | ✅ |
 | C10 | Outline | Legenda da imagem duplicada (no `title` e num parágrafo) | O parágrafo da legenda sai (ela fica no texto alternativo) | ✅ |
 | C11 | Ambos | Espaços no fim das linhas e dentro de trechos de código; realce de cor perdido | O lint e o Conferir já ajustam o espaço; realce fica de fora | |
-| C12 | Editor de texto | Colar no Markdown (texto) cola o texto puro | "Colar como Markdown" no editor de texto, com as mesmas conversões | |
+| C12 | Editor de texto | Colar no Markdown (texto) cola o texto puro | "Colar como Markdown (TechDocs)" (`DocumentPasteEditProvider`): o HTML da área de transferência vira Markdown com as mesmas limpezas (`cleanPastedHtml`, no `core`, com o DOM do `linkedom` na extensão) e os mesmos ajustes ao salvar (`fromEditor`); imagens baixadas para `assets/` (só em arquivos locais); cópia de dentro do VS Code fica como está | ✅ |
 
 ## Testes
 
