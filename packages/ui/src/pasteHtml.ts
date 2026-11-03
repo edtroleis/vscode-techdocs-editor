@@ -8,9 +8,36 @@ import { Plugin, PluginKey } from '@milkdown/kit/prose/state';
  * só; o antigo vem como `<pre class="syntaxhighlighter-pre">`, com a linguagem em `data-syntaxhighlighter-params`.
  * Os dois viram `<pre><code>` com o texto, as quebras de linha e a linguagem.
  */
-export function cleanPastedHtml(html: string): string {
-  if (!/data-ds--code--code-block|syntaxhighlighter-pre|<img|information-macro|data-panel-type|notice-block/.test(html)) return html;
+export function cleanPastedHtml(html: string, pageHasTitle = false): string {
+  if (!/data-ds--code--code-block|syntaxhighlighter-pre|<img|information-macro|data-panel-type|notice-block|<h[1-6]|toc-macro|data-macro-name/.test(html)) return html;
   const doc = new DOMParser().parseFromString(html, 'text/html');
+  // C5: o sumário do Confluence (o MkDocs gera o dele)
+  doc.querySelectorAll('.toc-macro, [data-macro-name="toc"]').forEach(e => e.remove());
+  // C10: a legenda da imagem do Outline repete o texto alternativo
+  doc.querySelectorAll('.image > img + .caption, .image > .caption').forEach(e => e.remove());
+  // C7: título dentro de célula de tabela (Confluence) não cabe no Markdown: o título saltava para fora e a tabela
+  // ficava vazia. Vira o texto da célula (o cabeçalho já é negrito; na célula comum, negrito)
+  for (const heading of [...doc.querySelectorAll('td :is(h1, h2, h3, h4, h5, h6), th :is(h1, h2, h3, h4, h5, h6)')]) {
+    const text = doc.createElement(heading.closest('th') ? 'span' : 'strong');
+    text.append(...heading.childNodes);
+    heading.replaceWith(text);
+  }
+  // C7: título inteiro em negrito (Confluence): o negrito sai, o título já se destaca
+  for (const heading of [...doc.querySelectorAll('h1, h2, h3, h4, h5, h6')]) {
+    // Sem contar os vazios (o botão de copiar o link do título, no Confluence)
+    const filled = [...heading.children].filter(e => e.textContent?.trim());
+    const [only] = filled;
+    if (filled.length === 1 && /^(STRONG|B)$/.test(only.tagName) && only.textContent?.trim() === heading.textContent?.trim()) only.replaceWith(...only.childNodes);
+  }
+  // C9: seções do Outline são H1; a página já tem o seu (ou vêm vários): todos os títulos descem um nível
+  const h1s = doc.querySelectorAll('h1').length;
+  if (h1s && (pageHasTitle || h1s > 1)) {
+    for (const heading of [...doc.querySelectorAll('h1, h2, h3, h4, h5')]) {
+      const lower = doc.createElement(`h${Number(heading.tagName[1]) + 1}`);
+      lower.append(...heading.childNodes);
+      heading.replaceWith(lower);
+    }
+  }
   // C3: imagem sem texto alternativo leva a legenda (title) ou o nome do arquivo
   for (const img of [...doc.querySelectorAll('img')]) {
     if (!img.getAttribute('alt')?.trim()) img.setAttribute('alt', img.getAttribute('title')?.trim() || nameOfImage(img.getAttribute('src') ?? ''));
@@ -154,7 +181,13 @@ export const pasteHtmlPlugin = (importImage: () => ImportImage | undefined) =>
     return new Plugin({
       key,
       props: {
-        transformPastedHTML: cleanPastedHtml,
+        transformPastedHTML: (html, view) => {
+          let title = false;
+          view.state.doc.forEach(node => {
+            if (node.type.name === 'heading' && node.attrs.level === 1) title = true;
+          });
+          return cleanPastedHtml(html, title);
+        },
         // transformPasted e não handlePaste: o plugin de colagem do Milkdown trata o evento antes e encerra
         transformPasted(slice, view) {
           const importer = importImage();

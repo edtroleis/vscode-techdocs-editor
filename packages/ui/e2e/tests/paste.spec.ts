@@ -56,7 +56,50 @@ const IMAGES =
   '<p><img src="https://bucket.s3.amazonaws.com/uploads/abc/image.png?X-Amz-Expires=3600&amp;X-Amz-Signature=x" title="The share dialog"></p>' +
   '<p><img src="https://privado.example.org/sem-acesso/foto.png"></p><p>Depois das imagens.</p>';
 
+// Começo de página do Confluence: sumário (macro toc) e título em negrito
+const CONFLUENCE_TOC =
+  '<div class="toc-macro client-side-toc-macro conf-macro output-block hidden-outline" data-headerelements="H1,H2" data-hasbody="false" data-macro-name="toc"><ul><li><span class="toc-item-body" data-outline="1"><a href="https://cwiki.example.org/confluence/spaces/X/pages/1/P#P-Status">Status</a></span></li></ul></div>' +
+  '<h2 id="P-Status"><strong>Status</strong><span class="copy-heading-link-container"></span></h2><p>Aceito, com <strong>negrito</strong> no meio.</p>';
+
+// Outline: seções em H1 e imagem com a legenda repetida
+const OUTLINE_SECTIONS =
+  '<h1 dir="auto" class="heading-content">Publish to web</h1><p dir="auto">Texto.</p><div class="image"><img src="assets/share.png" alt="The share dialog"><p class="caption">The share dialog</p></div><h2 dir="auto">Custom link</h2><p dir="auto">Mais texto.</p><h1 dir="auto">Disabling sharing</h1><p dir="auto">Fim das seções.</p>';
+
+// Tabela do Confluence com títulos dentro das células
+const CONFLUENCE_TABLE_HEADINGS =
+  '<table class="confluenceTable"><thead><tr><th class="confluenceTh">Version</th><th class="confluenceTh"><h3 id="x">Non-reserved Keywords</h3></th></tr></thead><tbody><tr><td class="confluenceTd">Hive 1.2.0</td><td class="confluenceTd"><h4>ALL</h4> e mais</td></tr></tbody></table><p>Depois da tabela.</p>';
+
 test.describe('colar do Confluence e do Outline (spec 05)', () => {
+  test('C7: títulos dentro das células da tabela viram o texto da célula, e a tabela fica inteira', async ({ page }) => {
+    await openEditor(page, PAGE);
+    await paste(page, CONFLUENCE_TABLE_HEADINGS);
+    const md = await savedWith(page, 'Depois da tabela.');
+    expect(md).toMatch(/\| Version +\| Non-reserved Keywords +\|/);
+    expect(md).toMatch(/\| Hive 1\.2\.0 +\| \*\*ALL\*\* e mais +\|/);
+    expect(md).not.toMatch(/^#+ .*Keywords/m);
+  });
+
+  test('C5 e C7: o sumário do Confluence sai e o título perde o negrito', async ({ page }) => {
+    await openEditor(page, PAGE);
+    await paste(page, CONFLUENCE_TOC);
+    const md = await savedWith(page, 'Aceito');
+    expect(md).not.toContain('cwiki.example.org');
+    expect(md).toContain('## Status\n');
+    expect(md).toContain('Aceito, com **negrito** no meio.');
+  });
+
+  test('C9 e C10: seções do Outline descem um nível (a página já tem título) e a legenda não se repete', async ({ page }) => {
+    await openEditor(page, PAGE);
+    await paste(page, OUTLINE_SECTIONS);
+    const md = await savedWith(page, 'Fim das seções.');
+    expect(md).toContain('## Publish to web\n');
+    expect(md).toContain('### Custom link\n');
+    expect(md).toContain('## Disabling sharing\n');
+    expect(md.match(/^# /gm)).toHaveLength(1);
+    expect(md.match(/The share dialog/g)?.length).toBeLessThanOrEqual(2);
+    expect(md).not.toMatch(/^The share dialog$/m);
+  });
+
   test('C4: painel do Confluence Data Center vira aviso do MkDocs, com título, negrito, link e lista', async ({ page }) => {
     await openEditor(page, PAGE);
     await paste(page, CONFLUENCE_PANEL);
