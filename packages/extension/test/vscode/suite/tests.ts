@@ -451,11 +451,18 @@ export function defineTests() {
       const text = String(edits?.[0]?.insertText ?? '');
       ok(text.includes('!!! note\n    Leia antes.\n'), `aviso: ${text}`);
       const saved = (await assetNames()).filter(name => !before.includes(name));
-      equal(saved.length, 1, `imagens gravadas: ${saved}`);
-      ok(saved[0].endsWith('-diagrama.png'), saved[0]);
-      ok(text.includes(`![diagrama](assets/${saved[0]})`), `imagem trazida: ${text}`);
       ok(text.includes('![foto](https://privado.example.org/foto.png)'), `imagem sem acesso fica com o endereço: ${text}`);
-      equal(fetched.length, 2, 'downloads');
+      if (document.uri.scheme === 'file') {
+        equal(saved.length, 1, `imagens gravadas: ${saved}`);
+        ok(saved[0].endsWith('-diagrama.png'), saved[0]);
+        ok(text.includes(`![diagrama](assets/${saved[0]})`), `imagem trazida: ${text}`);
+        equal(fetched.length, 2, 'downloads');
+      } else {
+        // Fora de arquivos locais (no navegador, vscode-test-web://), as imagens ficam com o endereço de origem
+        equal(saved.length, 0, `imagens gravadas: ${saved}`);
+        equal(fetched.length, 0, 'downloads');
+        ok(text.includes('](https://wiki.example.org/download/attachments/1/diagrama.png'), `imagem com o endereço: ${text}`);
+      }
       // Copiar e colar dentro do VS Code fica como está
       data.set('vscode-editor-data', new vscode.DataTransferItem('{}'));
       equal(await new PasteAsMarkdown(sites, get).provideDocumentPasteEdits(document, [new vscode.Range(0, 0, 0, 0)], data, { only: undefined, triggerKind: vscode.DocumentPasteTriggerKind.Automatic }, source.token), undefined, 'colar de dentro do VS Code');

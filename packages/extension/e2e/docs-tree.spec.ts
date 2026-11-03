@@ -1,7 +1,7 @@
 /**
  * Barra lateral TechDocs: o ícone na barra de atividades abre a árvore "Documentação" (spec 02, LC6) e a
  * "Manutenção" (spec 04, T3b, só com `techdocsEditor.maintainer`). Com dois sites e nenhuma página aberta, a
- * árvore pede a escolha; escolhido, clicar abre a página e a página aberta fica selecionada; a Manutenção
+ * árvore pede a escolha do diretório; escolhido, clicar abre a página e a página aberta fica selecionada; a Manutenção
  * confere sozinha ao aparecer.
  */
 import { expect, openFile, test, visual } from './vscode';
@@ -17,23 +17,21 @@ test('barra lateral TechDocs: escolher o site; árvore e manutenção; clicar ab
   const view = pane(/^Documentation/i);
   await expect(view.locator('.pane-header')).toBeVisible();
   const rows = view.locator('.monaco-list-row');
-  // Dois sites e nenhuma página aberta: a escolha, pela lista agrupada por repositório
-  await view.getByRole('button', { name: 'Choose documentation…' }).click();
-  await page.locator('.quick-input-widget').getByRole('option', { name: /Wiki de Demonstração, wiki(,|$)/ }).click();
-  // Visão dos arquivos (padrão): o site é a linha da pasta no topo (repo › pasta); pastas e páginas pelo nome
-  const wiki = rows.filter({ hasText: /› wiki$/ });
-  await expect(wiki).toBeVisible();
-
-  const guias = rows.filter({ hasText: /^guias$/ }).first();
-  await guias.click();
-  await rows.filter({ hasText: /^primeiros-passos\.md$/ }).first().click();
+  // Dois sites e nenhuma página aberta: a escolha, pela lista de diretórios
+  await view.getByRole('button', { name: 'Choose directory or repo…' }).click();
+  await page.locator('.quick-input-widget').getByRole('option', { name: /(^|\s)wiki, documentation/ }).click();
+  // Árvore do menu do site: seções pelas pastas, páginas pelo título
+  const guias = rows.filter({ hasText: /^guias$/i }).first();
+  await expect(guias).toBeVisible();
+  if ((await guias.getAttribute('aria-expanded')) === 'false') await guias.click();
+  await rows.filter({ hasText: /^Primeiros passos/ }).first().click();
   await expect(page.locator('.tab.active', { hasText: 'primeiros-passos.md' })).toBeVisible();
   // O webview carregando fica com o foco e engole as teclas (o Ctrl+P do openFile): espera o editor pronto
   await expect(visual(page).locator('.milkdown')).toBeVisible();
 
   // Outra página aberta por fora da árvore: ela fica selecionada na árvore
   await openFile(page, 'wiki/docs/processos/aprovacao.md');
-  await expect(rows.filter({ hasText: /^aprovacao\.md$/ }).first()).toHaveClass(/selected/);
+  await expect(rows.filter({ hasText: /^Processo de aprovação/ }).first()).toHaveClass(/selected/);
 
   // O site atual na barra de status abre a lista; a busca acha as páginas de todos os sites
   await page.locator('.statusbar-item', { hasText: 'Wiki de Demonstração' }).first().click();
