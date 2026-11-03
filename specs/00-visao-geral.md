@@ -61,6 +61,7 @@ até a fase 7.
 | [02](02-modos-e-publicacao.md) | Modo local, modo remoto, escolha do modo, autenticação, fluxo de publicação, configuração, integração com o Backstage |
 | [03](03-qualidade-seguranca-release.md) | Testes, segurança, desempenho, versões fixas e release |
 | [04](04-templates.md) | Templates de documentação: páginas e sites a partir de modelos da extensão ou do repositório |
+| [05](05-colar-de-outras-ferramentas.md) | Colar do Confluence e do Outline no editor visual: o que quebra e como corrigir |
 
 ## Fases
 

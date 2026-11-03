@@ -112,6 +112,17 @@ export function defaultCodeLanguage(markdown: string) {
  *   segunda para não juntá-las, e o lint reprova estilos misturados (MD004). As listas se juntam;
  * - mais de uma linha em branco seguida vira uma.
  */
+/**
+ * Tira as barras que o editor põe antes de `&` e de `@` (`?a=1\&b=2`, `hello\@x.com`): no CommonMark são
+ * escapes, mas o Python-Markdown do MkDocs não os conhece e mantém a barra, e o link, a imagem ou o e-mail quebram.
+ * O `&` que forma uma entidade (`\&amp;`) continua escapado; dentro de código (`` `…` ``) nada muda.
+ */
+const unescapeForMkdocs = (line: string) =>
+  line
+    .split(/(`+[^`]*?`+)/)
+    .map((part, i) => (i % 2 ? part : part.replace(/\\&(?!#?\w+;)/g, '&').replace(/\\@/g, '@')))
+    .join('');
+
 const tidy = (lines: Line[]) =>
   mapLines(withDefaultCodeLanguage(lines), (original, { inCode, opensCode, previous }) => {
     if (inCode || opensCode) return original;
@@ -120,6 +131,7 @@ const tidy = (lines: Line[]) =>
     if (!/^\s*(\*\s*){3,}$/.test(line)) {
       line = line.replace(/^(\s*(?:>\s*)*)\*(\s+)(?=\S)/, '$1-$2').replace(/^(\s*(?:>\s*)*\d+)\)(\s)/, '$1.$2');
     }
+    line = unescapeForMkdocs(line);
     if (line.trim() === '<br />') return null;
     // Bloco de imagem inserido e deixado sem imagem
     if (/^!\[[^\]]*\]\(\s*\)$/.test(line.trim())) return null;

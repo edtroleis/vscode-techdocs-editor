@@ -13,6 +13,7 @@ import { headingLevelFixPlugin } from './headingLevelFix';
 import { tableTabRowPlugin } from './tableTabRow';
 import { attachLinkPages, LinkPage } from './linkPages';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
+import { pasteHtmlPlugin } from './pasteHtml';
 import { buildTopBar } from './topBar';
 import { EditorText, headingOptions, labelTopBar, selectionToolbar, slashMenu } from './labels';
 import { SearchResult, moveSearch, search, searchResult, visualSearchPlugin } from './visualSearch';
@@ -202,6 +203,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(defaultCodeLanguagePlugin)
       .use(headingLevelFixPlugin)
       .use(tableTabRowPlugin)
+      .use(pasteHtmlPlugin)
       .use(inlineCodeTypingPlugin)
       .use(listCaretFixPlugin)
       .use(visualSearchPlugin)

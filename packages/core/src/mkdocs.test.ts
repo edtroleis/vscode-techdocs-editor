@@ -34,6 +34,10 @@ describe('toEditor / fromEditor (blocos do MkDocs)', () => {
 });
 
 describe('fromEditor (ajustes ao salvar)', () => {
+  it('tira as barras antes de & e @ que o MkDocs não entende, fora do código', () => {
+    const editor = '![x](https://a.com/i.png?a=1\\&b=2) e [l](https://a.com/?x=1\\&y=2) e hello\\@getoutline.com\n\n`a\\&b` e \\&amp; e R\\&D\n';
+    expect(fromEditor(editor)).toBe('![x](https://a.com/i.png?a=1&b=2) e [l](https://a.com/?x=1&y=2) e hello@getoutline.com\n\n`a\\&b` e \\&amp; e R&D\n');
+  });
   it('bloco de código sem linguagem ganha text', () => {
     expect(fromEditor('```\ncódigo\n```')).toBe('```text\ncódigo\n```\n');
   });
