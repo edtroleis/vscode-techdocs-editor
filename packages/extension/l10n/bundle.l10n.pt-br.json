@@ -521,5 +521,6 @@
   "{0}: {1} adjustments that need you.": "{0}: {1} ajustes que precisam de você.",
   "{0} adjustments made in {1} files. {2} left that need you: they are in the Problems panel.": "{0} ajustes feitos em {1} arquivos. Faltam {2} que precisam de você: estão no painel Problemas.",
   "{0} adjustments made in {1} files.": "{0} ajustes feitos em {1} arquivos.",
-  "Fix all automatically": "Ajustar automaticamente"
+  "Fix all automatically": "Ajustar automaticamente",
+  "Checking {0}…": "Conferindo {0}…"
 }

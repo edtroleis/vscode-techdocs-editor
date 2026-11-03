@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { repoDirOf } from './chooseSites';
 import { CatalogMode, parseRepoConfig, REPO_CONFIG_FILE, setCatalogMode } from '@edtroleis/techdocs-editor-core';
 import type { RepoCheck } from './repoCheck';
-import { readText } from './templates/templateSources';
+import { exists, readText } from './templates/templateSources';
 
 /** De onde veio o modo: o `.techdocs-editor.yaml` do repositório, a configuração do VS Code ou o padrão. */
 export type CatalogModeSource = 'repository' | 'settings' | 'default';
@@ -27,12 +27,24 @@ export async function siteRepository(root: vscode.Uri): Promise<vscode.Uri> {
 }
 
 /**
- * Há algum `catalog-info.yaml` no workspace: sinal de que o Backstage é usado. Sem ele, o modo `auto` não fala do
- * arquivo. Sem maxResults: no navegador (@vscode/test-web), a busca ignora o padrão e corta pelo limite antes de
- * filtrar (microsoft/vscode#200892), e com qualquer limite o resultado depende de quais arquivos vêm primeiro.
+ * Algum outro repositório por perto tem um `catalog-info.yaml` na raiz: sinal de que o Backstage é usado. Sem ele, o
+ * modo `auto` não fala do arquivo. "Por perto": um nível abaixo do diretório acima de `repo`, do próprio `repo` e das
+ * pastas do workspace, lidos direto. Buscar no workspace inteiro (o ~ ou o ~/code) levava minutos, e o botão
+ * Conferir parecia não fazer nada.
  */
-export async function backstageInWorkspace(): Promise<boolean> {
-  return (await vscode.workspace.findFiles('**/catalog-info.yaml', '**/node_modules/**')).length > 0;
+export async function backstageNear(repo: vscode.Uri): Promise<boolean> {
+  const places = [vscode.Uri.joinPath(repo, '..'), repo, ...(vscode.workspace.workspaceFolders ?? []).map(f => f.uri)];
+  const seen = new Set<string>();
+  for (const place of places) {
+    if (seen.has(place.toString())) continue;
+    seen.add(place.toString());
+    const entries = await vscode.workspace.fs.readDirectory(place).then(undefined, () => [] as [string, vscode.FileType][]);
+    for (const [name, type] of entries) {
+      if (type !== vscode.FileType.Directory || name.startsWith('.') || name === 'node_modules') continue;
+      if (await exists(vscode.Uri.joinPath(place, name, 'catalog-info.yaml'))) return true;
+    }
+  }
+  return false;
 }
 
 /**

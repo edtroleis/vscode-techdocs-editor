@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import { checkSite, LINT_CONFIG_FILES, SiteFinding, SiteSnapshot } from '@edtroleis/techdocs-editor-core';
-import { backstageInWorkspace, catalogModeFor, siteRepository } from './catalogOptions';
+import { backstageNear, catalogModeFor, siteRepository } from './catalogOptions';
 import type { DocsSite } from './docsSite';
 import { configDirs } from './lintProblems';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
 import type { ProposedChanges } from './proposedChange';
+import { timing } from './timing';
 import type { NewSiteCommand } from './templates/newSite';
 import { exists, gitUserName, readText } from './templates/templateSources';
 
@@ -122,7 +123,18 @@ export class RepoCheck implements vscode.Disposable {
       return undefined;
     }
     const name = decodeURIComponent(site.site.root.split('/').filter(Boolean).pop() ?? '');
-    const { base, findings } = await this.checkOne(site);
+    // Um sinal de que o clique pegou, enquanto confere
+    const { base, findings } = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Window, title: vscode.l10n.t('Checking {0}…', name) },
+      async () => {
+        timing.begin(`conferência de ${name}`);
+        try {
+          return await this.checkOne(site);
+        } finally {
+          timing.end();
+        }
+      },
+    );
     const auto = findings.filter(f => f.fix);
     const manual = needsYou(findings);
     if (!auto.length && !manual.length) {
@@ -287,9 +299,10 @@ export class RepoCheck implements vscode.Disposable {
       const text = catalog ? undefined : await this.currentText(uri);
       if (text !== undefined) catalog = { file: rel(uri), text };
     }
-    const { mode: catalogMode } = await catalogModeFor(await siteRepository(root));
+    const repo = await siteRepository(root);
+    const { mode: catalogMode } = await catalogModeFor(repo);
     // Sem catalog-info.yaml no site, o modo auto só dá a dica se outro repositório do workspace tem um
-    const backstageSignal = catalog || catalogMode !== 'auto' ? undefined : await backstageInWorkspace();
+    const backstageSignal = catalog || catalogMode !== 'auto' ? undefined : await backstageNear(repo);
     // O dono só entra no catalog-info.yaml novo: o Git só é consultado quando ele pode ser criado
     const owner = catalogMode === 'required' && !catalog ? await gitUserName(base) : undefined;
     return {
