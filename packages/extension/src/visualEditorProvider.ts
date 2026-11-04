@@ -1,3 +1,4 @@
+import { DiagramProblems } from './diagramProblems';
 import * as vscode from 'vscode';
 import { parseRemoteUri, REMOTE_SCHEME, remoteUriPath } from '@edtroleis/techdocs-editor-core';
 import type { LintService } from './lintService';
@@ -26,12 +27,19 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   /** Clique num botão da faixa de estado. */
   readonly onStripAction = this.onStripActionEmitter.event;
 
+  /** Erros de sintaxe dos diagramas Mermaid das páginas abertas (spec 06, M5). */
+  private readonly diagrams = new DiagramProblems();
+
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly lint: LintService,
     private readonly sites: LocalSites,
     private readonly remoteFs?: RemoteFileSystem,
   ) {}
+
+  dispose() {
+    this.diagrams.dispose();
+  }
 
   /** Páginas do site de uma página, para a caixa de link (a árvore da Documentação, que já as conhece). */
   linkPages: (uri: vscode.Uri) => LinkPageView[] = () => [];
@@ -42,7 +50,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       strip: () => this.strips.get(key),
       action: action => this.onStripActionEmitter.fire({ uri: document.uri, action }),
       linkPages: () => this.linkPages(document.uri),
-    });
+    }, this.diagrams);
     this.sessions.set(key, session);
     panel.onDidDispose(() => {
       if (this.sessions.get(key) === session) this.sessions.delete(key);
@@ -98,6 +106,7 @@ export class EditorSession {
     private readonly sites: LocalSites,
     private readonly remoteFs?: RemoteFileSystem,
     private readonly status?: { strip(): Strip | undefined; action(action: StripAction): void; linkPages?(): LinkPageView[] },
+    private readonly diagrams?: DiagramProblems,
   ) {
     this.ready = new Promise(resolve => (this.markReady = resolve));
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
@@ -121,6 +130,7 @@ export class EditorSession {
       }),
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document !== document || event.contentChanges.length === 0) return;
+        this.diagrams?.check(document, message => this.post(message));
         const text = toLf(document.getText());
         const conflicted = hasConflictMarkers(text);
         if (conflicted !== this.conflicted) {
@@ -197,6 +207,7 @@ export class EditorSession {
   }
 
   dispose() {
+    this.diagrams?.clear(this.document.uri);
     this.disposables.forEach(d => d.dispose());
   }
 
@@ -222,7 +233,11 @@ export class EditorSession {
       case 'ready':
         this.post({ type: 'lint', problems: this.lint.problems(this.document.uri) });
         this.post({ type: 'status', strip: this.status?.strip() });
+        this.diagrams?.check(this.document, message => this.post(message));
         this.markReady();
+        return;
+      case 'diagramErrors':
+        this.diagrams?.receive(this.document.uri, message.id, message.errors);
         return;
       case 'statusAction':
         this.status?.action(message.action);

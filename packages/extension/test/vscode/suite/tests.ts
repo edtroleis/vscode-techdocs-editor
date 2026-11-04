@@ -192,6 +192,48 @@ export function defineTests() {
     });
   });
 
+  suite('Mermaid', function () {
+    this.timeout(60_000);
+    const file = (path: string) => vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, path);
+    const page = () => file('wiki/docs/mermaid-teste.md');
+    const write = (text: string) => vscode.workspace.fs.writeFile(page(), new TextEncoder().encode(text));
+    const diagramProblems = () => vscode.languages.getDiagnostics(page()).filter(d => d.code === 'mermaid');
+    const BAD = '# Diagramas\n\nTexto.\n\n```mermaid\nflowchart LR\n  A-->\n```\n';
+    teardown(async () => {
+      await closeAll();
+      await vscode.workspace.fs.delete(page()).then(undefined, () => undefined);
+    });
+
+    test('erro de sintaxe no painel Problemas; some ao corrigir e ao fechar', async () => {
+      await write(BAD);
+      const { document } = await openVisual(page());
+      await until(diagramProblems, list => list.length === 1, 'o erro do diagrama não apareceu');
+      const [problem] = diagramProblems();
+      equal(problem.source, 'TechDocs', 'fonte do diagnóstico');
+      equal(problem.severity, vscode.DiagnosticSeverity.Error, 'severidade do diagnóstico');
+      // A linha do erro no arquivo: o diagrama começa na linha 6 e o erro é na 2ª linha dele
+      equal(problem.range.start.line, 6, 'linha do erro no arquivo');
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(page(), document.lineAt(6).range, '  A-->B');
+      ok(await vscode.workspace.applyEdit(edit), 'edição recusada');
+      await until(diagramProblems, list => list.length === 0, 'o erro não sumiu depois de corrigir');
+      const broken = new vscode.WorkspaceEdit();
+      broken.replace(page(), document.lineAt(6).range, '  A-->');
+      ok(await vscode.workspace.applyEdit(broken), 'edição recusada');
+      await until(diagramProblems, list => list.length === 1, 'o erro não voltou');
+      await closeAll();
+      await until(diagramProblems, list => list.length === 0, 'o erro ficou depois de fechar o editor');
+    });
+
+    test('fechar antes da resposta não deixa erro', async () => {
+      await write(BAD);
+      await openVisual(page());
+      await closeAll();
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      equal(diagramProblems().length, 0, 'ficou erro de uma página fechada');
+    });
+  });
+
   suite('Modo local', function () {
     this.timeout(60_000);
     teardown(closeAll);

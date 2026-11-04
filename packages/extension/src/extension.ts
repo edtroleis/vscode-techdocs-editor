@@ -152,6 +152,7 @@ export function activate(context: vscode.ExtensionContext) {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false,
     }),
+    provider,
     vscode.commands.registerCommand('techdocsEditor.openVisual', (target?: vscode.Uri | DocsItem) => {
       // Do botão da árvore chega o item da página, não o arquivo
       const uri = (target instanceof DocsItem ? target.uri : target) ?? vscode.window.activeTextEditor?.document.uri;

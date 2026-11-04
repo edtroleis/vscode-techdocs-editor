@@ -13,6 +13,7 @@ import {
   en,
   ptBR,
   searchTextFrom,
+  diagramErrors,
   setMermaidTheme,
   useVisualSearch,
 } from '@edtroleis/techdocs-editor-ui';
@@ -386,5 +387,9 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
   if (message.type === 'status') lastStrip = message.strip;
   if (message.type === 'init') root.render(<App key={++generation} content={message} />);
   else if (message.type === 'conflict') root.render(<Conflict key={++generation} {...message} />);
+  else if (message.type === 'diagrams') {
+    const { id } = message;
+    void diagramErrors(message.blocks).then(errors => post({ type: 'diagramErrors', id, errors }));
+  }
 });
 post({ type: 'loaded' });

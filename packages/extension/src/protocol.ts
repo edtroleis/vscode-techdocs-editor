@@ -38,6 +38,8 @@ export type HostMessage =
   | { type: 'uploaded'; id: number; link?: string; error?: string }
   /** Resposta a `linkPages`: as outras páginas do site, com o link relativo a esta. */
   | { type: 'linkPages'; id: number; pages: LinkPageView[] }
+  /** Diagramas Mermaid da página (spec 06, M5): o webview valida e responde com `diagramErrors`. */
+  | { type: 'diagrams'; id: number; blocks: { line: number; code: string }[] }
   /** Testes: devolve o que o editor gravaria agora (`fromEditor` do Markdown do editor). */
   | { type: 'test:getSaved'; id: number }
   /** Testes: insere Markdown no cursor, como se a pessoa digitasse. */
@@ -76,6 +78,8 @@ export type WebviewMessage =
   /** Desfazer ou refazer no documento (o histórico é um só: o do VS Code). */
   | { type: 'undo' }
   | { type: 'redo' }
+  /** Resposta a `diagrams`: os erros de sintaxe, com a linha no arquivo. */
+  | { type: 'diagramErrors'; id: number; errors: { line: number; message: string }[] }
   /** Ctrl+S no visual: o host grava o documento depois de aplicar as edições que já chegaram. */
   | { type: 'save' }
   | { type: 'test:saved'; id: number; text: string };
