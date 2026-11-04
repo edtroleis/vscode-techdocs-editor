@@ -34,14 +34,14 @@ de diagramas (arrastar caixas); exportar o diagrama como imagem.
 
 | Id | Parte | O que faz | Estado |
 |----|-------|-----------|--------|
-| M1 | Editor visual | Bloco `mermaid` mostra o diagrama no lugar do código. **Editar** no bloco mostra o código com a prévia embaixo; **Ver diagrama** volta. Editar o código redesenha (os desenhos saem um de cada vez, na ordem). Todo bloco começa no diagrama, inclusive o recém-inserido (o Crepe só tem a opção para todos os blocos). Os botões do bloco de código (Copiar, Prévia) ficam no idioma da pessoa | — |
-| M2 | Editor visual | Tema do diagrama segue o do VS Code: `dark` no escuro e alto contraste escuro, `default` no claro; troca de tema redesenha os diagramas abertos | — |
-| M3 | Editor visual | Erro de sintaxe: no lugar do diagrama, a mensagem do Mermaid (linha, quando vier) com a cor de erro do tema; o código continua editável e o arquivo é salvo como está | — |
-| M4 | Inserir | "Diagrama (Mermaid)" no menu `/` e na barra (no grupo do bloco de código), com um fluxograma curto de exemplo (`flowchart LR`, três caixas) e o cursor no código. Rótulos em pt-BR e inglês, como os outros | — |
-| M5 | Problemas | Erros de sintaxe dos diagramas da página aberta no editor visual vão para o painel Problemas (fonte `TechDocs`, linha do bloco + linha do erro), validados pelo mesmo Mermaid da webview e enviados ao host. Some ao corrigir ou fechar a página. Páginas fechadas e o Conferir não validam diagramas (precisariam do Mermaid no host) | — |
-| M6 | Conferir | Achado `mermaid-config-missing` (aviso, só quando alguma página do site tem bloco `mermaid` e o `mkdocs.yml` não tem o bloco personalizado no `pymdownx.superfences`). Ajuste automático acrescenta a configuração abaixo em `markdown_extensions` (cria a lista se faltar; junta se o `pymdownx.superfences` já existe com outras opções), com Desfazer, preservando as tags do MkDocs. O texto do achado avisa que no Backstage é preciso o addon de Mermaid do TechDocs | — |
-| M7 | Inserir | Ao inserir o primeiro diagrama (M4) numa página de um site sem a configuração, a mesma configuração do M6 é acrescentada ao `mkdocs.yml` com uma mensagem e Desfazer | — |
-| M8 | Navegador | Funciona no vscode.dev: o Mermaid desenha na webview sem rede; a CSP atual (`style-src 'unsafe-inline'`, scripts com nonce) cobre o SVG e o pedaço carregado depois. Conferir no teste web | — |
+| M1 | Editor visual | Bloco `mermaid` mostra o diagrama no lugar do código. **Editar** no bloco mostra o código com a prévia embaixo; **Ver diagrama** volta. Editar o código redesenha (os desenhos saem um de cada vez, na ordem). Todo bloco começa no diagrama, inclusive o recém-inserido (o Crepe só tem a opção para todos os blocos). Os botões do bloco de código (Copiar, Prévia) ficam no idioma da pessoa | ✅ |
+| M2 | Editor visual | Tema do diagrama segue o do VS Code: `dark` no escuro e alto contraste escuro, `default` no claro; troca de tema redesenha os diagramas abertos | ✅ |
+| M3 | Editor visual | Erro de sintaxe: no lugar do diagrama, a mensagem do Mermaid (linha, quando vier) com a cor de erro do tema; o código continua editável e o arquivo é salvo como está | ✅ |
+| M4 | Inserir | "Diagrama (Mermaid)" no menu `/` e na barra (no grupo do bloco de código), com um fluxograma curto de exemplo (`flowchart LR`, três caixas) e o cursor no código. Rótulos em pt-BR e inglês, como os outros | ✅ |
+| M5 | Problemas | Erros de sintaxe dos diagramas da página aberta no editor visual vão para o painel Problemas (fonte `TechDocs`, linha do bloco + linha do erro), validados pelo mesmo Mermaid da webview e enviados ao host. Some ao corrigir ou fechar a página. Páginas fechadas e o Conferir não validam diagramas (precisariam do Mermaid no host) | ✅ |
+| M6 | Conferir | Achado `mermaid-config-missing` (aviso, só quando alguma página do site tem bloco `mermaid` e o `mkdocs.yml` não tem o bloco personalizado no `pymdownx.superfences`). Ajuste automático acrescenta a configuração abaixo em `markdown_extensions` (cria a lista se faltar; junta se o `pymdownx.superfences` já existe com outras opções), com Desfazer, preservando as tags do MkDocs. O texto do achado avisa que no Backstage é preciso o addon de Mermaid do TechDocs | ✅ |
+| M7 | Inserir | Ao inserir o primeiro diagrama (M4) numa página de um site sem a configuração, a mesma configuração do M6 é acrescentada ao `mkdocs.yml` com uma mensagem e Desfazer | ✅ |
+| M8 | Navegador | Funciona no vscode.dev: o Mermaid desenha na webview sem rede; a CSP atual (`style-src 'unsafe-inline'`, scripts com nonce) cobre o SVG e o pedaço carregado depois. Conferir no teste web | ✅ |
 
 Configuração acrescentada (M6, M7):
 
@@ -54,14 +54,16 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
 ```
 
-## A conferir antes de implementar
+## Conferido antes de implementar (2026-11-04)
 
-- Qual HTML o addon de Mermaid do Backstage procura (`pre.mermaid`, `div.mermaid` ou `code.language-mermaid`).
-  Se ele já reconhecer o bloco de código comum, o M6/M7 mudam de "aviso" para "dica" (o site sem Backstage ainda
-  precisa da configuração).
-- Se a junção do `mdx_configs` do `techdocs-core` com o `pymdownx.extra` mantém o `custom_fences` num build
-  real (`mkdocs build` com techdocs-core 1.7.1).
-- Tamanho final do pacote da webview e do `.vsix` com o Mermaid.
+- O addon de Mermaid do TechDocs no Backstage pede a mesma configuração (`pymdownx.superfences` com `class: mermaid`):
+  o M6 fica como aviso.
+- `mkdocs build` com techdocs-core 1.7.1 e a configuração acima gera `<pre class="mermaid">`; os outros blocos de
+  código continuam com realce.
+- Mermaid 12.2.0: ~1,4 MB gzip a mais no `.vsix`, em pedaços carregados só com diagrama na página; a abertura do
+  editor ficou em 459 KB gzip (orçamento de 500 KB).
+- O `render` do Mermaid com erro de sintaxe deixa uma "bomba" de erro no `body`: o código é validado (`parse`)
+  antes de desenhar.
 
 ## Testes
 

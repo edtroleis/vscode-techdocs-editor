@@ -74,6 +74,20 @@ MkDocs monta como está.
   mesmo Markdown em vez do texto puro.
 - Os espaços sobrando da colagem saem com **Ajustar agora**, como qualquer problema de formatação.
 
+### Diagramas Mermaid
+
+Escreva fluxogramas, diagramas de sequência e os outros diagramas do [Mermaid](https://mermaid.js.org) num bloco
+de código `mermaid`: o editor visual desenha no lugar, nas cores do tema do VS Code, sem rede (também no VS Code
+para a Web).
+
+- **Inserir** um diagrama pelo menu `/` ou pela barra (**Diagrama (Mermaid)**): ele vem com um fluxograma curto
+  para começar. **Editar** no bloco mostra o código, com o diagrama redesenhado embaixo enquanto você digita.
+- **Erros de sintaxe** aparecem no lugar do diagrama, com a linha, e no painel Problemas enquanto a página está
+  aberta no editor visual.
+- **O site também desenha:** o primeiro diagrama acrescenta o bloco do Mermaid do `pymdownx.superfences` ao
+  `mkdocs.yml` (com **Desfazer**), e o botão **Conferir** aponta os sites com diagramas e sem a configuração. No
+  Backstage, o TechDocs também precisa do addon de Mermaid, instalado pelos administradores do Backstage.
+
 ### Para se achar
 
 ![Ctrl+F no editor visual destaca e conta os resultados](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/search.gif)

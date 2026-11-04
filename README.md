@@ -73,6 +73,20 @@ that MkDocs builds as is.
   Markdown instead of plain text.
 - Extra spaces left by the paste are fixed by **Fix automatically**, like any formatting problem.
 
+### Mermaid diagrams
+
+Write flowcharts, sequence diagrams and the other [Mermaid](https://mermaid.js.org) diagrams in a `mermaid` code
+block: the visual editor draws them in place, in the colors of your VS Code theme, with no network (also in
+VS Code for the Web).
+
+- **Insert** a diagram from the `/` menu or the toolbar (**Diagram (Mermaid)**): it comes with a short flowchart to
+  start from. **Edit** on the block shows the code, with the diagram redrawn below as you type.
+- **Syntax errors** show in place of the diagram, with the line, and in the Problems panel while the page is open
+  in the visual editor.
+- **The site draws them too:** the first diagram adds the Mermaid block of `pymdownx.superfences` to `mkdocs.yml`
+  (with **Undo**), and the **Check** button points out sites with diagrams and no setup. In Backstage, TechDocs also
+  needs the Mermaid addon, installed by the Backstage admins.
+
 ### Find your way around
 
 ![Ctrl+F in the visual editor highlights the matches and counts them](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/search.gif)

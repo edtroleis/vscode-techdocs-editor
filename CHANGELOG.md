@@ -6,6 +6,22 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Mermaid diagrams** in the visual editor: a `mermaid` code block is drawn in place, in the colors of the VS Code
+  theme, with no network (also in VS Code for the Web). **Edit** on the block shows the code with the diagram
+  redrawn below. Insert one from the `/` menu or the toolbar (**Diagram (Mermaid)**), with a short flowchart to
+  start from.
+- **Diagram syntax errors** in place of the diagram, with the line, and in the Problems panel while the page is open
+  in the visual editor.
+- **Mermaid in the site:** the first diagram adds the Mermaid block of `pymdownx.superfences` to `mkdocs.yml`, with
+  **Undo**; **Check** points out sites with diagrams and no setup, and fixes it. In Backstage, TechDocs also needs the
+  Mermaid addon.
+
+### Changed
+
+- The **Copy** and **Preview** labels of code blocks follow the language of VS Code.
+
 ## [0.9.1] - 2026-11-04
 
 ### Fixed
