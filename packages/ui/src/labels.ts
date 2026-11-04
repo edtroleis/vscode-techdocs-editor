@@ -1,6 +1,7 @@
 import { commandsCtx } from '@milkdown/kit/core';
 import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark';
-import { DIAGRAM_ICON, insertDiagram } from './insertDiagram';
+import { DIAGRAM_ICON } from './icons';
+import { insertDiagram } from './insertDiagram';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
 

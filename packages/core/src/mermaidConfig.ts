@@ -1,4 +1,4 @@
-import { isMap, isScalar, isSeq, parseDocument, type Node, type YAMLMap, type YAMLSeq } from 'yaml';
+import { isMap, isScalar, isSeq, parseDocument, type Document, type Node, type YAMLMap, type YAMLSeq } from 'yaml';
 
 /** Bloco de diagrama Mermaid de uma página: o código e a linha (1-based) em que ele começa no arquivo. */
 export type MermaidBlock = { line: number; code: string };
@@ -43,15 +43,17 @@ function superfencesItem(seq: YAMLSeq): Node | undefined {
 }
 
 /** O `markdown_extensions` tem o bloco personalizado `mermaid` no `pymdownx.superfences`. */
-export function hasMermaidFence(yml: string): boolean {
-  const doc = parseDocument(yml);
+function hasFence(doc: Document): boolean {
   const extensions = doc.get('markdown_extensions', true);
   if (!isSeq(extensions)) return false;
   const item = superfencesItem(extensions);
   if (!isMap(item)) return false;
-  const fences = (item.get(SUPERFENCES, true) as YAMLMap | undefined)?.get?.('custom_fences', true);
+  const options = item.get(SUPERFENCES, true);
+  const fences = isMap(options) ? options.get('custom_fences', true) : undefined;
   return isSeq(fences) && fences.items.some(f => isMap(f) && f.get('name') === 'mermaid');
 }
+
+export const hasMermaidFence = (yml: string): boolean => hasFence(parseDocument(yml));
 
 /** Coluna do começo da linha em que `offset` está. */
 const lineStart = (text: string, offset: number) => text.lastIndexOf('\n', offset - 1) + 1;
@@ -73,8 +75,8 @@ const insertAt = (text: string, offset: number, piece: string) => {
  * Mexe só no trecho novo: o resto do texto (comentários, tags do MkDocs) fica igual. Aplicar de novo não muda nada.
  */
 export function addMermaidFence(yml: string): string {
-  if (hasMermaidFence(yml)) return yml;
   const doc = parseDocument(yml);
+  if (hasFence(doc)) return yml;
   const extensions = doc.get('markdown_extensions', true);
   const entry = (spaces: number) => indent(MERMAID_FENCE, spaces);
   const superfences = (spaces: number) =>
@@ -117,15 +119,13 @@ export function addMermaidFence(yml: string): string {
 }
 
 /** Formas raras (listas numa linha, valores vazios): acerta pela árvore do `yaml` e reescreve o arquivo. */
-function rewrite(doc: ReturnType<typeof parseDocument>): string {
+function rewrite(doc: Document): string {
   let extensions: unknown = doc.get('markdown_extensions', true);
   if (!isSeq(extensions)) {
     extensions = doc.createNode([]) as YAMLSeq;
     doc.set('markdown_extensions', extensions);
   }
   const seq = extensions as YAMLSeq;
-  // Em bloco, como o resto do arquivo costuma estar (o `yaml` mantém a forma de uma linha se ela já era assim)
-  seq.flow = false;
   let item = superfencesItem(seq);
   if (!isMap(item)) {
     const fresh = doc.createNode({ [SUPERFENCES]: null }) as YAMLMap;
@@ -147,6 +147,7 @@ function rewrite(doc: ReturnType<typeof parseDocument>): string {
   const format = doc.createNode('');
   (format as { tag?: string }).tag = 'tag:yaml.org,2002:python/name:pymdownx.superfences.fence_code_format';
   (list as YAMLSeq).items.push(doc.createNode({ name: 'mermaid', class: 'mermaid', format }) as never);
+  // Em bloco, como o resto do arquivo costuma estar (o `yaml` mantém a forma de uma linha se ela já era assim)
   for (const node of [seq, ...seq.items]) if (isMap(node) || isSeq(node)) node.flow = false;
   return doc.toString().replace(/(!!python\/name:[\w.]+) ""/g, '$1');
 }

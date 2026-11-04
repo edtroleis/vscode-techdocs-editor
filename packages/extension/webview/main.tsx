@@ -389,8 +389,7 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
   if (message.type === 'init') root.render(<App key={++generation} content={message} />);
   else if (message.type === 'conflict') root.render(<Conflict key={++generation} {...message} />);
   else if (message.type === 'diagrams') {
-    const { id } = message;
-    void diagramErrors(message.blocks).then(errors => post({ type: 'diagramErrors', id, errors }));
+    void diagramErrors(message.blocks).then(errors => post({ type: 'diagramErrors', id: message.id, errors }));
   }
 });
 post({ type: 'loaded' });

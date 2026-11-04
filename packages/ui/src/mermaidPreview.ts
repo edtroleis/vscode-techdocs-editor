@@ -84,29 +84,28 @@ const errorDetail = (message: string) => {
   return (/^Parse error/i.test(lines[0]) ? lines.slice(1, 3) : lines.slice(0, 2)).join('\n');
 };
 
+const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
 /** Últimos desenhos, por tema e código: voltar a um texto (desfazer, um bloco remontado ao rolar) não redesenha. */
-const drawn = new Map<string, string>();
+const drawn = new Map<string, { id: string; svg: string }>();
 const DRAWN_LIMIT = 50;
 
+/** Valida e desenha o diagrama (ou devolve o desenho já feito com o mesmo tema e código). */
 async function drawCached(mermaid: Mermaid, code: string): Promise<string> {
   const key = `${theme}\n${code}`;
   const cached = drawn.get(key);
-  if (cached !== undefined) {
-    // O código pode ter saído do mapa da troca de tema enquanto o desenho estava fora da página
-    const id = /<svg[^>]*\sid="([^"]+)"/.exec(cached)?.[1];
-    if (id) sources.set(id, code);
-    return cached;
+  if (cached) {
+    // O código pode ter saído do mapa enquanto o desenho estava fora da página
+    sources.set(cached.id, code);
+    return cached.svg;
   }
-  const svg = await draw(mermaid, code);
-  drawn.set(key, svg);
-  if (drawn.size > DRAWN_LIMIT) drawn.delete(drawn.keys().next().value!);
-  return svg;
-}
-
-async function draw(mermaid: Mermaid, code: string): Promise<string> {
+  // Valida antes: o render de um texto com erro desenha a "bomba" de erro do Mermaid
+  await mermaid.parse(code);
   const id = `techdocs-mermaid-${++renders}`;
   try {
     const { svg } = await mermaid.render(id, code);
+    drawn.set(key, { id, svg });
+    if (drawn.size > DRAWN_LIMIT) drawn.delete(drawn.keys().next().value!);
     sources.set(id, code);
     // Cada redesenho (a cada tecla no código) gera um id novo: esquece os que já saíram da página
     if (sources.size > 100) for (const old of sources.keys()) if (old !== id && !document.getElementById(old)) sources.delete(old);
@@ -140,15 +139,9 @@ function errorElement(text: DiagramText, message: string, code: string): HTMLEle
 /** Desenha (ou explica o erro de) um diagrama. */
 async function render(mermaid: Mermaid, code: string, text: DiagramText): Promise<HTMLElement> {
   try {
-    // Valida antes: o render de um texto com erro desenha a "bomba" de erro do Mermaid
-    await mermaid.parse(code);
-  } catch (error) {
-    return errorElement(text, error instanceof Error ? error.message : String(error), code);
-  }
-  try {
     return diagramElement(await drawCached(mermaid, code));
   } catch (error) {
-    return errorElement(text, error instanceof Error ? error.message : String(error), code);
+    return errorElement(text, messageOf(error), code);
   }
 }
 
@@ -164,30 +157,21 @@ export const mermaidPreview =
     return undefined;
   };
 
-/** Troca o tema dos diagramas e redesenha os que estão na tela. */
+/** Troca o tema dos diagramas e redesenha os que estão na tela, um por vez na fila. */
 export function setMermaidTheme(next: MermaidTheme) {
   if (next === theme) return;
   theme = next;
   if (!loading) return;
-  void enqueue(async mermaid => {
-    configure(mermaid);
-    const shown = new Set<string>();
-    for (const svg of document.querySelectorAll<SVGElement>('.mermaid-diagram > svg[id]')) {
-      const code = sources.get(svg.id);
-      if (code === undefined) continue;
-      try {
-        const next = await draw(mermaid, code);
-        const holder = svg.parentElement;
-        if (holder) holder.innerHTML = next;
-        shown.add(holder?.firstElementChild?.id ?? '');
-      } catch {
-        // O texto já tinha desenhado com o outro tema: fica o desenho anterior
-        shown.add(svg.id);
-      }
-    }
-    // Esquece os diagramas que saíram da página
-    for (const id of sources.keys()) if (!shown.has(id)) sources.delete(id);
-  });
+  void enqueue(async mermaid => configure(mermaid));
+  for (const svg of document.querySelectorAll<SVGElement>('.mermaid-diagram > svg[id]')) {
+    const code = sources.get(svg.id);
+    if (code === undefined) continue;
+    // Se falhar, fica o desenho com o tema anterior
+    void enqueue(async mermaid => {
+      const redrawn = await drawCached(mermaid, code);
+      if (svg.isConnected && svg.parentElement) svg.parentElement.innerHTML = redrawn;
+    }).catch(() => undefined);
+  }
 }
 
 /** Erros de sintaxe dos blocos, com a linha no arquivo (a do bloco + a linha do erro no diagrama). */
@@ -199,9 +183,10 @@ export function diagramErrors(blocks: { line: number; code: string }[]): Promise
       try {
         await mermaid.parse(block.code);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = messageOf(error);
         const line = errorLine(message, block.code);
-        errors.push({ line: block.line + (line ? line - 1 : 0), message: message.split('\n')[0] + (errorDetail(message) ? `\n${errorDetail(message)}` : '') });
+        const detail = errorDetail(message);
+        errors.push({ line: block.line + (line ? line - 1 : 0), message: [message.split('\n')[0], detail].filter(Boolean).join('\n') });
       }
     }
     return errors;

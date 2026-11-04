@@ -142,7 +142,7 @@ export class EditorSession {
       }),
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document !== document || event.contentChanges.length === 0) return;
-        this.diagrams?.check(document, message => this.post(message));
+        this.diagrams?.check(document, this.send);
         const text = toLf(document.getText());
         const conflicted = hasConflictMarkers(text);
         if (conflicted !== this.conflicted) {
@@ -227,6 +227,8 @@ export class EditorSession {
     return this.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
   }
 
+  private readonly send = (message: HostMessage) => this.post(message);
+
   private post(message: HostMessage) {
     void this.panel.webview.postMessage(message);
   }
@@ -245,7 +247,7 @@ export class EditorSession {
       case 'ready':
         this.post({ type: 'lint', problems: this.lint.problems(this.document.uri) });
         this.post({ type: 'status', strip: this.status?.strip() });
-        this.diagrams?.check(this.document, message => this.post(message));
+        this.diagrams?.check(this.document, this.send);
         this.markReady();
         return;
       case 'diagramInserted':

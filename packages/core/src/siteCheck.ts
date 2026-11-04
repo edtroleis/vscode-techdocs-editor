@@ -195,8 +195,8 @@ function checkPages(site: SiteSnapshot, title: string, createIndex: SiteFix, add
   }
 
   // Diagramas Mermaid (spec 06, M6): sem o bloco no superfences, o site mostra só o código
-  const diagram = pages.find(path => mermaidBlocks(site.pages[path]).length);
-  if (diagram && !hasMermaidFence(site.mkdocsYml)) {
+  const diagram = !hasMermaidFence(site.mkdocsYml) && pages.find(path => mermaidBlocks(site.pages[path]).length);
+  if (diagram) {
     add({ code: 'mermaid-config-missing', severity: 'warning', file: site.mkdocsFile, target: join(site.docsDir, diagram), fix: { file: site.mkdocsFile, apply: yml => addMermaidFence(yml ?? '') } });
   }
 }

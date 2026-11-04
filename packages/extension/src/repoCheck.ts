@@ -326,10 +326,8 @@ export class RepoCheck implements vscode.Disposable {
     };
   }
 
-  /** Texto do arquivo como está no editor (com o que não foi salvo), ou do disco; undefined se não existe. */
-  private async currentText(uri: vscode.Uri): Promise<string | undefined> {
-    const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
-    return open ? open.getText() : readText(uri);
+  private currentText(uri: vscode.Uri) {
+    return currentText(uri);
   }
 
   private async write(uri: vscode.Uri, current: string | undefined, next: string) {
@@ -338,11 +336,7 @@ export class RepoCheck implements vscode.Disposable {
       await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(next));
       return;
     }
-    const document = await vscode.workspace.openTextDocument(uri);
-    const wasDirty = document.isDirty;
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), next);
-    if ((await vscode.workspace.applyEdit(edit)) && !wasDirty) await document.save();
+    await replaceText(uri, next);
   }
 
   private show(results: SiteCheck[]) {
@@ -369,7 +363,22 @@ export type Ask = (kind: 'info' | 'warning', message: string, ...items: string[]
 /** O que o botão Conferir achou e fez. */
 export type CheckOutcome = { auto: number; manual: number; applied: number; undone?: boolean };
 
-const showMessage: Ask = (kind, message, ...items) =>
+/** Texto do arquivo como está no editor (com o que não foi salvo), ou do disco; undefined se não existe. */
+export async function currentText(uri: vscode.Uri): Promise<string | undefined> {
+  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
+  return open ? open.getText() : readText(uri);
+}
+
+/** Troca o texto do arquivo pelo editor (entra no desfazer do VS Code) e salva se ele estava salvo. */
+export async function replaceText(uri: vscode.Uri, next: string) {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const wasDirty = document.isDirty;
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), next);
+  if ((await vscode.workspace.applyEdit(edit)) && !wasDirty) await document.save();
+}
+
+export const showMessage: Ask = (kind, message, ...items) =>
   kind === 'warning' ? vscode.window.showWarningMessage(message, ...items) : vscode.window.showInformationMessage(message, ...items);
 const showProblems = () => vscode.commands.executeCommand('workbench.actions.view.problems');
 /** O que não tem ajuste automático e pede uma decisão: as dicas (ex.: catalog-info.yaml opcional) não contam. */

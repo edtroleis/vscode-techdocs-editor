@@ -26,7 +26,7 @@ export class DiagramProblems implements vscode.Disposable {
       key,
       setTimeout(() => {
         this.timers.delete(key);
-        const blocks = mermaidBlocks(document.getText().replace(/\r\n/g, '\n'));
+        const blocks = mermaidBlocks(document.getText());
         if (!blocks.length) {
           this.pending.delete(key);
           this.diagnostics.delete(document.uri);
