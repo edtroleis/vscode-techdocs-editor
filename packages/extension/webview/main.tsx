@@ -237,6 +237,7 @@ function App({ content }: { content: Content }) {
       lineTitle={lineTitle}
       readOnly={content.readOnly}
       linkPages={linkPages}
+      onDiagramInserted={() => post({ type: 'diagramInserted' })}
     />
     <Problems problems={problems} labels={content.labels} />
     </>

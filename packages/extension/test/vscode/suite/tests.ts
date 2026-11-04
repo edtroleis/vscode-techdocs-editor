@@ -97,6 +97,8 @@ async function closeAll() {
 
 /** Posição do botão Desfazer na barra fixa (ver TOP_BAR em test/webview). */
 const TOP_BAR_UNDO = 14;
+/** Posição do botão Diagrama (Mermaid) na barra fixa. */
+const TOP_BAR_DIAGRAM = 11;
 
 const pages = async () =>
   (await vscode.workspace.findFiles('wiki*/docs/**/*.md')).sort((a, b) => a.path.localeCompare(b.path));
@@ -223,6 +225,73 @@ export function defineTests() {
       await until(diagramProblems, list => list.length === 1, 'o erro não voltou');
       await closeAll();
       await until(diagramProblems, list => list.length === 0, 'o erro ficou depois de fechar o editor');
+    });
+
+    test('o primeiro diagrama inserido configura o mkdocs.yml, com Desfazer', async () => {
+      const mkdocs = file('wiki/mkdocs.yml');
+      const original = new TextDecoder().decode(await vscode.workspace.fs.readFile(mkdocs));
+      const read = async () => {
+        const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === mkdocs.toString());
+        return open ? open.getText() : new TextDecoder().decode(await vscode.workspace.fs.readFile(mkdocs));
+      };
+      const visual = await provider();
+      const messages: string[] = [];
+      let answer: string | undefined;
+      visual.diagramAsk = async (_kind, message) => {
+        messages.push(message);
+        return answer;
+      };
+      try {
+        await write('# Diagramas\n\nTexto.\n');
+        const { session } = await openVisual(page());
+        session.clickTopBar(TOP_BAR_DIAGRAM);
+        await until(read, text => text.includes('- name: mermaid'), 'o mkdocs.yml não foi configurado');
+        ok((await read()).startsWith(original.trimEnd()), 'o resto do mkdocs.yml mudou');
+        await until(() => messages, list => list.length === 1, 'a mensagem não apareceu');
+        equal(messages[0], 'Configured Mermaid diagrams in wiki/mkdocs.yml.', 'texto da mensagem');
+        // Segundo diagrama: nada muda, nada a dizer
+        const configured = await read();
+        session.clickTopBar(TOP_BAR_DIAGRAM);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        equal(await read(), configured, 'o segundo diagrama mexeu no mkdocs.yml');
+        equal(messages.length, 1, 'mensagem repetida no segundo diagrama');
+        // Desfazer
+        await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(original));
+        await until(read, text => text === original, 'o mkdocs.yml não voltou para o teste do Desfazer');
+        answer = 'Undo';
+        session.clickTopBar(TOP_BAR_DIAGRAM);
+        await until(() => messages, list => list.length === 2, 'a mensagem não apareceu de novo');
+        await until(read, text => text === original, 'Desfazer não devolveu o mkdocs.yml');
+      } finally {
+        visual.diagramAsk = undefined;
+        await closeAll();
+        await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(original));
+      }
+    });
+
+    test('diagrama numa página fora de um site não mexe em nada', async () => {
+      const loose = file('solto-mermaid.md');
+      const visual = await provider();
+      const messages: string[] = [];
+      visual.diagramAsk = async (_kind, message) => {
+        messages.push(message);
+        return undefined;
+      };
+      const mkdocs = file('wiki/mkdocs.yml');
+      const original = new TextDecoder().decode(await vscode.workspace.fs.readFile(mkdocs));
+      try {
+        await vscode.workspace.fs.writeFile(loose, new TextEncoder().encode('# Solto\n\nTexto.\n'));
+        const { session, document } = await openVisual(loose);
+        session.clickTopBar(TOP_BAR_DIAGRAM);
+        await until(() => document.getText(), text => text.includes('```mermaid'), 'o diagrama não entrou');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        equal(messages.length, 0, 'mensagem numa página fora de um site');
+        equal(new TextDecoder().decode(await vscode.workspace.fs.readFile(mkdocs)), original, 'mexeu num mkdocs.yml');
+      } finally {
+        visual.diagramAsk = undefined;
+        await closeAll();
+        await vscode.workspace.fs.delete(loose).then(undefined, () => undefined);
+      }
     });
 
     test('fechar antes da resposta não deixa erro', async () => {

@@ -78,6 +78,8 @@ export type WebviewMessage =
   /** Desfazer ou refazer no documento (o histórico é um só: o do VS Code). */
   | { type: 'undo' }
   | { type: 'redo' }
+  /** Diagrama Mermaid inserido pelo menu "/" ou pela barra (spec 06, M7): o host configura o mkdocs.yml. */
+  | { type: 'diagramInserted' }
   /** Resposta a `diagrams`: os erros de sintaxe, com a linha no arquivo. */
   | { type: 'diagramErrors'; id: number; errors: { line: number; message: string }[] }
   /** Ctrl+S no visual: o host grava o documento depois de aplicar as edições que já chegaram. */

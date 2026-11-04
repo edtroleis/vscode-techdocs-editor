@@ -1,4 +1,6 @@
 import { DiagramProblems } from './diagramProblems';
+import { configureMermaid } from './mermaidSetup';
+import type { Ask } from './repoCheck';
 import * as vscode from 'vscode';
 import { parseRemoteUri, REMOTE_SCHEME, remoteUriPath } from '@edtroleis/techdocs-editor-core';
 import type { LintService } from './lintService';
@@ -41,6 +43,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     this.diagrams.dispose();
   }
 
+  /** Testes: responde a mensagem de "Mermaid configurado" no lugar da pessoa. */
+  diagramAsk: Ask | undefined;
+
   /** Páginas do site de uma página, para a caixa de link (a árvore da Documentação, que já as conhece). */
   linkPages: (uri: vscode.Uri) => LinkPageView[] = () => [];
 
@@ -50,6 +55,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       strip: () => this.strips.get(key),
       action: action => this.onStripActionEmitter.fire({ uri: document.uri, action }),
       linkPages: () => this.linkPages(document.uri),
+      diagramInserted: () => void configureMermaid(document.uri, this.sites, this.diagramAsk),
     }, this.diagrams);
     this.sessions.set(key, session);
     panel.onDidDispose(() => {
@@ -105,7 +111,13 @@ export class EditorSession {
     private readonly lint: LintService,
     private readonly sites: LocalSites,
     private readonly remoteFs?: RemoteFileSystem,
-    private readonly status?: { strip(): Strip | undefined; action(action: StripAction): void; linkPages?(): LinkPageView[] },
+    private readonly status?: {
+      strip(): Strip | undefined;
+      action(action: StripAction): void;
+      linkPages?(): LinkPageView[];
+      /** Diagrama Mermaid inserido no editor visual (spec 06, M7). */
+      diagramInserted?(): void;
+    },
     private readonly diagrams?: DiagramProblems,
   ) {
     this.ready = new Promise(resolve => (this.markReady = resolve));
@@ -235,6 +247,9 @@ export class EditorSession {
         this.post({ type: 'status', strip: this.status?.strip() });
         this.diagrams?.check(this.document, message => this.post(message));
         this.markReady();
+        return;
+      case 'diagramInserted':
+        this.status?.diagramInserted?.();
         return;
       case 'diagramErrors':
         this.diagrams?.receive(this.document.uri, message.id, message.errors);
