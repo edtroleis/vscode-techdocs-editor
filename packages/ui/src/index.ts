@@ -8,3 +8,5 @@ export { en } from './messages/en';
 export { ptBR } from './messages/pt-BR';
 export type { ExternalHistory } from './externalHistory';
 export type { LinkPage } from './linkPages';
+export { setMermaidTheme } from './mermaidPreview';
+export type { MermaidTheme } from './mermaidPreview';

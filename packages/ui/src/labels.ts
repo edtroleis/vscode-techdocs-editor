@@ -20,6 +20,9 @@ export type EditorText = {
   taskList: string;
   image: string;
   codeBlock: string;
+  /** Botões do bloco de código e da prévia dos diagramas Mermaid (spec 06). */
+  code: { copy: string; preview: string };
+  diagram: { edit: string; show: string; error: (line?: number) => string };
   table: string;
   quote: string;
   divider: string;
@@ -53,6 +56,12 @@ export function editorTextFrom(t: TextLookup): EditorText {
     taskList: k('taskList'),
     image: k('image'),
     codeBlock: k('codeBlock'),
+    code: { copy: k('codeCopy'), preview: k('codePreview') },
+    diagram: {
+      edit: k('diagramEdit'),
+      show: k('diagramShow'),
+      error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),
+    },
     table: k('table'),
     quote: k('quote'),
     divider: k('divider'),

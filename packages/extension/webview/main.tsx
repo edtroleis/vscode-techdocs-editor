@@ -13,6 +13,7 @@ import {
   en,
   ptBR,
   searchTextFrom,
+  setMermaidTheme,
   useVisualSearch,
 } from '@edtroleis/techdocs-editor-ui';
 import type { HostMessage, LinkPageView, ProblemView, WebviewLabels, WebviewMessage } from '../src/protocol';
@@ -369,6 +370,15 @@ function Conflict({ message, action }: { message: string; action: string }) {
 }
 
 const root = createRoot(document.getElementById('root')!);
+
+// Tema dos diagramas Mermaid (spec 06, M2): o VS Code marca o tema na classe do body e a troca na hora
+const mermaidTheme = () => {
+  const classes = document.body.classList;
+  const dark = classes.contains('vscode-dark') || (classes.contains('vscode-high-contrast') && !classes.contains('vscode-high-contrast-light'));
+  setMermaidTheme(dark ? 'dark' : 'default');
+};
+mermaidTheme();
+new MutationObserver(mermaidTheme).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 // `init` chega de novo quando o conflito é resolvido: um editor novo, com o texto de agora
 let generation = 0;
 window.addEventListener('message', (event: MessageEvent<HostMessage>) => {

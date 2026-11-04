@@ -1,3 +1,4 @@
+import { mermaidPreview } from './mermaidPreview';
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
 import { editorViewCtx, parserCtx, remarkCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core';
@@ -177,6 +178,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       },
       featureConfigs: {
         [Crepe.Feature.Placeholder]: { text: labels.placeholder },
+        // Diagramas Mermaid (spec 06): o bloco abre desenhado; Editar mostra o código com a prévia embaixo
+        [Crepe.Feature.CodeMirror]: {
+          renderPreview: mermaidPreview(labels.diagram),
+          previewOnlyByDefault: true,
+          previewToggleText: (previewOnly: boolean) => (previewOnly ? labels.diagram.edit : labels.diagram.show),
+          previewLabel: labels.code.preview,
+          copyText: labels.code.copy,
+        },
         [Crepe.Feature.TopBar]: { buildTopBar, headingOptions: headingOptions(labels) },
         // Textos no idioma da pessoa (labels.ts)
         [Crepe.Feature.BlockEdit]: slashMenu(labels),

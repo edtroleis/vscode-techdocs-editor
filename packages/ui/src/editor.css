@@ -87,3 +87,32 @@
   opacity: 0.7;
   white-space: nowrap;
 }
+
+/* Diagramas Mermaid na prévia do bloco de código (spec 06) */
+.milkdown .mermaid-diagram {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  overflow-x: auto;
+}
+.milkdown .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+.milkdown .mermaid-error {
+  padding: 8px 12px;
+  border-left: 3px solid var(--crepe-color-error);
+  background: color-mix(in srgb, var(--crepe-color-error), transparent 92%);
+  font-family: var(--crepe-font-default);
+  text-align: left;
+}
+.milkdown .mermaid-error strong {
+  color: var(--crepe-color-error);
+}
+.milkdown .mermaid-error pre {
+  margin: 6px 0 0;
+  font-family: var(--crepe-font-code);
+  color: var(--crepe-color-on-background);
+  white-space: pre;
+  overflow-x: auto;
+}

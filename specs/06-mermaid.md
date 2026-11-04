@@ -34,7 +34,7 @@ de diagramas (arrastar caixas); exportar o diagrama como imagem.
 
 | Id | Parte | O que faz | Estado |
 |----|-------|-----------|--------|
-| M1 | Editor visual | Bloco `mermaid` mostra o diagrama no lugar do código. O botão do bloco alterna entre o diagrama e o código; editar o código redesenha (com espera de ~300 ms após a última tecla). Página aberta: o bloco começa no diagrama; bloco recém-inserido começa no código | — |
+| M1 | Editor visual | Bloco `mermaid` mostra o diagrama no lugar do código. **Editar** no bloco mostra o código com a prévia embaixo; **Ver diagrama** volta. Editar o código redesenha (os desenhos saem um de cada vez, na ordem). Todo bloco começa no diagrama, inclusive o recém-inserido (o Crepe só tem a opção para todos os blocos). Os botões do bloco de código (Copiar, Prévia) ficam no idioma da pessoa | — |
 | M2 | Editor visual | Tema do diagrama segue o do VS Code: `dark` no escuro e alto contraste escuro, `default` no claro; troca de tema redesenha os diagramas abertos | — |
 | M3 | Editor visual | Erro de sintaxe: no lugar do diagrama, a mensagem do Mermaid (linha, quando vier) com a cor de erro do tema; o código continua editável e o arquivo é salvo como está | — |
 | M4 | Inserir | "Diagrama (Mermaid)" no menu `/` e na barra (no grupo do bloco de código), com um fluxograma curto de exemplo (`flowchart LR`, três caixas) e o cursor no código. Rótulos em pt-BR e inglês, como os outros | — |
