@@ -22,6 +22,7 @@ const CODE_ORDER: SiteFindingCode[] = [
   'nav-page-missing',
   'broken-link',
   'missing-image',
+  'mermaid-config-missing',
   'index-missing',
   'page-not-in-nav',
   'catalog-ref-missing',
@@ -158,6 +159,8 @@ function groupTitle(code: SiteFindingCode): string {
       return vscode.l10n.t('site_name missing in mkdocs.yml');
     case 'techdocs-plugin-missing':
       return vscode.l10n.t('techdocs-core plugin missing');
+    case 'mermaid-config-missing':
+      return vscode.l10n.t('Mermaid diagrams not configured');
     case 'docs-dir-missing':
       return vscode.l10n.t('Docs folder missing');
     case 'nav-page-missing':

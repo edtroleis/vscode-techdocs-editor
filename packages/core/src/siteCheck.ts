@@ -1,3 +1,4 @@
+import { addMermaidFence, hasMermaidFence, mermaidBlocks } from './mermaidConfig';
 import type { Configuration } from 'markdownlint';
 import { isMap, isScalar, isSeq, parseAllDocuments, parseDocument, YAMLMap, YAMLSeq } from 'yaml';
 import { addToNav, docsTree, DocsNode, nameToTitle, pageTitle, siteName } from './docsTree';
@@ -24,7 +25,8 @@ export type SiteFindingCode =
   | 'lint-config-missing'
   | 'lint-problems'
   | 'broken-link'
-  | 'missing-image';
+  | 'missing-image'
+  | 'mermaid-config-missing';
 
 /** `hint`: só uma dica (ex.: sem `catalog-info.yaml` no modo `auto`); não conta como item a revisar. */
 export type SiteFindingSeverity = 'error' | 'warning' | 'info' | 'hint';
@@ -190,6 +192,12 @@ function checkPages(site: SiteSnapshot, title: string, createIndex: SiteFix, add
         });
       }
     }
+  }
+
+  // Diagramas Mermaid (spec 06, M6): sem o bloco no superfences, o site mostra só o código
+  const diagram = pages.find(path => mermaidBlocks(site.pages[path]).length);
+  if (diagram && !hasMermaidFence(site.mkdocsYml)) {
+    add({ code: 'mermaid-config-missing', severity: 'warning', file: site.mkdocsFile, target: join(site.docsDir, diagram), fix: { file: site.mkdocsFile, apply: yml => addMermaidFence(yml ?? '') } });
   }
 }
 

@@ -390,6 +390,8 @@ export function findingMessage(finding: SiteFinding): string {
       return vscode.l10n.t('mkdocs.yml has no site_name: TechDocs needs it to build the site.');
     case 'techdocs-plugin-missing':
       return vscode.l10n.t('The techdocs-core plugin is missing from plugins in mkdocs.yml: TechDocs builds the site with it.');
+    case 'mermaid-config-missing':
+      return vscode.l10n.t('Pages have Mermaid diagrams, but mkdocs.yml does not configure them: the site shows the code. In Backstage, the TechDocs Mermaid addon is also needed.');
     case 'docs-dir-missing':
       return vscode.l10n.t('The docs folder {0} does not exist.', target);
     case 'index-missing':

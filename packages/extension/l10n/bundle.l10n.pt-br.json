@@ -153,6 +153,8 @@
   "1 item": "1 item",
   "{0} items": "{0} itens",
   "site_name missing in mkdocs.yml": "Falta o site_name no mkdocs.yml",
+  "Pages have Mermaid diagrams, but mkdocs.yml does not configure them: the site shows the code. In Backstage, the TechDocs Mermaid addon is also needed.": "Há páginas com diagramas Mermaid, mas o mkdocs.yml não os configura: o site mostra o código. No Backstage, também é preciso o addon de Mermaid do TechDocs.",
+  "Mermaid diagrams not configured": "Diagramas Mermaid sem configuração",
   "techdocs-core plugin missing": "Falta o plugin techdocs-core",
   "Docs folder missing": "Falta o diretório das docs",
   "Nav points to missing pages": "O nav aponta para páginas que não existem",

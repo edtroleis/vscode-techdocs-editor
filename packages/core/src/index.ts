@@ -25,3 +25,4 @@ export * from './myDrafts';
 export * from './navEdit';
 export * from './bringIntoDocs';
 export * from './pasteClean';
+export * from './mermaidConfig';

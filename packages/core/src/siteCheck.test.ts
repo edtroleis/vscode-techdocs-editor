@@ -48,6 +48,19 @@ const codes = (findings: SiteFinding[]) => findings.map(f => `${f.code}${f.targe
 const fixOf = (findings: SiteFinding[], code: string) => findings.find(f => f.code === code)!.fix!;
 
 describe('checkSite', () => {
+  it('diagramas Mermaid sem a configuração no mkdocs.yml: aviso com ajuste', () => {
+    const pages = { 'index.md': '# Início\n\n```mermaid\nflowchart LR\n  A-->B\n```\n' };
+    const findings = checkSite(site({ pages, files: ['index.md'] }));
+    const finding = findings.find(f => f.code === 'mermaid-config-missing');
+    expect(finding).toMatchObject({ severity: 'warning', file: 'svc/mkdocs.yml' });
+    const fixed = finding!.fix!.apply(MKDOCS);
+    expect(fixed).toContain('- name: mermaid');
+    expect(codes(checkSite(site({ pages, files: ['index.md'], mkdocsYml: fixed })))).not.toContain('mermaid-config-missing');
+    // Sem diagrama, nada a dizer
+    expect(codes(checkSite(site()))).not.toContain('mermaid-config-missing');
+  });
+
+
   it('nav, páginas fora do nav, links e imagens, plugin e catalog-info.yaml', () => {
     const findings = checkSite(site());
     expect(codes(findings)).toEqual([
