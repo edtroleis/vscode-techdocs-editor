@@ -13,6 +13,8 @@ export const ptBR: Record<string, string> = {
   'editorText.codeBlock': 'Bloco de código',
   'editorText.codeCopy': 'Copiar',
   'editorText.codePreview': 'Prévia',
+  'editorText.diagram': 'Diagrama (Mermaid)',
+  'editorText.diagramSample': 'flowchart LR\n  A[Início] --> B{Decisão}\n  B --> C[Fim]',
   'editorText.diagramEdit': 'Editar',
   'editorText.diagramShow': 'Ver diagrama',
   'editorText.diagramError': 'Erro no diagrama',

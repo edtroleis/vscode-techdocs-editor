@@ -13,6 +13,8 @@ export const en: Record<string, string> = {
   'editorText.codeBlock': 'Code block',
   'editorText.codeCopy': 'Copy',
   'editorText.codePreview': 'Preview',
+  'editorText.diagram': 'Diagram (Mermaid)',
+  'editorText.diagramSample': 'flowchart LR\n  A[Start] --> B{Decision}\n  B --> C[End]',
   'editorText.diagramEdit': 'Edit',
   'editorText.diagramShow': 'Show diagram',
   'editorText.diagramError': 'Diagram error',

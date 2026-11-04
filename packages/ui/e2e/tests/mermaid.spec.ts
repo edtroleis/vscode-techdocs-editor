@@ -1,5 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-import { editor, openEditor, saved } from './helpers';
+import { clickTopBar, editor, newLineAtEnd, openEditor, saved, slash, topBarButton } from './helpers';
 
 /** Diagramas Mermaid no editor visual (spec 06, M1–M3). */
 
@@ -63,5 +63,29 @@ test('página com 20 diagramas: digitar no fim continua rápido', async ({ page 
   await page.keyboard.type(' Mais');
   await expect(editor(page).locator('p', { hasText: 'Fim. Mais' })).toBeVisible({ timeout: 2000 });
   expect(Date.now() - start).toBeLessThan(2000);
-  await expect(page.locator('.mermaid-diagram svg')).toHaveCount(20, { timeout: 15000 });
+  // O Crepe só monta os blocos de código perto da área visível: o do fim (na tela) e o primeiro, ao rolar até ele
+  const blocks = page.locator('.milkdown-code-block');
+  await expect(blocks.last().locator('.mermaid-diagram svg')).toContainText('B19', { timeout: 10000 });
+  await blocks.first().scrollIntoViewIfNeeded();
+  await expect(blocks.first().locator('.mermaid-diagram svg')).toContainText('B0', { timeout: 10000 });
+});
+
+/** Inserir diagrama (spec 06, M4): o exemplo entra como bloco `mermaid` e aparece desenhado. */
+const SAMPLE = '```mermaid\nflowchart LR\n  A[Início] --> B{Decisão}\n  B --> C[Fim]\n```\n';
+
+test('menu /: "Diagrama (Mermaid)" insere o exemplo', async ({ page }) => {
+  await openEditor(page);
+  await newLineAtEnd(page);
+  await slash(page, 'Diagrama (Mermaid)');
+  await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
+  expect(await saved(page)).toBe(`# Página\n\nTexto inicial.\n\n${SAMPLE}`);
+});
+
+test('barra: o botão "Diagrama (Mermaid)" insere o exemplo', async ({ page }) => {
+  await openEditor(page);
+  await expect(topBarButton(page, 'diagram')).toHaveAttribute('title', 'Diagrama (Mermaid)');
+  await newLineAtEnd(page);
+  await clickTopBar(page, 'diagram');
+  await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
+  expect(await saved(page)).toBe(`# Página\n\nTexto inicial.\n\n${SAMPLE}`);
 });

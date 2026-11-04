@@ -1,4 +1,5 @@
 import { mermaidPreview } from './mermaidPreview';
+import { diagramInsertCtx } from './insertDiagram';
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
 import { editorViewCtx, parserCtx, remarkCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core';
@@ -98,6 +99,8 @@ type Props = {
   readOnly?: boolean;
   /** Páginas do site para a caixa de link (lidas a cada vez que ela abre); sem isto, a caixa só aceita endereço. */
   linkPages?: () => Promise<LinkPage[]>;
+  /** Diagrama Mermaid inserido pelo menu "/" ou pela barra (spec 06, M7). */
+  onDiagramInserted?: () => void;
 };
 
 /**
@@ -121,6 +124,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       lineTitle,
       readOnly = false,
       linkPages,
+      onDiagramInserted,
     },
     ref,
   ) => {
@@ -153,6 +157,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   readOnlyRef.current = readOnly;
   const linkPagesRef = useRef(linkPages);
   linkPagesRef.current = linkPages;
+  const diagramInsertedRef = useRef(onDiagramInserted);
+  diagramInsertedRef.current = onDiagramInserted;
   // Último Markdown repassado (ou recebido por setMarkdown): só o que for diferente é edição nova
   const lastRef = useRef<string>();
   /** Troca feita por setMarkdown em andamento: não é edição da pessoa. */
@@ -213,6 +219,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .config(ctx => {
         ctx.update(remarkStringifyOptionsCtx, prev => ({ ...prev, ...STRINGIFY_OPTIONS }));
         ctx.inject(externalHistoryCtx, external);
+        ctx.inject(diagramInsertCtx, { sample: labels.diagram.sample, onInserted: () => diagramInsertedRef.current?.() });
       })
       .use(defaultCodeLanguagePlugin)
       .use(headingLevelFixPlugin)

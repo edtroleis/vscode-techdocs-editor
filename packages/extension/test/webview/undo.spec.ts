@@ -8,8 +8,8 @@ import { openWebview, sent } from './webview';
  * comando do VS Code (e2e/history.spec.ts confere no VS Code de verdade).
  */
 const ORIGINAL = '# Página\n\nTexto inicial.\n';
-const UNDO = 13;
-const REDO = 14;
+const UNDO = 14;
+const REDO = 15;
 
 const history = async (page: Page) =>
   (await sent(page)).filter(m => ['undo', 'redo'].includes(m.type)).map(m => m.type);

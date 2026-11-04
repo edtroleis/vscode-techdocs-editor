@@ -96,7 +96,7 @@ async function closeAll() {
 }
 
 /** Posição do botão Desfazer na barra fixa (ver TOP_BAR em test/webview). */
-const TOP_BAR_UNDO = 13;
+const TOP_BAR_UNDO = 14;
 
 const pages = async () =>
   (await vscode.workspace.findFiles('wiki*/docs/**/*.md')).sort((a, b) => a.path.localeCompare(b.path));

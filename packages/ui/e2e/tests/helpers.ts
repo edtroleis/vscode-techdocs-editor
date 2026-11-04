@@ -13,6 +13,7 @@ export const TOP_BAR = [
   'image',
   'table',
   'codeBlock',
+  'diagram',
   'quote',
   'hr',
   'undo',

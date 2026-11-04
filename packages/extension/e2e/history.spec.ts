@@ -5,8 +5,8 @@
 import { cursorAtEndOfFirstParagraph, expect, openVisual, prose, runCommand, save, test, visual } from './vscode';
 
 const PAGE = 'wiki/docs/index.md';
-const UNDO = 13;
-const REDO = 14;
+const UNDO = 14;
+const REDO = 15;
 
 const markdownText = (page: import('@playwright/test').Page) => page.locator('.monaco-editor .view-lines').last();
 

@@ -1,3 +1,6 @@
+import { commandsCtx } from '@milkdown/kit/core';
+import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark';
+import { DIAGRAM_ICON, insertDiagram } from './insertDiagram';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
 
@@ -22,7 +25,7 @@ export type EditorText = {
   codeBlock: string;
   /** Botões do bloco de código e da prévia dos diagramas Mermaid (spec 06). */
   code: { copy: string; preview: string };
-  diagram: { edit: string; show: string; error: (line?: number) => string };
+  diagram: { label: string; sample: string; edit: string; show: string; error: (line?: number) => string };
   table: string;
   quote: string;
   divider: string;
@@ -58,6 +61,8 @@ export function editorTextFrom(t: TextLookup): EditorText {
     codeBlock: k('codeBlock'),
     code: { copy: k('codeCopy'), preview: k('codePreview') },
     diagram: {
+      label: k('diagram'),
+      sample: k('diagramSample'),
       edit: k('diagramEdit'),
       show: k('diagramShow'),
       error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),
@@ -121,6 +126,21 @@ export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
     codeBlock: { label: text.codeBlock },
     table: { label: text.table },
   },
+  // Diagrama Mermaid (spec 06, M4), logo depois do bloco de código
+  buildMenu: builder => {
+    const advanced = builder.getGroup('advanced');
+    const items = advanced.group.items;
+    advanced.addItem('mermaid', {
+      label: text.diagram.label,
+      icon: DIAGRAM_ICON,
+      onRun: ctx => {
+        ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
+        insertDiagram(ctx);
+      },
+    });
+    const code = items.findIndex(i => i.key === 'code');
+    if (code >= 0) items.splice(code + 1, 0, items.pop()!);
+  },
 });
 
 /** Toolbar que aparece sobre o texto selecionado. */
@@ -149,6 +169,7 @@ const topBarLabels = (text: EditorText) => [
   text.image,
   text.topBar.table,
   text.codeBlock,
+  text.diagram.label,
   text.quote,
   text.topBar.divider,
   text.topBar.undo,

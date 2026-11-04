@@ -41,6 +41,7 @@ test.describe('menu /: itens oferecidos', () => {
       'Lista de tarefas',
       'Imagem',
       'Bloco de código',
+      'Diagrama (Mermaid)',
       'Tabela',
     ]);
   });
