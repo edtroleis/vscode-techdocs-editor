@@ -6,6 +6,13 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-04
+
+### Fixed
+
+- **Toolbar icons in dark themes**: the icons of the visual editor toolbar, the block handle, the `/` menu and the
+  link preview were almost invisible (they used the widget border color); they now use the icon color of the theme.
+
 ## [0.9.0] - 2026-11-03
 
 Paste a page from Confluence, Outline or the web and get Markdown that MkDocs builds; the documentation is also in
