@@ -6,7 +6,7 @@ export type MermaidBlock = { line: number; code: string };
 /** Blocos cercados com a linguagem `mermaid` (crases ou tis), fora de outros blocos de código. */
 export function mermaidBlocks(markdown: string): MermaidBlock[] {
   const blocks: MermaidBlock[] = [];
-  const lines = markdown.split('\n');
+  const lines = markdown.split(/\r?\n/);
   let fence: string | undefined;
   let current: { line: number; code: string[] } | undefined;
   lines.forEach((line, index) => {

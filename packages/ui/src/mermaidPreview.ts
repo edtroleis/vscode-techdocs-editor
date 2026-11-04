@@ -33,16 +33,38 @@ const configure = (mermaid: Mermaid) =>
   mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme, suppressErrorRendering: true });
 
 function load(): Promise<Mermaid> {
-  loading ??= import('mermaid').then(module => {
-    configure(module.default);
-    return module.default;
-  });
+  loading ??= import('mermaid').then(
+    module => {
+      configure(module.default);
+      return module.default;
+    },
+    error => {
+      // Sem cache da falha: o próximo diagrama tenta carregar de novo
+      loading = undefined;
+      throw error;
+    },
+  );
   return loading;
 }
 
-/** Roda `task` depois dos desenhos já pedidos. */
+/** Tempo máximo de um desenho ou validação: um que nunca termina não pode travar os seguintes. */
+const TASK_TIMEOUT_MS = 10_000;
+
+/**
+ * Roda `task` depois dos pedidos já feitos. Antes de cada um, devolve a vez ao navegador (o desenho do Mermaid é
+ * trabalho síncrono: em sequência, sem pausa, as teclas digitadas esperariam a fila inteira).
+ */
 function enqueue<T>(task: (mermaid: Mermaid) => Promise<T>): Promise<T> {
-  const run = queue.then(() => load()).then(task);
+  const run = queue
+    .then(() => new Promise(resolve => setTimeout(resolve)))
+    .then(() => load())
+    .then(mermaid => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Mermaid: tempo esgotado')), TASK_TIMEOUT_MS);
+      });
+      return Promise.race([task(mermaid), timeout]).finally(() => clearTimeout(timer));
+    });
   queue = run.catch(() => undefined);
   return run;
 }
@@ -61,6 +83,25 @@ const errorDetail = (message: string) => {
   const lines = message.split('\n');
   return (/^Parse error/i.test(lines[0]) ? lines.slice(1, 3) : lines.slice(0, 2)).join('\n');
 };
+
+/** Últimos desenhos, por tema e código: voltar a um texto (desfazer, um bloco remontado ao rolar) não redesenha. */
+const drawn = new Map<string, string>();
+const DRAWN_LIMIT = 50;
+
+async function drawCached(mermaid: Mermaid, code: string): Promise<string> {
+  const key = `${theme}\n${code}`;
+  const cached = drawn.get(key);
+  if (cached !== undefined) {
+    // O código pode ter saído do mapa da troca de tema enquanto o desenho estava fora da página
+    const id = /<svg[^>]*\sid="([^"]+)"/.exec(cached)?.[1];
+    if (id) sources.set(id, code);
+    return cached;
+  }
+  const svg = await draw(mermaid, code);
+  drawn.set(key, svg);
+  if (drawn.size > DRAWN_LIMIT) drawn.delete(drawn.keys().next().value!);
+  return svg;
+}
 
 async function draw(mermaid: Mermaid, code: string): Promise<string> {
   const id = `techdocs-mermaid-${++renders}`;
@@ -105,7 +146,7 @@ async function render(mermaid: Mermaid, code: string, text: DiagramText): Promis
     return errorElement(text, error instanceof Error ? error.message : String(error), code);
   }
   try {
-    return diagramElement(await draw(mermaid, code));
+    return diagramElement(await drawCached(mermaid, code));
   } catch (error) {
     return errorElement(text, error instanceof Error ? error.message : String(error), code);
   }

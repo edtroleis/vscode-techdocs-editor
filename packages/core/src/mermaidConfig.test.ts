@@ -20,6 +20,10 @@ describe('mermaidBlocks', () => {
     expect(mermaidBlocks('````md\n```mermaid\nA\n```\n````\n')).toEqual([]);
   });
 
+  it('arquivo com CRLF', () => {
+    expect(mermaidBlocks('# T\r\n\r\n```mermaid\r\nflowchart LR\r\n  A-->B\r\n```\r\n')).toEqual([{ line: 4, code: 'flowchart LR\n  A-->B' }]);
+  });
+
   it('bloco vazio', () => {
     expect(mermaidBlocks('```mermaid\n```\n')).toEqual([{ line: 2, code: '' }]);
   });
