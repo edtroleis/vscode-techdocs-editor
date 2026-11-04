@@ -13,7 +13,9 @@ body .milkdown {
   --crepe-color-surface-low: var(--vscode-sideBar-background, var(--vscode-editorWidget-background));
   --crepe-color-on-surface: var(--vscode-foreground);
   --crepe-color-on-surface-variant: var(--vscode-descriptionForeground);
-  --crepe-color-outline: var(--vscode-editorWidget-border, var(--vscode-widget-border, #8888));
+  /* O Crepe pinta os ícones (barra de ferramentas, alça do bloco, menu /) com esta cor: a borda dos
+     widgets fica quase preta no tema escuro e some, então usa a cor dos ícones do tema. */
+  --crepe-color-outline: var(--vscode-icon-foreground, var(--vscode-foreground));
   --crepe-color-primary: var(--vscode-textLink-foreground);
   --crepe-color-secondary: var(--vscode-button-secondaryBackground);
   --crepe-color-on-secondary: var(--vscode-button-secondaryForeground);
