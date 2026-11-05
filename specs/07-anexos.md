@@ -32,10 +32,14 @@ Markdown); anexos fora do `docs_dir` (o MkDocs só publica o que está nele); mo
   `[Manual do cliente (PDF, 2,3 MB)](../assets/manual-do-cliente.pdf)`. O nome legível vem do nome original (sem a
   extensão, `-` e `_` viram espaço, primeira letra maiúscula); o tamanho no formato da língua do VS Code. Imagem
   continua virando imagem (`![texto alternativo](../images/diagrama-de-rede.png)`).
-- **Limites:** imagens até 5 MB (como hoje); outros anexos até 20 MB, só dos tipos permitidos. Tipos permitidos de
-  fábrica: `pdf, doc, docx, xls, xlsx, ppt, pptx, odt, ods, odp, rtf, csv, tsv, txt, json, yaml, yml, xml,
-  drawio, svg, png, jpg, jpeg, gif, webp, zip, gz, tar`. Executáveis e scripts nunca entram, mesmo que alguém os
-  ponha na lista: `exe, msi, bat, cmd, com, ps1, sh, bash, zsh, app, dmg, jar, vbs, scr, js, mjs, html, htm`.
+- **Limites e tipos:** cada um com tamanho máximo e lista de extensões, as duas configuráveis na engrenagem.
+  - Imagens: até 5 MB (como hoje); extensões de fábrica as aceitas hoje: `png, jpg, jpeg, gif, webp, svg`.
+  - Outros anexos: até 20 MB; extensões de fábrica: `pdf, doc, docx, xls, xlsx, ppt, pptx, odt, ods, odp, rtf,
+    csv, tsv, txt, json, yaml, yml, xml, drawio, zip, gz, tar`.
+  - Arquivo com extensão de imagem que não está na lista das imagens é tratado como anexo (se estiver na lista dos
+    anexos); fora das duas listas, é recusado com a razão.
+  - Executáveis e scripts nunca entram, mesmo que alguém os ponha numa lista: `exe, msi, bat, cmd, com, ps1, sh,
+    bash, zsh, app, dmg, jar, vbs, scr, js, mjs, html, htm`. `md` também não (o MkDocs trataria como página).
 - **Configuração:** no `.techdocs-editor.yaml` do repositório (vale para o time) ou nas configurações do VS Code
   (só para quem escolheu); o do repositório vale sobre as configurações, que valem sobre o padrão. Cada campo é
   resolvido sozinho (o time pode fixar só o diretório e deixar o limite para cada um). Valor inválido é ignorado,
@@ -52,26 +56,27 @@ Markdown); anexos fora do `docs_dir` (o MkDocs só publica o que está nele); mo
 attachments:
   images: images          # diretório das imagens, relativo ao docs_dir
   imagesMaxSizeMB: 5
+  imageTypes: [png, jpg, jpeg, gif, webp, svg]            # extensões das imagens (sem a lista, as de fábrica)
   files: assets           # diretório dos outros anexos
   filesMaxSizeMB: 20
-  types: [pdf, docx, xlsx, pptx, csv, txt, zip, drawio]   # tipos permitidos dos anexos (sem a lista, os de fábrica)
+  fileTypes: [pdf, docx, xlsx, pptx, csv, txt, zip, drawio]  # extensões dos anexos (sem a lista, as de fábrica)
 ```
 
-Nas configurações do VS Code: `techdocsEditor.attachments.images`, `techdocsEditor.attachments.files`,
-`techdocsEditor.attachments.filesMaxSizeMB` e `techdocsEditor.attachments.types`; o limite das imagens continua em
-`techdocsEditor.images.maxSizeMB`.
+Nas configurações do VS Code: `techdocsEditor.attachments.images`, `techdocsEditor.attachments.imageTypes`,
+`techdocsEditor.attachments.files`, `techdocsEditor.attachments.filesMaxSizeMB` e
+`techdocsEditor.attachments.fileTypes`; o limite das imagens continua em `techdocsEditor.images.maxSizeMB`.
 
 ## Itens
 
 | Id | Parte | O que faz | Estado |
 |----|-------|-----------|--------|
-| AX1 | Núcleo | Regras puras: nome do arquivo a partir do original, sufixo `-2`/`-3`, nome de imagem colada sem nome, caminho no `docs_dir` e link relativo à página, texto do link (nome legível, tipo, tamanho na língua), tipo permitido (lista + executáveis sempre recusados), leitura e escrita da seção `attachments` do `.techdocs-editor.yaml` | ⬜ |
-| AX2 | Configuração | Valores resolvidos por campo: repositório, depois configurações do VS Code, depois o padrão; com a origem de cada um (para a engrenagem). Os quatro campos novos em `package.json` com descrição em inglês e pt-BR | ⬜ |
+| AX1 | Núcleo | Regras puras: nome do arquivo a partir do original, sufixo `-2`/`-3`, nome de imagem colada sem nome, caminho no `docs_dir` e link relativo à página, texto do link (nome legível, tipo, tamanho na língua), imagem, anexo ou recusado pela extensão (as duas listas + executáveis e `md` sempre recusados), leitura e escrita da seção `attachments` do `.techdocs-editor.yaml` | ⬜ |
+| AX2 | Configuração | Valores resolvidos por campo: repositório, depois configurações do VS Code, depois o padrão; com a origem de cada um (para a engrenagem). Os cinco campos novos em `package.json` com descrição em inglês e pt-BR | ⬜ |
 | AX3 | Imagens | Imagens novas vão para o diretório de imagens com o nome original (decisões acima), reaproveitando a que tiver o mesmo conteúdo. Limite das imagens resolvido pela configuração (AX2) | ⬜ |
 | AX4 | Anexar | Botão "Anexar arquivo" na barra do editor visual (ao lado do de imagem) e "Anexo" no menu `/`: abre o seletor de arquivos do sistema; o arquivo passa por tipo e tamanho, é gravado (ou reaproveitado) no diretório dos anexos e o link entra no cursor. Recusa com a razão e o que fazer ("Arquivos .exe não são aceitos", "O arquivo tem 34 MB; o limite é 20 MB: mude na engrenagem da seção TechDocs") | ⬜ |
 | AX5 | Arrastar e colar | Soltar arquivos do computador ou do Explorer do VS Code na página, ou colar arquivos copiados (Ctrl+V): imagens viram imagens (AX3), o resto vira anexo (AX4), na ordem e no lugar onde caíram. Arquivo que já está no `docs_dir` (arrastado do Explorer) só ganha o link, sem cópia | ⬜ |
 | AX6 | GitHub | No modo GitHub (página aberta do repositório, sem clone), anexos vão para a branch do rascunho como as imagens (spec 02, M6), com o mesmo nome e reaproveitamento; o link funciona no editor lendo da branch | ⬜ |
-| AX7 | Engrenagem | "Opções dos anexos" na barra de título da seção TechDocs: lista diretório de imagens, tamanho máximo das imagens, diretório dos anexos, tamanho máximo dos anexos e tipos permitidos, cada um com o valor e a origem (repositório, configurações, padrão); trocar um abre a pergunta certa (caixa de texto validada ou lista de tipos com marcação); no fim, "Para o time" (diff do `.techdocs-editor.yaml`, depois grava) ou "Só para mim" (configurações do usuário) | ⬜ |
+| AX7 | Engrenagem | "Opções dos anexos" na barra de título da seção TechDocs: lista diretório, tamanho máximo e extensões das imagens, e diretório, tamanho máximo e extensões dos anexos, cada um com o valor e a origem (repositório, configurações, padrão); trocar um abre a pergunta certa (caixa de texto validada, ou a lista de extensões com marcação, já com as de fábrica marcadas, mais uma caixa para acrescentar outra; executáveis e `md` não aparecem e são recusados se digitados); "Voltar ao padrão" em cada um; no fim, "Para o time" (diff do `.techdocs-editor.yaml`, depois grava) ou "Só para mim" (configurações do usuário) | ⬜ |
 | AX8 | Conferir | Achado `attachment-unused` (aviso): arquivo nos diretórios de imagens e de anexos que nenhum `.md` do site nem o `mkdocs.yml` cita (protege logo, favicon e CSS extra). Ajuste automático apaga os arquivos, com Desfazer | ⬜ |
 | AX9 | Navegador | Funciona no vscode.dev: seletor, arrastar, colar e gravar pelo `workspace.fs`, sem APIs de Node | ⬜ |
 | AX10 | Documentação | README e README.pt-BR (anexos, diretórios, engrenagem), CHANGELOG, GIF de anexar um PDF; specs 01 (W9) e 02 (LC3, M6) apontam para esta | ⬜ |
@@ -89,8 +94,8 @@ Nas configurações do VS Code: `techdocsEditor.attachments.images`, `techdocsEd
 ## Testes
 
 - Unitários (`core`): AX1 (nomes com acento, espaços, símbolos e sem extensão; sufixo; conteúdo igual; imagem sem
-  nome; caminho relativo de páginas em subdiretórios; texto do link em inglês e pt-BR; executável recusado mesmo na
-  lista; YAML com e sem a seção, com valores inválidos), AX2 (precedência por campo), AX8 (citado num `.md`, no
+  nome; caminho relativo de páginas em subdiretórios; texto do link em inglês e pt-BR; imagem fora da lista das imagens vira anexo; executável e `md` recusados mesmo nas
+  listas; YAML com e sem a seção, com valores inválidos), AX2 (precedência por campo), AX8 (citado num `.md`, no
   `mkdocs.yml`, em nenhum).
 - Webview (`test/webview`): AX4 e AX5 (botão, `/`, soltar e colar mandam os arquivos ao host; imagem e anexo
   inseridos no cursor; recusa mostrada).
