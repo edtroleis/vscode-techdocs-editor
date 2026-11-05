@@ -36,6 +36,8 @@ type Options = {
   folder: string | undefined;
   /** Língua do VS Code (`--locale`); a extensão segue ela nos textos. */
   locale: string | undefined;
+  /** Carrega a extensão deste repositório; sem ela, o VS Code abre limpo (o vídeo da instalação pelo Marketplace). */
+  devExtension: boolean;
 };
 
 export const test = base.extend<Options & { vscode: VsCode }>({
@@ -45,7 +47,8 @@ export const test = base.extend<Options & { vscode: VsCode }>({
   windowSize: [{ width: 1600, height: 1000 }, { option: true }],
   folder: [undefined, { option: true }],
   locale: [undefined, { option: true }],
-  vscode: async ({ theme, settings, recordDir, windowSize, folder, locale }, use, testInfo) => {
+  devExtension: [true, { option: true }],
+  vscode: async ({ theme, settings, recordDir, windowSize, folder, locale, devExtension }, use, testInfo) => {
     const executablePath = await downloadAndUnzipVSCode({ cachePath: join(ROOT, '.vscode-test') });
     const workspace: string = folder ?? createWorkspace();
     const userData = mkdtempSync(join(tmpdir(), 'techdocs-editor-user-'));
@@ -111,7 +114,7 @@ export const test = base.extend<Options & { vscode: VsCode }>({
       executablePath,
       args: [
         workspace,
-        `--extensionDevelopmentPath=${extensionRoot}`,
+        ...(devExtension ? [`--extensionDevelopmentPath=${extensionRoot}`] : []),
         `--user-data-dir=${userData}`,
         `--extensions-dir=${join(userData, 'extensions')}`,
         '--disable-workspace-trust',

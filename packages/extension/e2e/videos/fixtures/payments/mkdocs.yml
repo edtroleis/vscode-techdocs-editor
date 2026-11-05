@@ -1,0 +1,16 @@
+site_name: Payments Service
+site_description: How the payments service charges the checkout, and how to run it.
+
+nav:
+  - Home: index.md
+  - Guides:
+      - Getting started: guides/getting-started.md
+      - Deploy: guides/deploy.md
+  - Reference:
+      - API: reference/api.md
+
+plugins:
+  - techdocs-core
+
+markdown_extensions:
+  - admonition
