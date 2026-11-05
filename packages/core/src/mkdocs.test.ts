@@ -29,6 +29,20 @@ describe('toEditor / fromEditor (blocos do MkDocs)', () => {
     expect(editor.split('\n')[0]).toBe('````mkdocs');
   });
 
+  it('front matter no topo vira bloco protegido e volta igual', () => {
+    const markdown = '---\ntitle: Recursos\n\ntags:\n  - dados\n---\n\n# Recursos\n\nTexto.\n';
+    const editor = toEditor(markdown);
+    expect(editor.split('\n')[0]).toBe('```mkdocs');
+    expect(editor).toContain('```mkdocs\n---\ntitle: Recursos\n\ntags:\n  - dados\n---\n```');
+    expect(fromEditor(editor)).toBe(markdown);
+  });
+
+  it('--- que não está no topo, ou sem fechamento, não é front matter', () => {
+    expect(toEditor('# Título\n\n---\n\nTexto.\n')).toBe('# Título\n\n---\n\nTexto.\n');
+    expect(toEditor('---\n\n# Título\n')).toBe('---\n\n# Título\n');
+    expect(toEditor('---\n\nTexto.\n\n---\n')).toBe('---\n\nTexto.\n\n---\n');
+  });
+
   it('texto comum passa sem mudança', () => {
     expect(toEditor('# Título\n\nTexto com !!! no meio.\n')).toBe('# Título\n\nTexto com !!! no meio.\n');
   });

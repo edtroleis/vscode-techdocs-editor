@@ -25,6 +25,13 @@ export function toEditor(markdown: string): string {
   const lines = markdown.split('\n');
   const out: string[] = [];
   let i = 0;
+  // Front matter (`---` na 1ª linha até o próximo `---`): o editor faria dele uma linha horizontal e um parágrafo
+  // ("title: … tags:"); entra protegido, como os blocos do MkDocs
+  const frontEnd = lines[0] === '---' ? lines.indexOf('---', 1) : -1;
+  if (frontEnd > 1 && /^[\w-]+:/.test(lines[1])) {
+    out.push('```' + RAW_LANG, ...lines.slice(0, frontEnd + 1), '```');
+    i = frontEnd + 1;
+  }
   while (i < lines.length) {
     if (!BLOCK_START.test(lines[i])) {
       out.push(lines[i++]);
