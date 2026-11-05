@@ -36,9 +36,8 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
     await click(page, techdocsIcon(page));
     // A árvore é o menu do site: a seção "Fora do menu" diz quantas páginas ficaram de fora
     await story.check('a página fora do menu marcada', () => expect(treeRow(page, /^Not in the menu/)).toContainText('1'));
-    if (!(await treeRow(page, 'Guias').locator('.codicon-warning').count()) && !/missing|not exist/i.test((await treeRow(page, 'Guias').innerText()) + ((await treeRow(page, 'Guias').getAttribute('aria-label')) ?? ''))) {
-      story.suggest('A seção Guias (fechada) não indica que uma página do menu dela não existe: a pessoa só vê o ⚠ de "Deploy antigo" ao abrir a seção.');
-    }
+    // A seção Guias, antes de abrir, já avisa que uma página do menu dela não existe ("Deploy antigo")
+    await story.check('a seção Guias mostra o ⚠ da página que falta', async () => expect(await hasWarning(page, 'Guias')).toBe(true));
     for (const section of ['Guias', 'Operação', /^Not in the menu/]) {
       await expect(treeRow(page, section)).toBeVisible();
       if ((await treeRow(page, section).getAttribute('aria-expanded')) === 'false') await click(page, treeRow(page, section));

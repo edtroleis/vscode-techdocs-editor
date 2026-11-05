@@ -196,9 +196,14 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     return vscode.languages.getDiagnostics(uri).filter(d => d.severity <= vscode.DiagnosticSeverity.Warning).length;
   }
 
-  /** Páginas da seção (e das de dentro) com problemas de formatação. */
-  private pagesWithProblems(item: DocsItem): number {
-    return item.children.reduce((sum, child) => sum + (child.kind === 'page' ? (this.problemCount(child.uri!) ? 1 : 0) : child.kind === 'section' ? this.pagesWithProblems(child) : 0), 0);
+  /** Páginas da seção (e das de dentro) que o menu cita e não existem, e as com problemas de formatação. */
+  private sectionProblems(item: DocsItem, found = { missing: 0, formatting: 0 }) {
+    for (const child of item.children) {
+      if (child.kind === 'missing') found.missing++;
+      else if (child.kind === 'page' && this.problemCount(child.uri!)) found.formatting++;
+      else if (child.kind === 'section') this.sectionProblems(child, found);
+    }
+    return found;
   }
 
   getTreeItem(item: DocsItem): vscode.TreeItem {
@@ -226,18 +231,26 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         break;
       }
       case 'section': {
+        // Toda seção com ícone: só a com ⚠ teria, e o VS Code recuaria as páginas dela mais que as das outras
+        tree.iconPath = new vscode.ThemeIcon('folder');
         if (!item.children.length) {
           tree.description = vscode.l10n.t('empty');
           tree.tooltip = vscode.l10n.t('A section without pages does not appear on the site');
         }
-        // A seção (recolhida ou não) avisa que tem página com problema, como as pastas no Explorer
-        const pages = this.pagesWithProblems(item);
-        if (pages) {
+        // A seção (recolhida ou não) avisa que tem página com problema, como as pastas no Explorer; na dica, primeiro
+        // a página que falta (quebra o site), depois a formatação
+        const { missing, formatting } = this.sectionProblems(item);
+        if (missing || formatting) {
           tree.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground'));
-          tree.tooltip =
-            pages === 1
+          const missingText =
+            missing === 1
+              ? vscode.l10n.t('1 page of the menu of this section does not exist.')
+              : vscode.l10n.t('{0} pages of the menu of this section do not exist.', missing);
+          const formattingText =
+            formatting === 1
               ? vscode.l10n.t('1 page of this section has formatting problems.')
-              : vscode.l10n.t('{0} pages of this section have formatting problems.', pages);
+              : vscode.l10n.t('{0} pages of this section have formatting problems.', formatting);
+          tree.tooltip = [missing && missingText, formatting && formattingText].filter(Boolean).join(' ');
         }
         break;
       }

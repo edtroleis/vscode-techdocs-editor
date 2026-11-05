@@ -530,5 +530,7 @@
   "The pasted image could not be copied to the repository ({0}). It still points to {1}, which may not work on the site.": "A imagem colada não pôde ser copiada para o repositório ({0}). Ela continua apontando para {1}, o que pode não funcionar no site.",
   "Paste as Markdown (TechDocs)": "Colar como Markdown (TechDocs)",
   "1 page of this section has formatting problems.": "1 página desta seção tem problemas de formatação.",
-  "{0} pages of this section have formatting problems.": "{0} páginas desta seção têm problemas de formatação."
+  "{0} pages of this section have formatting problems.": "{0} páginas desta seção têm problemas de formatação.",
+  "1 page of the menu of this section does not exist.": "1 página do menu desta seção não existe.",
+  "{0} pages of the menu of this section do not exist.": "{0} páginas do menu desta seção não existem."
 }

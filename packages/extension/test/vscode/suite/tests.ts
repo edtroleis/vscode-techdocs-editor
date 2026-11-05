@@ -452,7 +452,7 @@ export function defineTests() {
         // Corrigida por fora (um git pull): o ⚠ sai da página e da seção
         await write('# Fechada\n\nSem problema.\n');
         const fixed = await until(() => docs.pageItem(uri), p => p !== undefined && icon(p) === 'markdown', 'o ⚠ da página não saiu');
-        ok(icon(fixed!.parent!) !== 'warning', 'o ⚠ da seção não saiu');
+        equal(icon(fixed!.parent!), 'folder', 'o ⚠ da seção não saiu (volta o ícone de diretório)');
       } finally {
         await vscode.workspace.fs.delete(uri).then(undefined, () => undefined);
       }
@@ -727,6 +727,17 @@ export function defineTests() {
         };
         const english = expected.map(line => line.replace('Fora do menu', 'Not in the menu')).join('\n');
         await until(actual, text => text === english || text === expected.join('\n'), 'árvore do site com nav');
+        // A seção (mesmo recolhida) avisa da página que falta; com formatação também, a que falta vem primeiro
+        const section = () => docs.getChildren(siteItem(docs, 'nav-site')!).find(i => i.kind === 'section')!;
+        const sectionTree = () => docs.getTreeItem(section());
+        equal((sectionTree().iconPath as vscode.ThemeIcon | undefined)?.id, 'warning', 'a seção não ganhou o ⚠');
+        equal(String(sectionTree().tooltip), '1 page of the menu of this section does not exist.', 'dica da seção');
+        await write('nav-site/docs/b.md', '# Página B\n\nLink vazio: [vazio]().\n');
+        await until(
+          () => String(sectionTree().tooltip),
+          tip => tip === '1 page of the menu of this section does not exist. 1 page of this section has formatting problems.',
+          'dica da seção com a página que falta e a formatação',
+        );
         // Título mudou no arquivo: a árvore acompanha
         await write('nav-site/docs/b.md', '# Outro título\n');
         await until(actual, text => text.includes('  Outro título'), 'título novo não chegou à árvore');
