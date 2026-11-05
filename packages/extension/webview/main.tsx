@@ -24,6 +24,13 @@ import './webview.css';
 
 declare function acquireVsCodeApi(): { postMessage(message: WebviewMessage): void };
 const vscode = acquireVsCodeApi();
+/**
+ * A janela do webview tem o foco, desde o carregamento. O VS Code pode dar o foco (Enter na árvore) antes de o editor
+ * existir, e o document.hasFocus() nem sempre sabe dele depois (no VS Code de teste, nunca).
+ */
+let windowFocused = false;
+window.addEventListener('focus', () => (windowFocused = true));
+window.addEventListener('blur', () => (windowFocused = false));
 const post = (message: WebviewMessage) => vscode.postMessage(message);
 
 type Content = { text: string; language: string; baseUri: string; labels: WebviewLabels; readOnly?: boolean };
@@ -257,8 +264,8 @@ function App({ content }: { content: Content }) {
       problemLines={problemLines}
       text={text}
       onReady={() => {
-        // O foco pode ter chegado antes de o editor ficar pronto
-        if (document.hasFocus()) focusText();
+        // O foco pode ter chegado antes de o editor ficar pronto, até antes de ele começar a montar
+        if (windowFocused || document.hasFocus()) focusText();
         post({ type: 'ready' });
       }}
       history={history}

@@ -23,6 +23,26 @@ test('ao abrir, o texto já tem o foco, com o cursor no começo, como no editor 
   await expect.poll(() => lastEdit(page)).toContain('# Começo. Página');
 });
 
+test('o foco que chega antes de o editor ficar pronto vai para o texto quando ele fica pronto', async ({ page }) => {
+  // No VS Code o webview pode receber o foco (Enter na árvore) enquanto o editor ainda monta, e document.hasFocus()
+  // nem sempre diz que a janela tem o foco (no VS Code de teste, nunca)
+  await page.addInitScript(() => (document.hasFocus = () => false));
+  await openWebview(page, PAGE, 'pt-br', () => page.evaluate(() => window.dispatchEvent(new FocusEvent('focus'))));
+  await expect(text(page)).toBeFocused();
+});
+
+test('o foco que saiu antes de o editor ficar pronto não volta para o texto', async ({ page }) => {
+  await page.addInitScript(() => (document.hasFocus = () => false));
+  await openWebview(page, PAGE, 'pt-br', () =>
+    page.evaluate(() => {
+      window.dispatchEvent(new FocusEvent('focus'));
+      window.dispatchEvent(new FocusEvent('blur'));
+    }),
+  );
+  await page.waitForTimeout(300);
+  await expect(text(page)).not.toBeFocused();
+});
+
 test('o foco que volta ao webview vai para o texto', async ({ page }) => {
   await openWebview(page, PAGE);
   await focusFromVsCode(page);
