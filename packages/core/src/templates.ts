@@ -80,9 +80,18 @@ export function parseTemplate(id: string, source: string): DocTemplate | undefin
 /** O template é de uma versão do formato mais nova que esta extensão: aparece desligado. */
 export const isTemplateSupported = (template: { version: number }) => template.version <= TEMPLATE_FORMAT_VERSION;
 
-/** Troca `{{campo}}` pelo valor; campo sem valor vira vazio; `{{` sem `}}` fica como está. */
+/**
+ * Troca `{{campo}}` pelo valor; campo sem valor vira vazio; `{{` sem `}}` fica como está. Nas linhas com campo, sem
+ * espaço no fim: o campo deixado em branco (`Alert: {{alert}}`) deixaria um problema de formatação na página nova.
+ */
 export const fillTemplate = (body: string, values: Record<string, string>) =>
-  body.replace(/\{\{\s*([A-Za-z_][\w-]*)\s*\}\}/g, (_, name: string) => values[name] ?? '');
+  body
+    .split('\n')
+    .map(line => {
+      const filled = line.replace(/\{\{\s*([A-Za-z_][\w-]*)\s*\}\}/g, (_, name: string) => values[name] ?? '');
+      return filled === line ? line : filled.replace(/[ \t]+(\r?)$/, '$1');
+    })
+    .join('\n');
 
 /** Campos usados no corpo (para saber o que perguntar). */
 export const usedFields = (body: string) => [...new Set([...body.matchAll(/\{\{\s*([A-Za-z_][\w-]*)\s*\}\}/g)].map(m => m[1]))];

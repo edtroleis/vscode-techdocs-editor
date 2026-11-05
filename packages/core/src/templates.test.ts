@@ -57,6 +57,12 @@ describe('campos', () => {
     expect(usedFields(body)).toEqual(['title', 'alert', 'owner', 'nada']);
   });
 
+  it('campo deixado em branco no fim da linha não deixa espaço no fim (MD009 numa página recém-criada)', () => {
+    expect(fillTemplate('Alert: {{alert}}\nOwner: {{owner}}\r\nFixo com dois espaços  \n', { owner: '' })).toBe(
+      'Alert:\nOwner:\r\nFixo com dois espaços  \n',
+    );
+  });
+
   it('owner do catalog-info.yaml', () => {
     expect(catalogOwner('apiVersion: backstage.io/v1alpha1\nkind: Component\nspec:\n  owner: group:time-a\n')).toBe('group:time-a');
     expect(catalogOwner('---\nkind: Location\n---\nkind: Component\nspec:\n  owner: time-b\n')).toBe('time-b');
