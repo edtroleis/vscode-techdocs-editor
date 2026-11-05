@@ -222,6 +222,13 @@ test('dois repos vazios: documentação pelo Explorer e pela seção TechDocs', 
   await story.step('No Explorer, F2 em primeiros-passos.md: mover para guias/ pelo nome; o menu e os links acompanham', async () => {
     // Um link para a página, para ver o link acompanhar
     await click(page, docRow(page, home));
+    const homeTab = page.locator('.tab.active', { hasText: 'index.md' });
+    if (!(await homeTab.waitFor({ timeout: 5_000 }).then(() => true, () => false))) {
+      // Visto 1 vez: a linha ficou selecionada e a página não abriu (a árvore se redesenhando no clique?)
+      story.bug(`Clique em "${home}" na árvore selecionou a linha mas não abriu a página.`);
+      await click(page, docRow(page, home));
+      await homeTab.waitFor();
+    }
     const editor = await editorOf(page);
     await editor.locator('.ProseMirror p').last().click();
     await page.keyboard.press('End');

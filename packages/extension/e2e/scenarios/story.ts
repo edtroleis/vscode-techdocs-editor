@@ -152,5 +152,14 @@ export const click = async (page: Page, target: Locator) => {
 /** Digitação de pessoa: ~15 letras por segundo; FAST=1, quase instantânea. */
 export const type = (page: Page, text: string) => page.keyboard.type(text, { delay: FAST ? 5 : 45 });
 
+/**
+ * Ctrl+End no editor visual. A tecla é do navegador e o editor lê o cursor novo no evento seguinte: uma tecla no
+ * mesmo milissegundo (só na velocidade do teste) ainda caía onde o cursor estava. Uma pessoa leva bem mais que isso.
+ */
+export async function toEnd(page: Page) {
+  await page.keyboard.press('Control+End');
+  await page.waitForTimeout(150);
+}
+
 /** Pausa para quem assiste ler a tela. */
 export const pause = (page: Page, ms = 1_200) => (FAST ? Promise.resolve() : page.waitForTimeout(ms));

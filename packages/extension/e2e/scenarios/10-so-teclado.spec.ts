@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FrameLocator, Page } from '@playwright/test';
-import { expect, folderFrom, pause, test, type } from './story';
+import { expect, folderFrom, pause, test, toEnd, type } from './story';
 import { docsPane, editorOf, quickInput, techdocsIcon, treeRow } from './ui';
 
 const folder = folderFrom('manual-loja', 'manual-loja');
@@ -89,7 +89,13 @@ test('só teclado, tema claro: abrir, escrever, buscar, desfazer e sair do edito
       return ok;
     };
     if (!(await typesHere())) {
-      story.bug(`Depois de abrir a página pela árvore com o teclado, o que se digita se perde: o foco fica em "${await focusIn(page)}" e não no texto da página.`);
+      const lost = `Depois de abrir a página pela árvore com o teclado, o que se digita se perde: o foco fica em "${await focusIn(page)}" e não no texto da página.`;
+      // A janela do VS Code de teste nunca tem o foco do sistema; assim, às vezes (~1 em 2) o VS Code não passa o foco
+      // ao webview que ainda está carregando: nenhum evento de foco chega a ele. Com a janela focada (o uso real), é
+      // bug; sem ela, é do ambiente. Levar o foco à página depois que ela fica pronta roubava o foco de quem já tinha
+      // ido para a paleta
+      if (await page.evaluate(() => document.hasFocus())) story.bug(lost);
+      else story.suggest(`${lost} (janela de teste sem o foco do sistema: conferir à mão no VS Code)`);
       await page.keyboard.press('Control+1');
       await page.waitForTimeout(500);
       if (await typesHere()) story.ok('Ctrl+1 (ir para o editor) põe o cursor no texto.');
@@ -102,7 +108,7 @@ test('só teclado, tema claro: abrir, escrever, buscar, desfazer e sair do edito
   });
 
   await story.step('Escrever só com atalhos: ## título, lista com -, negrito com Ctrl+B, código com `', async () => {
-    await page.keyboard.press('Control+End');
+    await toEnd(page);
     await page.keyboard.press('Enter');
     await type(page, '## Requisitos\n');
     await type(page, '- Docker\nGit\n\n');
@@ -131,7 +137,7 @@ test('só teclado, tema claro: abrir, escrever, buscar, desfazer e sair do edito
   });
 
   await story.step('Ctrl+Z desfaz a última frase, Ctrl+Y refaz', async () => {
-    await page.keyboard.press('Control+End');
+    await toEnd(page);
     await page.keyboard.press('Control+Z');
     const after = await editor.locator('.ProseMirror').innerText();
     story.ok(`Depois de um Ctrl+Z, o fim da página é: "${after.trim().split('\n').pop()}"`);

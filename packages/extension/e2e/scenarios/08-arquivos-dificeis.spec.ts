@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FrameLocator, Page } from '@playwright/test';
-import { click, expect, folderFrom, pause, test, type } from './story';
+import { click, expect, folderFrom, pause, test, toEnd, type } from './story';
 import { buildSite, editorOf, openFromTree, palette, save, techdocsIcon, treeRow } from './ui';
 
 const folder = folderFrom('site-avancado', 'dados');
@@ -88,7 +88,7 @@ test('arquivos difíceis: recursos do mkdocs, crlf, página grande e mudanças p
     const seconds = (Date.now() - started) / 1000;
     story.ok(`O catálogo de 3.600 linhas abriu em ${seconds.toFixed(1)} s.`);
     if (seconds > 5) story.suggest(`O catálogo de 3.600 linhas levou ${seconds.toFixed(1)} s para abrir no editor visual.`);
-    await page.keyboard.press('Control+End');
+    await toEnd(page);
     const last = editor.locator('.ProseMirror p', { hasText: 'vendas_400' });
     await appendTo(page, editor, 'vendas_400', ' Última tabela.');
     const typed = Date.now();

@@ -5,7 +5,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { click, expect, folderFrom, pause, test, type } from './story';
+import { click, expect, folderFrom, pause, test, toEnd, type } from './story';
 import { buildSite, checkPane, contextMenu, hasWarning, openFromTree, palette, quickInput, sidebarAction, techdocsIcon, toast, treeRow } from './ui';
 
 const folder = folderFrom('site-legado', 'pagamentos');
@@ -136,7 +136,7 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
       await expect(fix).toHaveCount(0);
     } else {
       story.ok('A formatação da página inicial já tinha sido ajustada pelo "Fix all automatically".');
-      await page.keyboard.press('Control+End');
+      await toEnd(page);
       await type(page, ' ');
       await page.keyboard.press('Backspace');
     }

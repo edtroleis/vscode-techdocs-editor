@@ -26,19 +26,31 @@ export async function sidebarAction(page: Page, label: string) {
 
 /** Botão direito na linha e o item do menu. */
 export async function contextMenu(page: Page, row: Locator, item: string | RegExp) {
-  await row.click({ button: 'right' });
-  const entry = page.locator('.context-view .monaco-menu .action-item', { hasText: item }).first();
+  const menu = page.locator('.context-view .monaco-menu');
+  const entry = menu.locator('.action-item', { hasText: item }).first();
   const action = entry.locator('.action-menu-item');
-  await expect(action).toBeVisible();
   // O menu só aceita a escolha depois de aberto de vez (o item fica marcado ao passar o mouse). Passa no começo do
   // item: o meio pode cair sobre o editor visual (um webview). O clique às vezes se perde; o Enter no item marcado, não
   const left = { x: 24, y: 10 };
+  // Logo depois de criar ou mover uma página, a árvore se redesenha: o clique direito pode cair na linha vizinha (o
+  // menu seria o dela), só mostrar a dica, ou o menu fechar sozinho. Espera a linha parar no lugar, confere que o
+  // menu é da linha certa (ela fica focada) e, senão, fecha e tenta de novo; cada espera com limite
   await expect(async () => {
-    await action.hover({ position: left });
-    await expect(entry).toHaveClass(/focused/, { timeout: 500 });
-  }).toPass();
+    if (await menu.count()) {
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0, { timeout: 1_000 });
+    }
+    const before = await row.boundingBox({ timeout: 2_000 });
+    await page.waitForTimeout(150);
+    expect(await row.boundingBox({ timeout: 2_000 }), 'linha parada').toEqual(before);
+    await row.click({ button: 'right', timeout: 2_000 });
+    await expect(action).toBeVisible({ timeout: 3_000 });
+    await expect(row, 'menu da linha clicada').toHaveClass(/focused/, { timeout: 1_000 });
+    await action.hover({ position: left, timeout: 2_000 });
+    await expect(entry).toHaveClass(/focused/, { timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
   await page.keyboard.press('Enter');
-  await expect(page.locator('.context-view .monaco-menu')).toHaveCount(0);
+  await expect(menu).toHaveCount(0);
 }
 
 /** F1, o nome do comando e Enter, como quem procura um comando na paleta. */
@@ -150,8 +162,12 @@ export const publishStrip = (editor: FrameLocator) => editor.locator('.status-st
 
 /** Ctrl+S e espera a aba ficar sem alteração pendente. */
 export async function save(page: Page) {
+  const dirty = page.locator('.tab.active.dirty');
   await page.keyboard.press('Control+S');
-  await expect(page.locator('.tab.active.dirty')).toHaveCount(0);
+  // No editor visual, o que a pessoa digitou chega ao documento junto com o Ctrl+S: a aba pode ainda nem ter ficado
+  // modificada. Esperar só "sem modificação" passava antes de gravar; espera ela aparecer (se ainda vai) e sumir
+  await dirty.waitFor({ timeout: 2_000 }).catch(() => {});
+  await expect(dirty).toHaveCount(0);
 }
 
 /** A página tem o ⚠ na árvore. */

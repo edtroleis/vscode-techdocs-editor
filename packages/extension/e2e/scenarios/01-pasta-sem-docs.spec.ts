@@ -2,13 +2,26 @@
  * Cenário 1: a Tarefas API (uma API FastAPI sem documentação), numa pasta local que não vai para o Backstage.
  * A pessoa cria a documentação de serviço do zero pela extensão, escreve as páginas e confere que o site gera.
  */
+import type { FrameLocator, Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { click, expect, folderFrom, pause, test, type } from './story';
+import { click, expect, folderFrom, pause, test, toEnd, type } from './story';
 import { addPage, buildSite, editorOf, hasWarning, openFromTree, previewPanel, previewRow, quickInput, save, techdocsIcon, topBar, treeRow } from './ui';
 
 const folder = folderFrom('tarefas-api', 'tarefas-api');
 const read = (path: string) => readFileSync(join(folder, path), 'utf8');
+
+/**
+ * Clica no texto e seleciona tudo, para escrever a página do zero. Uma pessoa leva um instante entre o clique, o Ctrl+A
+ * e a primeira tecla; tudo no mesmo milissegundo, o clique que vem de fora do webview às vezes chega depois da seleção
+ * e a primeira letra (o # do título) se perde. Só acontece na velocidade do teste.
+ */
+async function selectAll(page: Page, editor: FrameLocator) {
+  await editor.locator('.ProseMirror').click();
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Control+A');
+  await page.waitForTimeout(150);
+}
 
 test.use({
   folder,
@@ -80,8 +93,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
   await story.step('Escrever "Como rodar localmente": título, lista numerada e bloco de código', async () => {
     const editor = await openFromTree(page, 'Como rodar localmente');
     await story.check('o guia vem em português', () => expect(editor.locator('h2').first()).toHaveText('Objetivo'));
-    await editor.locator('.ProseMirror').click();
-    await page.keyboard.press('Control+A');
+    await selectAll(page, editor);
     await type(page, '# Como rodar localmente\n');
     await type(page, 'Você precisa do Python 3.12 ou mais novo.\n');
     await type(page, '## Passos\n');
@@ -98,8 +110,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
 
   await story.step('Escrever "Referência da API": tabela de endpoints, com Tab criando as linhas', async () => {
     const editor = await openFromTree(page, 'Referência da API');
-    await editor.locator('.ProseMirror').click();
-    await page.keyboard.press('Control+A');
+    await selectAll(page, editor);
     await type(page, '# Referência da API\n');
     await type(page, 'Os endpoints da Tarefas API:\n');
     await click(page, topBar(editor, 'table'));
@@ -128,7 +139,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
     const editor = await openFromTree(page, 'Tarefas API');
     const last = editor.locator('.ProseMirror > p').last();
     await last.click();
-    await page.keyboard.press('Control+End');
+    await toEnd(page);
     await page.keyboard.press('Enter');
     await type(page, 'Os endpoints estão na ');
     await click(page, topBar(editor, 'link'));

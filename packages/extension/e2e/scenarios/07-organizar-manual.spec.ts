@@ -5,7 +5,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { click, expect, folderFrom, pause, test, type } from './story';
+import { click, expect, folderFrom, pause, test, toEnd, type } from './story';
 import {
   answer,
   buildSite,
@@ -75,7 +75,7 @@ test('organizar o menu de um manual com links entre páginas', async ({ vscode: 
     await expect(page.locator('.tab.active')).toContainText('backup.md', { timeout: 30_000 });
     const editor = await editorOf(page);
     await editor.locator('.ProseMirror').click();
-    await page.keyboard.press('Control+End');
+    await toEnd(page);
     await page.keyboard.press('Enter');
     await type(page, 'O backup roda toda noite. Para restaurar, veja a ');
     await type(page, 'seção de erros da API.');
