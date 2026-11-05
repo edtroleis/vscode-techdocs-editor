@@ -192,10 +192,14 @@ function App({ content }: { content: Content }) {
   }, []);
 
   // O VS Code passa o foco ao webview (Enter na árvore, Ctrl+1, voltar à aba), mas não ao texto: sem um campo com
-  // foco, o cursor não aparece e o que a pessoa digita se perde. Vai para o texto, onde o cursor estava
+  // foco, o cursor não aparece e o que a pessoa digita se perde. Vai para o texto, onde o cursor estava. Num clique
+  // vindo de fora, o `focus` da janela chega depois do mousedown e antes de focar o que foi clicado: aí o foco é do
+  // clique (levar ao texto mudava a posição do cursor num bloco de código)
+  const lastPointer = useRef(-Infinity);
   const focusText = () => {
     const active = document.activeElement;
     if (active && active !== document.body) return;
+    if (performance.now() - lastPointer.current < 500) return;
     try {
       editor.current?.focus();
     } catch {
@@ -203,8 +207,13 @@ function App({ content }: { content: Content }) {
     }
   };
   useEffect(() => {
+    const pointer = () => (lastPointer.current = performance.now());
+    window.addEventListener('pointerdown', pointer, true);
     window.addEventListener('focus', focusText);
-    return () => window.removeEventListener('focus', focusText);
+    return () => {
+      window.removeEventListener('pointerdown', pointer, true);
+      window.removeEventListener('focus', focusText);
+    };
   }, []);
 
   /** Avisa o que ainda não foi avisado (o editor avisa com atraso) e então desfaz/refaz no documento. */
