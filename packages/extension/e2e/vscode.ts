@@ -4,10 +4,12 @@
  */
 import { _electron, expect, FrameLocator, Page, test as base } from '@playwright/test';
 import { downloadAndUnzipVSCode } from '@vscode/test-electron';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { cpSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { cursorToEnd } from '../test/webview/editing';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { createWorkspace, extensionRoot } = require('../test/vscode/workspace.cjs');
 
@@ -69,6 +71,41 @@ export const test = base.extend<Options & { vscode: VsCode }>({
         ...settings,
       }),
     );
+    // Outra língua: o VS Code só segue o --locale com o pacote de idioma instalado (baixado uma vez, em cache)
+    if (locale && !locale.startsWith('en')) {
+      const packs = join(ROOT, '.vscode-test', 'language-packs');
+      const id = `MS-CEINTL.vscode-language-pack-${locale.replace(/-(\w+)$/, (_, r: string) => `-${r.toUpperCase()}`)}`;
+      if (!existsSync(packs) || !readdirSync(packs).some(d => d.toLowerCase().startsWith(id.toLowerCase()))) {
+        // O cli.js pelo Electron do VS Code de teste (o bin/code, no WSL, instalaria no VS Code do Windows)
+        const cli = join(dirname(executablePath), 'resources', 'app', 'out', 'cli.js');
+        spawnSync(executablePath, [cli, `--extensions-dir=${packs}`, `--user-data-dir=${join(packs, '.user-data')}`, '--install-extension', id], {
+          stdio: 'inherit',
+          timeout: 120_000,
+          env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+        });
+      }
+      cpSync(packs, join(userData, 'extensions'), { recursive: true, filter: source => !source.includes('.user-data') });
+      // O VS Code só lê o pacote no 2º início (monta o languagepacks.json no 1º): o arquivo já vai pronto
+      const pack = readdirSync(packs).find(d => d.toLowerCase().startsWith(id.toLowerCase()));
+      if (pack) {
+        const manifest = JSON.parse(readFileSync(join(packs, pack, 'package.json'), 'utf8'));
+        const language = manifest.contributes.localizations[0];
+        const translations = Object.fromEntries(
+          language.translations.map((t: { id: string; path: string }) => [t.id, join(userData, 'extensions', pack, t.path)]),
+        );
+        writeFileSync(
+          join(userData, 'languagepacks.json'),
+          JSON.stringify({
+            [language.languageId]: {
+              hash: `${manifest.version}-test`,
+              extensions: [{ extensionIdentifier: { id: `${manifest.publisher}.${manifest.name}`.toLowerCase() }, version: manifest.version }],
+              translations,
+              label: language.localizedLanguageName ?? language.languageName,
+            },
+          }),
+        );
+      }
+    }
     const startedAt = Date.now();
     const app = await _electron.launch({
       executablePath,

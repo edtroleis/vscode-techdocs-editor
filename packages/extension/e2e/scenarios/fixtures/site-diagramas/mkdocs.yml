@@ -1,0 +1,8 @@
+site_name: Checkout
+nav:
+  - Início: index.md
+  - Fluxo do pedido: fluxo.md
+plugins:
+  - techdocs-core
+markdown_extensions:
+  - admonition

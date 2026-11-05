@@ -1,0 +1,10 @@
+site_name: Manual da Loja
+nav:
+  - Início: index.md
+  - Guias:
+      - guias/instalar.md
+      - guias/configurar.md
+  - Referência:
+      - referencia/api.md
+plugins:
+  - techdocs-core

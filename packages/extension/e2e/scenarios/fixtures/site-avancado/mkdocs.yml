@@ -1,0 +1,16 @@
+site_name: Plataforma de Dados
+nav:
+  - Início: index.md
+  - Recursos: recursos.md
+  - Glossário: glossario.md
+  - Catálogo de tabelas: tabelas.md
+plugins:
+  - techdocs-core
+markdown_extensions:
+  - admonition
+  - abbr
+  - attr_list
+  - footnotes
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true

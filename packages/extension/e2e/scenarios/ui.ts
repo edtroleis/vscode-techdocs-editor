@@ -11,7 +11,7 @@ import { expect } from '../vscode';
 import { click, type } from './story';
 
 export const pane = (page: Page, title: RegExp) => page.locator('.pane', { has: page.locator('.pane-header', { hasText: title }) });
-export const docsPane = (page: Page) => pane(page, /^Documentation/i);
+export const docsPane = (page: Page) => pane(page, /^(Documentation|Documentação)/i);
 export const treeRows = (page: Page) => docsPane(page).locator('.monaco-list-row');
 export const treeRow = (page: Page, label: string | RegExp) =>
   treeRows(page).filter({ has: page.locator('.label-name', { hasText: typeof label === 'string' ? new RegExp(`^${label}$`) : label }) }).first();
@@ -92,7 +92,7 @@ export const previewRow = (panel: FrameLocator, text: string | RegExp): Locator 
 export const editorOf = (page: Page) => webviewWith(page, '.milkdown .ProseMirror');
 
 /** Botões da barra fixa do editor visual, na ordem (ui/src/topBar.ts). */
-const TOP_BAR = ['bold', 'italic', 'strikethrough', 'inlineCode', 'bulletList', 'orderedList', 'taskList', 'link', 'image', 'table', 'codeBlock', 'quote', 'hr', 'undo', 'redo'] as const;
+const TOP_BAR = ['bold', 'italic', 'strikethrough', 'inlineCode', 'bulletList', 'orderedList', 'taskList', 'link', 'image', 'table', 'codeBlock', 'mermaid', 'quote', 'hr', 'undo', 'redo'] as const;
 export const topBar = (editor: FrameLocator, name: (typeof TOP_BAR)[number]) => editor.locator('.top-bar-item').nth(TOP_BAR.indexOf(name));
 
 /** Clica na página da árvore e espera ela abrir no editor visual (com o título 1 `heading`; por padrão, o da árvore). */
@@ -135,8 +135,11 @@ export async function turnOnSetting(page: Page, id: string, title: string) {
   const row = page.locator('.settings-editor .setting-item-bool', { has: page.locator('.setting-item-label', { hasText: title }) });
   const box = row.locator('.setting-value-checkbox');
   await expect(box).toBeVisible();
-  await click(page, box);
-  await expect(box).toHaveAttribute('aria-checked', 'true');
+  // A tela de Configurações (modal no VS Code 1.145) ainda se acomoda logo depois de filtrar: o 1º clique às vezes se perde
+  await expect(async () => {
+    if ((await box.getAttribute('aria-checked')) !== 'true') await click(page, box);
+    await expect(box).toHaveAttribute('aria-checked', 'true', { timeout: 1_500 });
+  }).toPass({ timeout: 10_000 });
   // O VS Code grava a configuração um instante depois: fechar a tela antes perde a mudança
   await page.waitForTimeout(1_500);
   await page.keyboard.press('Control+W');
@@ -178,4 +181,49 @@ export function buildSite(folder: string): { ok: boolean; output: string } | und
   const out = mkdtempSync(join(tmpdir(), 'cenario-site-'));
   const result = spawnSync(mkdocs, ['build', '--strict', '-d', out], { cwd: folder, encoding: 'utf8' });
   return { ok: result.status === 0, output: `${result.stdout}\n${result.stderr}`.trim() };
+}
+
+/** Uma mensagem (notificação) do VS Code com o texto. */
+export const toast = (page: Page, text: string | RegExp) => page.locator('.notification-toast', { hasText: text }).last();
+
+/** Escolhe o item da lista rápida pelo texto (digitando para filtrar, como a pessoa). */
+export async function pick(page: Page, text: string | RegExp, filter?: string) {
+  await expect(quickInput(page)).toBeVisible();
+  if (filter) await type(page, filter);
+  const row = quickInput(page).locator('.monaco-list-row', { hasText: text }).first();
+  await expect(row).toBeVisible();
+  await click(page, row);
+}
+
+/** Responde a caixa de texto do VS Code (o que já vem escrito é trocado quando `value` é dado). */
+export async function answer(page: Page, value?: string, prompt?: RegExp) {
+  const input = quickInput(page).locator('input');
+  await expect(input).toBeVisible();
+  if (prompt) await expect(quickInput(page)).toContainText(prompt);
+  await expect(input).toBeFocused();
+  if (value !== undefined) {
+    await expect(async () => {
+      await input.focus();
+      await page.keyboard.press('Control+A');
+      await type(page, value);
+      await expect(input).toHaveValue(value, { timeout: 1000 });
+    }).toPass({ timeout: 10_000 });
+  }
+  await page.keyboard.press('Enter');
+}
+
+/** O botão de uma caixa de confirmação do VS Code (com `window.dialogStyle: custom`). */
+export async function confirm(page: Page, button: RegExp) {
+  const dialog = page.locator('.monaco-dialog-box');
+  await expect(dialog).toBeVisible();
+  const choice = dialog.getByRole('button', { name: button }).first();
+  await click(page, choice);
+  await expect(choice).toHaveCount(0);
+}
+
+/** Abre a seção da árvore (clica só se está fechada). */
+export async function expandRow(page: Page, row: Locator) {
+  await expect(row).toBeVisible();
+  if ((await row.getAttribute('aria-expanded')) === 'false') await click(page, row);
+  await expect(row).toHaveAttribute('aria-expanded', 'true');
 }

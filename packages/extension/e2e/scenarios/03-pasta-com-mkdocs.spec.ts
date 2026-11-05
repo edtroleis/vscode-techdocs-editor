@@ -3,10 +3,10 @@
  * aponta para uma página apagada, uma página ficou fora do menu, a página inicial tem problemas de formatação. A
  * pessoa ajusta tudo pela extensão e confere que o site gera.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { click, expect, folderFrom, pause, test, type } from './story';
-import { buildSite, checkPane, treeRows, checkRow, contextMenu, editorOf, fixFinding, hasWarning, openFromTree, palette, quickInput, techdocsIcon, treeRow } from './ui';
+import { buildSite, checkPane, contextMenu, hasWarning, openFromTree, palette, quickInput, sidebarAction, techdocsIcon, toast, treeRow } from './ui';
 
 const folder = folderFrom('site-legado', 'pagamentos');
 const read = (path: string) => readFileSync(join(folder, path), 'utf8');
@@ -34,13 +34,11 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
   await story.step('Abrir a barra lateral TechDocs: o menu do site, com o que está errado', async () => {
     await expect(techdocsIcon(page)).toBeVisible({ timeout: 30_000 });
     await click(page, techdocsIcon(page));
-    // De saída, a pasta como no disco: o mkdocs.yml avisa que o menu aponta para página que não existe, e o
-    // clique nele leva à visão do menu do site, onde se corrige
-    const mkdocs = treeRow(page, 'mkdocs.yml');
-    await story.check('o ⚠ no mkdocs.yml', () => expect(mkdocs).toContainText(/pages? of the menu do(es)? not exist/));
-    // A pasta (fechada) diz quantas páginas dentro dela estão fora do menu
-    await story.check('a página fora do menu marcada', () => expect(treeRow(page, 'operacao')).toContainText('1 not in the menu'));
-    await click(page, mkdocs);
+    // A árvore é o menu do site: a seção "Fora do menu" diz quantas páginas ficaram de fora
+    await story.check('a página fora do menu marcada', () => expect(treeRow(page, /^Not in the menu/)).toContainText('1'));
+    if (!(await treeRow(page, 'Guias').locator('.codicon-warning').count()) && !/missing|not exist/i.test((await treeRow(page, 'Guias').innerText()) + ((await treeRow(page, 'Guias').getAttribute('aria-label')) ?? ''))) {
+      story.suggest('A seção Guias (fechada) não indica que uma página do menu dela não existe: a pessoa só vê o ⚠ de "Deploy antigo" ao abrir a seção.');
+    }
     for (const section of ['Guias', 'Operação', /^Not in the menu/]) {
       await expect(treeRow(page, section)).toBeVisible();
       if ((await treeRow(page, section).getAttribute('aria-expanded')) === 'false') await click(page, treeRow(page, section));
@@ -66,26 +64,52 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
     await pause(page);
   });
 
-  await story.step('Conferir a documentação pela paleta: a seção Manutenção mostra o que corrigir', async () => {
-    await palette(page, 'TechDocs: Check the documentation');
-    await expect(checkPane(page)).toBeVisible();
-    await expect(checkRow(page, 'guias/deploy-antigo.md')).toBeVisible();
-    await expect(checkRow(page, 'operacao/estorno.md')).toBeVisible();
-    await expect(checkRow(page, 'docs/index.md')).toBeVisible();
-    await story.check('sem Backstage no workspace, a conferência não cobra o catalog-info.yaml', () => expect(checkRow(page, 'No catalog-info.yaml')).toHaveCount(0));
+  await story.step('Conferir a documentação: pela paleta e pelo botão Conferir da árvore', async () => {
+    // A paleta tem dois comandos parecidos; o "do repositório" põe os achados só no painel Problemas
+    await palette(page, 'TechDocs: Check the documentation of the repository');
+    await page.waitForTimeout(2_000);
+    if (!(await toast(page, /adjustments|without problems/).isVisible()) && !(await checkPane(page).isVisible())) {
+      story.suggest(
+        'Pela paleta, "TechDocs: Check the documentation of the repository" não dá retorno na tela: os achados vão só para o painel Problemas (fechado), com um número no ícone. Na paleta há também "TechDocs: Check the Documentation" (o botão da árvore), com mensagem e "Fix all automatically": dois comandos quase com o mesmo nome e comportamentos diferentes.',
+      );
+    }
+    await sidebarAction(page, 'Check the Documentation');
+    const message = toast(page, /adjustments/);
+    await expect(message).toBeVisible();
+    await story.check('a mensagem diz quantos ajustes são automáticos e quantos precisam da pessoa', () => expect(message).toContainText(/automatic/));
     await pause(page, 2_000);
   });
 
-  await story.step('Usar a configuração de formatação sugerida (.markdownlint.yaml)', async () => {
-    await fixFinding(page, checkRow(page, '.markdownlint.yaml'));
+  await story.step('"Fix all automatically": a extensão ajusta o que pode, com Desfazer', async () => {
+    await click(page, toast(page, /adjustments/).locator('.monaco-button', { hasText: 'Fix all automatically' }));
+    const done = toast(page, /adjustments made/);
+    await expect(done).toBeVisible();
+    await story.check('a mensagem do ajuste tem Desfazer', () => expect(done.locator('.monaco-button', { hasText: 'Undo' })).toBeVisible());
     await written('.markdownlint.yaml').not.toBe('');
+    story.ok(`Depois do ajuste automático: ${(await done.innerText()).split('\n')[0]}`);
     await pause(page);
   });
 
-  await story.step('Criar a página "Deploy antigo" pela correção, e escrever nela', async () => {
-    await fixFinding(page, checkRow(page, 'guias/deploy-antigo.md'));
+  await story.step('Criar a página "Deploy antigo" (botão direito) e escrever nela', async () => {
+    if (!existsSync(join(folder, 'docs/guias/deploy-antigo.md'))) {
+      await contextMenu(page, treeRow(page, 'Deploy antigo'), 'Create the Page');
+    } else {
+      story.ok('O ajuste automático já criou a página que faltava.');
+    }
     await written('docs/guias/deploy-antigo.md').toContain('Deploy antigo');
-    const editor = await openFromTree(page, 'Deploy antigo');
+    let editor;
+    try {
+      editor = await openFromTree(page, 'Deploy antigo');
+    } catch {
+      story.bug('A página "Deploy antigo", criada pelo ajuste automático, não abre ao clicar nela na árvore (a linha fica selecionada e nada abre).');
+      await click(page, treeRow(page, 'Primeiros passos'));
+      editor = await openFromTree(page, 'Deploy antigo').catch(() => undefined);
+      if (editor) story.ok('Clicando em outra página e voltando, "Deploy antigo" abre.');
+      else {
+        await contextMenu(page, treeRow(page, 'Deploy antigo'), 'Open in the Visual Editor');
+        editor = await openFromTree(page, 'Deploy antigo');
+      }
+    }
     await editor.locator('.ProseMirror h1').first().click();
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
@@ -97,8 +121,10 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
   });
 
   await story.step('Pôr "Estorno manual" no menu: entra em Operação, junto de Alertas', async () => {
-    await contextMenu(page, treeRow(page, 'Estorno manual'), 'Add to the Menu');
-    await expect(treeRow(page, /^Not in the menu/)).toHaveCount(0);
+    if (await treeRow(page, /^Not in the menu/).count()) {
+      await contextMenu(page, treeRow(page, 'Estorno manual'), 'Add to the Menu');
+      await expect(treeRow(page, /^Not in the menu/)).toHaveCount(0);
+    } else story.ok('O ajuste automático já tinha posto "Estorno manual" no menu.');
     await story.check('a página entra na seção da pasta dela', async () =>
       expect(read('mkdocs.yml')).toContain('  - Operação:\n      - operacao/alertas.md\n      - operacao/estorno.md\n'),
     );
@@ -108,10 +134,16 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
   await story.step('Página inicial: "Corrigir automaticamente" resolve a formatação', async () => {
     const editor = await openFromTree(page, 'Início', 'Plataforma de Pagamentos');
     const fix = editor.getByRole('button', { name: 'Fix automatically' });
-    await expect(fix).toBeVisible();
-    await pause(page);
-    await click(page, fix);
-    await expect(fix).toHaveCount(0);
+    if (await fix.waitFor({ timeout: 3_000 }).then(() => true, () => false)) {
+      await pause(page);
+      await click(page, fix);
+      await expect(fix).toHaveCount(0);
+    } else {
+      story.ok('A formatação da página inicial já tinha sido ajustada pelo "Fix all automatically".');
+      await page.keyboard.press('Control+End');
+      await type(page, ' ');
+      await page.keyboard.press('Backspace');
+    }
     await page.keyboard.press('Control+S');
     await expect(page.locator('.tab.active.dirty')).toHaveCount(0);
     const text = read('docs/index.md');
@@ -141,10 +173,8 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
   });
 
   await story.step('Conferir de novo: nenhum problema nas páginas', async () => {
-    await palette(page, 'TechDocs: Check the documentation');
-    for (const gone of ['guias/deploy-antigo.md', 'operacao/estorno.md', 'docs/index.md', '.markdownlint.yaml']) {
-      await story.check(`a conferência não acusa mais ${gone}`, () => expect(checkRow(page, gone)).toHaveCount(0));
-    }
+    await sidebarAction(page, 'Check the Documentation');
+    await story.check('a conferência diz que a documentação não tem problemas', () => expect(toast(page, /without problems/)).toBeVisible());
     for (const label of ['Início', 'Como rodar na sua máquina', 'Deploy antigo', 'Alertas', 'Estorno manual']) {
       await story.check(`sem ⚠ em ${label}`, async () => expect(await hasWarning(page, label)).toBe(false));
     }
