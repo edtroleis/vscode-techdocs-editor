@@ -24,6 +24,38 @@ const withoutKatex = {
   },
 };
 
+/**
+ * O Mermaid registra o layout ELK (elkjs, ~1,4 MB, quase metade dos diagramas no pacote). Sem ele, o diagrama que
+ * pede `layout: elk` sai com o layout padrão (dagre), como no site: o TechDocs carrega o Mermaid sem o ELK. Se o
+ * Mermaid mudar este trecho, o build para, em vez de o elkjs voltar ao pacote sem ninguém ver.
+ */
+const ELK_LOADERS = '...elkLayoutLoaders()';
+// A função que carrega o ELK fica no arquivo sem uso, mas o esbuild ainda empacotaria o `import()` dela
+const ELK_IMPORT = /import\("\.\/elk-\w+\.mjs"\)/;
+const withoutElk = {
+  name: 'without-elk',
+  setup(build) {
+    let removed = false;
+    build.onStart(() => {
+      removed = false;
+    });
+    build.onLoad({ filter: /[\\/]mermaid[\\/]dist[\\/]chunks[\\/]mermaid\.core[\\/]chunk-[\w-]+\.mjs$/ }, async args => {
+      const contents = await readFile(args.path, 'utf8');
+      if (!contents.includes(ELK_LOADERS)) return undefined;
+      if (!ELK_IMPORT.test(contents)) return { errors: [{ text: `without-elk: o import do ELK não foi achado em ${args.path}; rever o plugin (build.mjs)` }] };
+      removed = true;
+      return {
+        contents: contents.replace(ELK_LOADERS, '').replace(ELK_IMPORT, 'Promise.reject(new Error("ELK layout is not bundled"))'),
+        loader: 'js',
+      };
+    });
+    build.onEnd(result => {
+      if (removed || result.errors.length) return undefined;
+      return { errors: [{ text: `without-elk: "${ELK_LOADERS}" não foi achado no Mermaid; rever o plugin (build.mjs)` }] };
+    });
+  },
+};
+
 /** `import texto from './x.md?raw'`: o arquivo como texto (templates do core, spec 04). */
 const rawImports = {
   name: 'raw-imports',
@@ -76,7 +108,7 @@ const builds = [
     outdir: 'dist/webview',
     chunkNames: 'chunks/[name]-[hash]',
     splitting: true,
-    plugins: [withoutKatex],
+    plugins: [withoutKatex, withoutElk],
     platform: 'browser',
     format: 'esm',
     target: 'es2022',
