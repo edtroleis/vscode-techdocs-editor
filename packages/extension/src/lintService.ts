@@ -14,7 +14,8 @@ export const DIAGNOSTIC_SOURCE = 'TechDocs';
 /**
  * Lint das páginas de docs (spec 01, L-1 a L-6): o markdownlint do `core` com a configuração da
  * pipeline, 400 ms depois de parar de digitar. Os problemas vão para o painel Problemas e para o
- * editor visual (`onDidLint`).
+ * editor visual (`onDidLint`). As páginas fechadas do site da árvore (`watchFiles`) são conferidas pelo
+ * disco, só para o ⚠ da árvore: o painel Problemas fica com as abertas.
  */
 export class LintService implements vscode.Disposable {
   private readonly diagnostics = vscode.languages.createDiagnosticCollection('techdocs-editor');
@@ -26,12 +27,25 @@ export class LintService implements vscode.Disposable {
   /** Lint de uma página terminou (também quando ela deixou de ter problemas). */
   readonly onDidLint = this.lintEmitter.event;
   private readonly disposables: vscode.Disposable[] = [];
+  /** As páginas do site da árvore, conferidas pelo disco quando fechadas. */
+  private watched = new Set<string>();
+  /** Data de modificação do arquivo da última conferência pelo disco: o que não mudou não é conferido de novo. */
+  private readonly stamps = new Map<string, number>();
+  /** Fila das conferências pelo disco, uma página de cada vez. */
+  private readonly diskQueue = new Map<string, vscode.Uri>();
+  private diskRunning = false;
 
   constructor(private readonly sites: LocalSites) {
     const watcher = vscode.workspace.createFileSystemWatcher(CONFIG_GLOB);
     const configChanged = () => {
       this.configs.clear();
+      this.stamps.clear();
       this.lintAll();
+    };
+    const pages = vscode.workspace.createFileSystemWatcher('**/*.md');
+    // Mudou por fora (git pull, outro editor): a página fechada é conferida de novo
+    const changedOnDisk = (uri: vscode.Uri) => {
+      if (this.watched.has(uri.toString())) this.queueDisk([uri]);
     };
     this.disposables.push(
       this.diagnostics,
@@ -40,9 +54,13 @@ export class LintService implements vscode.Disposable {
       watcher.onDidCreate(configChanged),
       watcher.onDidChange(configChanged),
       watcher.onDidDelete(configChanged),
+      pages,
+      pages.onDidCreate(changedOnDisk),
+      pages.onDidChange(changedOnDisk),
+      pages.onDidDelete(uri => this.forget(uri)),
       vscode.workspace.onDidOpenTextDocument(document => this.schedule(document, 0)),
       vscode.workspace.onDidChangeTextDocument(({ document }) => this.schedule(document)),
-      vscode.workspace.onDidCloseTextDocument(document => this.forget(document.uri)),
+      vscode.workspace.onDidCloseTextDocument(document => this.closed(document.uri)),
       vscode.workspace.onDidGrantWorkspaceTrust(() => this.lintAll()),
       vscode.extensions.onDidChange(() => this.lintAll()),
       sites.onDidChange(() => this.lintAll()),
@@ -53,6 +71,19 @@ export class LintService implements vscode.Disposable {
   /** Últimos problemas da página (vazio se ela não é de docs ou não tem problemas). */
   problems(uri: vscode.Uri): PageProblem[] {
     return this.results.get(uri.toString()) ?? [];
+  }
+
+  /**
+   * As páginas do site mostrado na árvore: as fechadas são conferidas pelo disco (o ⚠ delas), e as que saíram da
+   * lista (outro site) são esquecidas, se não estão abertas.
+   */
+  watchFiles(uris: vscode.Uri[]) {
+    const next = new Set(uris.map(uri => uri.toString()));
+    for (const key of this.watched) {
+      if (!next.has(key) && !this.openDocument(key)) this.forget(vscode.Uri.parse(key));
+    }
+    this.watched = next;
+    this.queueDisk(uris);
   }
 
   /** Lint agora, sem esperar a pausa na digitação (testes e "Ajustar agora"). */
@@ -82,6 +113,69 @@ export class LintService implements vscode.Disposable {
 
   private lintAll() {
     vscode.workspace.textDocuments.forEach(document => this.schedule(document, 0));
+    this.queueDisk([...this.watched].map(key => vscode.Uri.parse(key)));
+  }
+
+  private openDocument(key: string) {
+    return vscode.workspace.textDocuments.find(d => !d.isClosed && d.uri.toString() === key);
+  }
+
+  /** Página fechada: sai do painel Problemas; se é do site da árvore, o ⚠ passa a valer o que está no disco. */
+  private closed(uri: vscode.Uri) {
+    const key = uri.toString();
+    if (!this.watched.has(key)) return this.forget(uri);
+    clearTimeout(this.timers.get(key));
+    this.timers.delete(key);
+    this.diagnostics.delete(uri);
+    this.stamps.delete(key);
+    this.queueDisk([uri]);
+  }
+
+  private queueDisk(uris: vscode.Uri[]) {
+    uris.forEach(uri => this.diskQueue.set(uri.toString(), uri));
+    if (!this.diskRunning) void this.runDisk();
+  }
+
+  /** Confere a fila pelo disco, com uma pausa entre as páginas (o VS Code não para num site grande). */
+  private async runDisk() {
+    this.diskRunning = true;
+    try {
+      for (let next = this.diskQueue.values().next(); !next.done; next = this.diskQueue.values().next()) {
+        const uri = next.value;
+        this.diskQueue.delete(uri.toString());
+        await this.lintFromDisk(uri);
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    } finally {
+      this.diskRunning = false;
+    }
+  }
+
+  private async lintFromDisk(uri: vscode.Uri) {
+    const key = uri.toString();
+    // Aberta: vale o texto do editor
+    if (!this.watched.has(key) || this.openDocument(key)) return;
+    let mtime: number;
+    try {
+      mtime = (await vscode.workspace.fs.stat(uri)).mtime;
+    } catch {
+      return this.forget(uri);
+    }
+    if (this.stamps.get(key) === mtime && this.results.has(key)) return;
+    const config = await this.configFor(uri);
+    let text: string;
+    try {
+      text = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
+    } catch {
+      return this.forget(uri);
+    }
+    // Abriu ou saiu da lista enquanto lia
+    if (!this.watched.has(key) || this.openDocument(key)) return;
+    const problems = config ? pageProblems(toLf(text), config, vscode.env.language) : [];
+    this.stamps.set(key, mtime);
+    const before = this.results.get(key);
+    this.results.set(key, problems);
+    if (JSON.stringify(before) !== JSON.stringify(problems)) this.lintEmitter.fire({ uri, problems });
   }
 
   private schedule(document: vscode.TextDocument, delay = DELAY_MS) {
@@ -107,10 +201,14 @@ export class LintService implements vscode.Disposable {
   }
 
   private forget(uri: vscode.Uri) {
-    clearTimeout(this.timers.get(uri.toString()));
-    this.timers.delete(uri.toString());
-    this.results.delete(uri.toString());
+    const key = uri.toString();
+    clearTimeout(this.timers.get(key));
+    this.timers.delete(key);
+    this.stamps.delete(key);
+    const had = (this.results.get(key)?.length ?? 0) > 0;
+    this.results.delete(key);
     this.diagnostics.delete(uri);
+    if (had) this.lintEmitter.fire({ uri, problems: [] });
   }
 
   private markdownlintInstalled() {

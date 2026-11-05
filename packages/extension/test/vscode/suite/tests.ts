@@ -430,6 +430,34 @@ export function defineTests() {
       equal(tooltip(), '1 formatting problem. Open the page and use Fix automatically.', 'só problema com ajuste');
     });
 
+    test('página fechada com problema: ⚠ nela e na seção, fora do painel Problemas; corrigida no disco, o ⚠ some', async () => {
+      const { docs } = await api();
+      await docs.ready;
+      const wiki = await until(() => siteItem(docs, 'wiki'), Boolean, 'site wiki não está na árvore');
+      docs.getChildren(wiki);
+      // Arquivo novo, nunca aberto: só o disco diz que ele tem problema
+      const uri = file('wiki/docs/processos/fechada-com-problema.md');
+      const write = (text: string) => vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
+      const icon = (item: DocsItem) => (docs.getTreeItem(item).iconPath as vscode.ThemeIcon | undefined)?.id;
+      try {
+        await write('# Fechada\n\nLink vazio: [vazio]().\n');
+        const page = await until(() => docs.pageItem(uri), p => p !== undefined && icon(p) === 'warning', 'a página fechada não ganhou o ⚠');
+        equal(String(docs.getTreeItem(page!).tooltip), '1 formatting problem. Open the page to see what to change.', 'dica da página');
+        const section = page!.parent!;
+        equal(section.kind, 'section', 'a página está numa seção');
+        equal(icon(section), 'warning', 'a seção não ganhou o ⚠');
+        equal(String(docs.getTreeItem(section).tooltip), '1 page of this section has formatting problems.', 'dica da seção');
+        ok(!vscode.workspace.textDocuments.some(d => d.uri.toString() === uri.toString()), 'a página não devia ter sido aberta');
+        equal(vscode.languages.getDiagnostics(uri).length, 0, 'o painel Problemas fica só com as páginas abertas');
+        // Corrigida por fora (um git pull): o ⚠ sai da página e da seção
+        await write('# Fechada\n\nSem problema.\n');
+        const fixed = await until(() => docs.pageItem(uri), p => p !== undefined && icon(p) === 'markdown', 'o ⚠ da página não saiu');
+        ok(icon(fixed!.parent!) !== 'warning', 'o ⚠ da seção não saiu');
+      } finally {
+        await vscode.workspace.fs.delete(uri).then(undefined, () => undefined);
+      }
+    });
+
     test('problema aparece no painel com a linha e o texto simples; a configuração da pipeline vale', async () => {
       await (await api()).sites.ready;
       const uri = file('wiki/docs/index.md');

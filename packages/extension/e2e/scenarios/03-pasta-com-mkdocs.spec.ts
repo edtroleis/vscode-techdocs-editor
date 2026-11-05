@@ -46,11 +46,8 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
     await expect(treeRow(page, 'Deploy antigo')).toBeVisible();
     expect(await hasWarning(page, 'Deploy antigo')).toBe(true);
     await expect(treeRow(page, 'Estorno manual')).toBeVisible();
-    if (!(await hasWarning(page, 'Início'))) {
-      story.suggest(
-        'A página inicial tem problemas de formatação (espaços no fim da linha, título que pula de nível), mas a árvore só mostra o ⚠ depois que a página é aberta; ao fechar a aba, ele some de novo. Num site antigo, a pessoa não vê onde estão os problemas.',
-      );
-    }
+    // A página inicial tem problemas de formatação (espaços no fim da linha, título que pula de nível) e ninguém a abriu
+    await story.check('a página inicial, fechada, já mostra o ⚠ dos problemas de formatação', () => expect.poll(() => hasWarning(page, 'Início'), { timeout: 10_000 }).toBe(true));
     await pause(page, 2_000);
   });
 

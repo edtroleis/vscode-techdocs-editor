@@ -123,8 +123,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     private readonly remotes: RemoteRepos,
     private readonly state?: vscode.Memento,
     dragAndDropController?: vscode.TreeDragAndDropController<DocsItem>,
-    /** Problemas de formatação da página: a dica do ⚠ diz se há ajuste automático. */
-    private readonly lint?: Pick<LintService, 'problems'>,
+    /** Problemas de formatação das páginas (abertas ou não): o ⚠ e a dica dele, que diz se há ajuste automático. */
+    private readonly lint?: Pick<LintService, 'problems' | 'onDidLint' | 'watchFiles'>,
   ) {
     this.currentKey = state?.get<string>(CURRENT_KEY);
     // Ao abrir o VS Code, o site da página que estava aberta
@@ -168,19 +168,37 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         this.revealActive();
       }),
       this.view.onDidChangeVisibility(() => this.revealActive()),
-      // O ⚠ das páginas acompanha os problemas de formatação
-      // Só as páginas que mudaram: redesenhar a árvore toda perde a seleção
-      vscode.languages.onDidChangeDiagnostics(e => {
-        e.uris.forEach(uri => this.diagnosed.add(uri.toString()));
-        clearTimeout(this.diagnosticsTimer);
-        this.diagnosticsTimer = setTimeout(() => {
-          const items = [...this.diagnosed].map(uri => this.pages.get(uri)).filter((i): i is DocsItem => i !== undefined);
-          this.diagnosed.clear();
-          if (items.length) this.changeEmitter.fire(items);
-        }, REFRESH_DELAY_MS);
-      }),
+      // O ⚠ das páginas (e das seções em volta) acompanha os problemas de formatação. Só os itens que mudaram:
+      // redesenhar a árvore toda perde a seleção
+      ...(this.lint ? [this.lint.onDidLint(({ uri }) => this.problemsChanged([uri]))] : [vscode.languages.onDidChangeDiagnostics(e => this.problemsChanged(e.uris))]),
     );
     this.ready = sites.ready.then(() => this.refresh());
+  }
+
+  private problemsChanged(uris: readonly vscode.Uri[]) {
+    uris.forEach(uri => this.diagnosed.add(uri.toString()));
+    clearTimeout(this.diagnosticsTimer);
+    this.diagnosticsTimer = setTimeout(() => {
+      const items = new Set<DocsItem>();
+      for (const key of this.diagnosed) {
+        for (let item = this.pages.get(key); item; item = item.parent) {
+          if (item.kind === 'page' || item.kind === 'section') items.add(item);
+        }
+      }
+      this.diagnosed.clear();
+      if (items.size) this.changeEmitter.fire([...items]);
+    }, REFRESH_DELAY_MS);
+  }
+
+  /** Problemas de formatação da página: os do lint (também das páginas fechadas); sem ele, os do painel. */
+  private problemCount(uri: vscode.Uri) {
+    if (this.lint) return this.lint.problems(uri).length;
+    return vscode.languages.getDiagnostics(uri).filter(d => d.severity <= vscode.DiagnosticSeverity.Warning).length;
+  }
+
+  /** Páginas da seção (e das de dentro) com problemas de formatação. */
+  private pagesWithProblems(item: DocsItem): number {
+    return item.children.reduce((sum, child) => sum + (child.kind === 'page' ? (this.problemCount(child.uri!) ? 1 : 0) : child.kind === 'section' ? this.pagesWithProblems(child) : 0), 0);
   }
 
   getTreeItem(item: DocsItem): vscode.TreeItem {
@@ -198,7 +216,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     switch (item.kind) {
       case 'page': {
         // Sem o número de problemas do VS Code ao lado: um ⚠ com a explicação na dica
-        const problems = vscode.languages.getDiagnostics(item.uri!).filter(d => d.severity <= vscode.DiagnosticSeverity.Warning).length;
+        const problems = this.problemCount(item.uri!);
         tree.iconPath = problems ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground')) : new vscode.ThemeIcon('markdown');
         const where = item.uri!.scheme === REMOTE_SCHEME ? item.path : vscode.workspace.asRelativePath(item.uri!);
         const fix = problems ? problemsTooltip(problems, this.lint?.problems(item.uri!).filter(p => p.fixable).length ?? 0) : undefined;
@@ -207,12 +225,22 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         tree.command = { command: 'techdocsEditor.openVisual', title: vscode.l10n.t('Open'), arguments: [item.uri] };
         break;
       }
-      case 'section':
+      case 'section': {
         if (!item.children.length) {
           tree.description = vscode.l10n.t('empty');
           tree.tooltip = vscode.l10n.t('A section without pages does not appear on the site');
         }
+        // A seção (recolhida ou não) avisa que tem página com problema, como as pastas no Explorer
+        const pages = this.pagesWithProblems(item);
+        if (pages) {
+          tree.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground'));
+          tree.tooltip =
+            pages === 1
+              ? vscode.l10n.t('1 page of this section has formatting problems.')
+              : vscode.l10n.t('{0} pages of this section have formatting problems.', pages);
+        }
         break;
+      }
       case 'missing':
         tree.iconPath = new vscode.ThemeIcon('warning');
         tree.tooltip = vscode.l10n.t('The nav in mkdocs.yml points to a page that does not exist: {0}. Right-click to create the page or remove it from the menu.', item.description!);
@@ -537,6 +565,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     this.roots = roots;
     this.pages = pages;
     this.shownSite = shown;
+    // As páginas fechadas do site também ganham o ⚠ (conferidas pelo disco, aos poucos)
+    this.lint?.watchFiles([...pages.values()].filter(page => page.local && page.kind === 'page' && page.uri).map(page => page.uri!));
     // O site atual na barra de status: um clique troca (com mais de um)
     if (empty) {
       this.statusItem.text = `$(folder) ${folderLabel(empty)}`;
