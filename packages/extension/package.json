@@ -324,6 +324,10 @@
         "title": "%command.treeDeleteSection%",
         "category": "TechDocs",
         "icon": "$(trash)"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "title": "%command.visualKeepKey%"
       }
     ],
     "menus": {
@@ -479,6 +483,10 @@
         },
         {
           "command": "techdocsEditor.tree.deleteSection",
+          "when": "false"
+        },
+        {
+          "command": "techdocsEditor.visual.keepKey",
           "when": "false"
         }
       ],
@@ -1252,9 +1260,112 @@
         "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus && treeElementHasChild"
       },
       {
-        "command": "techdocsEditor.tree.openVisual",
-        "key": "enter",
-        "when": "focusedView =~ /^techdocsEditor\\.docs(Explorer)?$/ && !inputFocus && !treeElementHasChild"
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+b",
+        "mac": "cmd+b",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+i",
+        "mac": "cmd+i",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+e",
+        "mac": "cmd+e",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+x",
+        "mac": "cmd+alt+x",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+c",
+        "mac": "cmd+alt+c",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+0",
+        "mac": "cmd+alt+0",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+1",
+        "mac": "cmd+alt+1",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+2",
+        "mac": "cmd+alt+2",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+3",
+        "mac": "cmd+alt+3",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+4",
+        "mac": "cmd+alt+4",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+5",
+        "mac": "cmd+alt+5",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+6",
+        "mac": "cmd+alt+6",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+7",
+        "mac": "cmd+alt+7",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+alt+8",
+        "mac": "cmd+alt+8",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+[",
+        "mac": "cmd+[",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+]",
+        "mac": "cmd+]",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
+      },
+      {
+        "command": "techdocsEditor.visual.keepKey",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "activeCustomEditorId == 'techdocsEditor.visual' && focusedCustomEditorIsEditable"
       }
     ],
     "submenus": [

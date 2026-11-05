@@ -463,6 +463,20 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     this.done(vscode.l10n.t('"{0}" created.', item.label), undo);
   }
 
+  /**
+   * Clique na página do menu que não existia: a árvore leva um instante para trocar o item depois de o arquivo ser
+   * criado (pelo "Ajustar automaticamente", por fora); se o arquivo já existe, o clique abre a página. Senão, nada:
+   * criar fica no botão direito.
+   */
+  async openMissing(target?: unknown) {
+    const item = this.itemOf(target);
+    if (item?.kind !== 'missing' || !item.description || !item.local) return;
+    const site = this.docs.localSite;
+    if (!site) return;
+    const page = vscode.Uri.joinPath(site.docsDir, item.description);
+    if (await exists(page)) await vscode.commands.executeCommand('techdocsEditor.openVisual', page);
+  }
+
   /** "Tirar do menu": a entrada do `nav` que aponta para a página que não existe sai; o resto do menu fica. */
   async removeFromMenu(target?: unknown) {
     const item = this.itemOf(target);

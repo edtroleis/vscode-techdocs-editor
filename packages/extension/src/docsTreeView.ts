@@ -216,6 +216,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       case 'missing':
         tree.iconPath = new vscode.ThemeIcon('warning');
         tree.tooltip = vscode.l10n.t('The nav in mkdocs.yml points to a page that does not exist: {0}. Right-click to create the page or remove it from the menu.', item.description!);
+        // Abre a página se ela acabou de ser criada e a árvore ainda não trocou o item (treeActions.openMissing)
+        tree.command = { command: 'techdocsEditor.tree.openMissing', title: vscode.l10n.t('Open'), arguments: [item] };
         break;
       case 'link':
         tree.iconPath = new vscode.ThemeIcon('link-external');

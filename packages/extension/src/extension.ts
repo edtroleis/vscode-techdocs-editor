@@ -153,6 +153,10 @@ export function activate(context: vscode.ExtensionContext) {
       supportsMultipleEditorsPerDocument: false,
     }),
     provider,
+    // O webview repassa toda tecla para os atalhos do VS Code: os do editor visual (Ctrl+B negrito, Ctrl+E código…)
+    // também esconderiam a barra lateral ou abririam o Quick Open, e o foco sairia do texto. Já tratados no webview,
+    // ficam presos aqui enquanto o foco está nele (package.json, keybindings)
+    vscode.commands.registerCommand('techdocsEditor.visual.keepKey', () => undefined),
     vscode.commands.registerCommand('techdocsEditor.openVisual', (target?: vscode.Uri | DocsItem) => {
       // Do botão da árvore chega o item da página, não o arquivo
       const uri = (target instanceof DocsItem ? target.uri : target) ?? vscode.window.activeTextEditor?.document.uri;
@@ -190,6 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.addToMenu', (item?: DocsItem) => treeActions.addToMenu(item)),
     vscode.commands.registerCommand('techdocsEditor.usePageTitle', (item?: DocsItem) => treeActions.usePageTitle(item)),
     vscode.commands.registerCommand('techdocsEditor.createMissingPage', (item?: DocsItem) => treeActions.createMissing(item)),
+    vscode.commands.registerCommand('techdocsEditor.tree.openMissing', (item?: DocsItem) => treeActions.openMissing(item)),
     vscode.commands.registerCommand('techdocsEditor.removeFromMenu', (item?: DocsItem) => treeActions.removeFromMenu(item)),
     // Os mesmos comandos com os nomes do menu ⋯ da árvore ("Nova página nesta seção", "Excluir seção"…)
     vscode.commands.registerCommand('techdocsEditor.tree.openVisual', (item?: DocsItem) => {

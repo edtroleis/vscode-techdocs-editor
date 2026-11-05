@@ -116,5 +116,6 @@
   "submenu.itemMenu": "More Actions",
   "command.usePageTitle": "Use the Page Title in the Menu",
   "command.treeOpenToSide": "Open to the Side",
-  "command.copyToPage": "Copy to a Page"
+  "command.copyToPage": "Copy to a Page",
+  "command.visualKeepKey": "Visual editor shortcut"
 }

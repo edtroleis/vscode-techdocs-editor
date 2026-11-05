@@ -179,3 +179,26 @@ test('arquivo com CRLF continua com CRLF depois de editar e salvar', async ({ vs
   expect(saved).toContain(' Mais texto.');
   expect(saved).not.toMatch(/[^\r]\n/);
 });
+
+test('Ctrl+B, Ctrl+I e Ctrl+E ficam no editor visual: formatam e o texto seguinte chega (não vão para o VS Code)', async ({
+  vscode: { page, file },
+}) => {
+  await openVisual(page, PAGE);
+  await cursorAtEndOfFirstParagraph(page);
+  const sidebar = page.locator('.part.sidebar');
+  const sidebarVisible = await sidebar.isVisible();
+  await page.keyboard.type(' Antes ');
+  // Ctrl+B do VS Code esconde a barra lateral e Ctrl+E abre o Quick Open: no editor visual, ficam nele (Ctrl+E sem
+  // seleção não formata, mas também não leva o foco embora)
+  for (const [key, text] of [['Control+B', 'negrito'], ['Control+I', 'italico'], ['Control+E', 'codigo']] as const) {
+    await page.keyboard.press(key);
+    await page.keyboard.type(text);
+    await page.keyboard.press(key);
+    await page.keyboard.type(' ');
+  }
+  await page.keyboard.type('depois.');
+  await expect(page.locator('.quick-input-widget')).toBeHidden();
+  expect(await sidebar.isVisible()).toBe(sidebarVisible);
+  await save(page);
+  await expect.poll(() => file(PAGE)).toContain(' Antes **negrito** *italico* codigo depois.');
+});
