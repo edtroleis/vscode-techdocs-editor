@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-05
+
 ### Added
 
 - **Mermaid diagrams** in the visual editor: a `mermaid` code block is drawn in place, in the colors of the VS Code
@@ -18,9 +20,29 @@ All notable changes to the TechDocs Editor extension. The format follows
   **Undo**; **Check** points out sites with diagrams and no setup, and fixes it. In Backstage, TechDocs also needs the
   Mermaid addon.
 
+- **⚠ in the tree for closed pages too:** formatting problems show on every page of the site, open or not, and on
+  the section that holds them (the Problems panel still lists only the open pages). Fixed on disk, the ⚠ goes away.
+- **Sections point out menu pages that don't exist**, next to the formatting problems of their pages, in the
+  tooltip.
+- **README:** a two-minute video from installing to writing, a features table and new animations (installing, the
+  tree, a blank page, Mermaid).
+
 ### Changed
 
 - The **Copy** and **Preview** labels of code blocks follow the language of VS Code.
+- Every section in the tree has a directory icon, so the ⚠ of a section no longer shifts the indentation.
+- **Smaller package** (3.2 → 2.8 MB): the ELK layout of Mermaid is not bundled; diagrams that ask for
+  `layout: elk` are drawn with the default layout.
+
+### Fixed
+
+- **Keyboard:** Enter on a page in the tree opens it; Ctrl+B, Ctrl+I, Ctrl+E and the other shortcuts of the visual
+  editor stay in it, instead of also hiding the sidebar or opening Quick Open.
+- **Focus:** a page opened from the tree, with Ctrl+1 or by going back to its tab gets the cursor in the text, even
+  when VS Code gives the focus before the editor is ready; a click from outside the page leaves the cursor where
+  you clicked.
+- **Front matter** at the top of a page shows as a protected block, instead of a horizontal rule and a paragraph.
+- A template field left blank no longer leaves a trailing space (a formatting problem on a brand-new page).
 
 ## [0.9.1] - 2026-11-04
 
