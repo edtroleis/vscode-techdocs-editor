@@ -13,7 +13,7 @@
   <a href="README.md">English</a>
 </p>
 
-![Escolher uma página na árvore Documentação, editar no editor visual com o texto Markdown ao lado e salvar](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/visual-editor.gif)
+![Abrir uma página pela árvore Documentação, escrever com a barra e o menu /, ver o texto Markdown ao lado e salvar](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/visual-editor.gif)
 
 Docs-as-code funciona bem para quem programa e mal para o resto do time: produto, suporte, design e quem
 acabou de chegar evitam a documentação por causa do Markdown, das admonitions e de um lint que falha na
@@ -23,27 +23,54 @@ exatamente o Markdown que ele tinha, mais as alterações delas.
 É o mesmo editor do [plugin TechDocs editor para o Backstage](https://github.com/edtroleis/backstage-plugin-techdocs-editor):
 páginas editadas no portal e no VS Code saem iguais.
 
+### Veja em 2 minutos
+
+[![O passo a passo: instalar pelo Marketplace, a árvore da documentação, uma página em branco, uma página de template, o editor visual, um diagrama Mermaid e ajustar a formatação](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/walkthrough.jpg)](https://github.com/edtroleis/vscode-techdocs-editor/blob/main/docs/media/walkthrough.mp4)
+
+Da instalação à escrita: a árvore da documentação, uma página em branco, uma página de template, o editor visual,
+um diagrama Mermaid e o ajuste da formatação ([vídeo, MP4](https://github.com/edtroleis/vscode-techdocs-editor/blob/main/docs/media/walkthrough.mp4)). Vídeo e legendas em inglês.
+
+## Recursos em resumo
+
+| | |
+|---|---|
+| **Editor visual** | Edite páginas como um documento; salvar só muda o que você editou. Os blocos do MkDocs (admonitions, abas, front matter) ficam |
+| **Árvore da documentação** | As páginas na ordem do menu do site, ⚠ nas páginas e seções com problema, renomear, mover, duplicar e excluir com Desfazer |
+| **Páginas novas** | Página em branco ou de template (runbook, ADR, tutorial…), direto na seção do menu |
+| **Sites novos** | Uma prévia do `mkdocs.yml`, do menu e das páginas antes de gravar, a partir do README ou das páginas que você já tem |
+| **Formatação** | As regras do markdownlint da pipeline, em linguagem simples, com **Ajustar agora** |
+| **Mermaid** | Diagramas desenhados no lugar, e o site configurado para desenhá-los |
+| **Imagens e colagem** | Imagens gravadas em `docs/assets`; colar do Confluence, do Outline e da web como Markdown |
+| **Verificação** | O que o TechDocs precisa para montar o site, com as correções mostradas antes de aplicar |
+| **GitHub** | Editar docs no GitHub sem clonar, com rascunho, revisão e publicação |
+| **Teclado** | Tudo sem o mouse: Enter na árvore abre a página, com o cursor no texto |
+
 ## Recursos
 
 ### Um editor visual que mantém o seu Markdown
 
 - **Abrir uma página nunca a altera.** Salvar só mexe no que você editou: o resto do arquivo fica igual,
-  byte a byte, e os diffs e revisões continuam pequenos.
-- **A sintaxe do MkDocs fica.** Admonitions (`!!! note`), blocos recolhíveis (`???`) e abas de conteúdo
-  (`===`) continuam como blocos editáveis, em vez de virar HTML.
+  byte a byte (também o fim de linha do Windows), e os diffs e revisões continuam pequenos.
+- **A sintaxe do MkDocs fica.** Admonitions (`!!! note`), blocos recolhíveis (`???`), abas de conteúdo
+  (`===`) e o front matter no topo da página (`---`) continuam como blocos protegidos, em vez de virar HTML.
 - **Edição conhecida:** barra de ferramentas como a de um editor de texto, `/` para inserir blocos,
-  tabelas, listas de tarefas, blocos de código com cores, links e imagens. As imagens mantêm o texto
-  alternativo.
+  tabelas (Tab cria uma linha), listas de tarefas, blocos de código com cores, links para as outras páginas do
+  site e imagens. As imagens mantêm o texto alternativo.
+- **Os atalhos ficam no editor:** Ctrl+B, Ctrl+I, Ctrl+E e os outros atalhos de formatação formatam o texto, em
+  vez de rodar os comandos do VS Code com as mesmas teclas.
 - **Continua sendo um arquivo de texto.** Abra o Markdown ao lado e edite qualquer um dos dois: um
-  acompanha o outro, com um histórico só de desfazer (o Ctrl+Z funciona igual nos dois).
+  acompanha o outro, com um histórico só de desfazer (o Ctrl+Z funciona igual nos dois). Uma mudança de fora (um
+  `git pull`) aparece na página aberta.
 - **O seu tema:** claro, escuro e alto contraste, com as cores e fontes do VS Code.
 
 ### Problemas de formatação em linguagem simples
 
-![Problemas de formatação listados em linguagem simples; o número da linha abre o Markdown no problema; um clique corrige](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/lint-and-fix.gif)
+![Uma página com ⚠ na árvore: o editor visual lista os problemas de formatação em linguagem simples, um clique corrige e o ⚠ some](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/lint-and-fix.gif)
 
 - As mesmas regras do [markdownlint](https://github.com/DavidAnson/markdownlint) que a pipeline roda, com
   o `.markdownlint.{jsonc,json,yaml,yml}` do seu repositório, verificadas enquanto você digita.
+- **⚠ na árvore** em toda página com problema, também nas que ninguém abriu, e na seção em volta delas: você vê
+  onde estão os problemas antes da pipeline.
 - Problemas no painel **Problemas** e no editor visual, explicados em linguagem simples ("Há mais de um
   Título 1 na página") em vez de códigos de regra.
 - **Ajustar agora:** um botão no editor visual, uma correção rápida (lâmpada) no texto e o
@@ -76,6 +103,8 @@ MkDocs monta como está.
 
 ### Diagramas Mermaid
 
+![Digite / e Diagrama (Mermaid): o diagrama é desenhado no lugar, o mkdocs.yml é configurado e editar o código redesenha](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/mermaid.gif)
+
 Escreva fluxogramas, diagramas de sequência e os outros diagramas do [Mermaid](https://mermaid.js.org) num bloco
 de código `mermaid`: o editor visual desenha no lugar, nas cores do tema do VS Code, sem rede (também no VS Code
 para a Web).
@@ -87,10 +116,11 @@ para a Web).
 - **O site também desenha:** o primeiro diagrama acrescenta o bloco do Mermaid do `pymdownx.superfences` ao
   `mkdocs.yml` (com **Desfazer**), e o botão **Conferir** aponta os sites com diagramas e sem a configuração. No
   Backstage, o TechDocs também precisa do addon de Mermaid, instalado pelos administradores do Backstage.
+- Diagramas que pedem o layout ELK (`layout: elk`) saem com o layout padrão, como no site.
 
 ### Para se achar
 
-![Ctrl+F no editor visual destaca e conta os resultados](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/search.gif)
+![O ícone TechDocs abre a árvore da documentação: as páginas na ordem do menu, ⚠ numa página com problema e na seção dela, o menu do botão direito, e um clique abre a página](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/sidebar.gif)
 
 - **TechDocs na barra de atividades:** um ícone próprio, que só aparece em workspaces com `mkdocs.yml`, para o
   resto do seu Markdown não atrapalhar. Ele tem três seções: **Documentação**, **Verificação** e o painel
@@ -101,6 +131,11 @@ para a Web).
   título de cada página, também como a seção **TechDocs** no Explorer do VS Code, embaixo dos arquivos. As páginas
   fora do `nav` ficam em **Fora do menu**, cada uma com um **+** para entrar nele, e os itens do `nav` que apontam
   para páginas que não existem aparecem marcados. **Filtrar** acha uma página pelo título.
+- **⚠ onde algo está errado:** nas páginas com problema de formatação (abertas ou não) e nos itens do `nav` que
+  apontam para páginas que não existem. A seção que tem algum deles também mostra o ⚠, mesmo recolhida, e a dica
+  diz o quê: primeiro a página que falta, que quebra o `mkdocs build --strict`.
+- **Só com o teclado:** as setas andam na árvore e o Enter abre a página no editor visual, com o cursor no texto,
+  pronto para digitar.
 - **Arquivos no Explorer do VS Code:** mover, renomear ou excluir páginas e diretórios de `docs` no Explorer
   atualiza também o menu (`nav`) e os links das páginas, com **Desfazer** no aviso. Clique direito num diretório ›
   **Abrir no TechDocs** mostra a documentação dele; clique direito num `.md` fora de `docs` (o README) › **Copiar
@@ -114,9 +149,17 @@ para a Web).
   `docs_dir`, não para todo arquivo Markdown (READMEs, changelogs).
 - **Busca** com Ctrl+F no editor visual, com "1 de 3" e Enter / Shift+Enter entre os resultados.
 
-### Começar de um template
+![Ctrl+F no editor visual destaca e conta os resultados](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/search.gif)
 
-![Nova página a partir de uma seção da árvore Documentação: escolha o tipo de página, dê um título, e ela abre no editor visual pronta para preencher](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-page.gif)
+### Páginas novas: em branco ou de template
+
+![Clique direito numa seção › Nova página nesta seção › Página em branco: dê o título e ela abre no editor visual, já no menu](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/blank-page.gif)
+
+**Nova página nesta seção** (clique direito numa seção da árvore Documentação) ou o **+** da árvore começa por
+**Página em branco**: só o título, para quem quer começar do zero. O nome do arquivo sai do título e a página entra
+no menu, na seção clicada.
+
+![Página de template numa seção da árvore: escolha Runbook, responda às perguntas e ela abre com a primeira parte a preencher selecionada](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-page.gif)
 
 **TechDocs: Nova página a partir de template…** (paleta de comandos, o **+** num site ou seção da árvore
 **Documentação** ou clique direito num diretório das docs) cria uma página com as seções que aquele tipo de página precisa, já com o título, a data
@@ -174,9 +217,9 @@ Alerta: {{alert}}. Dono: {{owner}}. Revisado em {{date}}.
 
 #### Um site de documentação inteiro
 
-![Novo site de documentação a partir de template: dê o nome, responda às perguntas, e o mkdocs.yml e as páginas ficam prontos](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-site.gif)
+![Repositório só com código e README: Preparar a documentação abre uma prévia com o nome do README, um template e + Página; Criar grava o mkdocs.yml, o menu e as páginas](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-site.gif)
 
-**TechDocs: Novo site de documentação…** (paleta de comandos, menu da seção Documentação ou clique direito numa
+**TechDocs: Novo site de documentação…** (paleta de comandos, menu da seção Documentação ou clique direito num
 diretório) e **Criar a documentação** na barra lateral abrem uma **prévia** na barra lateral TechDocs, antes de
 gravar qualquer coisa:
 
@@ -191,20 +234,15 @@ gravar qualquer coisa:
 - Clique num arquivo para ver o texto. **Criar** grava o `mkdocs.yml` (com o `nav` e o plugin
   `techdocs-core`), as páginas, o `catalog-info.yaml` com a anotação do TechDocs e, quando o repositório não
   tem um, o `.markdownlint.yaml` com as regras do Markdown, para elas irem no commit; nunca sobrescreve um arquivo.
-
-![Repositório só com README: a tela de boas-vindas, o README como página inicial e a pergunta do catalog-info.yaml](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/prepare-readme.gif)
-
 - **O README como página inicial:** ao lado de um `README.md`, escolha **Copiar para docs/index.md**, **Mover
   para docs/index.md** (o README fica com um link para as docs) ou não usar. Links para `docs/…` passam a ser
   relativos ao diretório das docs.
 - **As páginas que você já tem:** com páginas em `docs/` e sem `mkdocs.yml`, **Usar as páginas que já existem**
   cria só o `mkdocs.yml`, com o `nav` pelos diretórios e títulos das páginas e o plugin `techdocs-core`, mostrado
   num diff antes. Nenhuma página muda.
-- **Uma pergunta só:** sem `catalog-info.yaml`, pergunta se o seu Backstage usa um no repositório. **Não** faz a
-  extensão parar de falar nele; **Sim** leva à Verificação, que oferece criá-lo. A resposta vai para o
-  `.techdocs-editor.yaml`, para o time todo.
-
-![Páginas em docs/ sem mkdocs.yml: usá-las, e só o mkdocs.yml é criado, com o nav pelos diretórios e títulos](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/adopt-docs.gif)
+- **`catalog-info.yaml` só onde o Backstage é usado:** quando outro repositório por perto tem um, o painel oferece o
+  arquivo marcado; senão, ele começa desmarcado e o painel diz o que isso significa (o site não aparece no
+  Backstage).
 
 | Site | Páginas |
 |------|---------|
@@ -258,10 +296,9 @@ e imagens que faltam não têm correção: só uma pessoa sabe o destino certo.
 Nem todo Backstage lê o `catalog-info.yaml` do repositório. A engrenagem da seção **Verificação** (**Opções da
 verificação**) define como a verificação o trata: **Conferir só se existir** (o padrão; a falta do arquivo é só
 uma dica, que não conta no ícone), **Exigir** (a falta é um problema, com uma correção que cria um mínimo) ou
-**Não usar**. Grave **Para o time** no `.techdocs-editor.yaml` (`catalog:`) ou **Só para mim** na configuração
+**Não usar**. No modo padrão, a falta do arquivo só é mencionada quando outro repositório por perto tem um
+`catalog-info.yaml` (sinal de que o Backstage os lê). Grave **Para o time** no `.techdocs-editor.yaml` (`catalog:`) ou **Só para mim** na configuração
 `techdocsEditor.catalog`; o arquivo do repositório vale sobre ela.
-
-![A engrenagem da Verificação: não usar o catalog-info.yaml, gravado para o time, e a dica some](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/check-options.gif)
 
 ### Editar a documentação no GitHub sem clonar
 
@@ -316,7 +353,10 @@ painel **Publicação** aparece na barra lateral TechDocs, com o mesmo fluxo do 
 
 ## Como começar
 
-1. Instale o **TechDocs Editor** pelo Marketplace do VS Code.
+![A visão Extensões: procure TechDocs Editor, Instalar, e o ícone TechDocs mostra a documentação do diretório](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/install.gif)
+
+1. Instale o **TechDocs Editor** pelo Marketplace do VS Code: na visão Extensões (Ctrl+Shift+X), procure
+   *TechDocs Editor* e clique em **Install**.
 2. Abra um diretório que tenha um `mkdocs.yml` (a extensão começa sozinha ali). Ainda sem `mkdocs.yml`? O ícone
    TechDocs também aparece ao lado de um `README.md`, de um diretório `docs/` ou de um `catalog-info.yaml`, com
    **Preparar a documentação**.
@@ -341,7 +381,7 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 | `techdocsEditor.sites` | todos | Sites de documentação mostrados na view TechDocs e conferidos: diretórios de um `mkdocs.yml` (ou um diretório acima deles). Escolha com **Filtrar Sites da Árvore…** no menu `…` da view |
 | `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
 | `techdocsEditor.templates.paths` | `[]` | Mais diretórios com templates de página e de site, relativos ao diretório do workspace (o `.techdocs/templates/` é sempre lido) |
-| `techdocsEditor.templates.repository` | `""` | Templates da empresa num repositório do GitHub: `dono/repo[/pasta][@ref]` |
+| `techdocsEditor.templates.repository` | `""` | Templates da empresa num repositório do GitHub: `dono/repo[/diretório][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Oferece os templates que vêm com a extensão |
 | `techdocsEditor.catalog` | `auto` | Como a verificação trata o `catalog-info.yaml`: `auto` (confere só se existir), `required` ou `off`. Também pela engrenagem da seção Verificação; o `catalog:` do `.techdocs-editor.yaml` vale sobre esta |
 | `techdocsEditor.local.publishPanel` | `false` | Mostra o painel **Publicação** |
