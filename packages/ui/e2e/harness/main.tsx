@@ -8,6 +8,7 @@ import { createRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MarkdownEditor, MarkdownEditorHandle } from '../../src/MarkdownEditor';
 import { editorTextFrom } from '../../src/labels';
+import { en } from '../../src/messages/en';
 import { ptBR } from '../../src/messages/pt-BR';
 import {
   fixLintProblems,
@@ -59,7 +60,7 @@ const initial = params.get('md') ?? '# Página\n\nTexto inicial.\n';
 const lintConfig = parseLintConfig('.markdownlint.yaml', lintConfigText);
 
 // Textos do editor em português, direto do catálogo (sem a API de tradução do Backstage)
-const messages: Record<string, string> = ptBR;
+const messages: Record<string, string> = params.get('lang') === 'en' ? en : ptBR;
 const text = editorTextFrom((key, vars = {}) =>
   (messages[key] ?? key).replace(/\{\{(\w+)\}\}/g, (_, name) => String(vars[name] ?? '')),
 );

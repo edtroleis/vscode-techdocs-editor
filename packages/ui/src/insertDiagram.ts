@@ -14,9 +14,13 @@ export type DiagramInsert = {
 
 export const diagramInsertCtx = createSlice<DiagramInsert>({ sample: 'flowchart LR\n  A --> B' }, 'docsEditorDiagramInsert');
 
-/** Insere o exemplo no lugar do bloco atual, se ele está vazio, ou logo depois dele. */
-export function insertDiagram(ctx: Ctx) {
-  const { sample, onInserted } = ctx.get(diagramInsertCtx);
+/**
+ * Insere o exemplo no lugar do bloco atual, se ele está vazio, ou logo depois dele. Sem `chosen`, o exemplo da
+ * barra (o fluxograma); com ele, o do modelo escolhido no menu "/" (M11).
+ */
+export function insertDiagram(ctx: Ctx, chosen?: string) {
+  const { sample: fallback, onInserted } = ctx.get(diagramInsertCtx);
+  const sample = chosen ?? fallback;
   const view = ctx.get(editorViewCtx);
   const { state } = view;
   const { $from } = state.selection;

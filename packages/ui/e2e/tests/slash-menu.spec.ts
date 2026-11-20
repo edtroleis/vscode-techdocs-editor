@@ -41,9 +41,20 @@ test.describe('menu /: itens oferecidos', () => {
       'Lista de tarefas',
       'Imagem',
       'Bloco de código',
-      'Diagrama (Mermaid)',
+      'Diagrama: fluxograma',
+      'Diagrama: sequência',
+      'Diagrama: estados',
+      'Diagrama: cronograma (Gantt)',
+      'Diagrama: entidades',
       'Tabela',
     ]);
+  });
+
+  test('/diagrama mostra os cinco modelos', async ({ page }) => {
+    await openEditor(page);
+    await newLineAtEnd(page);
+    await page.keyboard.type('/diagrama');
+    await expect(page.locator('.milkdown-slash-menu li > span:not(.milkdown-icon)')).toHaveCount(5);
   });
 
   test('filtra pelo que é digitado depois da barra', async ({ page }) => {

@@ -1,9 +1,12 @@
 import { commandsCtx } from '@milkdown/kit/core';
 import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark';
-import { DIAGRAM_ICON } from './icons';
+import { DIAGRAM_ICON, ENTITIES_ICON, GANTT_ICON, SEQUENCE_ICON, STATE_ICON } from './icons';
 import { insertDiagram } from './insertDiagram';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
+
+/** Um modelo de diagrama do menu "/" (spec 06, M11). */
+export type DiagramTemplate = { key: 'flow' | 'sequence' | 'state' | 'gantt' | 'entities'; label: string; sample: string; icon: string };
 
 /** Busca um texto traduzido pela chave (ex.: "editorText.quote"), com as variáveis. */
 export type TextLookup = (key: string, vars?: Record<string, string | number>) => string;
@@ -26,7 +29,16 @@ export type EditorText = {
   codeBlock: string;
   /** Botões do bloco de código e da prévia dos diagramas Mermaid (spec 06). */
   code: { copy: string; preview: string };
-  diagram: { label: string; sample: string; edit: string; show: string; hint: string; error: (line?: number) => string };
+  diagram: {
+    label: string;
+    sample: string;
+    edit: string;
+    show: string;
+    hint: string;
+    error: (line?: number) => string;
+    /** Os cinco modelos do menu "/" (M11), nesta ordem. */
+    templates: DiagramTemplate[];
+  };
   table: string;
   quote: string;
   divider: string;
@@ -67,6 +79,13 @@ export function editorTextFrom(t: TextLookup): EditorText {
       edit: k('diagramEdit'),
       show: k('diagramShow'),
       hint: k('diagramHint'),
+      templates: [
+        { key: 'flow', label: k('diagramFlow'), sample: k('diagramSample'), icon: DIAGRAM_ICON },
+        { key: 'sequence', label: k('diagramSequence'), sample: k('diagramSampleSequence'), icon: SEQUENCE_ICON },
+        { key: 'state', label: k('diagramState'), sample: k('diagramSampleState'), icon: STATE_ICON },
+        { key: 'gantt', label: k('diagramGantt'), sample: k('diagramSampleGantt'), icon: GANTT_ICON },
+        { key: 'entities', label: k('diagramEntities'), sample: k('diagramSampleEntities'), icon: ENTITIES_ICON },
+      ],
       error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),
     },
     table: k('table'),
@@ -128,20 +147,24 @@ export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
     codeBlock: { label: text.codeBlock },
     table: { label: text.table },
   },
-  // Diagrama Mermaid (spec 06, M4), logo depois do bloco de código
+  // Os cinco modelos de diagrama Mermaid (spec 06, M4 e M11), logo depois do bloco de código. O menu do Crepe só
+  // filtra pelo nome: "Diagrama: …" faz "/diagrama" achar os cinco
   buildMenu: builder => {
     const advanced = builder.getGroup('advanced');
     const items = advanced.group.items;
-    advanced.addItem('mermaid', {
-      label: text.diagram.label,
-      icon: DIAGRAM_ICON,
-      onRun: ctx => {
-        ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
-        insertDiagram(ctx);
-      },
-    });
+    for (const template of text.diagram.templates) {
+      advanced.addItem(`mermaid-${template.key}`, {
+        label: template.label,
+        icon: template.icon,
+        onRun: ctx => {
+          ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
+          insertDiagram(ctx, template.sample);
+        },
+      });
+    }
+    const added = items.splice(items.length - text.diagram.templates.length);
     const code = items.findIndex(i => i.key === 'code');
-    if (code >= 0) items.splice(code + 1, 0, items.pop()!);
+    items.splice(code >= 0 ? code + 1 : items.length, 0, ...added);
   },
 });
 

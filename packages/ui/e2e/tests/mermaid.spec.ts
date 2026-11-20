@@ -1,4 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
+import { en } from '../../src/messages/en';
+import { ptBR } from '../../src/messages/pt-BR';
 import { clickTopBar, editor, newLineAtEnd, openEditor, saved, slash, topBarButton } from './helpers';
 
 /** Diagramas Mermaid no editor visual (spec 06, M1–M3). */
@@ -73,13 +75,32 @@ test('página com 20 diagramas: digitar no fim continua rápido', async ({ page 
 /** Inserir diagrama (spec 06, M4): o exemplo entra como bloco `mermaid` e aparece desenhado. */
 const SAMPLE = '```mermaid\nflowchart LR\n  A[Início] --> B{Decisão}\n  B --> C[Fim]\n```\n';
 
-test('menu /: "Diagrama (Mermaid)" insere o exemplo', async ({ page }) => {
+test('menu /: "Diagrama: fluxograma" insere o exemplo', async ({ page }) => {
   await openEditor(page);
   await newLineAtEnd(page);
-  await slash(page, 'Diagrama (Mermaid)');
+  await slash(page, 'Diagrama: fluxograma');
   await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
   expect(await saved(page)).toBe(`# Página\n\nTexto inicial.\n\n${SAMPLE}`);
 });
+
+// Cinco modelos no menu / (M11), nas duas línguas: cada exemplo desenha sem erro
+const MODELS = ['Flow', 'Sequence', 'State', 'Gantt', 'Entities'] as const;
+const sampleKey = (m: (typeof MODELS)[number]) => (m === 'Flow' ? 'editorText.diagramSample' : `editorText.diagramSample${m}`);
+for (const [lang, messages] of [['', ptBR], ['en', en]] as const) {
+  for (const model of MODELS) {
+    const name = (messages as Record<string, string>)[`editorText.diagram${model}`];
+    test(`menu / (${lang || 'pt-BR'}): ${name} desenha o exemplo`, async ({ page }) => {
+      await page.goto(`/?lang=${lang}&md=${encodeURIComponent('# Página\n\nTexto inicial.\n')}`);
+      await editor(page).waitFor();
+      await newLineAtEnd(page);
+      await slash(page, name);
+      await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
+      await expect(block(page).locator('.mermaid-error')).toHaveCount(0);
+      const sample = (messages as Record<string, string>)[sampleKey(model)];
+      await expect.poll(() => saved(page)).toContain(sample);
+    });
+  }
+}
 
 test('barra: o botão "Diagrama (Mermaid)" insere o exemplo', async ({ page }) => {
   await openEditor(page);
