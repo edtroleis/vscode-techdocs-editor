@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-20
+
 ### Added
 
 - **Double-click a text in a Mermaid diagram** to go to it in the code: the block opens in **Edit** with the text
