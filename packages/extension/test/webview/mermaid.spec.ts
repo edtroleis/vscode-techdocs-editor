@@ -21,8 +21,10 @@ test('tema escuro do VS Code desenha com o tema escuro; trocar o tema redesenha'
   await expect.poll(() => dark(page)).toBe(true);
 });
 
-test('diagrama que pede o layout ELK é desenhado com o layout padrão (o ELK não vai no pacote, como no site)', async ({ page }) => {
+test('diagrama que pede o layout ELK é desenhado com o ELK', async ({ page }) => {
   await openWebview(page, '# Página\n\n```mermaid\n---\nconfig:\n  layout: elk\n---\nflowchart LR\n  A-->B\n```\n');
   await expect(svg(page)).toBeVisible();
   await expect(page.locator('.mermaid-error')).toHaveCount(0);
+  // O pedaço do ELK só carrega quando um diagrama pede
+  expect(await page.evaluate(() => performance.getEntriesByType('resource').some(r => /elk/i.test(r.name)))).toBe(true);
 });
