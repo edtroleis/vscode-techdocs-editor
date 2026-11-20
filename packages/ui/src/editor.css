@@ -91,6 +91,7 @@
 /* Diagramas Mermaid na prévia do bloco de código (spec 06) */
 .milkdown .mermaid-diagram {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   padding: 8px;
   overflow-x: auto;
@@ -98,6 +99,16 @@
 .milkdown .mermaid-diagram svg {
   max-width: 100%;
   height: auto;
+}
+.milkdown .mermaid-hint {
+  flex-basis: 100%;
+  text-align: center;
+  margin: 4px 0 0;
+  font-size: 0.85em;
+  color: var(--docs-editor-secondary-text, #6b6b6b);
+}
+.milkdown .ProseMirror[contenteditable='false'] .mermaid-hint {
+  display: none;
 }
 .milkdown .mermaid-error {
   padding: 8px 12px;

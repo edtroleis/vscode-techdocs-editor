@@ -17,6 +17,7 @@ export const ptBR: Record<string, string> = {
   'editorText.diagramSample': 'flowchart LR\n  A[Início] --> B{Decisão}\n  B --> C[Fim]',
   'editorText.diagramEdit': 'Editar',
   'editorText.diagramShow': 'Ver diagrama',
+  'editorText.diagramHint': 'Clique duas vezes num texto do desenho para editá-lo',
   'editorText.diagramError': 'Erro no diagrama',
   'editorText.diagramErrorLine': 'Erro no diagrama (linha {{line}})',
   'editorText.table': 'Tabela',

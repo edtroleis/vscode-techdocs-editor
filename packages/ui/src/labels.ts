@@ -26,7 +26,7 @@ export type EditorText = {
   codeBlock: string;
   /** Botões do bloco de código e da prévia dos diagramas Mermaid (spec 06). */
   code: { copy: string; preview: string };
-  diagram: { label: string; sample: string; edit: string; show: string; error: (line?: number) => string };
+  diagram: { label: string; sample: string; edit: string; show: string; hint: string; error: (line?: number) => string };
   table: string;
   quote: string;
   divider: string;
@@ -66,6 +66,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
       sample: k('diagramSample'),
       edit: k('diagramEdit'),
       show: k('diagramShow'),
+      hint: k('diagramHint'),
       error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),
     },
     table: k('table'),

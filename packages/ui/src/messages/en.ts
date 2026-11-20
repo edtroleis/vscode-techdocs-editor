@@ -17,6 +17,7 @@ export const en: Record<string, string> = {
   'editorText.diagramSample': 'flowchart LR\n  A[Start] --> B{Decision}\n  B --> C[End]',
   'editorText.diagramEdit': 'Edit',
   'editorText.diagramShow': 'Show diagram',
+  'editorText.diagramHint': 'Double-click a text in the drawing to edit it',
   'editorText.diagramError': 'Diagram error',
   'editorText.diagramErrorLine': 'Diagram error (line {{line}})',
   'editorText.table': 'Table',

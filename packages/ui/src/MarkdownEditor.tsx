@@ -1,4 +1,5 @@
 import { mermaidPreview } from './mermaidPreview';
+import { diagramDoubleClickPlugin } from './diagramDoubleClick';
 import { diagramInsertCtx } from './insertDiagram';
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
@@ -227,6 +228,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(pasteHtmlPlugin(() => importRef.current))
       .use(inlineCodeTypingPlugin)
       .use(listCaretFixPlugin)
+      .use(diagramDoubleClickPlugin)
       .use(visualSearchPlugin)
       .use(imageAltPlugin(src => uploadedNames.current.get(src)));
     crepeRef.current = crepe;

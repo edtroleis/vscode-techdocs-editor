@@ -89,3 +89,53 @@ test('barra: o botão "Diagrama (Mermaid)" insere o exemplo', async ({ page }) =
   await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
   expect(await saved(page)).toBe(`# Página\n\nTexto inicial.\n\n${SAMPLE}`);
 });
+
+// Clique duplo leva ao código (M10)
+const flow = page1('flowchart LR\n  A[Início] --> B{Decisão}\n  B --> C[Fim]');
+const label = (page: Page, text: string) => block(page).locator('.mermaid-diagram svg').getByText(text, { exact: true });
+const codeHidden = (page: Page) => block(page).locator('.codemirror-host');
+
+test('clique duplo num texto do desenho abre o código com o texto selecionado', async ({ page }) => {
+  await openEditor(page, flow);
+  await expect(block(page).locator('.mermaid-hint')).toHaveText('Clique duas vezes num texto do desenho para editá-lo');
+  await label(page, 'Decisão').dblclick();
+  await expect(block(page).locator('.cm-content')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.className)).toContain('cm-content');
+  await page.keyboard.type('Pago?');
+  await expect.poll(() => saved(page)).toBe(page1('flowchart LR\n  A[Início] --> B{Pago?}\n  B --> C[Fim]'));
+});
+
+test('com o código aberto, o clique duplo leva a outra linha; desfazer volta', async ({ page }) => {
+  await openEditor(page, flow);
+  await label(page, 'Decisão').dblclick();
+  await expect(block(page).locator('.cm-content')).toBeVisible();
+  await label(page, 'Fim').dblclick();
+  await page.keyboard.type('Saída');
+  await expect.poll(() => saved(page)).toBe(page1('flowchart LR\n  A[Início] --> B{Decisão}\n  B --> C[Saída]'));
+  await page.keyboard.press('Control+z');
+  await expect.poll(() => saved(page)).toBe(flow);
+});
+
+test('texto que não está no código: abre o código com o cursor no início', async ({ page }) => {
+  await openEditor(page, page1('pie\n  "Cães" : 1'));
+  await label(page, '100%').dblclick();
+  await expect(block(page).locator('.cm-content')).toBeVisible();
+  await page.keyboard.type('%% x\n');
+  await expect.poll(() => saved(page)).toBe(page1('%% x\npie\n  "Cães" : 1'));
+});
+
+test('clique simples não abre o código', async ({ page }) => {
+  await openEditor(page, flow);
+  await label(page, 'Decisão').click();
+  await page.waitForTimeout(300);
+  await expect(codeHidden(page)).toHaveClass(/hidden/);
+});
+
+test('modo leitura: sem dica e o clique duplo não abre o código', async ({ page }) => {
+  await page.goto(`/?readonly=1&md=${encodeURIComponent(flow)}`);
+  await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
+  await expect(block(page).locator('.mermaid-hint')).toBeHidden();
+  await label(page, 'Decisão').dblclick();
+  await page.waitForTimeout(300);
+  await expect(codeHidden(page)).toHaveClass(/hidden/);
+});

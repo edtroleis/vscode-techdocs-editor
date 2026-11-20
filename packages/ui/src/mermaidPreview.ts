@@ -13,6 +13,8 @@ export type MermaidTheme = 'dark' | 'default';
 export type DiagramText = {
   /** Título do erro de sintaxe; `line` é a linha no código do diagrama, quando o Mermaid diz. */
   error: (line?: number) => string;
+  /** Dica embaixo do desenho (M10). */
+  hint: string;
 };
 
 /** Erro de sintaxe de um bloco: a linha no arquivo e a mensagem do Mermaid. */
@@ -117,10 +119,14 @@ async function drawCached(mermaid: Mermaid, code: string): Promise<string> {
   }
 }
 
-function diagramElement(svg: string): HTMLElement {
+function diagramElement(svg: string, text: DiagramText): HTMLElement {
   const element = document.createElement('div');
   element.className = 'mermaid-diagram';
   element.innerHTML = svg;
+  const hint = document.createElement('p');
+  hint.className = 'mermaid-hint';
+  hint.textContent = text.hint;
+  element.append(hint);
   return element;
 }
 
@@ -139,7 +145,7 @@ function errorElement(text: DiagramText, message: string, code: string): HTMLEle
 /** Desenha (ou explica o erro de) um diagrama. */
 async function render(mermaid: Mermaid, code: string, text: DiagramText): Promise<HTMLElement> {
   try {
-    return diagramElement(await drawCached(mermaid, code));
+    return diagramElement(await drawCached(mermaid, code), text);
   } catch (error) {
     return errorElement(text, messageOf(error), code);
   }
@@ -169,7 +175,8 @@ export function setMermaidTheme(next: MermaidTheme) {
     // Se falhar, fica o desenho com o tema anterior
     void enqueue(async mermaid => {
       const redrawn = await drawCached(mermaid, code);
-      if (svg.isConnected && svg.parentElement) svg.parentElement.innerHTML = redrawn;
+      // Só o SVG: a dica embaixo dele fica
+      if (svg.isConnected && svg.parentElement) svg.outerHTML = redrawn;
     }).catch(() => undefined);
   }
 }

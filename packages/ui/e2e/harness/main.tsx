@@ -102,6 +102,7 @@ createRoot(document.getElementById('root')!).render(
       return url ? PICTURE : '';
     }}
     problemLines={[]}
+    readOnly={params.get('readonly') === '1'}
     // Páginas do site para a caixa de link, como o host manda (a página aberta é guias/deploy.md)
     linkPages={async () => [
       { title: 'Início', href: '../index.md', detail: 'index.md' },
