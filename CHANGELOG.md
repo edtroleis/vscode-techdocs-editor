@@ -6,6 +6,17 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Double-click a text in a Mermaid diagram** to go to it in the code: the block opens in **Edit** with the text
+  selected, ready to type over. A hint below the drawing says so.
+- **Five diagram examples in the `/` menu:** flowchart, sequence, states, timeline (Gantt) and entities.
+
+### Changed
+
+- The ELK layout of Mermaid is bundled again (package 2.8 → 3.2 MB): diagrams that ask for `layout: elk` are drawn
+  with it in the editor. The TechDocs site still draws them with the default layout.
+
 ## [0.10.0] - 2026-11-05
 
 ### Added

@@ -109,14 +109,17 @@ Escreva fluxogramas, diagramas de sequência e os outros diagramas do [Mermaid](
 de código `mermaid`: o editor visual desenha no lugar, nas cores do tema do VS Code, sem rede (também no VS Code
 para a Web).
 
-- **Inserir** um diagrama pelo menu `/` ou pela barra (**Diagrama (Mermaid)**): ele vem com um fluxograma curto
-  para começar. **Editar** no bloco mostra o código, com o diagrama redesenhado embaixo enquanto você digita.
+- **Inserir** um diagrama pelo menu `/`, a partir de um de cinco exemplos (fluxograma, sequência, estados,
+  cronograma (Gantt) ou entidades), ou um fluxograma pela barra (**Diagrama (Mermaid)**). **Editar** no bloco
+  mostra o código, com o diagrama redesenhado embaixo enquanto você digita.
+- **Clique duas vezes num texto do desenho** para ir até ele no código, selecionado e pronto para digitar por cima.
 - **Erros de sintaxe** aparecem no lugar do diagrama, com a linha, e no painel Problemas enquanto a página está
   aberta no editor visual.
 - **O site também desenha:** o primeiro diagrama acrescenta o bloco do Mermaid do `pymdownx.superfences` ao
   `mkdocs.yml` (com **Desfazer**), e o botão **Conferir** aponta os sites com diagramas e sem a configuração. No
   Backstage, o TechDocs também precisa do addon de Mermaid, instalado pelos administradores do Backstage.
-- Diagramas que pedem o layout ELK (`layout: elk`) saem com o layout padrão, como no site.
+- Diagramas que pedem o layout ELK (`layout: elk`) saem com ele no editor; o site do TechDocs desenha com o layout
+  padrão.
 
 ### Para se achar
 
