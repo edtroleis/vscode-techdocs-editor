@@ -13,6 +13,8 @@ type Line = { text: string; start: number };
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const WORD = '[\\p{L}\\p{N}_]';
+/** A id como palavra inteira: nem `node` dentro de `my-node` (o hífen das setas `A-->B` continua valendo). */
+const idPattern = (id: string) => `(?<!${WORD}-?)${escape(id)}(?!${WORD})`;
 
 /** As linhas depois da do tipo (front matter, linhas vazias e comentários antes dela ficam de fora). */
 function bodyLines(code: string): { type: string; lines: Line[] } {
@@ -39,7 +41,7 @@ const SHAPES: [string, string][] = [
 
 /** O rótulo do nó `id` na linha, sem os espaços e as aspas das pontas. */
 function shapeLabel(line: Line, id: string): CodeRange | undefined {
-  const re = new RegExp(`(?<!${WORD})${escape(id)}(?!${WORD})`, 'gu');
+  const re = new RegExp(idPattern(id), 'gu');
   for (const match of line.text.matchAll(re)) {
     const after = match.index + match[0].length;
     const shape = SHAPES.find(([open]) => line.text.startsWith(open, after));
@@ -58,7 +60,7 @@ function shapeLabel(line: Line, id: string): CodeRange | undefined {
 }
 
 function findWord(lines: Line[], id: string): CodeRange | undefined {
-  const re = new RegExp(`(?<!${WORD})${escape(id)}(?!${WORD})`, 'u');
+  const re = new RegExp(idPattern(id), 'u');
   for (const line of lines) {
     const match = re.exec(line.text);
     if (match) return { from: line.start + match.index, to: line.start + match.index + id.length };
@@ -69,10 +71,17 @@ function findWord(lines: Line[], id: string): CodeRange | undefined {
 function findText(lines: Line[], text: string): CodeRange | undefined {
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (!words.length) return undefined;
-  const re = new RegExp(words.map(escape).join('\\s+'), 'iu');
-  for (const line of lines) {
-    const match = re.exec(line.text);
-    if (match) return { from: line.start + match.index, to: line.start + match.index + match[0].length };
+  // Palavra inteira nas pontas que são letras ou números ("A" não casa no "a" de "participant")
+  const before = new RegExp(`^${WORD}`, 'u').test(words[0]) ? `(?<!${WORD})` : '';
+  const after = new RegExp(`${WORD}$`, 'u').test(words.at(-1)!) ? `(?!${WORD})` : '';
+  const source = before + words.map(escape).join('\\s+') + after;
+  // Primeiro com as maiúsculas exatas, depois ignorando a caixa
+  for (const flags of ['u', 'iu']) {
+    const re = new RegExp(source, flags);
+    for (const line of lines) {
+      const match = re.exec(line.text);
+      if (match) return { from: line.start + match.index, to: line.start + match.index + match[0].length };
+    }
   }
   return undefined;
 }

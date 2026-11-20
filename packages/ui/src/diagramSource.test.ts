@@ -41,6 +41,16 @@ describe('locateInDiagram', () => {
     expect(r.from).toBeGreaterThan('sequenceDiagram'.length);
   });
   it('comentário antes do tipo', () => expect(pick('%% nota\nflowchart LR\n  A[nota]', { text: 'nota' })).toBe('nota'));
+  it('id com hífen: node não casa dentro de my-node', () =>
+    expect(pick('flowchart LR\n  my-node[First] --> node[Second]', { nodeId: 'node', text: 'Second' })).toBe('Second'));
+  it('texto curto: palavra inteira, não dentro de palavra-chave', () => {
+    const code = 'sequenceDiagram\n  participant A\n  A->>B: oi';
+    expect(locateInDiagram(code, { text: 'A' })!.from).toBe(code.indexOf('participant A') + 'participant '.length);
+  });
+  it('texto: maiúsculas exatas antes de ignorar a caixa', () => {
+    const code = 'flowchart LR\n  X[título] --> Y[Título]';
+    expect(locateInDiagram(code, { text: 'Título' })!.from).toBe(code.lastIndexOf('Título'));
+  });
   it('não achou', () => {
     expect(locateInDiagram(flow, { text: '100%' })).toBeUndefined();
     expect(locateInDiagram(flow, { text: '' })).toBeUndefined();
