@@ -103,7 +103,7 @@ MkDocs monta como está.
 
 ### Diagramas Mermaid
 
-![Digite / e Diagrama (Mermaid): o diagrama é desenhado no lugar, o mkdocs.yml é configurado e editar o código redesenha](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/mermaid.gif)
+![Digite /diagram e escolha um exemplo: o diagrama é desenhado no lugar, o mkdocs.yml é configurado, um clique duplo num texto o seleciona no código e editar o código redesenha](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/mermaid.gif)
 
 Escreva fluxogramas, diagramas de sequência e os outros diagramas do [Mermaid](https://mermaid.js.org) num bloco
 de código `mermaid`: o editor visual desenha no lugar, nas cores do tema do VS Code, sem rede (também no VS Code

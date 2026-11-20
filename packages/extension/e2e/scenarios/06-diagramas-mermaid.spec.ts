@@ -34,13 +34,13 @@ test('diagramas mermaid: desenhar o fluxo do pedido', async ({ vscode: { page },
     await pause(page);
   });
 
-  await story.step('No fim da página, "/" e "Diagram (Mermaid)": o exemplo aparece desenhado', async () => {
+  await story.step('No fim da página, "/" e "Diagram: flowchart": o exemplo aparece desenhado', async () => {
     await editor.locator('.ProseMirror p').last().click();
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
     await type(page, '/');
-    const item = editor.locator('.milkdown-slash-menu li', { hasText: /^Diagram \(Mermaid\)$/ });
-    await story.check('"Diagram (Mermaid)" no menu /', () => expect(item).toBeVisible());
+    const item = editor.locator('.milkdown-slash-menu li', { hasText: /^Diagram: flowchart$/ });
+    await story.check('"Diagram: flowchart" no menu /', () => expect(item).toBeVisible());
     await click(page, item);
     await expect(diagrams(editor).first().locator('.mermaid-diagram svg')).toBeVisible({ timeout: 20_000 });
     await story.check('o exemplo tem as três caixas', () => expect(diagrams(editor).first().locator('.mermaid-diagram svg')).toContainText(/Start.*Decision.*End/s));

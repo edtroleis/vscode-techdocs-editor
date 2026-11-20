@@ -75,7 +75,7 @@ test('vs code em português: todos os textos da extensão em pt-br', async ({ vs
     await expect(menu).toBeVisible();
     const items = await menu.locator('li').allInnerTexts();
     audit(story, 'Menu /', items);
-    await story.check('o diagrama no menu / em português', async () => expect(items.join('|')).toContain('Diagrama (Mermaid)'));
+    await story.check('o diagrama no menu / em português', async () => expect(items.join('|')).toContain('Diagrama: fluxograma'));
     await page.keyboard.press('Escape');
     await page.keyboard.press('Backspace');
     await pause(page);

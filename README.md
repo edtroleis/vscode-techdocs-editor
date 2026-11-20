@@ -103,7 +103,7 @@ that MkDocs builds as is.
 
 ### Mermaid diagrams
 
-![Type / and Diagram (Mermaid): the diagram is drawn in place, mkdocs.yml is set up, and editing the code redraws it](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/mermaid.gif)
+![Type /diagram and pick an example: the diagram is drawn in place, mkdocs.yml is set up, a double-click on a text selects it in the code, and editing the code redraws it](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/mermaid.gif)
 
 Write flowcharts, sequence diagrams and the other [Mermaid](https://mermaid.js.org) diagrams in a `mermaid` code
 block: the visual editor draws them in place, in the colors of your VS Code theme, with no network (also in
