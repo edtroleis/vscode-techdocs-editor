@@ -14,7 +14,8 @@ Escrever, ver e corrigir diagramas Mermaid no editor visual, sem rede (também n
 `mkdocs.yml` pronto para o site desenhar.
 
 Fora do escopo (decisão de 2026-11-04): PlantUML; prévia no editor de texto Markdown do VS Code; editor gráfico
-de diagramas (arrastar caixas); exportar o diagrama como imagem.
+de diagramas com posição livre; exportar o diagrama como imagem. Montar fluxograma com o mouse, com layout
+automático, entrou depois como passo futuro (ver M10 e M11).
 
 ## Decisões
 
@@ -42,6 +43,26 @@ de diagramas (arrastar caixas); exportar o diagrama como imagem.
 | M6 | Conferir | Achado `mermaid-config-missing` (aviso, só quando alguma página do site tem bloco `mermaid` e o `mkdocs.yml` não tem o bloco personalizado no `pymdownx.superfences`). Ajuste automático acrescenta a configuração abaixo em `markdown_extensions` (cria a lista se faltar; junta se o `pymdownx.superfences` já existe com outras opções), com Desfazer, preservando as tags do MkDocs. O texto do achado avisa que no Backstage é preciso o addon de Mermaid do TechDocs | ✅ |
 | M7 | Inserir | Ao inserir o primeiro diagrama (M4) numa página de um site sem a configuração, a mesma configuração do M6 é acrescentada ao `mkdocs.yml` com uma mensagem e Desfazer | ✅ |
 | M8 | Navegador | Funciona no vscode.dev: o Mermaid desenha na webview sem rede; a CSP atual (`style-src 'unsafe-inline'`, scripts com nonce) cobre o SVG e o pedaço carregado depois. Conferir no teste web | ✅ |
+| M9 | Pacote | O layout ELK (`elkjs`) volta ao pacote: sai o plugin `withoutElk` do `build.mjs` e o orçamento do `test:bundle` sobe (~3,2 MB o `.vsix`). Diagrama com `layout: elk` sai com o ELK no editor; o site do TechDocs, que carrega o Mermaid sem o ELK, desenha com o dagre (anotado no `build.mjs`) | |
+| M10 | Editor visual | **Clique duplo num texto do desenho leva ao código:** o bloco abre em Editar (aperta o botão do Crepe se está só no desenho), com o cursor no trecho e o texto selecionado; com o código aberto, o clique duplo leva a outra linha. Fluxograma: pelo id do nó no SVG (`flowchart-B-12` → nó `B`), seleciona o rótulo entre os colchetes, ou o id se não há rótulo; outros tipos e rótulos de seta: pelo texto (primeira linha depois da do tipo). Não achou: abre o código com o cursor no início, sem erro. Clique simples continua selecionando o bloco. Embaixo do desenho, a dica "Clique duas vezes num texto do desenho para editá-lo" (pt-BR e inglês). Nada acontece no modo leitura | |
+| M11 | Inserir | **Cinco modelos** no menu `/`: Fluxograma (passos e decisões), Sequência (quem fala com quem), Estados (ciclo de vida), Cronograma (Gantt, tarefas no tempo) e Entidades (tabelas e relações), cada um com ícone, uma frase e um exemplo curto, no idioma da pessoa (`messages/`). O botão da barra continua inserindo o fluxograma num clique (a barra não tem menus). O M7 vale para os cinco | |
+
+### M10 e M11: decisões (2026-11-20)
+
+- **Por quê:** primeiro passo para montar diagramas com o mouse. Ordem combinada, cada passo numa versão própria
+  que entrega valor sozinho: (1) M9–M11, na 0.11.0; (2) funções no `core` que mudam um fluxograma pelo código
+  (acrescentar, ligar, renomear, apagar nó) sem estragar o resto; (3) arrastar e soltar em cima delas, com o layout
+  automático (o Mermaid não guarda posição: arrastar cria e liga, não posiciona).
+- **Clique duplo, não simples:** o clique simples continua selecionando o bloco; um clique que muda a tela sem
+  querer assusta mais quem não é técnico do que um gesto a descobrir pela dica.
+- **Como abre o código (forma A, escolhida):** usar o bloco do Crepe como está. O clique duplo aperta o
+  `preview-toggle-button` e, no quadro seguinte, põe uma seleção do ProseMirror no trecho; o `setSelection` do node
+  view do Crepe passa a seleção ao CodeMirror. Descartadas: copiar o componente do bloco para `vendor/` (manter ~800
+  linhas do Milkdown à mão) e um bloco Mermaid próprio (refazer editor, prévia, leitura e ida e volta; reavaliar no
+  passo 3 se precisar). Se o Milkdown mudar a classe do botão, o clique duplo deixa de abrir o código, sem quebrar
+  nada, e o teste do editor pega.
+- **Mapa do desenho para o código** num módulo próprio (`diagramSource.ts`, sem DOM do editor), testado por
+  unitários: é a peça que o passo 3 reaproveita.
 
 Configuração acrescentada (M6, M7):
 
@@ -74,3 +95,8 @@ markdown_extensions:
 - VS Code (`TEST_GREP`): M5 (diagnóstico aparece e some) e M7.
 - Web (`test:web`): M8, uma página com diagrama desenha.
 - Ida e volta: página com diagrama aberta e salva sem mudança no texto.
+- M10: unitários do `diagramSource.ts` (nó com e sem rótulo, formas `[]` `{}` `()`, id repetido em setas, rótulo de
+  seta, sequência, estados, Gantt, entidades, texto não achado); editor no navegador: clique duplo abre o código com
+  o trecho selecionado e, com o código aberto, leva a outra linha.
+- M11: editor no navegador, os cinco itens no `/` inserem o exemplo; unitário, os cinco exemplos passam no `parse`
+  do Mermaid nas duas línguas. M9: `test:bundle` com o orçamento novo.
