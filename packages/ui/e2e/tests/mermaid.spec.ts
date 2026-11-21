@@ -137,6 +137,18 @@ test('com o código aberto, o clique duplo leva a outra linha; desfazer volta', 
   await expect.poll(() => saved(page)).toBe(flow);
 });
 
+test('com o código aberto, o trecho já está selecionado quando o clique duplo termina', async ({ page }) => {
+  // No CI a tecla seguinte chegava antes do próximo quadro de animação e caía no fim do código
+  await openEditor(page, flow);
+  await label(page, 'Decisão').dblclick();
+  await expect(block(page).locator('.cm-content')).toBeVisible();
+  const selected = await label(page, 'Fim').evaluate(target => {
+    target.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true, detail: 2 }));
+    return window.getSelection()?.toString();
+  });
+  expect(selected).toBe('Fim');
+});
+
 test('texto que não está no código: abre o código com o cursor no início', async ({ page }) => {
   await openEditor(page, page1('pie\n  "Cães" : 1'));
   await label(page, '100%').dblclick();

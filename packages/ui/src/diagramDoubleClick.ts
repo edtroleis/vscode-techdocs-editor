@@ -46,16 +46,19 @@ function onDoubleClick(view: EditorView, event: MouseEvent) {
   // O texto do nó agora, não o do desenho (que pode estar atrasado)
   const code = view.state.doc.nodeAt(pos)?.textContent ?? '';
   const range = locateInDiagram(code, targetFromElement(target)) ?? { from: 0, to: 0 };
-  if (block.querySelector('.codemirror-host')?.classList.contains('hidden')) {
-    block.querySelector<HTMLElement>('.preview-toggle-button')?.click();
-  }
-  requestAnimationFrame(() => {
+  const select = () => {
     const dom = block.querySelector<HTMLElement>('.cm-editor');
     const editor = dom && CodeView.findFromDOM(dom);
     if (!editor || editor.state.doc.toString() !== code) return;
     editor.focus();
     editor.dispatch({ selection: { anchor: range.from, head: range.to }, scrollIntoView: true });
-  });
+  };
+  // Na hora, sem esperar um quadro: a tecla seguinte não pode chegar antes da seleção (no CI chegava)
+  const hidden = () => block.querySelector('.codemirror-host')?.classList.contains('hidden') ?? true;
+  if (!hidden()) return select();
+  block.querySelector<HTMLElement>('.preview-toggle-button')?.click();
+  // O Vue mostra o código numa microtarefa agendada pelo clique; esta roda depois dela (se ainda não, no quadro seguinte)
+  queueMicrotask(() => (hidden() ? requestAnimationFrame(select) : select()));
 }
 
 export const diagramDoubleClickPlugin = $prose(
