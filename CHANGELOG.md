@@ -6,7 +6,9 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
-## [0.11.0] - 2026-11-20
+## [0.11.1] - 2026-11-20
+
+The 0.11.0 tag was not published (the release tests failed); its changes ship here.
 
 ### Added
 
