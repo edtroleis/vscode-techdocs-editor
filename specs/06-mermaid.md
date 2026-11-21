@@ -46,6 +46,11 @@ automático, entrou depois como passo futuro (ver M10 e M11).
 | M9 | Pacote | O layout ELK (`elkjs`) volta ao pacote: sai o plugin `withoutElk` do `build.mjs` (~3,2 MB o `.vsix`); o orçamento da abertura (`test:bundle`) não muda: o ELK é um pedaço carregado só quando pedido. Diagrama com `layout: elk` sai com o ELK no editor; o site do TechDocs, que carrega o Mermaid sem o ELK, desenha com o dagre (anotado no `build.mjs`) | ✅ |
 | M10 | Editor visual | **Clique duplo num texto do desenho leva ao código:** o bloco abre em Editar (aperta o botão do Crepe se está só no desenho), com o cursor no trecho e o texto selecionado; com o código aberto, o clique duplo leva a outra linha. Fluxograma: pelo id do nó no SVG (`flowchart-B-12` → nó `B`), seleciona o rótulo entre os colchetes, ou o id se não há rótulo; outros tipos e rótulos de seta: pelo texto (primeira linha depois da do tipo). Não achou: abre o código com o cursor no início, sem erro. Clique simples continua selecionando o bloco. Embaixo do desenho, a dica "Clique duas vezes num texto do desenho para editá-lo" (pt-BR e inglês). Nada acontece no modo leitura | ✅ |
 | M11 | Inserir | **Cinco modelos** no menu `/`, no lugar do item único "Diagrama (Mermaid)": "Diagrama: fluxograma", "Diagrama: sequência", "Diagrama: estados", "Diagrama: cronograma (Gantt)" e "Diagrama: entidades", cada um com ícone e um exemplo curto, no idioma da pessoa (`messages/`). O menu do Crepe não tem descrição por item e só filtra pelo nome: o "Diagrama:" faz `/diagrama` achar os cinco. O botão da barra continua inserindo o fluxograma num clique (a barra não tem menus). O M7 vale para os cinco | ✅ |
+| M12 | Editor visual | **Barra do nó:** clique simples num nó de um **fluxograma** (`flowchart`/`graph`) mostra, logo acima dele, os botões **+ Passo depois**, **+ Decisão**, **Ligar a…** e **Apagar** (pt-BR e inglês). Fecha com clique fora do nó, Esc ou depois de uma ação. Clique fora dos nós continua selecionando o bloco. Não aparece nos outros tipos de diagrama nem no modo leitura. Funciona no desenho só (bloco fechado) e na prévia do modo Editar | |
+| M13 | Editor visual | **+ Passo depois** e **+ Decisão** acrescentam uma linha no fim do código ligando o nó clicado a um nó novo: `  B --> N1[Novo passo]` ou `  B --> N1{Nova decisão?}` (en: "New step", "New decision?"). Id nova `N<k>`, o menor `k` sem uso. Recuo da última linha não vazia (2 espaços se não houver). Saindo de uma decisão (nó com forma `{…}`), a 1ª seta leva "Sim" e a 2ª "Não" (en: "Yes", "No"), a partir da 3ª sem rótulo: `  B -- Sim --> N1[Novo passo]`. Depois, o código abre com o texto do nó novo selecionado (como no M10) | |
+| M14 | Editor visual | **Ligar a…:** a dica embaixo do desenho vira "Clique no nó de destino (Esc cancela)" e o próximo clique num nó acrescenta `  A --> B` (com a regra do Sim/Não do M13). Clique no mesmo nó, fora dos nós ou Esc cancela. Se a seta já existe, nada muda. O código não abre | |
+| M15 | Editor visual | **Apagar:** tira o nó, as setas dele e as linhas `style`/`class`/`click` só dele; os outros nós e o resto de cada linha ficam (`A[x] --> B[y] --> C` sem `B` vira `A[x]` e `C`); linha que fica vazia sai. O código não abre | |
+| M16 | Editor visual | **Nada quebra o diagrama:** cada ação (M13–M15) é uma só transação (um Ctrl+Z desfaz) e só é aplicada se o código novo passa no `parse` do Mermaid; se não passar (sintaxe que a edição automática não cobre, como `A & B --> C` ou subgrafos aninhados complexos), nada muda e aparece a mensagem "Não deu para mudar o diagrama automaticamente; edite o código" (en: "Couldn't change the diagram automatically; edit the code") | |
 
 ### M10 e M11: decisões (2026-11-20)
 
@@ -63,6 +68,32 @@ automático, entrou depois como passo futuro (ver M10 e M11).
   nada, e o teste do editor pega.
 - **Mapa do desenho para o código** num módulo próprio (`diagramSource.ts`, sem DOM do editor), testado por
   unitários: é a peça que o passo 3 reaproveita.
+
+
+### M12 a M16: decisões (2026-11-20)
+
+- **Por quê:** passo 2 do caminho até montar fluxogramas com o mouse (ver M10 e M11). Funções que mudam o
+  fluxograma pelo código sozinhas não entregam nada a quem usa; junto com a barra do nó entregam, e o arrastar e
+  soltar do passo 3 usa as mesmas funções. Vai na 0.12.0.
+- **Botões no nó, não arrastar (escolha do usuário):** fácil de descobrir, sem precisar acertar o arrasto no SVG, e
+  o mesmo "clicar e escolher" do menu `/`. Arrastar fica para depois.
+- **Abrir o código depois de criar um nó:** quem cria um passo quer dar nome a ele; com o texto selecionado é só
+  digitar. O desenho continua embaixo do código e a barra funciona nele, então dá para criar vários seguidos. Sem
+  isso ficariam caixas "Novo passo" esquecidas no site. Ligar e Apagar não abrem: não há o que digitar.
+- **Sim/Não nas setas da decisão:** um losango com duas setas sem rótulo não diz qual caminho é qual. Trocar o
+  rótulo é o clique duplo do M10.
+- **Linhas novas no fim, não ao lado do nó:** mexe o mínimo no que a pessoa escreveu e não precisa entender a
+  ordem do código; o layout do Mermaid não depende da ordem das linhas.
+- **Como o código muda (minha escolha, entre três):**
+  - **A, escolhida:** edição do texto por linha num módulo puro (`flowchartEdit.ts`, ao lado do `diagramSource.ts`
+    no `packages/ui`, sem DOM), com testes unitários. Preserva comentários, recuo, ordem e estilos; o M16 cobre o
+    que ela não entende.
+  - B, descartada: ler com o parser do Mermaid e gerar o código de novo. Perde comentários, recuo e a ordem que a
+    pessoa escolheu, e o diff no Git vira o arquivo inteiro.
+  - C, descartada: um parser próprio completo do fluxograma. Grande demais para o ganho; a A com o M16 cobre os
+    casos comuns sem risco.
+- **Fica para o construtor:** o visual da barra (seguir os botões do Crepe e as cores do tema), a posição exata
+  (acima do nó, sem sair do bloco) e o formato do cursor no modo Ligar.
 
 Configuração acrescentada (M6, M7):
 
@@ -100,3 +131,9 @@ markdown_extensions:
   o trecho selecionado e, com o código aberto, leva a outra linha.
 - M11: editor no navegador, os cinco itens no `/` inserem o exemplo; unitário, os cinco exemplos passam no `parse`
   do Mermaid nas duas línguas. M9: `test:bundle` com o orçamento novo.
+- M12–M16: unitários do `flowchartEdit.ts` (acrescentar passo e decisão com id livre e recuo; Sim/Não/sem rótulo
+  pela contagem; ligar sem duplicar; apagar nó sozinho, no começo, no meio e no fim de uma cadeia, com rótulo na
+  seta, com `style`/`class`/`click`; id com hífen; front matter; comentários preservados); editor no navegador:
+  barra aparece no clique num nó de fluxograma e não em sequência nem no modo leitura, + Passo depois abre o código
+  com "Novo passo" selecionado, Ligar a… e Apagar mudam o Markdown salvo, Ctrl+Z desfaz cada ação de uma vez, `A &
+  B --> C` mostra a mensagem do M16 sem mudar nada.
