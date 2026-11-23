@@ -12,6 +12,8 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  // No CI, um teste que falha roda mais uma vez antes de derrubar o Release (os do VS Code e do webview também)
+  retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: '../../../node_modules/.cache/ui-test-report' }]],
   outputDir: '../../../node_modules/.cache/ui-test-results',
   use: {

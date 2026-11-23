@@ -140,7 +140,7 @@ const builds = [
     globalName: 'techdocsEditorTests',
     footer: { js: 'module.exports = techdocsEditorTests;' },
     // TEST_GREP=Templates também no navegador, onde não há process.env
-    define: { 'process.env.TEST_GREP': JSON.stringify(process.env.TEST_GREP ?? '') },
+    define: { 'process.env.TEST_GREP': JSON.stringify(process.env.TEST_GREP ?? ''), 'process.env.CI': JSON.stringify(process.env.CI ?? '') },
     target: 'es2022',
     external: ['vscode'],
   },

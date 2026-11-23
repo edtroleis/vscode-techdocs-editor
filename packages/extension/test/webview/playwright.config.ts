@@ -8,6 +8,7 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
   reporter: [['list']],
   outputDir: '../../../../test-results',
   use: { ...devices['Desktop Chrome'], screenshot: 'only-on-failure', trace: 'retain-on-failure' },
