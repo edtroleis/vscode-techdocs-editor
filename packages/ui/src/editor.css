@@ -97,7 +97,8 @@
 .milkdown .mermaid-diagram {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  /* safe: um desenho largo (com min-width, M27) rola a partir da esquerda, sem cortar o começo */
+  justify-content: safe center;
   padding: 8px;
   overflow-x: auto;
 }

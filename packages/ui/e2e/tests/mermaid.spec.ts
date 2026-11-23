@@ -246,3 +246,39 @@ test('dica: o fluxograma fala do clique no nó; os outros diagramas, só do cliq
   await openEditor(page, page1('sequenceDiagram\n  A->>B: oi'));
   await expect(block(page).locator('.mermaid-hint')).toHaveText('Clique duas vezes num texto do desenho para editá-lo');
 });
+
+// Diagramas grandes (M27)
+const chain = (n: number, dir = 'LR') => `flowchart ${dir}\n${Array.from({ length: n }, (_, i) => `  N${i}[Etapa ${i}] --> N${i + 1}[Etapa ${i + 1}]`).join('\n')}`;
+
+test('diagrama largo: não encolhe abaixo de 60% e o bloco rola para o lado', async ({ page }) => {
+  await openEditor(page, page1(chain(40)));
+  const svg = block(page).locator('.mermaid-diagram > svg');
+  await expect(svg).toBeVisible();
+  const { shown, natural, scrolls } = await svg.evaluate(el => {
+    const box = el.closest('.mermaid-diagram')!;
+    return {
+      shown: el.getBoundingClientRect().width,
+      natural: (el as SVGSVGElement).viewBox.baseVal.width,
+      scrolls: box.scrollWidth > box.clientWidth,
+    };
+  });
+  expect(shown / natural).toBeGreaterThanOrEqual(0.59);
+  expect(scrolls).toBe(true);
+  // O começo do desenho fica visível (rola a partir da esquerda)
+  expect(await block(page).locator('.mermaid-diagram').evaluate(el => el.scrollLeft)).toBe(0);
+  await expect(block(page).locator('.mermaid-diagram svg').getByText('Etapa 0', { exact: true })).toBeInViewport();
+});
+
+test('diagrama pequeno: tamanho de sempre, sem rolagem', async ({ page }) => {
+  await openEditor(page, page1('flowchart LR\n  A-->B'));
+  const box = block(page).locator('.mermaid-diagram');
+  await expect(box.locator('> svg')).toBeVisible();
+  expect(await box.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(false);
+});
+
+test('diagrama grande demais: a mensagem dos limites no lugar do desenho', async ({ page }) => {
+  await openEditor(page, page1(chain(501)));
+  await expect(block(page).locator('.mermaid-error')).toHaveText('Diagrama grande demais: o Mermaid desenha até 500 ligações e 50 mil caracteres. Divida em diagramas menores.');
+  await openEditor(page, page1(`pie\n${'  "Fatia" : 1\n'.repeat(4000)}`));
+  await expect(block(page).locator('.mermaid-error')).toContainText('Diagrama grande demais');
+});

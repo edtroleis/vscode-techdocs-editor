@@ -21,7 +21,31 @@ export type DiagramText = {
   flowHint: string;
   /** Aviso dos tipos novos do Mermaid, que o TechDocs só desenha numa versão mais nova (M23). */
   sinceWarning: (since: string) => string;
+  /** Diagrama maior que os limites do Mermaid (M27). */
+  tooBig: string;
 };
+
+/**
+ * Limites do Mermaid (os padrões, que o site também usa): acima de 50 mil caracteres ele desenha um aviso no lugar do
+ * diagrama, e acima de 500 ligações dá erro ao desenhar (M27).
+ */
+export const MAX_DIAGRAM_TEXT = 50_000;
+const TOO_BIG = 'techdocs:diagram-too-big';
+const isTooBig = (message: string) => message === TOO_BIG || /^Edge limit exceeded/.test(message);
+
+/**
+ * Menor escala de um desenho largo (M27): abaixo dela o texto fica pequeno demais para ler, e o bloco rola para o
+ * lado. O `min-width` vai no SVG (a largura natural vem do `viewBox`).
+ */
+export const MIN_DIAGRAM_SCALE = 0.6;
+export function readableSvg(svg: string): string {
+  const width = Number(/<svg[^>]*\sviewBox="[-\d.]+ [-\d.]+ ([\d.]+) [\d.]+"/.exec(svg)?.[1]);
+  if (!width) return svg;
+  const min = `min-width: ${Math.round(width * MIN_DIAGRAM_SCALE)}px;`;
+  return /<svg[^>]*\sstyle="/.test(svg.slice(0, svg.indexOf('>') + 1))
+    ? svg.replace(/(<svg[^>]*\sstyle=")/, `$1${min} `)
+    : svg.replace('<svg', `<svg style="${min}"`);
+}
 
 /** Erro de sintaxe de um bloco: a linha no arquivo e a mensagem do Mermaid. */
 export type DiagramError = { line: number; message: string };
@@ -115,6 +139,8 @@ async function drawCached(mermaid: Mermaid, code: string): Promise<string> {
     sources.set(cached.id, code);
     return cached.svg;
   }
+  // Acima do limite o Mermaid desenha um aviso dele, em inglês, no lugar do diagrama
+  if (code.length > MAX_DIAGRAM_TEXT) throw new Error(TOO_BIG);
   // Valida antes: o render de um texto com erro desenha a "bomba" de erro do Mermaid
   await mermaid.parse(code);
   const id = `techdocs-mermaid-${++renders}`;
@@ -136,7 +162,7 @@ async function drawCached(mermaid: Mermaid, code: string): Promise<string> {
 function diagramElement(svg: string, text: DiagramText, code: string): HTMLElement {
   const element = document.createElement('div');
   element.className = 'mermaid-diagram';
-  element.innerHTML = svg;
+  element.innerHTML = readableSvg(svg);
   const hint = document.createElement('p');
   hint.className = 'mermaid-hint';
   hint.textContent = isFlowchart(code) ? text.flowHint : text.hint;
@@ -156,6 +182,11 @@ function errorElement(text: DiagramText, message: string, code: string): HTMLEle
   element.className = 'mermaid-error';
   element.setAttribute('role', 'alert');
   const title = document.createElement('strong');
+  if (isTooBig(message)) {
+    title.textContent = text.tooBig;
+    element.append(title);
+    return element;
+  }
   title.textContent = text.error(errorLine(message, code));
   const detail = document.createElement('pre');
   detail.textContent = errorDetail(message);
@@ -224,7 +255,7 @@ export function setMermaidTheme(next: MermaidTheme) {
     void enqueue(async mermaid => {
       const redrawn = await drawCached(mermaid, code);
       // Só o SVG: a dica embaixo dele fica
-      if (svg.isConnected && svg.parentElement) svg.outerHTML = redrawn;
+      if (svg.isConnected && svg.parentElement) svg.outerHTML = readableSvg(redrawn);
     }).catch(() => undefined);
   }
 }

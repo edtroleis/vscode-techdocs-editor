@@ -65,6 +65,8 @@ export type EditorText = {
     gallery: DiagramGalleryText;
     /** Aviso embaixo do desenho de um tipo novo do Mermaid (M23). */
     sinceWarning: (since: string) => string;
+    /** Diagrama maior que os limites do Mermaid (M27). */
+    tooBig: string;
     /** Barra do nó no fluxograma (M12–M16). */
     bar: DiagramBarText;
     /** Textos que a barra põe no código. */
@@ -134,6 +136,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
         sinceChip: since => t('editorText.diagramSinceChip', { since }),
         sinceTitle: since => t('editorText.diagramSinceTitle', { since }),
       },
+      tooBig: k('diagramTooBig'),
       sinceWarning: since =>
         since.startsWith('12') ? k('diagramMermaid12Warning') : t('editorText.diagramSinceWarning', { since }),
       error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),

@@ -563,5 +563,7 @@
   "The site draws Mermaid diagrams with the colors of MkDocs Material, not the ones of the editor: add the editor colors to extra_javascript in mkdocs.yml.": "O site desenha os diagramas Mermaid com as cores do MkDocs Material, e não com as do editor: acrescente as cores do editor ao extra_javascript do mkdocs.yml.",
   "The script with the editor colors for Mermaid diagrams is missing: {0}": "Falta o script com as cores do editor para os diagramas Mermaid: {0}",
   "Mermaid diagrams without the editor colors": "Diagramas Mermaid sem as cores do editor",
-  "Script of the Mermaid colors missing": "Falta o script das cores do Mermaid"
+  "Script of the Mermaid colors missing": "Falta o script das cores do Mermaid",
+  "Mermaid diagram too big: Mermaid draws up to 500 links and 50,000 characters, and the site shows a notice instead. Split it into smaller diagrams.": "Diagrama Mermaid grande demais: o Mermaid desenha até 500 ligações e 50 mil caracteres, e o site mostra um aviso no lugar. Divida em diagramas menores.",
+  "Mermaid diagrams too big": "Diagramas Mermaid grandes demais"
 }

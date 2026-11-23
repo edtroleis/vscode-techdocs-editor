@@ -83,6 +83,15 @@ describe('checkSite', () => {
     expect(codes(done).filter(c => c.startsWith('mermaid'))).toEqual([]);
   });
 
+  it('diagrama grande demais (M27): aviso na página e na linha do bloco', () => {
+    const chain = `flowchart LR\n${Array.from({ length: 501 }, (_, i) => `  N${i} --> N${i + 1}`).join('\n')}`;
+    const pages = { 'index.md': '# Início\n\n```mermaid\nflowchart LR\n  A-->B\n```\n', 'big.md': `# Grande\n\n\`\`\`mermaid\n${chain}\n\`\`\`\n` };
+    const found = checkSite(site({ pages, files: ['index.md', 'big.md', MERMAID_COLORS_FILE], mkdocsYml: addMermaidConfig(MKDOCS) }));
+    expect(found.filter(f => f.code === 'mermaid-too-big')).toEqual([
+      expect.objectContaining({ severity: 'warning', file: 'svc/docs/big.md', line: 4 }),
+    ]);
+  });
+
 
   it('nav, páginas fora do nav, links e imagens, plugin e catalog-info.yaml', () => {
     const findings = checkSite(site());

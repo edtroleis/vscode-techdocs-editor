@@ -22,6 +22,10 @@ All notable changes to the TechDocs Editor extension. The format follows
   editor's Mermaid and `javascripts/techdocs-mermaid.js` to `extra_javascript` in `mkdocs.yml`. The README shows the
   Backstage `app-config.yaml` for the same colors there.
 
+- Wide diagrams stay readable: they shrink to 60% at most and the block scrolls sideways, in the editor and on the
+  site. Diagrams over the Mermaid limits (500 links, 50,000 characters) show a clear message, and **Check** points
+  them out.
+
 ### Changed
 
 - Diagrams use the colorful Mermaid themes of mermaid.js.org (`redux-color`, `redux-dark-color`) and the editor font.

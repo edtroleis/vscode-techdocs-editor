@@ -403,6 +403,8 @@ export function findingMessage(finding: SiteFinding): string {
       return vscode.l10n.t('Pages have Mermaid diagrams, but mkdocs.yml does not configure them: the site shows the code. In Backstage, the TechDocs Mermaid addon is also needed.');
     case 'mermaid-colors-missing':
       return vscode.l10n.t('The site draws Mermaid diagrams with the colors of MkDocs Material, not the ones of the editor: add the editor colors to extra_javascript in mkdocs.yml.');
+    case 'mermaid-too-big':
+      return vscode.l10n.t('Mermaid diagram too big: Mermaid draws up to 500 links and 50,000 characters, and the site shows a notice instead. Split it into smaller diagrams.');
     case 'mermaid-colors-script-missing':
       return vscode.l10n.t('The script with the editor colors for Mermaid diagrams is missing: {0}', target);
     case 'docs-dir-missing':

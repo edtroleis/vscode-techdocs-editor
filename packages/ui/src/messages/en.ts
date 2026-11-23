@@ -83,6 +83,7 @@ export const en: Record<string, string> = {
   'editorText.diagramGalleryClose': 'Close',
   'editorText.diagramSinceChip': 'Backstage {{since}}+',
   'editorText.diagramSinceTitle': 'Needs Mermaid {{since}} or newer in Backstage',
+  'editorText.diagramTooBig': 'Diagram too big: Mermaid draws up to 500 links and 50,000 characters. Split it into smaller diagrams.',
   'editorText.diagramSinceWarning': 'New Mermaid diagram type: Backstage draws it only if the Mermaid addon has version {{since}} or newer.',
   'editorText.diagramMermaid12Warning': 'Mermaid 12 diagram type: the Mermaid addon of Backstage (Mermaid 11) does not draw it yet.',
   'editorText.diagramEdit': 'Edit',

@@ -6,6 +6,7 @@ import {
   MERMAID_COLORS_FILE,
   MERMAID_COLORS_SCRIPT,
   mermaidBlocks,
+  mermaidTooBig,
 } from './mermaidConfig';
 import type { Configuration } from 'markdownlint';
 import { isMap, isScalar, isSeq, parseAllDocuments, parseDocument, YAMLMap, YAMLSeq } from 'yaml';
@@ -36,7 +37,8 @@ export type SiteFindingCode =
   | 'missing-image'
   | 'mermaid-config-missing'
   | 'mermaid-colors-missing'
-  | 'mermaid-colors-script-missing';
+  | 'mermaid-colors-script-missing'
+  | 'mermaid-too-big';
 
 /** `hint`: só uma dica (ex.: sem `catalog-info.yaml` no modo `auto`); não conta como item a revisar. */
 export type SiteFindingSeverity = 'error' | 'warning' | 'info' | 'hint';
@@ -214,6 +216,11 @@ function checkPages(site: SiteSnapshot, title: string, createIndex: SiteFix, add
       add({ code: 'mermaid-config-missing', severity: 'warning', file: yml, target, fix: { file: yml, apply: text => addMermaidConfig(text ?? '') } });
     } else if (!hasMermaidColors(site.mkdocsYml)) {
       add({ code: 'mermaid-colors-missing', severity: 'info', file: yml, target, fix: { file: yml, apply: text => addMermaidColors(text ?? '') } });
+    }
+    // Diagramas que o Mermaid não desenha (M27): o site mostra um aviso no lugar
+    for (const path of pages) {
+      const big = mermaidBlocks(site.pages[path]).find(block => mermaidTooBig(block.code));
+      if (big) add({ code: 'mermaid-too-big', severity: 'warning', file: join(site.docsDir, path), line: big.line });
     }
     // O script vem junto com a configuração (as correções acima o põem no mkdocs.yml)
     if (!site.files.includes(MERMAID_COLORS_FILE)) {

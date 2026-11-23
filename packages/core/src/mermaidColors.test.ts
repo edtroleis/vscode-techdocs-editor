@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { addMermaidColors, addMermaidConfig, hasMermaidColors, hasMermaidFence, MERMAID_COLORS_FILE, MERMAID_SCRIPT_URL } from './mermaidConfig';
+import { mermaidTooBig, addMermaidColors, addMermaidConfig, hasMermaidColors, hasMermaidFence, MERMAID_COLORS_FILE, MERMAID_SCRIPT_URL } from './mermaidConfig';
 
 describe('cores do Mermaid no site (M25)', () => {
   it('o site carrega o mesmo Mermaid do editor', () => {
@@ -36,5 +36,15 @@ describe('cores do Mermaid no site (M25)', () => {
     const out = addMermaidConfig('site_name: X\n');
     expect(hasMermaidFence(out)).toBe(true);
     expect(hasMermaidColors(out)).toBe(true);
+  });
+});
+
+describe('mermaidTooBig (M27)', () => {
+  const chain = (n: number) => `flowchart LR\n${Array.from({ length: n }, (_, i) => `  N${i} --> N${i + 1}`).join('\n')}`;
+  it('fluxograma com mais de 500 ligações, ou mais de 50 mil caracteres', () => {
+    expect(mermaidTooBig(chain(500))).toBe(false);
+    expect(mermaidTooBig(chain(501))).toBe(true);
+    expect(mermaidTooBig(`sequenceDiagram\n${'  A->>B: oi\n'.repeat(600)}`)).toBe(false);
+    expect(mermaidTooBig(`pie\n${'  "x" : 1\n'.repeat(6000)}`)).toBe(true);
   });
 });

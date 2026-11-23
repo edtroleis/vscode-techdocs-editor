@@ -166,7 +166,7 @@ export const MERMAID_COLORS_FILE = 'javascripts/techdocs-mermaid.js';
 export const MERMAID_COLORS_SCRIPT = `// TechDocs Editor: diagramas Mermaid com as mesmas cores do editor visual (temas redux-color e redux-dark-color).
 // O MkDocs Material usa o Mermaid carregado antes deste arquivo (extra_javascript do mkdocs.yml) e chama
 // initialize com as cores dele: aqui elas dão lugar ao tema colorido, claro ou escuro como a página, com a fonte
-// da página.
+// da página. Um diagrama largo não encolhe abaixo de 60% (o texto fica legível) e rola para o lado.
 (() => {
   const mermaid = window.mermaid;
   if (!mermaid || mermaid.techdocsEditorColors) return;
@@ -176,6 +176,17 @@ export const MERMAID_COLORS_SCRIPT = `// TechDocs Editor: diagramas Mermaid com 
     const fontFamily = getComputedStyle(document.body).fontFamily;
     initialize({ ...config, fontFamily, theme: dark ? 'redux-dark-color' : 'redux-color' });
   };
+  const render = mermaid.render.bind(mermaid);
+  mermaid.render = async (...args) => {
+    const result = await render(...args);
+    const width = Number(/<svg[^>]*\\sviewBox="[-\\d.]+ [-\\d.]+ ([\\d.]+) [\\d.]+"/.exec(result.svg)?.[1]);
+    if (!width) return result;
+    const min = 'min-width: ' + Math.round(width * 0.6) + 'px;';
+    return { ...result, svg: result.svg.replace(/<svg([^>]*?)\\sstyle="/, '<svg$1 style="' + min + ' ') };
+  };
+  const style = document.createElement('style');
+  style.textContent = '.md-typeset .mermaid { overflow-x: auto; }';
+  document.head.append(style);
   mermaid.techdocsEditorColors = true;
 })();
 `;
@@ -224,3 +235,13 @@ export function addMermaidColors(yml: string): string {
 
 /** Tudo do Mermaid no `mkdocs.yml`: o bloco do superfences (M6) e as cores do editor (M25). */
 export const addMermaidConfig = (yml: string): string => addMermaidColors(addMermaidFence(yml));
+
+/**
+ * Diagrama acima dos limites do Mermaid (M27): mais de 50 mil caracteres, ou um fluxograma com mais de 500 ligações
+ * (conta as setas; `A & B --> C` conta como uma, então o número é o mínimo). O site não desenha esses diagramas.
+ */
+export function mermaidTooBig(code: string): boolean {
+  if (code.length > 50_000) return true;
+  if (!/^\s*(flowchart|graph)\b/m.test(code)) return false;
+  return (code.match(/-{2,}>|={2,}>|-\.+->|-{3,}|={3,}|-\.+-|~{3,}/g) ?? []).length > 500;
+}
