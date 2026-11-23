@@ -43,6 +43,8 @@ const configure = (mermaid: Mermaid) =>
     securityLevel: 'strict',
     // Os temas coloridos do mermaid.js.org (M24), no claro e no escuro
     theme: theme === 'dark' ? 'redux-dark-color' : 'redux-color',
+    // A fonte do editor (no VS Code, a da interface): a dos temas redux não vem no webview, e o texto media errado
+    ...(typeof document !== 'undefined' && document.body && { fontFamily: getComputedStyle(document.body).fontFamily }),
     suppressErrorRendering: true,
   });
 
@@ -182,8 +184,32 @@ export const mermaidPreview =
     return undefined;
   };
 
-/** Desenha `code` fora de um bloco (miniaturas da galeria, M22): o SVG, ou erro se o código não for válido. */
-export const drawDiagram = (code: string): Promise<string> => enqueue(mermaid => drawCached(mermaid, code));
+/** Miniaturas da galeria (M22), por tema e código: à parte, para não tirar do cache os desenhos da página. */
+const thumbnails = new Map<string, Promise<string>>();
+/** Uma miniatura por vez na fila dos desenhos: os diagramas da página pedidos no meio passam na frente das outras. */
+let thumbnailTurn: Promise<unknown> = Promise.resolve();
+
+/** Desenha `code` fora de um bloco (miniatura da galeria): o SVG, ou erro se o código não for válido. */
+export function drawThumbnail(code: string): Promise<string> {
+  const key = `${theme}\n${code}`;
+  const cached = thumbnails.get(key);
+  if (cached) return cached;
+  const run = thumbnailTurn.then(() =>
+    enqueue(async mermaid => {
+      const id = `techdocs-mermaid-thumb-${++renders}`;
+      try {
+        return (await mermaid.render(id, code)).svg;
+      } finally {
+        document.getElementById(id)?.remove();
+        document.getElementById(`d${id}`)?.remove();
+      }
+    }),
+  );
+  thumbnailTurn = run.catch(() => undefined);
+  thumbnails.set(key, run);
+  run.catch(() => thumbnails.delete(key));
+  return run;
+}
 
 /** Troca o tema dos diagramas e redesenha os que estão na tela, um por vez na fila. */
 export function setMermaidTheme(next: MermaidTheme) {

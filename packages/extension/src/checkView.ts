@@ -23,6 +23,8 @@ const CODE_ORDER: SiteFindingCode[] = [
   'broken-link',
   'missing-image',
   'mermaid-config-missing',
+  'mermaid-colors-script-missing',
+  'mermaid-colors-missing',
   'index-missing',
   'page-not-in-nav',
   'catalog-ref-missing',
@@ -161,6 +163,10 @@ function groupTitle(code: SiteFindingCode): string {
       return vscode.l10n.t('techdocs-core plugin missing');
     case 'mermaid-config-missing':
       return vscode.l10n.t('Mermaid diagrams not configured');
+    case 'mermaid-colors-missing':
+      return vscode.l10n.t('Mermaid diagrams without the editor colors');
+    case 'mermaid-colors-script-missing':
+      return vscode.l10n.t('Script of the Mermaid colors missing');
     case 'docs-dir-missing':
       return vscode.l10n.t('Docs folder missing');
     case 'nav-page-missing':

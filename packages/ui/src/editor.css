@@ -105,6 +105,13 @@
   max-width: 100%;
   height: auto;
 }
+/* Os rótulos são <p> dentro do desenho: sem o espaçamento dos parágrafos do editor, que o Mermaid não mediu e
+   cortava o texto embaixo */
+.milkdown .mermaid-diagram foreignObject p,
+.milkdown .diagram-gallery-thumb foreignObject p {
+  margin: 0;
+  padding: 0;
+}
 .milkdown .mermaid-hint {
   flex-basis: 100%;
   text-align: center;

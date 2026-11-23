@@ -401,6 +401,10 @@ export function findingMessage(finding: SiteFinding): string {
       return vscode.l10n.t('The techdocs-core plugin is missing from plugins in mkdocs.yml: TechDocs builds the site with it.');
     case 'mermaid-config-missing':
       return vscode.l10n.t('Pages have Mermaid diagrams, but mkdocs.yml does not configure them: the site shows the code. In Backstage, the TechDocs Mermaid addon is also needed.');
+    case 'mermaid-colors-missing':
+      return vscode.l10n.t('The site draws Mermaid diagrams with the colors of MkDocs Material, not the ones of the editor: add the editor colors to extra_javascript in mkdocs.yml.');
+    case 'mermaid-colors-script-missing':
+      return vscode.l10n.t('The script with the editor colors for Mermaid diagrams is missing: {0}', target);
     case 'docs-dir-missing':
       return vscode.l10n.t('The docs folder {0} does not exist.', target);
     case 'index-missing':

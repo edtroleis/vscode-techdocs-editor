@@ -106,12 +106,14 @@ that MkDocs builds as is.
 ![Type /diagram and pick an example: the diagram is drawn in place, mkdocs.yml is set up, a double-click on a text selects it in the code, and editing the code redraws it](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/mermaid.gif)
 
 Write flowcharts, sequence diagrams and the other [Mermaid](https://mermaid.js.org) diagrams in a `mermaid` code
-block: the visual editor draws them in place, in the colors of your VS Code theme, with no network (also in
-VS Code for the Web).
+block: the visual editor draws them in place, in the colorful Mermaid themes (light or dark, following VS Code), with
+no network (also in VS Code for the Web).
 
-- **Insert** a diagram from the `/` menu, starting from one of five examples (flowchart, sequence, states,
-  timeline (Gantt) or entities), or a flowchart from the toolbar (**Diagram (Mermaid)**). **Edit** on the block
-  shows the code, with the diagram redrawn below as you type.
+- **Insert** a diagram from the `/` menu, starting from one of 29 examples in five groups (flows, structure,
+  planning, charts and ideas), or from the gallery of the toolbar button (**Diagram (Mermaid)**), which shows each
+  one drawn. **Edit** on the block shows the code, with the diagram redrawn below as you type.
+- **Newer diagram types** (treemap, Ishikawa, Venn, file tree, Wardley, event modeling, swimlanes, Cynefin) carry a
+  "Backstage 11.x+" tag and a note under the drawing: Backstage draws them only with that Mermaid version or newer.
 - **Double-click a text in the drawing** to go to it in the code, selected and ready to type over.
 - **Click a node of a flowchart** for **+ Step after**, **+ Decision**, **Connect to…** and **Delete**: the code
   changes for you (a new step opens with its name selected; arrows out of a decision get Yes and No), and only if
@@ -119,9 +121,23 @@ VS Code for the Web).
 - **Drag from a node** to another node to connect them, or to an empty space of the drawing to add a step after it.
 - **Syntax errors** show in place of the diagram, with the line, and in the Problems panel while the page is open
   in the visual editor.
-- **The site draws them too:** the first diagram adds the Mermaid block of `pymdownx.superfences` to `mkdocs.yml`
-  (with **Undo**), and the **Check** button points out sites with diagrams and no setup. In Backstage, TechDocs also
-  needs the Mermaid addon, installed by the Backstage admins.
+- **The site draws them too, in the same colors:** the first diagram adds the Mermaid block of
+  `pymdownx.superfences` to `mkdocs.yml`, plus the editor's Mermaid and colors in `extra_javascript` (the script
+  goes to `docs/javascripts/techdocs-mermaid.js`), with **Undo**. The **Check** button points out sites with
+  diagrams and no setup.
+- **In Backstage**, TechDocs needs the Mermaid addon, installed by the Backstage admins, and the site scripts don't
+  run there: the colors come from the addon. For the same colors as the editor (addon with Mermaid 11.17 or newer),
+  in `app-config.yaml`:
+
+  ```yaml
+  techdocs:
+    addons:
+      mermaid:
+        lightConfig:
+          theme: redux-color
+        darkConfig:
+          theme: redux-dark-color
+  ```
 - Diagrams that ask for the ELK layout (`layout: elk`) are drawn with it in the editor; the TechDocs site draws them
   with the default layout.
 

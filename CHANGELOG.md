@@ -18,12 +18,21 @@ All notable changes to the TechDocs Editor extension. The format follows
 - Every example of the Mermaid documentation (617) is opened in the visual editor on each release
   (`npm run test:mermaid-examples`).
 
+- The site draws diagrams in the same colors as the editor: the first diagram (and the fix of **Check**) adds the
+  editor's Mermaid and `javascripts/techdocs-mermaid.js` to `extra_javascript` in `mkdocs.yml`. The README shows the
+  Backstage `app-config.yaml` for the same colors there.
+
 ### Changed
 
-- Diagrams use the colorful Mermaid themes of mermaid.js.org (`redux-color`, `redux-dark-color`) in the editor.
+- Diagrams use the colorful Mermaid themes of mermaid.js.org (`redux-color`, `redux-dark-color`) and the editor font.
 - A folder with no documentation has a single **Create the documentation** button, which asks how to start:
   **Blank** (as before, in one click) or **Choose a template…**. The **Choose a Template Here…** command is gone
   from the command palette; **New documentation site…** is still there.
+
+### Fixed
+
+- Text in diagram boxes was cut at the bottom in the visual editor (the editor's paragraph spacing).
+- Opening the diagram gallery no longer delays the diagrams of the page; Tab stays inside the gallery.
 
 ## [0.14.1] - 2026-11-23
 

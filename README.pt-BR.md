@@ -106,12 +106,15 @@ MkDocs monta como está.
 ![Digite /diagram e escolha um exemplo: o diagrama é desenhado no lugar, o mkdocs.yml é configurado, um clique duplo num texto o seleciona no código e editar o código redesenha](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/mermaid.gif)
 
 Escreva fluxogramas, diagramas de sequência e os outros diagramas do [Mermaid](https://mermaid.js.org) num bloco
-de código `mermaid`: o editor visual desenha no lugar, nas cores do tema do VS Code, sem rede (também no VS Code
-para a Web).
+de código `mermaid`: o editor visual desenha no lugar, nos temas coloridos do Mermaid (claro ou escuro, como o VS
+Code), sem rede (também no VS Code para a Web).
 
-- **Inserir** um diagrama pelo menu `/`, a partir de um de cinco exemplos (fluxograma, sequência, estados,
-  cronograma (Gantt) ou entidades), ou um fluxograma pela barra (**Diagrama (Mermaid)**). **Editar** no bloco
-  mostra o código, com o diagrama redesenhado embaixo enquanto você digita.
+- **Inserir** um diagrama pelo menu `/`, a partir de um de 29 exemplos em cinco grupos (fluxos, estrutura,
+  planejamento, gráficos e ideias), ou pela galeria do botão da barra (**Diagrama (Mermaid)**), que mostra cada um
+  desenhado. **Editar** no bloco mostra o código, com o diagrama redesenhado embaixo enquanto você digita.
+- **Tipos novos do Mermaid** (treemap, Ishikawa, Venn, árvore de arquivos, Wardley, modelagem de eventos, raias,
+  Cynefin) têm a etiqueta "Backstage 11.x+" e um aviso embaixo do desenho: o Backstage só os desenha com essa versão
+  do Mermaid ou mais nova.
 - **Clique duas vezes num texto do desenho** para ir até ele no código, selecionado e pronto para digitar por cima.
 - **Clique num nó de um fluxograma** para **+ Passo depois**, **+ Decisão**, **Ligar a…** e **Apagar**: o código
   muda sozinho (o passo novo abre com o nome selecionado; as setas que saem de uma decisão levam Sim e Não), e só
@@ -120,9 +123,23 @@ para a Web).
   depois dele.
 - **Erros de sintaxe** aparecem no lugar do diagrama, com a linha, e no painel Problemas enquanto a página está
   aberta no editor visual.
-- **O site também desenha:** o primeiro diagrama acrescenta o bloco do Mermaid do `pymdownx.superfences` ao
-  `mkdocs.yml` (com **Desfazer**), e o botão **Conferir** aponta os sites com diagramas e sem a configuração. No
-  Backstage, o TechDocs também precisa do addon de Mermaid, instalado pelos administradores do Backstage.
+- **O site também desenha, nas mesmas cores:** o primeiro diagrama acrescenta ao `mkdocs.yml` o bloco do Mermaid do
+  `pymdownx.superfences` e, no `extra_javascript`, o Mermaid e as cores do editor (o script fica em
+  `docs/javascripts/techdocs-mermaid.js`), com **Desfazer**. O botão **Conferir** aponta os sites com diagramas e
+  sem a configuração.
+- **No Backstage**, o TechDocs precisa do addon de Mermaid, instalado pelos administradores do Backstage, e os
+  scripts do site não rodam lá: as cores vêm do addon. Para as mesmas cores do editor (addon com o Mermaid 11.17 ou
+  mais novo), no `app-config.yaml`:
+
+  ```yaml
+  techdocs:
+    addons:
+      mermaid:
+        lightConfig:
+          theme: redux-color
+        darkConfig:
+          theme: redux-dark-color
+  ```
 - Diagramas que pedem o layout ELK (`layout: elk`) saem com ele no editor; o site do TechDocs desenha com o layout
   padrão.
 

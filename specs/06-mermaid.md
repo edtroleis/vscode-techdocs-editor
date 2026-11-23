@@ -59,6 +59,8 @@ automático, entrou depois como passo futuro (ver M10 e M11).
 | M22 | Editor visual | **Galeria:** o botão de diagrama da barra abre uma janela com a miniatura de cada modelo, filtro por grupo e busca pelo nome (sem acento); clicar ou Enter insere o exemplo, setas andam entre os cartões, Esc fecha sem mudar nada | ✅ |
 | M23 | Editor visual | **Tipos novos do Mermaid** (treemap 11.10, Ishikawa e Venn 11.13, árvore e Wardley 11.14, modelagem de eventos 11.15, raias e Cynefin 11.16; Use Case e Agentflow do 12): etiqueta "Backstage 11.x+" no menu e na galeria, e aviso embaixo do desenho com a versão que o TechDocs precisa | ✅ |
 | M24 | Editor visual | **Cores como no mermaid.js.org:** temas `redux-color` (claro) e `redux-dark-color` (escuro) no lugar de `default`/`dark`. No site publicado as cores continuam as do MkDocs Material ou do addon do Backstage | ✅ |
+| M25 | Site | **Site nas mesmas cores do editor:** o primeiro diagrama (e o ajuste do Conferir) põe no `extra_javascript` do `mkdocs.yml` o mesmo Mermaid do editor (unpkg, versão fixa) e `javascripts/techdocs-mermaid.js`, criado no `docs_dir`: ele troca as cores do MkDocs Material pelos temas `redux-color`/`redux-dark-color` (claro ou escuro como a página) e usa a fonte da página. O Conferir aponta o que falta (`mermaid-colors-missing`, `mermaid-colors-script-missing`). No Backstage os scripts do site não rodam: o README mostra o `app-config.yaml` do addon com os mesmos temas | ✅ |
+| M26 | Editor visual | Diagramas com a fonte do editor; rótulos sem o espaçamento dos parágrafos do editor (cortava o texto embaixo); miniaturas da galeria numa fila e num cache à parte (uma por vez, sem atrasar nem tirar do cache os diagramas da página); Tab preso na galeria | ✅ |
 
 ### M10 e M11: decisões (2026-11-20)
 
@@ -84,7 +86,10 @@ automático, entrou depois como passo futuro (ver M10 e M11).
   sem aviso; os 8 que pedem uma 11 mais nova entram com a etiqueta e o aviso (M23). Use Case e Agentflow (só no 12)
   e ZenUML (plugin à parte) ficam fora: quebrariam no site publicado.
 - **Menu e galeria:** o menu "/" para quem digita, a galeria (com o desenho de cada modelo) pelo botão da barra.
-- **Aviso nos dois lugares:** etiqueta no menu e na galeria, faixa embaixo do desenho.
+- **Aviso nos dois lugares:** etiqueta no menu e na galeria, faixa embaixo do desenho. Com o M25 o site do MkDocs usa
+  o mesmo Mermaid do editor; o aviso fala só do addon do Backstage.
+- **Site colorido como o editor (M25), e não o contrário:** decisão do usuário. Conferido num site MkDocs Material
+  9.8.2 de verdade, no claro e no escuro.
 - **Protótipo aprovado:** https://claude.ai/artifact/1eSwZB8e9DdMB4DEpNus34
 - **Exemplos do site como teste:** os 617 exemplos do mermaid.js.org (introdução e sintaxe de cada tipo) ficam em
   `packages/ui/e2e/fixtures/mermaid-site-examples.json` e abrem no editor visual a cada release

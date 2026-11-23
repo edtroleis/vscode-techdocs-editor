@@ -151,3 +151,76 @@ function rewrite(doc: Document): string {
   for (const node of [seq, ...seq.items]) if (isMap(node) || isSeq(node)) node.flow = false;
   return doc.toString().replace(/(!!python\/name:[\w.]+) ""/g, '$1');
 }
+
+/**
+ * Cores dos diagramas no site (spec 06, M25): o MkDocs Material desenha com o Mermaid que a página já tiver carregado
+ * (senão baixa o 11) e com as cores dele. O site carrega o mesmo Mermaid do editor e um script que troca as cores do
+ * Material pelos temas coloridos do editor (`redux-color`, `redux-dark-color`). No Backstage os scripts do site não
+ * rodam: lá as cores vêm do addon de Mermaid (`techdocs.addons.mermaid` no app-config.yaml).
+ */
+/** O mesmo Mermaid do editor visual (o teste confere com a versão do pacote `ui`). */
+export const MERMAID_SCRIPT_URL = 'https://unpkg.com/mermaid@12.2.0/dist/mermaid.min.js';
+/** O script das cores, relativo ao `docs_dir`. */
+export const MERMAID_COLORS_FILE = 'javascripts/techdocs-mermaid.js';
+
+export const MERMAID_COLORS_SCRIPT = `// TechDocs Editor: diagramas Mermaid com as mesmas cores do editor visual (temas redux-color e redux-dark-color).
+// O MkDocs Material usa o Mermaid carregado antes deste arquivo (extra_javascript do mkdocs.yml) e chama
+// initialize com as cores dele: aqui elas dão lugar ao tema colorido, claro ou escuro como a página, com a fonte
+// da página.
+(() => {
+  const mermaid = window.mermaid;
+  if (!mermaid || mermaid.techdocsEditorColors) return;
+  const initialize = mermaid.initialize.bind(mermaid);
+  mermaid.initialize = ({ themeCSS, ...config } = {}) => {
+    const dark = document.body.getAttribute('data-md-color-scheme') === 'slate';
+    const fontFamily = getComputedStyle(document.body).fontFamily;
+    initialize({ ...config, fontFamily, theme: dark ? 'redux-dark-color' : 'redux-color' });
+  };
+  mermaid.techdocsEditorColors = true;
+})();
+`;
+
+/** Caminho de uma entrada do `extra_javascript` (texto, ou mapa com `path`). */
+const scriptPath = (item: unknown): string | undefined => {
+  if (isScalar(item)) return String(item.value ?? '');
+  if (isMap(item)) return String(item.get('path') ?? '');
+  return undefined;
+};
+
+/** Entradas do `extra_javascript`. */
+const extraScripts = (doc: Document): string[] => {
+  const list = doc.get('extra_javascript', true);
+  return isSeq(list) ? list.items.map(scriptPath).filter((p): p is string => !!p) : [];
+};
+
+/** O `extra_javascript` já carrega o script das cores. */
+export const hasMermaidColors = (yml: string): boolean => extraScripts(parseDocument(yml)).includes(MERMAID_COLORS_FILE);
+
+/**
+ * Acrescenta ao `extra_javascript` o Mermaid (se nenhum outro já é carregado) e o script das cores, nessa ordem.
+ * Mexe só no trecho novo; aplicar de novo não muda nada.
+ */
+export function addMermaidColors(yml: string): string {
+  const doc = parseDocument(yml);
+  const present = extraScripts(doc);
+  if (present.includes(MERMAID_COLORS_FILE)) return yml;
+  const wanted = [...(present.some(p => /mermaid(@[^/]*)?\/dist\/|mermaid(\.min)?\.js$/.test(p)) ? [] : [MERMAID_SCRIPT_URL]), MERMAID_COLORS_FILE];
+  const list = doc.get('extra_javascript', true);
+  if (!doc.has('extra_javascript')) {
+    const base = yml && !yml.endsWith('\n') ? `${yml}\n` : yml;
+    return `${base}extra_javascript:\n${indent(wanted.map(w => `- ${w}`), 2)}`;
+  }
+  if (isSeq(list) && !list.flow && list.items.length) {
+    const first = list.items[0] as Node;
+    return insertAt(yml, list.range![1], indent(wanted.map(w => `- ${w}`), column(yml, first.range![0]) - 2));
+  }
+  // Lista numa linha ou vazia: pela árvore do `yaml`
+  const seq = isSeq(list) ? list : (doc.createNode([]) as YAMLSeq);
+  for (const w of wanted) seq.items.push(doc.createNode(w) as never);
+  seq.flow = false;
+  doc.set('extra_javascript', seq);
+  return doc.toString();
+}
+
+/** Tudo do Mermaid no `mkdocs.yml`: o bloco do superfences (M6) e as cores do editor (M25). */
+export const addMermaidConfig = (yml: string): string => addMermaidColors(addMermaidFence(yml));

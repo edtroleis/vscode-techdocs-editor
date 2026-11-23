@@ -143,10 +143,23 @@ test('galeria: filtro por grupo, busca sem acento, Enter escolhe e Esc fecha sem
   await expect.poll(() => saved(page)).toContain('xychart-beta');
 });
 
+test('galeria: Tab não sai da janela (Shift+Tab na busca vai ao último cartão)', async ({ page }) => {
+  await openEditor(page);
+  await newLineAtEnd(page);
+  await clickTopBar(page, 'diagram');
+  await expect(gallery(page).locator('.diagram-gallery-search')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(gallery(page).locator('[data-key="cynefin"]')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(gallery(page).locator('.diagram-gallery-search')).toBeFocused();
+  for (let i = 0; i < 40; i++) await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => !!document.activeElement?.closest('.diagram-gallery'))).toBe(true);
+});
+
 test('tipo novo do Mermaid: aviso embaixo do desenho com a versão que o TechDocs precisa', async ({ page }) => {
   await openEditor(page, page1(ptBR['editorText.diagramSampleVenn']));
   await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
-  await expect(block(page).locator('.mermaid-warning')).toContainText('Mermaid 11.13 ou mais novo');
+  await expect(block(page).locator('.mermaid-warning')).toContainText('versão 11.13 ou mais nova');
 });
 
 test('tipo comum: sem aviso', async ({ page }) => {

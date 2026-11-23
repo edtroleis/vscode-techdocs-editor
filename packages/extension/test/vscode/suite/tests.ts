@@ -236,6 +236,8 @@ export function defineTests() {
 
     test('o primeiro diagrama inserido configura o mkdocs.yml, com Desfazer', async () => {
       const mkdocs = file('wiki/mkdocs.yml');
+      const colors = file('wiki/docs/javascripts/techdocs-mermaid.js');
+      const exists = async () => vscode.workspace.fs.stat(colors).then(() => true, () => false);
       const original = new TextDecoder().decode(await vscode.workspace.fs.readFile(mkdocs));
       const read = async () => {
         const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === mkdocs.toString());
@@ -254,6 +256,9 @@ export function defineTests() {
         insertFlowchart(session);
         await until(read, text => text.includes('- name: mermaid'), 'o mkdocs.yml não foi configurado');
         ok((await read()).startsWith(original.trimEnd()), 'o resto do mkdocs.yml mudou');
+        // Cores do editor no site (M25): o extra_javascript e o script no docs_dir
+        ok((await read()).includes('- javascripts/techdocs-mermaid.js'), 'o mkdocs.yml ficou sem as cores');
+        await until(exists, Boolean, 'o script das cores não foi criado');
         await until(() => messages, list => list.length === 1, 'a mensagem não apareceu');
         equal(messages[0], 'Configured Mermaid diagrams in wiki/mkdocs.yml.', 'texto da mensagem');
         // Segundo diagrama: nada muda, nada a dizer
@@ -266,10 +271,13 @@ export function defineTests() {
         await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(original));
         await until(read, text => text === original, 'o mkdocs.yml não voltou para o teste do Desfazer');
         answer = 'Undo';
+        await vscode.workspace.fs.delete(colors);
         insertFlowchart(session);
         await until(() => messages, list => list.length === 2, 'a mensagem não apareceu de novo');
         await until(read, text => text === original, 'Desfazer não devolveu o mkdocs.yml');
+        await until(exists, created => !created, 'Desfazer não apagou o script das cores');
       } finally {
+        await vscode.workspace.fs.delete(colors).then(undefined, () => undefined);
         visual.diagramAsk = undefined;
         await closeAll();
         await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(original));

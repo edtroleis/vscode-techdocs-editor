@@ -5,7 +5,7 @@ import { $prose } from '@milkdown/kit/utils';
 import { DIAGRAM_GROUPS, type DiagramGroup } from './diagramTemplates';
 import { diagramInsertCtx, insertDiagram } from './insertDiagram';
 import type { DiagramTemplate } from './labels';
-import { drawDiagram } from './mermaidPreview';
+import { drawThumbnail } from './mermaidPreview';
 
 /**
  * Galeria de diagramas (spec 06, M22): o botão de diagrama da barra abre uma janela com o desenho de cada modelo,
@@ -80,8 +80,8 @@ export function openDiagramGallery(ctx: Ctx) {
     if (template.since) foot.append(chip(template, gallery.sinceChip, gallery.sinceTitle));
     card.append(thumb, foot);
     grid.append(card);
-    // Miniatura pela fila dos desenhos: chega uma por vez, sem travar a janela
-    drawDiagram(template.sample).then(
+    // Miniatura pela fila dos desenhos: chega uma por vez, sem travar a janela nem atrasar os diagramas da página
+    drawThumbnail(template.sample).then(
       svg => {
         thumb.innerHTML = svg;
       },
@@ -112,6 +112,15 @@ export function openDiagramGallery(ctx: Ctx) {
   closeOpen = () => finish();
 
   const onKey = (event: KeyboardEvent) => {
+    // Tab fica dentro da janela (do último volta ao primeiro): o foco não vai para a página por trás
+    if (event.key === 'Tab') {
+      const focusable = [search, close, ...filterButtons, ...visible().map(c => c.card)];
+      const at = focusable.indexOf(document.activeElement as HTMLInputElement);
+      const next = at < 0 ? 0 : (at + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length;
+      event.preventDefault();
+      focusable[next].focus();
+      return;
+    }
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
