@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-23
+
 ### Added
 
 - Templates and examples from [edtroleis/techdocs-templates](https://github.com/edtroleis/techdocs-templates),
