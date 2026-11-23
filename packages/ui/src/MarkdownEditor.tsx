@@ -1,6 +1,7 @@
 import { mermaidPreview } from './mermaidPreview';
 import { diagramDoubleClickPlugin } from './diagramDoubleClick';
 import { diagramBarCtx, diagramNodeBarPlugin } from './diagramNodeBar';
+import { mermaidBlockClassPlugin } from './mermaidBlockClass';
 import { diagramInsertCtx } from './insertDiagram';
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
@@ -232,6 +233,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(listCaretFixPlugin)
       .use(diagramDoubleClickPlugin)
       .use(diagramNodeBarPlugin)
+      .use(mermaidBlockClassPlugin)
       .use(visualSearchPlugin)
       .use(imageAltPlugin(src => uploadedNames.current.get(src)));
     crepeRef.current = crepe;

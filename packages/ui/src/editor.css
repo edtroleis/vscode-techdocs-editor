@@ -89,6 +89,11 @@
 }
 
 /* Diagramas Mermaid na prévia do bloco de código (spec 06) */
+/* Sem o seletor de linguagem: trocar a linguagem apagaria o desenho (ver mermaidBlockClass.ts) */
+.milkdown .milkdown-code-block.mermaid-block .tools .language-button,
+.milkdown .milkdown-code-block.mermaid-block .language-picker {
+  display: none;
+}
 .milkdown .mermaid-diagram {
   display: flex;
   flex-wrap: wrap;

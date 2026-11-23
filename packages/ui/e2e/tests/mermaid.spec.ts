@@ -172,3 +172,15 @@ test('modo leitura: sem dica e o clique duplo não abre o código', async ({ pag
   await page.waitForTimeout(300);
   await expect(codeHidden(page)).toHaveClass(/hidden/);
 });
+
+test('bloco mermaid sem o seletor de linguagem; os outros blocos continuam com ele', async ({ page }) => {
+  await openEditor(page, `${flow}\n\`\`\`js\nlet a = 1;\n\`\`\`\n\n\`\`\`mermaid\n\`\`\`\n`);
+  const blocks = page.locator('.milkdown-code-block');
+  await expect(blocks.nth(0).locator('.mermaid-diagram svg')).toBeVisible();
+  await blocks.nth(1).hover();
+  await expect(blocks.nth(1).locator('.language-button')).toBeVisible();
+  await blocks.nth(0).hover();
+  await expect(blocks.nth(0).locator('.language-button')).toBeHidden();
+  await blocks.nth(2).hover();
+  await expect(blocks.nth(2).locator('.language-button')).toBeHidden();
+});

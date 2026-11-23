@@ -12,6 +12,10 @@ All notable changes to the TechDocs Editor extension. The format follows
   The code changes line by line (comments and order stay), a new step opens with its name selected, arrows out of a
   decision get Yes and No, and nothing changes if the result would not be a valid diagram. One Ctrl+Z undoes it.
 
+### Changed
+
+- Mermaid blocks no longer show the language picker: changing the language of a diagram would erase the drawing.
+
 ## [0.11.1] - 2026-11-20
 
 The 0.11.0 tag was not published (the release tests failed); its changes ship here.
