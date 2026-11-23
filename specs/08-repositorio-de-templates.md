@@ -101,14 +101,34 @@ pt-BR.
 
 | Id | Parte | O que faz | Estado |
 |----|-------|-----------|--------|
-| TR1 | Repositório | Criar `edtroleis/techdocs-templates` (público, Apache-2.0) com a estrutura acima: as 13 páginas e os 4 sites de hoje, em inglês e pt-BR, nas pastas do Diátaxis; os 4 templates novos; um exemplo preenchido por template nos dois sites de exemplo, com o `nav` pelas quatro categorias; `catalog-info.yaml` com os dois componentes; README e README.pt-BR com "como usar" e "como fazer o da sua empresa". CI: markdownlint, `mkdocs build --strict` dos dois sites, conferência do formato dos templates (o mesmo parser do `core`) e dos mesmos arquivos em `en` e `pt-br`. Tag `v1.0.0` | ⬜ |
-| TR2 | Núcleo | Leitura com pastas de categoria (até dois níveis) e de idioma, e o campo `example` no front matter. Vale para os templates da extensão, do repositório aberto e da empresa | ⬜ |
-| TR3 | Pacote | Script `sync-templates` que baixa os templates e os exemplos da tag fixada do repositório para dentro do pacote; teste que confere que a cópia bate com a tag (o build falha se alguém editar a cópia à mão); `packages/core/templates` sai do Git | ⬜ |
-| TR4 | Lista | Botão "Ver exemplo" em cada template que tem exemplo, na lista do "Nova página" e do "Nova documentação"; abre a prévia do exemplo (da cópia, sem rede) | ⬜ |
-| TR5 | Engrenagem | "Opções dos templates" no título da seção TechDocs e na lista do "Nova página". Mostra o repositório em uso e a origem dele (política da empresa, repositório da documentação, usuário ou os da extensão), com "Testar acesso", "Mostrar os templates da extensão" (`builtIn`) e "Voltar ao padrão". Ao trocar, oferece "Para o time" (diff do `.techdocs-editor.yaml`, depois grava) ou "Só para mim" (configurações do usuário), como a AX7 | ⬜ |
-| TR6 | Repositório da documentação | `templates.repository` no `.techdocs-editor.yaml`, entre a configuração do usuário e a política; ignorado em workspace não confiável | ⬜ |
-| TR7 | Empresa | `policy` na configuração `techdocsEditor.templates.repository`, se o VS Code aceitar (ver "Conferir"); a engrenagem mostra o valor travado | ⬜ |
-| TR8 | Documentação | README e README.pt-BR: o repositório de templates, "Ver exemplo", a engrenagem e como uma empresa deixa o seu como padrão (os três níveis); CHANGELOG; spec 04 aponta para esta | ⬜ |
+| TR1 | Repositório | Criar `edtroleis/techdocs-templates` (público, Apache-2.0) com a estrutura acima: as 13 páginas e os 4 sites de hoje, em inglês e pt-BR, nas pastas do Diátaxis; os 4 templates novos; um exemplo preenchido por template nos dois sites de exemplo, com o `nav` pelas quatro categorias; `catalog-info.yaml` com os dois componentes; README e README.pt-BR com "como usar" e "como fazer o da sua empresa". CI: markdownlint, `mkdocs build --strict` dos dois sites, conferência do formato dos templates (o mesmo parser do `core`) e dos mesmos arquivos em `en` e `pt-br`. Tag `v1.0.0` | ✅ |
+| TR2 | Núcleo | Leitura com pastas de categoria (até dois níveis) e de idioma, e o campo `example` no front matter. Vale para os templates da extensão, do repositório aberto e da empresa | ✅ |
+| TR3 | Pacote | Script `sync-templates` que baixa os templates e os exemplos da tag fixada do repositório para dentro do pacote; teste que confere que a cópia bate com a tag (o build falha se alguém editar a cópia à mão); `packages/core/templates` sai do Git | ✅ |
+| TR4 | Lista | Botão "Ver exemplo" em cada template que tem exemplo, na lista do "Nova página" e do "Nova documentação"; abre a prévia do exemplo (da cópia, sem rede) | ✅ |
+| TR5 | Engrenagem | "Opções dos templates" no título da seção TechDocs e na lista do "Nova página". Mostra o repositório em uso e a origem dele (política da empresa, repositório da documentação, usuário ou os da extensão), com "Testar acesso", "Mostrar os templates da extensão" (`builtIn`) e "Voltar ao padrão". Ao trocar, oferece "Para o time" (diff do `.techdocs-editor.yaml`, depois grava) ou "Só para mim" (configurações do usuário), como a AX7 | ✅ |
+| TR6 | Repositório da documentação | `templates.repository` no `.techdocs-editor.yaml`, entre a configuração do usuário e a política; ignorado em workspace não confiável | ✅ |
+| TR7 | Empresa | `policy` na configuração `techdocsEditor.templates.repository`, se o VS Code aceitar (ver "Conferir"); a engrenagem mostra o valor travado | ❌ fora (ver decisões) |
+| TR8 | Documentação | README e README.pt-BR: o repositório de templates, "Ver exemplo", a engrenagem e como uma empresa deixa o seu como padrão (os três níveis); CHANGELOG; spec 04 aponta para esta | ✅ |
+
+## Decisões da implementação (2026-11-23)
+
+- **TR7 sai.** As políticas do VS Code são do produto: uma extensão comum não declara `policy` nas configurações
+  dela (só uma distribuição própria do VS Code, pelo `product.json`). O README explica como o TI distribui a
+  configuração do usuário.
+- **Ordem:** o `.techdocs-editor.yaml` vence a configuração do usuário (como o `catalog:`), para "todo mundo que abre
+  aquela documentação usa os templates do time" valer. Quem grava "Só para mim" num repositório com o arquivo é
+  avisado de que o do time continua valendo.
+- **Cópia no pacote:** `scripts/sync-templates.mjs` gera `packages/core/src/templatesBundle.generated.ts` (um
+  arquivo TypeScript com os textos, em vez de arquivos soltos: o mesmo caminho no build da extensão, no vscode.dev e
+  nos testes). O CI roda `npm run sync-templates -- --check`. `TEMPLATES_REPOSITORY=<clone local>` testa mudanças
+  antes da tag.
+- **"Ver exemplo" só na lista do "Nova página":** os templates de site não têm `example:`. Os da extensão abrem na
+  prévia do Markdown (documento só de leitura `techdocs-example:`); os da empresa abrem no GitHub
+  (`examples/<idioma>/docs/` ao lado da pasta configurada), porque a cópia da empresa só tem a pasta de templates.
+- **Os exemplos também passam na ida e volta do editor** (suíte do webview): quem copia um exemplo para o próprio
+  site o edita no visual sem mudanças. Isso pediu ajustes no repositório de templates (v1.0.1 a v1.0.3: linha
+  separadora `| --- |`, recuo de 3 espaços nos blocos de lista numerada, índice sem tabela larga, glossário com um
+  título por termo).
 
 ## Conferir antes de implementar
 

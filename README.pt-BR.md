@@ -176,9 +176,14 @@ e o dono do `catalog-info.yaml`, e abre no editor visual.
 | Para… | Templates |
 |-------|-----------|
 | Aprender | Tutorial, Onboarding, Golden path |
-| Fazer uma tarefa | Guia, Runbook, Solução de problemas |
-| Consultar | Página inicial do serviço, Operação e suporte, Referência de API, Página de wiki |
-| Entender | Arquitetura, Registro de decisão de arquitetura (numerado: `adr/0001-…`), Postmortem |
+| Fazer uma tarefa | Guia, How-to curto, Runbook, Solução de problemas |
+| Consultar | Página inicial do serviço, Operação e suporte, Referência de API, Página de wiki, Notas de versão, Glossário |
+| Entender | Arquitetura, Registro de decisão de arquitetura (numerado: `adr/0001-…`), Postmortem, RFC / design doc |
+
+Todo template tem um exemplo preenchido: o **olho** ao lado dele na lista abre o exemplo na prévia do Markdown,
+sem rede. Os templates e os exemplos vêm do
+[edtroleis/techdocs-templates](https://github.com/edtroleis/techdocs-templates), organizado pelo
+[Diátaxis](https://diataxis.fr/); a extensão leva uma cópia de uma versão marcada dele.
 
 O nome do arquivo sai do título, nunca sobrescreve uma página existente e nunca sai do diretório das docs. Os
 templates seguem a língua do VS Code (inglês ou português), passam na verificação de formatação e abrem no
@@ -204,6 +209,23 @@ branch ou tag opcionais (`acme/docs-templates/templates@v3`; com tag, você esco
 GitHub Enterprise (`ghe.acme.com/acme/docs-templates`). A extensão tenta primeiro sem login (repositório
 público) e só pede o login do GitHub se precisar. Confere no máximo uma vez por hora, guarda uma cópia para usar
 sem rede, e **TechDocs: Atualizar os templates da empresa** confere na hora.
+
+O jeito mais fácil de começar é um fork do [edtroleis/techdocs-templates](https://github.com/edtroleis/techdocs-templates):
+aponte a configuração para `sua-org/techdocs-templates/templates`. Diretórios por idioma (`en/`, `pt-br/`) seguem o
+idioma do site, e as páginas podem ficar nos diretórios do Diátaxis (`tutorials/`, `how-to-guides/`, `reference/`,
+`explanation/`), que dão a categoria quando o front matter não tem. O `example:` de um template aponta para a
+página preenchida em `examples/<idioma>/docs/`, e o olho a abre no GitHub.
+
+**Opções dos templates** (a engrenagem na lista do **Nova página**, ou o **…** da seção Documentação) mostra o
+repositório de templates em uso e de onde ele vem, testa o acesso, liga ou desliga os templates da extensão e volta
+ao padrão. Ao escolher um repositório, ele é gravado **para o time** (no `.techdocs-editor.yaml`, com o diff antes)
+ou **só para você** (nas suas configurações do VS Code). Três jeitos de deixar um repositório como padrão:
+
+| Para | Como |
+|------|------|
+| Todos que abrem um repositório de documentação | `templates.repository` no `.techdocs-editor.yaml` dele; vence a configuração pessoal e é ignorado em workspace não confiável |
+| Uma pessoa | `techdocsEditor.templates.repository` nas configurações do usuário (ou **Só para mim** na engrenagem) |
+| A empresa toda | Distribua a configuração do usuário pelas ferramentas de gestão de máquinas; as políticas do VS Code não estão disponíveis para extensões |
 
 ```markdown
 ---
@@ -426,6 +448,7 @@ Corrigir a formatação ao salvar:
 | **TechDocs: Preparar a documentação neste repositório** | Cria um site, ou aplica as correções da conferência uma por uma, com o diff antes |
 | **TechDocs: Abrir documentação do GitHub…** | Abre um site de um repositório do GitHub sem clonar (URL ou `dono/repo`) |
 | **TechDocs: Atualizar os templates da empresa** | Confere o repositório de templates da empresa na hora, sem esperar a conferência de cada hora |
+| **TechDocs: Opções dos templates** | O repositório de templates em uso e de onde ele vem: trocar para o time ou só para você, testar o acesso, ligar ou desligar os templates da extensão, voltar ao padrão |
 
 ## Onde o lint acha a configuração
 

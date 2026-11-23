@@ -6,6 +6,21 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Templates and examples from [edtroleis/techdocs-templates](https://github.com/edtroleis/techdocs-templates),
+  organized by Diátaxis. The extension ships a copy of a tagged version, so nothing changes offline.
+- Four new templates: Short how-to, RFC / design doc, Release notes and Glossary (17 in all, in English and
+  Portuguese).
+- **See an example**: the eye next to each template in the **New page** list opens a filled-in example in the
+  Markdown preview, with no network.
+- **Template options** (gear): the templates repository in use and where it comes from, test access, built-in
+  templates on or off, back to the default. A new repository is saved for the team or just for you.
+- `templates.repository` in `.techdocs-editor.yaml`: the team's templates repository for everyone who opens that
+  documentation. It wins over personal settings and is ignored in an untrusted workspace.
+- Company templates repositories may use folders per language (`en/`, `pt-br/`, chosen by the language of the
+  site) and the Diátaxis folders (`tutorials/`, `how-to-guides/`, `reference/`, `explanation/`).
+
 ## [0.13.0] - 2026-11-23
 
 ### Added

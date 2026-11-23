@@ -75,11 +75,11 @@ Criam o `mkdocs.yml`, o `docs/` com as páginas e o `nav`. Para o TechDocs, dize
 | TP10 | Modo remoto (fase 4): o mesmo fluxo, com a página criada por commit na branch do rascunho e os templates do repositório lidos pela API |
 | TP11 ✅ | "TechDocs: Novo site de documentação…": escolhe um template de site e a pasta (padrão: raiz do workspace, se não houver `mkdocs.yml`); cria os arquivos e mostra a anotação do `catalog-info.yaml` para copiar |
 
-## Onde ficam e como evoluem (decidido em 2026-10-28)
+## Onde ficam e como evoluem (decidido em 2026-10-28; desde a spec 08, os da extensão vêm do repositório de templates)
 
 | Camada | Onde fica | Como muda | Quem recebe |
 |--------|-----------|-----------|-------------|
-| Templates da extensão | `packages/core/templates/<língua>/` deste repositório (no `core`, para o plugin usar os mesmos na fase 7, sem copiar) | Versão nova da extensão; propostas por PR aqui, com o CI exigindo lint limpo e ida e volta idêntica | Todo mundo, pela atualização automática do Marketplace e do Open VSX |
+| Templates da extensão | O repositório [edtroleis/techdocs-templates](https://github.com/edtroleis/techdocs-templates), com uma cópia de uma tag no `core` (spec 08; antes, `packages/core/templates/<língua>/`) | Versão nova da extensão; propostas por PR aqui, com o CI exigindo lint limpo e ida e volta idêntica | Todo mundo, pela atualização automática do Marketplace e do Open VSX |
 | Templates da empresa ou do time | `.techdocs/templates/` do repositório das docs | PR no próprio repositório, versionado pelo Git; nada a publicar | Quem clona o repositório; sobrepõem os da extensão pelo nome |
 | Templates centrais (TA3) | Um repositório só da empresa (`techdocsEditor.templates.repository`) | PR nesse repositório | Todo repositório que aponta para ele (configuração recomendada pelo time de plataforma) |
 
