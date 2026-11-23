@@ -20,7 +20,7 @@ const AVERAGE = {
   build: 1.6,
   webview: 30.5,
   bundle: 2.9,
-  editor: 194.6,
+  editor: 215.0,
   vscode: 86.4,
   web: 53.8,
   e2e: 205.4,

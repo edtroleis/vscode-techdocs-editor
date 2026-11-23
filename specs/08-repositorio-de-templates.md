@@ -34,24 +34,33 @@ pt-BR.
   3. os templates da extensão.
 - `techdocsEditor.templates.builtIn: false` esconde os da extensão.
 
-## Decisões propostas (2026-11-23, a confirmar com o usuário)
+## Decisões (2026-11-23, confirmadas pelo usuário)
 
 - **Nome:** `edtroleis/techdocs-templates`, público, licença Apache-2.0 (a mesma da extensão).
-- **O repositório é ele mesmo um site TechDocs:** `mkdocs.yml`, `catalog-info.yaml` e `docs/` com os exemplos
-  preenchidos. Assim os exemplos podem ser lidos já renderizados (GitHub Pages ou o Backstage da empresa), e o
-  repositório usa o próprio formato que ensina.
+- **Os exemplos são sites TechDocs, um por idioma:** `examples/en` e `examples/pt-br`, cada um com o seu
+  `mkdocs.yml` e `docs/`, com as mesmas páginas de um serviço fictício ("Payments Service" / "Serviço de
+  Pagamentos"). O `catalog-info.yaml` da raiz tem dois componentes, um para cada site
+  (`backstage.io/techdocs-ref: dir:./examples/en` e `dir:./examples/pt-br`). Assim os exemplos podem ser lidos já
+  renderizados (GitHub Pages ou o Backstage da empresa), e o repositório usa o próprio formato que ensina. Dois
+  sites em vez de um site com plugin de idiomas: o `techdocs-core` não traz o `mkdocs-static-i18n`, e o TechDocs
+  mostra um site por componente.
 - **Estrutura:**
 
   ```text
-  mkdocs.yml
-  catalog-info.yaml
-  README.md                      # o que é, como usar na extensão, como fazer o da empresa (fork)
-  docs/                          # os exemplos preenchidos, de um serviço fictício ("Payments Service")
-    index.md
-    tutorials/                   # tutorial.md, onboarding.md, golden-path.md
-    how-to-guides/               # guide.md, runbook.md, troubleshooting.md
-    reference/                   # service-home.md, operations.md, api-reference.md, wiki-page.md, …
-    explanation/                 # architecture.md, adr.md, postmortem.md, rfc.md
+  README.md / README.pt-BR.md    # o que é, como usar na extensão, como fazer o da sua empresa (fork)
+  catalog-info.yaml              # dois componentes: os exemplos em inglês e em pt-BR
+  examples/
+    en/
+      mkdocs.yml
+      docs/
+        index.md
+        tutorials/               # tutorial.md, onboarding.md, golden-path.md
+        how-to-guides/           # guide.md, how-to.md, runbook.md, troubleshooting.md
+        reference/               # service-home.md, operations.md, api-reference.md, wiki-page.md,
+                                 # release-notes.md, glossary.md
+        explanation/             # architecture.md, adr.md, postmortem.md, rfc.md
+    pt-br/
+      (a mesma estrutura, em português)
   templates/
     en/
       tutorials/  how-to-guides/  reference/  explanation/    # páginas (.md com front matter)
@@ -60,7 +69,8 @@ pt-BR.
       (a mesma estrutura)
   ```
 
-  Os exemplos ficam em inglês. Os templates ficam nos dois idiomas, como hoje.
+  Templates e exemplos nos dois idiomas. O CI confere que `en` e `pt-br` têm os mesmos arquivos (uma página nova
+  num idioma só falha).
 - **Fonte da verdade:** o repositório de templates. Os templates saem do `packages/core/templates`, e a extensão
   passa a levar uma cópia deles, fixada numa tag do repositório (`v1.0.0`…), que um script traz no build. A
   extensão continua funcionando sem rede, no vscode.dev e atrás de firewall. **Não** consulta o GitHub por padrão:
@@ -68,8 +78,9 @@ pt-BR.
   repositório de templates, que entra na próxima versão da extensão.
 - **Templates novos já no repositório:** os três "depois da v1" da spec 04 (RFC / design doc, Notas de versão e
   Glossário), mais "How-to curto" (uma tarefa só, sem pré-requisitos longos).
-- **Um exemplo por template:** cada template aponta para o exemplo dele (`example: docs/how-to-guides/runbook.md`
-  no front matter). Na lista do "Nova página", o item tem o botão "Ver exemplo": abre o exemplo renderizado, a
+- **Um exemplo por template:** cada template aponta para o exemplo dele no front matter
+  (`example: how-to-guides/runbook.md`, relativo ao `docs/` do site de exemplo do mesmo idioma). A extensão leva
+  também a cópia dos exemplos. Na lista do "Nova página", o item tem o botão "Ver exemplo": abre o exemplo renderizado, a
   prévia do Markdown no VS Code a partir da cópia, sem rede.
 - **Padrão da empresa, em três níveis.** O nível mais específico vale:
   1. **Usuário:** a engrenagem ou as configurações do VS Code, como hoje.
@@ -90,9 +101,9 @@ pt-BR.
 
 | Id | Parte | O que faz | Estado |
 |----|-------|-----------|--------|
-| TR1 | Repositório | Criar `edtroleis/techdocs-templates` com a estrutura acima: as 13 páginas e os 4 sites de hoje, em inglês e pt-BR, nas pastas do Diátaxis; os 4 templates novos; um exemplo preenchido por template em `docs/`; `mkdocs.yml` com o `nav` pelas quatro categorias; `catalog-info.yaml`; README com "como usar" e "como fazer o da sua empresa". CI: markdownlint, `mkdocs build --strict` e conferência do formato dos templates (o mesmo parser do `core`). Tag `v1.0.0` | ⬜ |
+| TR1 | Repositório | Criar `edtroleis/techdocs-templates` (público, Apache-2.0) com a estrutura acima: as 13 páginas e os 4 sites de hoje, em inglês e pt-BR, nas pastas do Diátaxis; os 4 templates novos; um exemplo preenchido por template nos dois sites de exemplo, com o `nav` pelas quatro categorias; `catalog-info.yaml` com os dois componentes; README e README.pt-BR com "como usar" e "como fazer o da sua empresa". CI: markdownlint, `mkdocs build --strict` dos dois sites, conferência do formato dos templates (o mesmo parser do `core`) e dos mesmos arquivos em `en` e `pt-br`. Tag `v1.0.0` | ⬜ |
 | TR2 | Núcleo | Leitura com pastas de categoria (até dois níveis) e de idioma, e o campo `example` no front matter. Vale para os templates da extensão, do repositório aberto e da empresa | ⬜ |
-| TR3 | Pacote | Script `sync-templates` que baixa a tag fixada do repositório para dentro do pacote; teste que confere que a cópia bate com a tag (o build falha se alguém editar a cópia à mão); `packages/core/templates` sai do Git | ⬜ |
+| TR3 | Pacote | Script `sync-templates` que baixa os templates e os exemplos da tag fixada do repositório para dentro do pacote; teste que confere que a cópia bate com a tag (o build falha se alguém editar a cópia à mão); `packages/core/templates` sai do Git | ⬜ |
 | TR4 | Lista | Botão "Ver exemplo" em cada template que tem exemplo, na lista do "Nova página" e do "Nova documentação"; abre a prévia do exemplo (da cópia, sem rede) | ⬜ |
 | TR5 | Engrenagem | "Opções dos templates" no título da seção TechDocs e na lista do "Nova página". Mostra o repositório em uso e a origem dele (política da empresa, repositório da documentação, usuário ou os da extensão), com "Testar acesso", "Mostrar os templates da extensão" (`builtIn`) e "Voltar ao padrão". Ao trocar, oferece "Para o time" (diff do `.techdocs-editor.yaml`, depois grava) ou "Só para mim" (configurações do usuário), como a AX7 | ⬜ |
 | TR6 | Repositório da documentação | `templates.repository` no `.techdocs-editor.yaml`, entre a configuração do usuário e a política; ignorado em workspace não confiável | ⬜ |
