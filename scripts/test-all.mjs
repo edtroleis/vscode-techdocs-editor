@@ -12,14 +12,14 @@ import { spawn } from 'node:child_process';
 /**
  * Média das execuções que passaram em 2026-10-31 (WSL2; 2 a 3 rodadas por suíte, o e2e só 1), em segundos; editor e
  * web medidos de novo em 2026-11-05 (cresceram com o Mermaid); webview e web em 2026-11-23 (203 e 58 testes, com os
- * templates da 0.14.0). O limite é
+ * templates da 0.14.0; o webview com o WSL ocupado, entre 45 e 50 s). O limite é
  * a média + 10%. Estimativa: refazer a conta com a tabela do fim quando as suítes crescerem.
  */
 const AVERAGE = {
   typecheck: 8.8,
   unit: 3.6,
   build: 1.6,
-  webview: 42.0,
+  webview: 47.7,
   bundle: 2.9,
   editor: 215.0,
   vscode: 86.4,
