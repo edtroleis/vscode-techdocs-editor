@@ -118,7 +118,7 @@ const codeHidden = (page: Page) => block(page).locator('.codemirror-host');
 
 test('clique duplo num texto do desenho abre o código com o texto selecionado', async ({ page }) => {
   await openEditor(page, flow);
-  await expect(block(page).locator('.mermaid-hint')).toHaveText('Clique num nó para acrescentar ou ligar; clique duas vezes num texto para editá-lo');
+  await expect(block(page).locator('.mermaid-hint')).toHaveText('Clique ou arraste um nó para acrescentar e ligar; clique duas vezes num texto para editá-lo');
   await label(page, 'Decisão').dblclick();
   await expect(block(page).locator('.cm-content')).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.activeElement?.className)).toContain('cm-content');

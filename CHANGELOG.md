@@ -6,6 +6,12 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Drag and drop in Mermaid flowcharts:** drag from a node to another node to connect them, or to an empty space
+  of the drawing to add a step after it (its name opens selected in the code). A dashed line follows the pointer,
+  the target node is highlighted, and Esc cancels. The hint below flowcharts mentions it.
+
 ## [0.12.0] - 2026-11-23
 
 ### Added

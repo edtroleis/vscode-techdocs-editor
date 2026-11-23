@@ -11,7 +11,7 @@ const node = (page: Page, text: string) => block(page).locator('.mermaid-diagram
 const bar = (page: Page) => page.locator('.mermaid-node-bar');
 const button = (page: Page, name: string) => bar(page).getByRole('button', { name, exact: true });
 const hint = (page: Page) => block(page).locator('.mermaid-hint');
-const HINT = 'Clique num nó para acrescentar ou ligar; clique duas vezes num texto para editá-lo';
+const HINT = 'Clique ou arraste um nó para acrescentar e ligar; clique duas vezes num texto para editá-lo';
 
 test('clique num nó do fluxograma mostra a barra; + Passo depois abre o código no nome novo', async ({ page }) => {
   await openEditor(page, flow);

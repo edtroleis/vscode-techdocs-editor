@@ -102,6 +102,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
         connect: k('diagramConnect'),
         remove: k('diagramDelete'),
         connectHint: k('diagramConnectHint'),
+        dragHint: k('diagramDragHint'),
         failed: k('diagramEditFailed'),
       },
       words: { step: k('diagramNewStep'), decision: k('diagramNewDecision'), yes: k('diagramYes'), no: k('diagramNo') },

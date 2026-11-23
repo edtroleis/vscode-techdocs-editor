@@ -116,6 +116,8 @@ para a Web).
 - **Clique num nó de um fluxograma** para **+ Passo depois**, **+ Decisão**, **Ligar a…** e **Apagar**: o código
   muda sozinho (o passo novo abre com o nome selecionado; as setas que saem de uma decisão levam Sim e Não), e só
   se o diagrama continua válido. Um Ctrl+Z desfaz.
+- **Arraste a partir de um nó** até outro nó para ligar os dois, ou até um espaço vazio do desenho para criar um passo
+  depois dele.
 - **Erros de sintaxe** aparecem no lugar do diagrama, com a linha, e no painel Problemas enquanto a página está
   aberta no editor visual.
 - **O site também desenha:** o primeiro diagrama acrescenta o bloco do Mermaid do `pymdownx.superfences` ao

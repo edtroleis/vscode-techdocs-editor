@@ -55,6 +55,36 @@ export async function clickLike(page: Page, target: Locator, options: { dblclick
   await page.evaluate(() => document.getElementById('demo-cursor')!.classList.remove('down'));
 }
 
+/** Arrasta de `from` até `to` com o cursor de demonstração junto, devagar (para os vídeos). */
+export async function dragLike(page: Page, from: Locator, to: Locator) {
+  const a = (await from.boundingBox())!;
+  const b = (await to.boundingBox())!;
+  const start = { x: a.x + a.width / 2, y: a.y + a.height / 2 };
+  const end = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  const cursorAt = (x: number, y: number) =>
+    page.evaluate(({ x, y }) => {
+      const cursor = document.getElementById('demo-cursor')!;
+      cursor.style.left = `${x}px`;
+      cursor.style.top = `${y}px`;
+    }, { x, y });
+  await cursorAt(start.x, start.y);
+  await page.waitForTimeout(600);
+  await page.mouse.move(start.x, start.y);
+  await page.evaluate(() => document.getElementById('demo-cursor')!.classList.add('down'));
+  await page.mouse.down();
+  const steps = 20;
+  for (let i = 1; i <= steps; i++) {
+    const x = start.x + ((end.x - start.x) * i) / steps;
+    const y = start.y + ((end.y - start.y) * i) / steps;
+    await page.mouse.move(x, y);
+    await cursorAt(x, y);
+    await page.waitForTimeout(40);
+  }
+  await page.waitForTimeout(500);
+  await page.mouse.up();
+  await page.evaluate(() => document.getElementById('demo-cursor')!.classList.remove('down'));
+}
+
 export const typeSlowly = (page: Page, text: string) => page.keyboard.type(text, { delay: 60 });
 export const pause = (page: Page, ms = 1_200) => page.waitForTimeout(ms);
 

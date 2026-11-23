@@ -51,6 +51,10 @@ automático, entrou depois como passo futuro (ver M10 e M11).
 | M14 | Editor visual | **Ligar a…:** a dica embaixo do desenho vira "Clique no nó de destino (Esc cancela)" e o próximo clique num nó acrescenta `  A --> B` (com a regra do Sim/Não do M13). Clique no mesmo nó, fora dos nós ou Esc cancela. Se a seta já existe, nada muda. O código não abre | ✅ |
 | M15 | Editor visual | **Apagar:** tira o nó, as setas dele e as linhas `style`/`class`/`click` só dele; os outros nós e o resto de cada linha ficam (`A[x] --> B[y] --> C` sem `B` vira `A[x]` e `C`); linha que fica vazia sai. O código não abre | ✅ |
 | M16 | Editor visual | **Nada quebra o diagrama:** cada ação (M13–M15) é uma só transação (um Ctrl+Z desfaz) e só é aplicada se o código novo passa no `parse` do Mermaid; se não passar (sintaxe que a edição automática não cobre, como `A & B --> C` ou subgrafos aninhados complexos), nada muda e aparece a mensagem "Não deu para mudar o diagrama automaticamente; edite o código" (en: "Couldn't change the diagram automatically; edit the code") | ✅ |
+| M17 | Editor visual | **Arrastar de um nó a outro liga os dois:** no desenho de um fluxograma editável, apertar num nó, arrastar e soltar em outro nó do mesmo diagrama acrescenta `  A --> B`, com a regra do Sim/Não do M13. Se a seta já existe, nada muda. O código não abre | ✅ |
+| M18 | Editor visual | **Arrastar de um nó a um espaço vazio do desenho cria um passo ligado a ele**, como **+ Passo depois** (M13), e abre o código com o nome selecionado. Soltar fora do desenho, no próprio nó, ou apertar Esc cancela | ✅ |
+| M19 | Editor visual | **Durante o arrasto:** uma linha tracejada sai do nó até o ponteiro, o nó embaixo do ponteiro fica destacado, e a dica vira "Solte num nó para ligar, ou num espaço vazio para criar um passo (Esc cancela)" (en: "Drop on a node to connect, or on an empty space to add a step (Esc cancels)"). Menos de 5 px de movimento conta como clique (abre a barra, M12). A dica dos fluxogramas passa a ser "Clique ou arraste um nó para acrescentar e ligar; clique duas vezes num texto para editá-lo" (en: "Click or drag a node to add and connect; double-click a text to edit it") | ✅ |
+| M20 | Editor visual | O arrastar usa as mesmas funções e regras da barra (M16: uma transação, só se o `parse` aceita, a mensagem se não der); nada no modo leitura nem nos outros tipos de diagrama | ✅ |
 
 ### M10 e M11: decisões (2026-11-20)
 
@@ -69,6 +73,16 @@ automático, entrou depois como passo futuro (ver M10 e M11).
 - **Mapa do desenho para o código** num módulo próprio (`diagramSource.ts`, sem DOM do editor), testado por
   unitários: é a peça que o passo 3 reaproveita.
 
+
+### M17 a M20: decisões (2026-11-23)
+
+- **Por quê:** passo 3 do caminho até montar fluxogramas com o mouse, na 0.13.0. Usa as funções do passo 2
+  (`flowchartEdit.ts`) e o mesmo caminho da barra (validar, uma transação, abrir o código no nome novo).
+- **Arrastar cria e liga, não posiciona:** o Mermaid não guarda posição; o layout automático decide onde o nó
+  novo aparece.
+- **Soltar no vazio cria um passo, não uma decisão:** o passo é o caso mais comum; a decisão continua na barra.
+- **Sem arrastar de uma paleta:** o primeiro nó já vem no exemplo do fluxograma; criar a partir de um nó existente
+  cobre o resto.
 
 ### M12 a M16: decisões (2026-11-20)
 

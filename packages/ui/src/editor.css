@@ -122,6 +122,30 @@
 .milkdown .mermaid-connecting .mermaid-diagram g.node {
   cursor: crosshair;
 }
+/* Arrastar e soltar no fluxograma (M17–M19) */
+.mermaid-drag-line {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 20;
+  overflow: visible;
+}
+.mermaid-drag-line line {
+  stroke: var(--crepe-color-primary);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.mermaid-dragging,
+.mermaid-dragging * {
+  cursor: crosshair !important;
+  user-select: none !important;
+}
+.milkdown .mermaid-diagram g.node.mermaid-drop-target :is(rect, polygon, circle, ellipse, path) {
+  stroke: var(--crepe-color-primary) !important;
+  stroke-width: 3px !important;
+}
 /* Barra do nó no fluxograma (M12) */
 .milkdown .ProseMirror[contenteditable='true'] .mermaid-diagram g.node {
   cursor: pointer;

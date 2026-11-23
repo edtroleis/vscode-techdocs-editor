@@ -4,7 +4,7 @@
  * o vídeo completo (docs/media/walkthrough.mp4).
  */
 import type { FrameLocator, Page } from '@playwright/test';
-import { caption, clickLike, overlay, pause, typeSlowly } from '../human';
+import { caption, clickLike, dragLike, overlay, pause, typeSlowly } from '../human';
 import { answer, contextMenu, editorOf, expandRow, openFromTree, pick, previewPanel, quickInput, techdocsIcon, toast, treeRow } from '../scenarios/ui';
 import { expect, runCommand, test } from '../vscode';
 import { markStart, OUT, paymentsSite, SIZE } from './shared';
@@ -217,6 +217,10 @@ test.describe('mermaid', () => {
     await expect(code).toContainText('C --> N1[New step]');
     await pause(page, 800);
     await typeSlowly(page, 'Receipt sent');
+    await expect(block.locator('.mermaid-diagram svg')).toContainText('Receipt sent', { timeout: 15_000 });
+    await caption(page, 'Or drag from a node to another to connect them');
+    await dragLike(page, block.locator('.mermaid-diagram g.node', { hasText: 'Start' }), block.locator('.mermaid-diagram g.node', { hasText: 'Receipt sent' }));
+    await expect(code).toContainText('A --> N1');
     await expect(block.locator('.mermaid-diagram svg')).toContainText('Receipt sent', { timeout: 15_000 });
     await pause(page, 2_500);
     await page.keyboard.press('Control+S');

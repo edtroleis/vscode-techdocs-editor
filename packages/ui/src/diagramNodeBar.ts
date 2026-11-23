@@ -19,6 +19,8 @@ export type DiagramBarText = {
   connect: string;
   remove: string;
   connectHint: string;
+  /** Dica durante o arrasto (M19). */
+  dragHint: string;
   failed: string;
 };
 
@@ -26,7 +28,7 @@ export type DiagramBarConfig = { bar: DiagramBarText; words: FlowchartWords; hin
 
 export const diagramBarCtx = createSlice<DiagramBarConfig>(
   {
-    bar: { step: '+ Step after', decision: '+ Decision', connect: 'Connect to…', remove: 'Delete', connectHint: 'Click the target node (Esc cancels)', failed: "Couldn't change the diagram automatically; edit the code" },
+    bar: { step: '+ Step after', decision: '+ Decision', connect: 'Connect to…', remove: 'Delete', connectHint: 'Click the target node (Esc cancels)', dragHint: 'Drop on a node to connect, or on an empty space to add a step (Esc cancels)', failed: "Couldn't change the diagram automatically; edit the code" },
     words: { step: 'New step', decision: 'New decision?', yes: 'Yes', no: 'No' },
     hint: '',
   },
@@ -34,6 +36,10 @@ export const diagramBarCtx = createSlice<DiagramBarConfig>(
 );
 
 const key = new PluginKey('docs-editor-diagram-node-bar');
+/** A partir de quantos pixels apertar e mover num nó vira arrasto (menos que isso é clique, M19). */
+const DRAG_START_PX = 5;
+
+type FoundNode = { gNode: Element; block: Element; pos: number; id: string };
 const FAILED_MS = 6000;
 
 /** Resultado de uma ação: o código novo (e o rótulo a selecionar), `null` se não há o que mudar. */
@@ -44,6 +50,12 @@ class NodeBar {
   /** O nó da barra aberta ou do modo Ligar. */
   private target: { block: Element; pos: number; id: string } | undefined;
   private connecting = false;
+  /** Apertou num nó (ainda não arrastou). */
+  private press: { x: number; y: number; found: FoundNode } | undefined;
+  /** Arrastando a partir de um nó (M17–M19). */
+  private dragging: { found: FoundNode; overlay: SVGSVGElement; line: SVGLineElement; over?: Element } | undefined;
+  /** O click que chega depois de soltar um arrasto não abre a barra. */
+  private swallowClick = false;
 
   constructor(
     private readonly view: EditorView,
@@ -53,17 +65,22 @@ class NodeBar {
     view.dom.addEventListener('dblclick', this.close);
     document.addEventListener('pointerdown', this.onPointerDown, true);
     document.addEventListener('keydown', this.onKeyDown, true);
+    document.addEventListener('pointermove', this.onPointerMove);
+    document.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('scroll', this.onScroll, true);
     window.addEventListener('resize', this.close);
   }
 
   destroy() {
     this.close();
+    this.stopDragging();
     clearTimeout(this.failTimer);
     this.view.dom.removeEventListener('click', this.onClick);
     this.view.dom.removeEventListener('dblclick', this.close);
     document.removeEventListener('pointerdown', this.onPointerDown, true);
     document.removeEventListener('keydown', this.onKeyDown, true);
+    document.removeEventListener('pointermove', this.onPointerMove);
+    document.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('scroll', this.onScroll, true);
     window.removeEventListener('resize', this.close);
   }
@@ -71,6 +88,8 @@ class NodeBar {
   /** O documento mudou (digitar no código, desfazer) ou virou só leitura: a barra e o modo Ligar não valem mais. */
   changed() {
     this.close();
+    this.stopDragging();
+    this.press = undefined;
   }
 
   /** Fecha a barra e cancela o modo Ligar. */
@@ -82,7 +101,7 @@ class NodeBar {
   };
 
   /** O nó clicado, se é de um fluxograma num bloco de código editável. */
-  private nodeAt(element: Element) {
+  private nodeAt(element: Element): FoundNode | undefined {
     const gNode = element.closest('g.node');
     if (!this.view.editable || !gNode || !gNode.closest('.mermaid-diagram')) return undefined;
     const block = gNode.closest('.milkdown-code-block');
@@ -95,6 +114,10 @@ class NodeBar {
 
   private readonly onClick = (event: MouseEvent) => {
     if (!(event.target instanceof Element)) return;
+    if (this.swallowClick) {
+      this.swallowClick = false;
+      return;
+    }
     // O segundo clique de um clique duplo: o dblclick abre o código
     if (event.detail > 1) return;
     const found = this.nodeAt(event.target);
@@ -114,6 +137,11 @@ class NodeBar {
   };
 
   private readonly onPointerDown = (event: PointerEvent) => {
+    this.swallowClick = false;
+    if (event.button === 0 && !this.connecting && event.target instanceof Element) {
+      const found = this.nodeAt(event.target);
+      this.press = found && { x: event.clientX, y: event.clientY, found };
+    }
     if (!this.bar && !this.connecting) return;
     const target = event.target;
     if (!(target instanceof Element)) return this.close();
@@ -124,11 +152,95 @@ class NodeBar {
   };
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || (!this.bar && !this.connecting)) return;
+    if (event.key !== 'Escape' || (!this.bar && !this.connecting && !this.dragging)) return;
     event.preventDefault();
     event.stopPropagation();
+    if (this.dragging) {
+      // O botão ainda está apertado: o click de quando soltar não abre a barra
+      this.stopDragging();
+      this.swallowClick = true;
+    }
+    this.press = undefined;
     this.close();
   };
+
+  private readonly onPointerMove = (event: PointerEvent) => {
+    if (this.press && !this.dragging) {
+      if (Math.hypot(event.clientX - this.press.x, event.clientY - this.press.y) < DRAG_START_PX) return;
+      this.startDragging(this.press.found);
+      this.press = undefined;
+    }
+    const dragging = this.dragging;
+    if (!dragging) return;
+    event.preventDefault();
+    // O arrasto não seleciona os textos do desenho
+    window.getSelection()?.removeAllRanges();
+    dragging.line.setAttribute('x2', String(event.clientX));
+    dragging.line.setAttribute('y2', String(event.clientY));
+    const under = document.elementFromPoint(event.clientX, event.clientY);
+    const target = under && this.nodeAt(under);
+    const over = target && target.block === dragging.found.block && target.id !== dragging.found.id ? target.gNode : undefined;
+    if (over === dragging.over) return;
+    dragging.over?.classList.remove('mermaid-drop-target');
+    over?.classList.add('mermaid-drop-target');
+    dragging.over = over;
+  };
+
+  private readonly onPointerUp = (event: PointerEvent) => {
+    this.press = undefined;
+    const dragging = this.dragging;
+    if (!dragging) return;
+    this.stopDragging();
+    this.swallowClick = true;
+    // O click (se vier) chega logo depois do pointerup; se não vier, o próximo pointerdown limpa
+    const { found } = dragging;
+    const under = document.elementFromPoint(event.clientX, event.clientY);
+    if (!under) return;
+    const target = this.nodeAt(under);
+    if (target) {
+      if (target.block !== found.block || target.id === found.id) return;
+      void this.run(found, code => {
+        const next = connect(code, found.id, target.id, this.text().words);
+        return next === undefined ? null : { code: next };
+      });
+      return;
+    }
+    // Espaço vazio do mesmo desenho (a dica embaixo dele conta): um passo novo, como + Passo depois
+    if (under.closest('.mermaid-diagram') && under.closest('.milkdown-code-block') === found.block)
+      void this.run(found, code => addNode(code, found.id, 'step', this.text().words));
+  };
+
+  private startDragging(found: FoundNode) {
+    this.close();
+    const ns = 'http://www.w3.org/2000/svg';
+    const overlay = document.createElementNS(ns, 'svg');
+    overlay.classList.add('mermaid-drag-line');
+    const line = document.createElementNS(ns, 'line');
+    const box = found.gNode.getBoundingClientRect();
+    const x = String(box.left + box.width / 2);
+    const y = String(box.top + box.height / 2);
+    for (const [name, value] of [['x1', x], ['y1', y], ['x2', x], ['y2', y]]) line.setAttribute(name, value);
+    overlay.append(line);
+    (this.view.dom.closest('.milkdown') ?? document.body).append(overlay);
+    document.documentElement.classList.add('mermaid-dragging');
+    const hint = this.hint(found.block);
+    if (hint) {
+      this.clearFailure(hint);
+      hint.textContent = this.text().bar.dragHint;
+    }
+    this.dragging = { found, overlay, line };
+  }
+
+  private stopDragging() {
+    const dragging = this.dragging;
+    if (!dragging) return;
+    this.dragging = undefined;
+    dragging.overlay.remove();
+    dragging.over?.classList.remove('mermaid-drop-target');
+    document.documentElement.classList.remove('mermaid-dragging');
+    const hint = this.hint(dragging.found.block);
+    if (hint) hint.textContent = this.text().hint;
+  }
 
   private readonly onScroll = (event: Event) => {
     if (this.bar && !(event.target instanceof Node && this.bar.contains(event.target))) this.close();
