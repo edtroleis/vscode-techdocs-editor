@@ -114,6 +114,7 @@ no network (also in VS Code for the Web).
   one drawn. **Edit** on the block shows the code, with the diagram redrawn below as you type.
 - **Newer diagram types** (treemap, Ishikawa, Venn, file tree, Wardley, event modeling, swimlanes, Cynefin) carry a
   "Backstage 11.x+" tag and a note under the drawing: Backstage draws them only with that Mermaid version or newer.
+- **Delete** a diagram with the trash icon next to **Enlarge** (Ctrl+Z brings it back).
 - **Enlarge** a big diagram in a window with zoom (mouse wheel), drag to move, **Fit** and **100%**. Wide diagrams
   stay readable in the editor too: they stop shrinking and scroll sideways.
 - **Double-click a text in the drawing** to go to it in the code, selected and ready to type over.

@@ -26,7 +26,37 @@ export type DiagramText = {
   tooBig: string;
   /** Botão Ampliar e janela de zoom (M28). */
   viewer: DiagramViewerText;
+  /** Botão que apaga o bloco do diagrama (M30). */
+  remove: string;
 };
+
+const TRASH_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+
+/**
+ * Os botões do bloco, na linha do Copiar/Editar (M28, M30): Excluir (o clique é tratado em diagramDelete.ts, que tem o
+ * editor) e, se há desenho, Ampliar.
+ */
+function blockActions(text: DiagramText, zoom: boolean): HTMLElement {
+  const actions = document.createElement('div');
+  actions.className = 'mermaid-actions';
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'mermaid-delete';
+  remove.title = text.remove;
+  remove.setAttribute('aria-label', text.remove);
+  remove.innerHTML = TRASH_ICON;
+  actions.append(remove);
+  if (zoom) {
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'mermaid-zoom';
+    open.textContent = text.viewer.open;
+    open.title = text.viewer.open;
+    actions.append(open);
+  }
+  return actions;
+}
 
 /** Desenho maior que isto (largura ou altura natural) não cabe bem no bloco: o botão Ampliar fica sempre à vista. */
 const BIG_WIDTH = 900;
@@ -60,7 +90,7 @@ function listenZoom() {
       if (!zoom || !viewerText) return;
       event.preventDefault();
       event.stopPropagation();
-      const drawn = zoom.parentElement?.querySelector<SVGSVGElement>('.mermaid-diagram > svg');
+      const drawn = zoom.closest('.mermaid-view')?.querySelector<SVGSVGElement>('.mermaid-diagram > svg');
       if (drawn) openDiagramViewer(drawn, viewerText, zoom);
     },
     true,
@@ -208,14 +238,9 @@ function diagramElement(svg: string, text: DiagramText, code: string): HTMLEleme
   const element = document.createElement('div');
   element.className = 'mermaid-diagram';
   element.innerHTML = readableSvg(svg);
-  const zoom = document.createElement('button');
-  zoom.type = 'button';
-  zoom.className = 'mermaid-zoom';
-  zoom.textContent = text.viewer.open;
-  zoom.title = text.viewer.open;
   const size = /<svg[^>]*\sviewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(svg);
   if (size && (Number(size[1]) > BIG_WIDTH || Number(size[2]) > BIG_HEIGHT)) view.classList.add('mermaid-big');
-  view.append(zoom, element);
+  view.append(blockActions(text, true), element);
   const hint = document.createElement('p');
   hint.className = 'mermaid-hint';
   hint.textContent = isFlowchart(code) ? text.flowHint : text.hint;
@@ -231,20 +256,24 @@ function diagramElement(svg: string, text: DiagramText, code: string): HTMLEleme
 }
 
 function errorElement(text: DiagramText, message: string, code: string): HTMLElement {
+  // Um diagrama com erro também pode ser excluído
+  const view = document.createElement('div');
+  view.className = 'mermaid-view';
   const element = document.createElement('div');
   element.className = 'mermaid-error';
   element.setAttribute('role', 'alert');
+  view.append(blockActions(text, false), element);
   const title = document.createElement('strong');
   if (isTooBig(message)) {
     title.textContent = text.tooBig;
     element.append(title);
-    return element;
+    return view;
   }
   title.textContent = text.error(errorLine(message, code));
   const detail = document.createElement('pre');
   detail.textContent = errorDetail(message);
   element.append(title, detail);
-  return element;
+  return view;
 }
 
 /** Desenha (ou explica o erro de) um diagrama. */

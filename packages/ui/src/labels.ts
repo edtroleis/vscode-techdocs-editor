@@ -70,6 +70,8 @@ export type EditorText = {
     tooBig: string;
     /** Botão Ampliar e janela de zoom (M28). */
     viewer: DiagramViewerText;
+    /** Botão que apaga o bloco do diagrama (M30). */
+    remove: string;
     /** Barra do nó no fluxograma (M12–M16). */
     bar: DiagramBarText;
     /** Textos que a barra põe no código. */
@@ -140,6 +142,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
         sinceTitle: since => t('editorText.diagramSinceTitle', { since }),
       },
       tooBig: k('diagramTooBig'),
+      remove: k('diagramRemoveBlock'),
       viewer: {
         open: k('diagramZoom'),
         title: k('diagramZoomTitle'),

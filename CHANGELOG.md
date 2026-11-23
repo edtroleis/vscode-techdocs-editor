@@ -23,6 +23,7 @@ All notable changes to the TechDocs Editor extension. The format follows
 - Wide diagrams stay readable in the editor: they shrink to 60% at most and the block scrolls sideways. Diagrams over
   the Mermaid limits (500 links, 50,000 characters) show a clear message, and **Check** points them out.
 
+- A trash icon on a diagram deletes the whole block (Ctrl+Z brings it back).
 - **Enlarge** on a diagram opens it in a window with zoom (mouse wheel, + and −), drag to move, **Fit** and **100%**.
 
 ### Changed

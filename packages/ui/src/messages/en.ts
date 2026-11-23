@@ -84,6 +84,7 @@ export const en: Record<string, string> = {
   'editorText.diagramSinceChip': 'Backstage {{since}}+',
   'editorText.diagramSinceTitle': 'Needs Mermaid {{since}} or newer in Backstage',
   'editorText.diagramZoom': 'Enlarge',
+  'editorText.diagramRemoveBlock': 'Delete diagram (Ctrl+Z brings it back)',
   'editorText.diagramZoomTitle': 'Diagram',
   'editorText.diagramZoomIn': 'Zoom in (+)',
   'editorText.diagramZoomOut': 'Zoom out (−)',

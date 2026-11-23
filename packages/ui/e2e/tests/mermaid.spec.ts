@@ -342,3 +342,30 @@ test('Ampliar: num desenho pequeno só aparece ao passar o mouse; arrastar move 
   await page.mouse.click(5, 5);
   await expect(viewer(page)).toHaveCount(0);
 });
+
+// Botão Excluir do diagrama (M30)
+test('Excluir: apaga o bloco do diagrama; Ctrl+Z traz de volta', async ({ page }) => {
+  const md = `# Página\n\nAntes.\n\n\`\`\`mermaid\nflowchart LR\n  A-->B\n\`\`\`\n\nDepois.\n`;
+  const { errors } = await openEditor(page, md);
+  const remove = block(page).locator('.mermaid-delete');
+  await expect(block(page).locator('.mermaid-diagram > svg')).toBeVisible();
+  await expect(remove).toHaveAttribute('aria-label', 'Excluir diagrama (Ctrl+Z traz de volta)');
+  await expect(remove.locator('svg')).toHaveCount(1);
+  await block(page).hover();
+  await expect(remove).toHaveCSS('opacity', '1');
+  await remove.click();
+  await expect(page.locator('.milkdown-code-block')).toHaveCount(0);
+  await expectSaved(page, '# Página\n\nAntes.\n\nDepois.\n');
+  await page.keyboard.press('Control+z');
+  await expect(block(page).locator('.mermaid-diagram > svg')).toBeVisible();
+  await expectSaved(page, md);
+  expect(errors).toEqual([]);
+});
+
+test('Excluir: também num diagrama com erro', async ({ page }) => {
+  await openEditor(page, page1('flowchart LR\n  A-->'));
+  await expect(block(page).locator('.mermaid-error')).toBeVisible();
+  await block(page).hover();
+  await block(page).locator('.mermaid-delete').click();
+  await expect(page.locator('.milkdown-code-block')).toHaveCount(0);
+});

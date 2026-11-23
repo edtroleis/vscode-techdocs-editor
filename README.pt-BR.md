@@ -115,6 +115,7 @@ Code), sem rede (também no VS Code para a Web).
 - **Tipos novos do Mermaid** (treemap, Ishikawa, Venn, árvore de arquivos, Wardley, modelagem de eventos, raias,
   Cynefin) têm a etiqueta "Backstage 11.x+" e um aviso embaixo do desenho: o Backstage só os desenha com essa versão
   do Mermaid ou mais nova.
+- **Exclua** um diagrama pelo ícone da lixeira ao lado do **Ampliar** (Ctrl+Z traz de volta).
 - **Amplie** um diagrama grande numa janela com zoom (roda do mouse), arrastar para mover, **Ajustar** e **100%**.
   Diagramas largos também ficam legíveis no editor: param de encolher e rolam para o lado.
 - **Clique duas vezes num texto do desenho** para ir até ele no código, selecionado e pronto para digitar por cima.

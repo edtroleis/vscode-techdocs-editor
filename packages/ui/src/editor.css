@@ -366,15 +366,21 @@
   overflow: visible;
 }
 /* Na linha do Copiar/Editar do bloco (24 px logo acima do desenho), à direita, no mesmo estilo: não cobre o desenho */
-.milkdown .milkdown-code-block .mermaid-view .mermaid-zoom {
+.milkdown .milkdown-code-block .mermaid-view .mermaid-actions {
   position: absolute;
   top: -24px;
   right: 0;
   z-index: 1;
+  display: flex;
+  gap: 2px;
+}
+.milkdown .milkdown-code-block .mermaid-view .mermaid-actions button {
+  display: flex;
+  align-items: center;
   height: 24px;
   padding: 4px 12px;
   border: none;
-  border-radius: 100px;
+  border-radius: 4px;
   background: var(--crepe-color-secondary);
   color: var(--crepe-color-on-surface-variant);
   font-family: var(--crepe-font-default);
@@ -385,13 +391,33 @@
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
 }
-/* Como o Copiar/Editar: ao passar o mouse no bloco; num desenho grande, sempre */
-.milkdown .milkdown-code-block:hover .mermaid-view .mermaid-zoom,
+/* Os dois juntos, como o Copiar/Editar: arredondados nas pontas */
+.milkdown .milkdown-code-block .mermaid-view .mermaid-actions button:first-child {
+  border-top-left-radius: 100px;
+  border-bottom-left-radius: 100px;
+}
+.milkdown .milkdown-code-block .mermaid-view .mermaid-actions button:last-child {
+  border-top-right-radius: 100px;
+  border-bottom-right-radius: 100px;
+}
+.milkdown .milkdown-code-block .mermaid-view .mermaid-delete svg {
+  width: 14px;
+  height: 14px;
+}
+.milkdown .milkdown-code-block .mermaid-view .mermaid-delete:hover {
+  color: var(--crepe-color-error);
+}
+/* Como o Copiar/Editar: ao passar o mouse no bloco; o Ampliar num desenho grande, sempre */
+.milkdown .milkdown-code-block:hover .mermaid-view .mermaid-actions button,
 .milkdown .milkdown-code-block .mermaid-view.mermaid-big .mermaid-zoom,
-.milkdown .milkdown-code-block .mermaid-view .mermaid-zoom:focus-visible {
+.milkdown .milkdown-code-block .mermaid-view .mermaid-actions button:focus-visible {
   opacity: 1;
 }
-.milkdown .mermaid-view .mermaid-zoom:focus-visible,
+/* Só leitura: nada a excluir */
+.milkdown .ProseMirror[contenteditable='false'] .mermaid-delete {
+  display: none;
+}
+.milkdown .mermaid-view .mermaid-actions button:focus-visible,
 .milkdown .diagram-viewer button:focus-visible {
   outline: 2px solid var(--crepe-color-primary);
   outline-offset: 1px;
@@ -482,7 +508,7 @@
   opacity: 0.75;
 }
 @media (prefers-reduced-motion: reduce) {
-  .milkdown .milkdown-code-block .mermaid-view .mermaid-zoom {
+  .milkdown .milkdown-code-block .mermaid-view .mermaid-actions button {
     transition: none;
   }
 }

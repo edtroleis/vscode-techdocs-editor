@@ -84,6 +84,7 @@ export const ptBR: Record<string, string> = {
   'editorText.diagramSinceChip': 'Backstage {{since}}+',
   'editorText.diagramSinceTitle': 'Precisa do Mermaid {{since}} ou mais novo no Backstage',
   'editorText.diagramZoom': 'Ampliar',
+  'editorText.diagramRemoveBlock': 'Excluir diagrama (Ctrl+Z traz de volta)',
   'editorText.diagramZoomTitle': 'Diagrama',
   'editorText.diagramZoomIn': 'Aumentar (+)',
   'editorText.diagramZoomOut': 'Diminuir (−)',

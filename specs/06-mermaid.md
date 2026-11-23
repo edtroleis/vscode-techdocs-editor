@@ -64,6 +64,7 @@ automático, entrou depois como passo futuro (ver M10 e M11).
 | M27 | Editor visual e site | **Diagramas grandes:** um desenho largo não encolhe abaixo de 60% do tamanho natural (o texto continua legível) e o bloco rola para o lado, a partir do começo, no editor. Acima dos limites do Mermaid (mais de 500 ligações ou 50 mil caracteres), a mensagem "Diagrama grande demais…" no lugar do desenho, e o Conferir aponta a página (`mermaid-too-big`), porque o site também não desenha | ✅ |
 | M28 | Editor visual | **Ampliar:** botão na linha do Copiar/Editar do bloco (sempre à vista num desenho com mais de 900 px de largura ou 600 de altura; nos outros, ao passar o mouse) abre o desenho numa janela por cima da página: zoom pela roda do mouse no ponteiro, arrastar para mover, −/+, **Ajustar** (um desenho muito largo ajusta pela altura, a partir da esquerda, para continuar legível) e **100%**; teclado +, −, 0, 1, setas, Tab dentro da janela, Esc fecha e devolve o foco ao botão. Só olha: o texto não muda. Protótipo aprovado | ✅ |
 | M29 | Site | ~~Ampliar no site e redesenho ao trocar claro/escuro, pelo mesmo script~~ Removido junto com o M25 | ❌ |
+| M30 | Editor visual | **Excluir o diagrama:** ícone de lixeira ao lado do Ampliar, na linha do Copiar/Editar (ao passar o mouse; também num diagrama com erro): apaga o bloco de código inteiro, e um Ctrl+Z traz de volta. Some no modo só leitura | ✅ |
 
 ### M10 e M11: decisões (2026-11-20)
 
