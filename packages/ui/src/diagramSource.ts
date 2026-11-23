@@ -9,15 +9,15 @@ export type DiagramTarget = { nodeId?: string; text: string };
 /** Trecho no texto do diagrama (0 = início do código). */
 export type CodeRange = { from: number; to: number };
 
-type Line = { text: string; start: number };
+export type Line = { text: string; start: number };
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const WORD = '[\\p{L}\\p{N}_]';
 /** A id como palavra inteira: nem `node` dentro de `my-node` (o hífen das setas `A-->B` continua valendo). */
-const idPattern = (id: string) => `(?<!${WORD}-?)${escape(id)}(?!${WORD})`;
+export const idPattern = (id: string) => `(?<!${WORD}-?)${escape(id)}(?!${WORD})`;
 
 /** As linhas depois da do tipo (front matter, linhas vazias e comentários antes dela ficam de fora). */
-function bodyLines(code: string): { type: string; lines: Line[] } {
+export function bodyLines(code: string): { type: string; lines: Line[] } {
   const lines: Line[] = [];
   let start = 0;
   for (const text of code.split('\n')) {
