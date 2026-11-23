@@ -143,6 +143,12 @@ describe('centralTemplates no formato do repositório de templates (spec 08, TR2
   it('pasta sem idiomas vale para todos (o formato da TA3 continua valendo)', () => {
     expect(centralTemplates({ 'runbook.md': PAGE }, 'pt-br').pages.map(p => p.id)).toEqual(['runbook']);
   });
+
+  it('site de duas letras (go/, qa/) no formato da TA3 não vira pasta de idioma', () => {
+    const { pages, sites } = centralTemplates({ 'runbook.md': PAGE, 'go/template.yml': SITE, 'go/inicio.md': '# {{site_name}}\n' }, 'pt-br');
+    expect(pages.map(p => p.id)).toEqual(['runbook']);
+    expect(sites.map(s => s.template.id)).toEqual(['go']);
+  });
 });
 
 
@@ -153,5 +159,9 @@ describe('centralExampleUrl (spec 08)', () => {
       'https://github.com/acme/docs-templates/blob/v2/examples/pt-br/docs/how-to-guides/runbook.md',
     );
     expect(centralExampleUrl(parseTemplatesRepository('ghe.acme.com/acme/t')!, undefined, 'a.md')).toBe('https://ghe.acme.com/acme/t/blob/HEAD/examples/docs/a.md');
+    // Branch com barra: cada parte codificada, a barra fica (o GitHub não acha `release%2F2024`)
+    expect(centralExampleUrl(parseTemplatesRepository('acme/t/templates@release/2024')!, 'en', 'a.md')).toBe(
+      'https://github.com/acme/t/blob/release/2024/examples/en/docs/a.md',
+    );
   });
 });

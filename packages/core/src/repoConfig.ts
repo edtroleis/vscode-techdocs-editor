@@ -98,7 +98,9 @@ export function setCatalogMode(text: string | undefined, mode: CatalogMode): str
 export function setTemplatesRepository(text: string | undefined, repository: string | undefined): string {
   const doc = parseDocument(text?.trim() ? text : '');
   if (doc.errors.length || (text?.trim() && !isRecord(doc.toJS()))) {
-    return repository ? `${(text ?? '').replace(/\n*$/, '\n')}templates:\n  repository: ${repository}\n` : (text ?? '');
+    // Arquivo que não se lê: acrescenta no fim, mas nunca uma segunda chave `templates:` (o YAML ficaria pior)
+    const appendable = repository && !/^templates\s*:/m.test(text ?? '');
+    return appendable ? `${(text ?? '').replace(/\n*$/, '\n')}templates:\n  repository: ${repository}\n` : (text ?? '');
   }
   if (repository) doc.setIn(['templates', 'repository'], repository);
   else {

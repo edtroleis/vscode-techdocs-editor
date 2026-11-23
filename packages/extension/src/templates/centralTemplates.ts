@@ -28,7 +28,12 @@ export type CentralTemplatesState = {
   sites: { template: SiteTemplate; files: Record<string, string> }[];
 };
 
-type Cache = { key: string; sha: string; checkedAt: number; files: Record<string, string> };
+/**
+ * Formato da cópia guardada: sobe quando muda o que é baixado (a 0.14 passou a guardar até três subpastas, as de
+ * idioma e de categoria). Uma cópia de outro formato é baixada de novo, mesmo com o commit igual.
+ */
+const CACHE_FORMAT = 2;
+type Cache = { key: string; format?: number; sha: string; checkedAt: number; files: Record<string, string> };
 
 /**
  * Templates centrais da empresa (spec 04, TA3), de `techdocsEditor.templates.repository`. Ficam guardados no
@@ -68,7 +73,7 @@ export class CentralTemplates {
       });
       await this.context.globalState.update(needsAuthKey, needsAuth);
       const fresh: Cache =
-        result === 'unchanged' ? { ...cache!, checkedAt: Date.now() } : { key, sha: result.sha, checkedAt: Date.now(), files: result.files };
+        result === 'unchanged' ? { ...cache!, checkedAt: Date.now() } : { key, format: CACHE_FORMAT, sha: result.sha, checkedAt: Date.now(), files: result.files };
       await this.writeCache(fresh);
       this.warned.delete(key);
       return state(label, fresh.files);
@@ -77,7 +82,8 @@ export class CentralTemplates {
         error instanceof GitHubError && (error.status === 403 || error.status === 404)
           ? vscode.l10n.t('not found, or your GitHub account has no access to it')
           : gitHubErrorText(error, vscode.l10n);
-      if (!this.warned.has(key)) {
+      // Pedido agora (Atualizar, Testar acesso): avisa sempre; no uso normal, uma vez por sessão
+      if (force || !this.warned.has(key)) {
         this.warned.add(key);
         void vscode.window.showWarningMessage(
           cache
@@ -101,7 +107,7 @@ export class CentralTemplates {
   private async readCache(key: string): Promise<Cache | undefined> {
     try {
       const cache = JSON.parse(new TextDecoder().decode(await vscode.workspace.fs.readFile(this.cacheUri(key)))) as Cache;
-      if (cache.key !== key) return undefined;
+      if (cache.key !== key || cache.format !== CACHE_FORMAT) return undefined;
       this.memory = cache;
       return cache;
     } catch {
@@ -147,7 +153,8 @@ export type TemplatesOrigin = {
  */
 export async function templatesOrigin(scope?: vscode.Uri): Promise<TemplatesOrigin> {
   const trusted = vscode.workspace.isTrusted;
-  const folder = (scope && vscode.workspace.getWorkspaceFolder(scope)?.uri) ?? vscode.workspace.workspaceFolders?.[0]?.uri;
+  // Com `scope`, só a pasta que o contém: o `.techdocs-editor.yaml` de outro repositório da workspace não vale aqui
+  const folder = scope ? vscode.workspace.getWorkspaceFolder(scope)?.uri : vscode.workspace.workspaceFolders?.[0]?.uri;
   if (trusted && folder) {
     const text = await readText(vscode.Uri.joinPath(folder, REPO_CONFIG_FILE));
     const value = text === undefined ? undefined : parseRepoConfig(text).templates?.repository;

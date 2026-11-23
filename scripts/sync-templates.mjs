@@ -53,10 +53,10 @@ export const TEMPLATES_FILES: Record<string, string> = ${JSON.stringify(files, n
 `;
   if (check) {
     if (readFileSync(OUTPUT, 'utf8') !== body) {
+      // exitCode, não exit(): o finally apaga o clone temporário
       console.error(`A cópia dos templates não bate com ${ref}: rode npm run sync-templates`);
-      process.exit(1);
-    }
-    console.log(`Templates iguais a ${ref} (${commit.slice(0, 7)}), ${Object.keys(files).length} arquivos`);
+      process.exitCode = 1;
+    } else console.log(`Templates iguais a ${ref} (${commit.slice(0, 7)}), ${Object.keys(files).length} arquivos`);
   } else {
     writeFileSync(OUTPUT, body);
     console.log(`Templates de ${ref} (${commit.slice(0, 7)}): ${Object.keys(files).length} arquivos`);

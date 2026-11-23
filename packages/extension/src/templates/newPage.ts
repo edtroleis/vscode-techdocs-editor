@@ -386,7 +386,7 @@ export class NewPageCommand {
           ...(supported && hasExample(c) && { buttons: [exampleButton] }),
         });
       }
-      choice = await pickWithExamples(items);
+      choice = await pickWithExamples(items, destination.scope);
     }
     if (choice && !isTemplateSupported(choice.template)) {
       void vscode.window.showWarningMessage(
@@ -515,7 +515,7 @@ const exampleButton: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon(
  * A lista de templates com o botão "Ver exemplo" (spec 08, TR4). O exemplo abre ao lado e a lista continua aberta
  * (não some ao perder o foco), para escolher depois de ver.
  */
-function pickWithExamples(items: (vscode.QuickPickItem & { choice?: PageChoice })[]): Promise<PageChoice | undefined> {
+function pickWithExamples(items: (vscode.QuickPickItem & { choice?: PageChoice })[], scope?: vscode.Uri): Promise<PageChoice | undefined> {
   const quickPick = vscode.window.createQuickPick<(typeof items)[number]>();
   quickPick.title = vscode.l10n.t('New page from template');
   quickPick.placeholder = vscode.l10n.t('Choose the kind of page');
@@ -528,7 +528,8 @@ function pickWithExamples(items: (vscode.QuickPickItem & { choice?: PageChoice }
     let picked: PageChoice | undefined;
     quickPick.onDidTriggerButton(() => {
       quickPick.hide();
-      void vscode.commands.executeCommand('techdocsEditor.templateOptions');
+      // As opções do repositório da página nova (numa workspace com várias pastas, não a primeira)
+      void vscode.commands.executeCommand('techdocsEditor.templateOptions', scope);
     });
     quickPick.onDidTriggerItemButton(event => event.item.choice && void openTemplateExample(event.item.choice));
     quickPick.onDidAccept(() => {

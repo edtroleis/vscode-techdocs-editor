@@ -97,7 +97,10 @@ const LANGUAGE_FOLDER = /^[a-z]{2}(-[a-z]{2})?$/;
  * a primeira), sem o prefixo; sem elas, todos (vale para todos os idiomas, como na TA3).
  */
 export function languageFolder(files: Record<string, string>, language: string): string | undefined {
-  const folders = [...new Set(Object.keys(files).filter(p => p.includes('/')).map(p => p.split('/')[0]))].filter(f => LANGUAGE_FOLDER.test(f)).sort();
+  // Um diretório com `template.yml` direto dentro é um template de site (ex.: `go/`, `qa/`), não um idioma
+  const folders = [...new Set(Object.keys(files).filter(p => p.includes('/')).map(p => p.split('/')[0]))]
+    .filter(f => LANGUAGE_FOLDER.test(f) && !(`${f}/template.yml` in files))
+    .sort();
   if (!folders.length) return undefined;
   const wanted = language.toLowerCase();
   return folders.find(f => f === wanted) ?? folders.find(f => wanted.startsWith(`${f}-`) || f.startsWith(`${wanted}-`)) ?? folders.find(f => f === 'en') ?? folders[0];
@@ -156,5 +159,5 @@ export function centralTemplates(
 export function centralExampleUrl(source: CentralTemplatesSource, language: string | undefined, example: string): string {
   const root = source.folder.split('/').slice(0, -1).join('/');
   const path = [root, 'examples', language, 'docs', example].filter(Boolean).join('/');
-  return `https://${source.host}/${source.slug}/blob/${encodeURIComponent(source.ref ?? 'HEAD')}/${path.split('/').map(encodeURIComponent).join('/')}`;
+  return `https://${source.host}/${source.slug}/blob/${(source.ref ?? 'HEAD').split('/').map(encodeURIComponent).join('/')}/${path.split('/').map(encodeURIComponent).join('/')}`;
 }

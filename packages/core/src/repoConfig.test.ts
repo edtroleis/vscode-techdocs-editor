@@ -72,4 +72,10 @@ describe('templates.repository no .techdocs-editor.yaml (spec 08, TR6)', () => {
     expect(setTemplatesRepository(text, 'acme/t')).toBe('# do time\ncatalog: off\ntemplates:\n  repository: acme/t\n');
     expect(setTemplatesRepository('catalog: off\ntemplates:\n  repository: acme/t\n', undefined)).toBe('catalog: off\n');
   });
+
+  it('arquivo que não se lê: acrescenta no fim, sem uma segunda chave templates', () => {
+    expect(setTemplatesRepository('catalog: [\n', 'acme/t')).toBe('catalog: [\ntemplates:\n  repository: acme/t\n');
+    const broken = 'catalog: [\ntemplates:\n  repository: velho/t\n';
+    expect(setTemplatesRepository(broken, 'acme/t')).toBe(broken);
+  });
 });

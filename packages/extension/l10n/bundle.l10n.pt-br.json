@@ -552,5 +552,6 @@
   "Templates repository": "Repositório de templates",
   "owner/repo[/folder][@ref], or host/owner/repo for GitHub Enterprise": "dono/repo[/diretório][@ref], ou host/dono/repo no GitHub Enterprise",
   "Use owner/repo, optionally with /folder and @ref": "Use dono/repo, se quiser com /diretório e @ref",
-  "Back to the default where?": "Voltar ao padrão onde?"
+  "Back to the default where?": "Voltar ao padrão onde?",
+  "The workspace settings still set techdocsEditor.templates.{0} to {1}, and they win over your settings.": "As configurações da workspace ainda põem techdocsEditor.templates.{0} em {1}, e elas vencem as suas."
 }

@@ -30,6 +30,7 @@ import { ExplorerSync } from './explorerSync';
 import { VisualEditorProvider } from './visualEditorProvider';
 import { registerTemplateExamples } from './templates/templateExamples';
 import { TemplateOptions } from './templates/templateOptions';
+import { templateLanguage } from '@edtroleis/techdocs-editor-core/src/builtInTemplates';
 
 export function activate(context: vscode.ExtensionContext) {
   // Cenários de usuário (e2e/scenarios): login no GitHub por token, nunca na extensão publicada. No navegador não há
@@ -76,7 +77,9 @@ export function activate(context: vscode.ExtensionContext) {
   const prepare = new PrepareContext(sites);
   context.subscriptions.push(
     registerTemplateExamples(),
-    vscode.commands.registerCommand('techdocsEditor.templateOptions', () => templateOptions.choose()),
+    vscode.commands.registerCommand('techdocsEditor.templateOptions', (scope?: unknown) =>
+      templateOptions.choose(scope instanceof vscode.Uri ? scope : undefined),
+    ),
     remotes,
     vscode.workspace.registerFileSystemProvider(REMOTE_SCHEME, remoteFs, { isCaseSensitive: true }),
     resolveSaveConflicts(remoteFs, conflicts),
@@ -264,7 +267,7 @@ async function refreshCentralTemplates(central: CentralTemplates) {
     if (answer === open) await vscode.commands.executeCommand('workbench.action.openSettings', 'techdocsEditor.templates.repository');
     return;
   }
-  const result = await central.get(vscode.workspace.workspaceFolders?.[0]?.uri, true);
+  const result = await central.get(vscode.workspace.workspaceFolders?.[0]?.uri, true, templateLanguage(vscode.env.language));
   if (result) {
     void vscode.window.showInformationMessage(
       vscode.l10n.t('Company templates from {0}: {1} page templates and {2} site templates.', result.label, result.pages.length, result.sites.length),
