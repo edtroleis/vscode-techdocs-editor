@@ -125,7 +125,8 @@ no network (also in VS Code for the Web).
   in the visual editor.
 - **The site draws them too, in the same colors:** the first diagram adds the Mermaid block of
   `pymdownx.superfences` to `mkdocs.yml`, plus the editor's Mermaid and colors in `extra_javascript` (the script
-  goes to `docs/javascripts/techdocs-mermaid.js`), with **Undo**. The **Check** button points out sites with
+  goes to `docs/javascripts/techdocs-mermaid.js`, which also brings **Enlarge** to the site and redraws the diagrams
+  when the reader switches between light and dark), with **Undo**. The **Check** button points out sites with
   diagrams and no setup.
 - **In Backstage**, TechDocs needs the Mermaid addon, installed by the Backstage admins, and the site scripts don't
   run there: the colors come from the addon. For the same colors as the editor (addon with Mermaid 11.17 or newer),

@@ -26,7 +26,8 @@ All notable changes to the TechDocs Editor extension. The format follows
   site. Diagrams over the Mermaid limits (500 links, 50,000 characters) show a clear message, and **Check** points
   them out.
 
-- **Enlarge** on a diagram opens it in a window with zoom (mouse wheel, + and −), drag to move, **Fit** and **100%**.
+- **Enlarge** on a diagram opens it in a window with zoom (mouse wheel, + and −), drag to move, **Fit** and **100%**,
+  in the editor and on the site. On the site, switching between light and dark redraws the diagrams in the right colors.
 
 ### Changed
 

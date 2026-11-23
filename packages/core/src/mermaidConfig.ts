@@ -163,30 +163,249 @@ export const MERMAID_SCRIPT_URL = 'https://unpkg.com/mermaid@12.2.0/dist/mermaid
 /** O script das cores, relativo ao `docs_dir`. */
 export const MERMAID_COLORS_FILE = 'javascripts/techdocs-mermaid.js';
 
-export const MERMAID_COLORS_SCRIPT = `// TechDocs Editor: diagramas Mermaid com as mesmas cores do editor visual (temas redux-color e redux-dark-color).
+export const MERMAID_COLORS_SCRIPT = `// TechDocs Editor: diagramas Mermaid como no editor visual.
 // O MkDocs Material usa o Mermaid carregado antes deste arquivo (extra_javascript do mkdocs.yml) e chama
-// initialize com as cores dele: aqui elas dão lugar ao tema colorido, claro ou escuro como a página, com a fonte
-// da página. Um diagrama largo não encolhe abaixo de 60% (o texto fica legível) e rola para o lado.
+// initialize com as cores dele: aqui elas dão lugar ao tema colorido (redux-color e redux-dark-color), claro ou
+// escuro como a página, com a fonte da página. Um diagrama largo não encolhe abaixo de 60% (o texto fica legível)
+// e rola para o lado. O botão Ampliar abre o desenho numa janela com zoom (roda do mouse), arrastar para mover,
+// Ajustar e 100%.
 (() => {
   const mermaid = window.mermaid;
   if (!mermaid || mermaid.techdocsEditorColors) return;
+  const pt = /^pt/i.test(document.documentElement.lang);
+  const T = pt
+    ? { open: 'Ampliar', title: 'Diagrama', zoomIn: 'Aumentar (+)', zoomOut: 'Diminuir (−)', fit: 'Ajustar', one: 'Tamanho real (1)', close: 'Fechar (Esc)',
+        help: 'Roda do mouse: zoom · arrastar: mover · setas: mover · + e −: zoom · 0: ajustar · Esc: fechar' }
+    : { open: 'Enlarge', title: 'Diagram', zoomIn: 'Zoom in (+)', zoomOut: 'Zoom out (−)', fit: 'Fit', one: 'Actual size (1)', close: 'Close (Esc)',
+        help: 'Mouse wheel: zoom · drag: move · arrows: move · + and −: zoom · 0: fit · Esc: close' };
   const initialize = mermaid.initialize.bind(mermaid);
-  mermaid.initialize = ({ themeCSS, ...config } = {}) => {
-    const dark = document.body.getAttribute('data-md-color-scheme') === 'slate';
+  const scheme = () => document.body.getAttribute('data-md-color-scheme');
+  let saved;
+  const configure = () => {
     const fontFamily = getComputedStyle(document.body).fontFamily;
-    initialize({ ...config, fontFamily, theme: dark ? 'redux-dark-color' : 'redux-color' });
+    initialize({ ...saved, fontFamily, theme: scheme() === 'slate' ? 'redux-dark-color' : 'redux-color' });
   };
+  mermaid.initialize = ({ themeCSS, ...config } = {}) => {
+    saved = config;
+    configure();
+  };
+
+  // Dentro do desenho (o Material o põe num shadow root fechado, que chega aqui pelo fn do render)
+  const INNER = ':host { display: block; }' +
+    '.tde-bar { display: flex; justify-content: flex-end; height: 1.6rem; }' +
+    '.tde-bar button { font: 600 .7rem/1 var(--md-text-font-family, sans-serif); padding: .3rem .7rem; border: 0; border-radius: 100px; cursor: pointer;' +
+    ' color: var(--md-default-fg-color--light); background: var(--md-default-fg-color--lightest); opacity: 0; transition: opacity .2s; }' +
+    ':host(:hover) .tde-bar button, .tde-bar.big button, .tde-bar button:focus-visible { opacity: 1; }' +
+    '.tde-bar button:focus-visible { outline: 2px solid var(--md-accent-fg-color); }' +
+    '.tde-scroll { overflow-x: auto; text-align: center; }';
+  const decorate = (shadow, source) => {
+    const svg = shadow.querySelector('svg');
+    if (!svg) return;
+    const box = svg.viewBox.baseVal;
+    const style = document.createElement('style');
+    style.textContent = INNER;
+    const bar = document.createElement('div');
+    bar.className = 'tde-bar' + (box && (box.width > 900 || box.height > 600) ? ' big' : '');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = T.open;
+    button.addEventListener('click', () => openViewer(source, box, button));
+    bar.append(button);
+    const scroll = document.createElement('div');
+    scroll.className = 'tde-scroll';
+    scroll.append(svg);
+    shadow.prepend(style, bar);
+    shadow.append(scroll);
+  };
+
+  const readable = source => {
+    const width = Number(/<svg[^>]*\\sviewBox="[-\\d.]+ [-\\d.]+ ([\\d.]+) [\\d.]+"/.exec(source)?.[1]);
+    const min = width ? 'min-width: ' + Math.round(width * 0.6) + 'px;' : '';
+    return min ? source.replace(/<svg([^>]*?)\\sstyle="/, '<svg$1 style="' + min + ' ') : source;
+  };
+  // Os desenhos da página, para redesenhar quando a pessoa troca entre claro e escuro
+  let drawn = [];
   const render = mermaid.render.bind(mermaid);
-  mermaid.render = async (...args) => {
-    const result = await render(...args);
-    const width = Number(/<svg[^>]*\\sviewBox="[-\\d.]+ [-\\d.]+ ([\\d.]+) [\\d.]+"/.exec(result.svg)?.[1]);
-    if (!width) return result;
-    const min = 'min-width: ' + Math.round(width * 0.6) + 'px;';
-    return { ...result, svg: result.svg.replace(/<svg([^>]*?)\\sstyle="/, '<svg$1 style="' + min + ' ') };
+  mermaid.render = async (id, code, ...rest) => {
+    const result = await render(id, code, ...rest);
+    const fn = result.fn;
+    return {
+      ...result,
+      svg: readable(result.svg),
+      fn: shadow => {
+        if (fn) fn(shadow);
+        decorate(shadow, result.svg);
+        drawn.push({ shadow, code });
+      },
+    };
   };
+  let redraws = 0;
+  let last = scheme();
+  new MutationObserver(async () => {
+    if (scheme() === last || !saved) return;
+    last = scheme();
+    configure();
+    drawn = drawn.filter(d => d.shadow.host.isConnected);
+    for (const d of drawn) {
+      try {
+        const { svg } = await render('tde-redraw-' + ++redraws, d.code);
+        d.shadow.innerHTML = readable(svg);
+        decorate(d.shadow, svg);
+      } catch {
+        // Fica o desenho anterior
+      }
+    }
+  }).observe(document.body, { attributes: true, attributeFilter: ['data-md-color-scheme'] });
+
+  // A janela de zoom, por cima da página
+  const OUTER = '.tde-viewer { position: fixed; inset: 0; z-index: 10; display: flex; padding: 24px; background: rgba(0, 0, 0, .55); }' +
+    '.tde-frame { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 8px;' +
+    ' background: var(--md-default-bg-color); color: var(--md-default-fg-color); font: .75rem var(--md-text-font-family, sans-serif); box-shadow: 0 12px 40px rgba(0, 0, 0, .35); }' +
+    '.tde-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--md-default-fg-color--lightest); }' +
+    '.tde-top strong { margin-right: auto; padding-left: 4px; }' +
+    '.tde-top button { min-width: 30px; height: 28px; padding: 0 9px; font: inherit; color: inherit; background: transparent; cursor: pointer;' +
+    ' border: 1px solid var(--md-default-fg-color--lighter); border-radius: 4px; }' +
+    '.tde-top button:hover { background: var(--md-default-fg-color--lightest); }' +
+    '.tde-top button:focus-visible { outline: 2px solid var(--md-accent-fg-color); }' +
+    '.tde-pct { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; opacity: .75; }' +
+    '.tde-stage { position: relative; flex: 1; overflow: hidden; cursor: grab; touch-action: none; }' +
+    '.tde-stage.dragging { cursor: grabbing; }' +
+    '.tde-canvas { position: absolute; top: 0; left: 0; transform-origin: 0 0; }' +
+    '.tde-canvas svg { display: block; max-width: none; }' +
+    '.tde-canvas foreignObject p { margin: 0; }' +
+    '.tde-help { padding: 6px 12px; border-top: 1px solid var(--md-default-fg-color--lightest); opacity: .75; }' +
+    '@media (max-width: 600px) { .tde-viewer { padding: 0; } .tde-frame { border-radius: 0; } }';
   const style = document.createElement('style');
-  style.textContent = '.md-typeset .mermaid { overflow-x: auto; }';
+  style.textContent = OUTER;
   document.head.append(style);
+
+  const openViewer = (source, box, opener) => {
+    const width = (box && box.width) || 800;
+    const height = (box && box.height) || 600;
+    const viewer = document.createElement('div');
+    viewer.className = 'tde-viewer';
+    const frame = document.createElement('div');
+    frame.className = 'tde-frame';
+    frame.setAttribute('role', 'dialog');
+    frame.setAttribute('aria-modal', 'true');
+    frame.setAttribute('aria-label', T.title);
+    const top = document.createElement('div');
+    top.className = 'tde-top';
+    const title = document.createElement('strong');
+    title.textContent = T.title;
+    const pct = document.createElement('span');
+    pct.className = 'tde-pct';
+    pct.setAttribute('aria-live', 'polite');
+    const button = (action, label, hint) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.action = action;
+      b.textContent = label;
+      b.title = hint;
+      b.setAttribute('aria-label', hint);
+      return b;
+    };
+    const fitButton = button('fit', T.fit, T.fit);
+    top.append(title, button('out', '−', T.zoomOut), pct, button('in', '+', T.zoomIn), fitButton, button('one', '100%', T.one), button('close', '×', T.close));
+    const stage = document.createElement('div');
+    stage.className = 'tde-stage';
+    const canvas = document.createElement('div');
+    canvas.className = 'tde-canvas';
+    canvas.innerHTML = source;
+    const svg = canvas.querySelector('svg');
+    if (svg) {
+      svg.removeAttribute('style');
+      svg.setAttribute('width', String(width));
+      svg.setAttribute('height', String(height));
+    }
+    stage.append(canvas);
+    const help = document.createElement('div');
+    help.className = 'tde-help';
+    help.textContent = T.help;
+    frame.append(top, stage, help);
+    viewer.append(frame);
+    document.body.append(viewer);
+
+    let s = 1, x = 0, y = 0;
+    const apply = () => {
+      canvas.style.transform = 'translate(' + x + 'px, ' + y + 'px) scale(' + s + ')';
+      pct.textContent = Math.round(s * 100) + '%';
+    };
+    const zoomAt = (f, cx, cy) => {
+      const n = Math.min(4, Math.max(0.05, s * f));
+      x = cx - ((cx - x) * n) / s;
+      y = cy - ((cy - y) * n) / s;
+      s = n;
+      apply();
+    };
+    const cx = () => stage.clientWidth / 2;
+    const cy = () => stage.clientHeight / 2;
+    const fit = () => {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      s = Math.min(1, (w - 48) / width, (h - 48) / height);
+      // Muito largo: ajusta pela altura, a partir da esquerda, para o texto continuar legível
+      if (s < 0.35) { s = Math.min(1, (h - 48) / height, 0.8); x = 24; } else x = (w - width * s) / 2;
+      y = height * s > h ? 24 : (h - height * s) / 2;
+      apply();
+    };
+    const one = () => zoomAt(1 / s, cx(), cy());
+    fit();
+    stage.addEventListener('wheel', e => {
+      e.preventDefault();
+      const r = stage.getBoundingClientRect();
+      zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+    let drag = null;
+    stage.addEventListener('pointerdown', e => {
+      drag = { px: e.clientX, py: e.clientY, x, y };
+      stage.setPointerCapture(e.pointerId);
+      stage.classList.add('dragging');
+    });
+    stage.addEventListener('pointermove', e => {
+      if (!drag) return;
+      x = drag.x + e.clientX - drag.px;
+      y = drag.y + e.clientY - drag.py;
+      apply();
+    });
+    const end = () => { drag = null; stage.classList.remove('dragging'); };
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
+    const close = () => {
+      viewer.remove();
+      document.removeEventListener('keydown', onKey, true);
+      opener.focus();
+    };
+    top.addEventListener('click', e => {
+      const action = e.target.closest('[data-action]')?.dataset.action;
+      if (action === 'in') zoomAt(1.25, cx(), cy());
+      else if (action === 'out') zoomAt(0.8, cx(), cy());
+      else if (action === 'fit') fit();
+      else if (action === 'one') one();
+      else if (action === 'close') close();
+    });
+    viewer.addEventListener('mousedown', e => { if (e.target === viewer) close(); });
+    const moves = { ArrowLeft: [60, 0], ArrowRight: [-60, 0], ArrowUp: [0, 60], ArrowDown: [0, -60] };
+    // Em captura: os atalhos do Material (busca, páginas) não recebem as teclas enquanto a janela está aberta
+    const onKey = e => {
+      const k = e.key;
+      let handled = true;
+      if (k === 'Escape') close();
+      else if (k === 'Tab') {
+        const buttons = [...top.querySelectorAll('button')];
+        const at = buttons.indexOf(document.activeElement);
+        buttons[(at + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus();
+      } else if (k === '+' || k === '=') zoomAt(1.25, cx(), cy());
+      else if (k === '-') zoomAt(0.8, cx(), cy());
+      else if (k === '0') fit();
+      else if (k === '1') one();
+      else if (moves[k]) { x += moves[k][0]; y += moves[k][1]; apply(); }
+      else handled = k !== 'Enter' && k !== ' ' ? null : false;
+      if (handled) e.preventDefault();
+      if (handled !== false) e.stopPropagation();
+    };
+    document.addEventListener('keydown', onKey, true);
+    fitButton.focus();
+  };
   mermaid.techdocsEditorColors = true;
 })();
 `;

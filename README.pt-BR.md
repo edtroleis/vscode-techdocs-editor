@@ -127,7 +127,8 @@ Code), sem rede (também no VS Code para a Web).
   aberta no editor visual.
 - **O site também desenha, nas mesmas cores:** o primeiro diagrama acrescenta ao `mkdocs.yml` o bloco do Mermaid do
   `pymdownx.superfences` e, no `extra_javascript`, o Mermaid e as cores do editor (o script fica em
-  `docs/javascripts/techdocs-mermaid.js`), com **Desfazer**. O botão **Conferir** aponta os sites com diagramas e
+  `docs/javascripts/techdocs-mermaid.js`, que também leva o **Ampliar** ao site e redesenha os diagramas quando o
+  leitor troca entre claro e escuro), com **Desfazer**. O botão **Conferir** aponta os sites com diagramas e
   sem a configuração.
 - **No Backstage**, o TechDocs precisa do addon de Mermaid, instalado pelos administradores do Backstage, e os
   scripts do site não rodam lá: as cores vêm do addon. Para as mesmas cores do editor (addon com o Mermaid 11.17 ou
