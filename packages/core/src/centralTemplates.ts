@@ -1,6 +1,6 @@
 import { GitHubClient, GitHubError } from './github';
 import { parseSiteTemplate, SiteTemplate } from './siteTemplates';
-import { DocTemplate, parseTemplate } from './templates';
+import { DocTemplate, parseTemplate, TemplateCategory } from './templates';
 
 /**
  * Templates centrais da empresa (spec 04, TA3): uma pasta de um repositório do GitHub com o mesmo formato do
@@ -53,8 +53,9 @@ export async function fetchCentralTemplates(
   const wanted = files
     .filter(f => f.path.startsWith(prefix) && TEMPLATE_FILE.test(f.path) && f.size <= MAX_FILE_BYTES)
     .map(f => ({ ...f, path: f.path.slice(prefix.length) }))
-    // Página no nível da pasta; arquivos de site uma pasta abaixo
-    .filter(f => f.path.split('/').length <= 2)
+    // Página no nível da pasta ou numa pasta de categoria; site uma pasta abaixo ou em sites/; com as pastas
+    // de idioma, um nível a mais (spec 08)
+    .filter(f => f.path.split('/').length <= 4)
     .slice(0, MAX_FILES);
   const result: Record<string, string> = {};
   for (const file of wanted) result[file.path] = await client.getBlob(file.sha);
@@ -81,25 +82,79 @@ export async function loadCentralTemplates(opts: {
   return { result: await fetchCentralTemplates(opts.client(true), opts.source, opts.cachedSha), needsAuth: true };
 }
 
-/** Templates de página e de site dos arquivos da pasta (o mesmo formato do `.techdocs/templates/`). */
-export function centralTemplates(files: Record<string, string>): {
+/** As pastas de categoria do Diátaxis (spec 08): a categoria do template sem `category` no front matter. */
+const CATEGORY_FOLDERS: Record<string, TemplateCategory> = {
+  tutorials: 'tutorial',
+  'how-to-guides': 'guide',
+  reference: 'reference',
+  explanation: 'explanation',
+};
+
+const LANGUAGE_FOLDER = /^[a-z]{2}(-[a-z]{2})?$/;
+
+/**
+ * Os arquivos do idioma: com pastas de idioma na raiz (`en/`, `pt-br/`), a do idioma pedido (senão a `en`, senão
+ * a primeira), sem o prefixo; sem elas, todos (vale para todos os idiomas, como na TA3).
+ */
+export function languageFolder(files: Record<string, string>, language: string): string | undefined {
+  const folders = [...new Set(Object.keys(files).filter(p => p.includes('/')).map(p => p.split('/')[0]))].filter(f => LANGUAGE_FOLDER.test(f)).sort();
+  if (!folders.length) return undefined;
+  const wanted = language.toLowerCase();
+  return folders.find(f => f === wanted) ?? folders.find(f => wanted.startsWith(`${f}-`) || f.startsWith(`${wanted}-`)) ?? folders.find(f => f === 'en') ?? folders[0];
+}
+
+export function languageFiles(files: Record<string, string>, language: string): Record<string, string> {
+  const folder = languageFolder(files, language);
+  if (!folder) return files;
+  return Object.fromEntries(Object.entries(files).filter(([p]) => p.startsWith(`${folder}/`)).map(([p, text]) => [p.slice(folder.length + 1), text]));
+}
+
+/**
+ * Templates de página e de site dos arquivos da pasta: o formato do `.techdocs/templates/` (páginas no nível da
+ * pasta, sites em subpastas com `template.yml`) e o do repositório de templates (spec 08: pastas de idioma, páginas
+ * nas pastas de categoria do Diátaxis, sites em `sites/`).
+ */
+export function centralTemplates(
+  all: Record<string, string>,
+  language = 'en',
+): {
   pages: DocTemplate[];
   sites: { template: SiteTemplate; files: Record<string, string> }[];
+  /** A pasta de idioma usada (`en`, `pt-br`), se o repositório tem pastas de idioma. */
+  language?: string;
 } {
+  const files = languageFiles(all, language);
+  const folder = languageFolder(all, language);
   const pages = Object.keys(files)
-    .filter(path => !path.includes('/') && /\.md$/i.test(path))
+    .filter(path => /\.md$/i.test(path) && (!path.includes('/') || (path.split('/').length === 2 && path.split('/')[0] in CATEGORY_FOLDERS)))
     .sort()
-    .map(path => parseTemplate(path.slice(0, -3), files[path]))
+    .map(path => {
+      const parts = path.split('/');
+      const name = parts.at(-1)!;
+      return parseTemplate(name.slice(0, -3), files[path], parts.length === 2 ? CATEGORY_FOLDERS[parts[0]] : undefined);
+    })
     .filter((t): t is DocTemplate => Boolean(t));
   const sites = Object.keys(files)
-    .filter(path => /^[^/]+\/template\.yml$/.test(path))
-    .sort()
-    .flatMap(path => {
-      const id = path.split('/')[0];
-      const template = parseSiteTemplate(id, files[path]);
+    .map(path => /^(?:sites\/)?([^/]+)\/template\.yml$/.exec(path))
+    .filter((m): m is RegExpExecArray => Boolean(m) && !(m![1] in CATEGORY_FOLDERS) && m![1] !== 'sites')
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .flatMap(match => {
+      const id = match[1];
+      const prefix = match[0].slice(0, -'template.yml'.length);
+      const template = parseSiteTemplate(id, files[match[0]]);
       if (!template) return [];
-      const own = Object.fromEntries(Object.entries(files).filter(([p]) => p.startsWith(`${id}/`)).map(([p, text]) => [p.slice(id.length + 1), text]));
+      const own = Object.fromEntries(Object.entries(files).filter(([p]) => p.startsWith(prefix)).map(([p, text]) => [p.slice(prefix.length), text]));
       return [{ template, files: own }];
     });
-  return { pages, sites };
+  return { pages, sites, ...(folder && { language: folder }) };
+}
+
+/**
+ * Endereço da página de exemplo de um template da empresa no GitHub (spec 08): `examples/<idioma>/docs/` ao lado
+ * da pasta de templates configurada (a convenção do repositório de templates).
+ */
+export function centralExampleUrl(source: CentralTemplatesSource, language: string | undefined, example: string): string {
+  const root = source.folder.split('/').slice(0, -1).join('/');
+  const path = [root, 'examples', language, 'docs', example].filter(Boolean).join('/');
+  return `https://${source.host}/${source.slug}/blob/${encodeURIComponent(source.ref ?? 'HEAD')}/${path.split('/').map(encodeURIComponent).join('/')}`;
 }

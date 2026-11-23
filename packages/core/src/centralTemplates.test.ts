@@ -1,5 +1,5 @@
 import { FakeGitHub } from '../test/fakeGitHub';
-import { centralLabel, centralTemplates, fetchCentralTemplates, loadCentralTemplates, parseTemplatesRepository } from './centralTemplates';
+import { centralExampleUrl, centralLabel, centralTemplates, fetchCentralTemplates, loadCentralTemplates, parseTemplatesRepository } from './centralTemplates';
 import { GitHubClient } from './github';
 
 const PAGE = '---\ntemplate:\n  name: Runbook da empresa\n  category: guide\n---\n\n# {{title}}\n\nDa empresa.\n';
@@ -13,7 +13,8 @@ const repo = () =>
       'templates/LEIAME.md': '# Sem bloco template\n',
       'templates/servico/template.yml': SITE,
       'templates/servico/inicio.md': '# {{site_name}}\n',
-      'templates/servico/extra/fundo.md': '# Fundo demais\n',
+      'templates/servico/extra/fundo.md': '# Ainda cabe\n',
+      'templates/en/sites/servico/extra/fundo.md': '# Fundo demais\n',
       'templates/logo.png': 'binário',
       'outra/runbook.md': PAGE,
     },
@@ -39,13 +40,13 @@ describe('parseTemplatesRepository', () => {
 });
 
 describe('fetchCentralTemplates', () => {
-  it('só os arquivos de template da pasta, até uma subpasta, no commit da branch padrão', async () => {
+  it('só os arquivos de template da pasta, até três subpastas (idioma, sites, site), no commit da branch padrão', async () => {
     const github = repo();
     const result = await fetchCentralTemplates(client(github, github.token), parseTemplatesRepository('acme/docs-templates/templates')!);
     expect(result).not.toBe('unchanged');
     const { sha, files } = result as Exclude<typeof result, 'unchanged'>;
     expect(sha).toBe(github.head('main')!.sha);
-    expect(Object.keys(files).sort()).toEqual(['LEIAME.md', 'runbook.md', 'servico/inicio.md', 'servico/template.yml']);
+    expect(Object.keys(files).sort()).toEqual(['LEIAME.md', 'runbook.md', 'servico/extra/fundo.md', 'servico/inicio.md', 'servico/template.yml']);
     expect(files['runbook.md']).toBe(PAGE);
   });
 
@@ -107,5 +108,50 @@ describe('centralTemplates', () => {
     expect(pages.map(p => `${p.id}:${p.name}`)).toEqual(['runbook:Runbook da empresa']);
     expect(sites.map(s => s.template.id)).toEqual(['servico']);
     expect(sites[0].files).toEqual({ 'template.yml': SITE, 'inicio.md': '# {{site_name}}\n' });
+  });
+});
+
+describe('centralTemplates no formato do repositório de templates (spec 08, TR2)', () => {
+  const page = (name: string, category?: string, example?: string) =>
+    `---\ntemplate:\n  version: 1\n  name: ${name}\n  description: d\n${category ? `  category: ${category}\n` : ''}${example ? `  example: ${example}\n` : ''}---\n\n# {{title}}\n`;
+  const files = {
+    'en/how-to-guides/runbook.md': page('Runbook', 'guide', 'how-to-guides/runbook.md'),
+    'en/tutorials/sem-categoria.md': page('Sem categoria'),
+    'en/explanation/adr.md': page('ADR', 'explanation'),
+    'en/sites/servico/template.yml': SITE,
+    'en/sites/servico/inicio.md': '# {{site_name}}\n',
+    'pt-br/how-to-guides/runbook.md': page('Runbook pt', 'guide'),
+    'pt-br/sites/servico/template.yml': SITE,
+  };
+
+  it('usa a pasta do idioma; a categoria vem do front matter ou da pasta; o exemplo vem junto', () => {
+    const { pages, sites } = centralTemplates(files, 'en');
+    expect(pages.map(p => `${p.id}:${p.category}:${p.example ?? ''}`).sort()).toEqual([
+      'adr:explanation:',
+      'runbook:guide:how-to-guides/runbook.md',
+      'sem-categoria:tutorial:',
+    ]);
+    expect(sites.map(s => s.template.id)).toEqual(['servico']);
+    expect(sites[0].files).toEqual({ 'template.yml': SITE, 'inicio.md': '# {{site_name}}\n' });
+  });
+
+  it('pt-br usa a pasta pt-br; idioma sem pasta cai no en', () => {
+    expect(centralTemplates(files, 'pt-br').pages.map(p => p.name)).toEqual(['Runbook pt']);
+    expect(centralTemplates(files, 'es').pages.map(p => p.name).sort()).toEqual(['ADR', 'Runbook', 'Sem categoria']);
+  });
+
+  it('pasta sem idiomas vale para todos (o formato da TA3 continua valendo)', () => {
+    expect(centralTemplates({ 'runbook.md': PAGE }, 'pt-br').pages.map(p => p.id)).toEqual(['runbook']);
+  });
+});
+
+
+describe('centralExampleUrl (spec 08)', () => {
+  it('examples/<idioma>/docs ao lado da pasta de templates, na ref configurada', () => {
+    const source = parseTemplatesRepository('acme/docs-templates/templates@v2')!;
+    expect(centralExampleUrl(source, 'pt-br', 'how-to-guides/runbook.md')).toBe(
+      'https://github.com/acme/docs-templates/blob/v2/examples/pt-br/docs/how-to-guides/runbook.md',
+    );
+    expect(centralExampleUrl(parseTemplatesRepository('ghe.acme.com/acme/t')!, undefined, 'a.md')).toBe('https://ghe.acme.com/acme/t/blob/HEAD/examples/docs/a.md');
   });
 });

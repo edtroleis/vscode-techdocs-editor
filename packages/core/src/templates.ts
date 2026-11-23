@@ -17,6 +17,8 @@ export type DocTemplate = {
   category: TemplateCategory;
   /** Pasta sugerida, relativa ao `docs_dir`. */
   folder?: string;
+  /** A página de exemplo preenchida, relativa ao `docs/` do site de exemplo do mesmo idioma (spec 08). */
+  example?: string;
   /** Nome do arquivo com número (`0007-titulo.md`), como os ADRs. */
   numbered: boolean;
   version: number;
@@ -48,7 +50,7 @@ export function parseFields(node: unknown): TemplateField[] {
  * Lê um template: o bloco `template:` do front matter e o corpo. Arquivo sem o bloco não é template
  * (undefined): numa pasta de templates, um README ao lado não vira opção.
  */
-export function parseTemplate(id: string, source: string): DocTemplate | undefined {
+export function parseTemplate(id: string, source: string, fallbackCategory: TemplateCategory = 'reference'): DocTemplate | undefined {
   const match = source.match(FRONT_MATTER);
   if (!match) return undefined;
   const doc = parseDocument(match[1]);
@@ -57,7 +59,7 @@ export function parseTemplate(id: string, source: string): DocTemplate | undefin
   if (!isMap(meta)) return undefined;
   const info = meta.toJSON() as Record<string, unknown>;
   const fields = parseFields(info.fields);
-  const category = TEMPLATE_CATEGORIES.includes(info.category as TemplateCategory) ? (info.category as TemplateCategory) : 'reference';
+  const category = TEMPLATE_CATEGORIES.includes(info.category as TemplateCategory) ? (info.category as TemplateCategory) : fallbackCategory;
   const version = typeof info.version === 'number' ? info.version : 1;
 
   // O bloco `template:` sai da página; o resto do front matter (ex.: tags) fica como está
@@ -70,6 +72,7 @@ export function parseTemplate(id: string, source: string): DocTemplate | undefin
     description: text(info.description),
     category,
     folder: typeof info.folder === 'string' && info.folder.trim() ? info.folder.trim().replace(/^\/+|\/+$/g, '') : undefined,
+    ...(typeof info.example === 'string' && info.example.trim() && !info.example.includes('..') && { example: info.example.trim().replace(/^\/+/, '') }),
     numbered: info.numbered === true,
     version,
     fields,
