@@ -118,7 +118,7 @@ const codeHidden = (page: Page) => block(page).locator('.codemirror-host');
 
 test('clique duplo num texto do desenho abre o código com o texto selecionado', async ({ page }) => {
   await openEditor(page, flow);
-  await expect(block(page).locator('.mermaid-hint')).toHaveText('Clique duas vezes num texto do desenho para editá-lo');
+  await expect(block(page).locator('.mermaid-hint')).toHaveText('Clique num nó para acrescentar ou ligar; clique duas vezes num texto para editá-lo');
   await label(page, 'Decisão').dblclick();
   await expect(block(page).locator('.cm-content')).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.activeElement?.className)).toContain('cm-content');
@@ -183,4 +183,9 @@ test('bloco mermaid sem o seletor de linguagem; os outros blocos continuam com e
   await expect(blocks.nth(0).locator('.language-button')).toBeHidden();
   await blocks.nth(2).hover();
   await expect(blocks.nth(2).locator('.language-button')).toBeHidden();
+});
+
+test('dica: o fluxograma fala do clique no nó; os outros diagramas, só do clique duplo', async ({ page }) => {
+  await openEditor(page, page1('sequenceDiagram\n  A->>B: oi'));
+  await expect(block(page).locator('.mermaid-hint')).toHaveText('Clique duas vezes num texto do desenho para editá-lo');
 });

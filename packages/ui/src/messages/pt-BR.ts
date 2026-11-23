@@ -27,6 +27,7 @@ export const ptBR: Record<string, string> = {
   'editorText.diagramEdit': 'Editar',
   'editorText.diagramShow': 'Ver diagrama',
   'editorText.diagramHint': 'Clique duas vezes num texto do desenho para editá-lo',
+  'editorText.diagramFlowHint': 'Clique num nó para acrescentar ou ligar; clique duas vezes num texto para editá-lo',
   'editorText.diagramError': 'Erro no diagrama',
   'editorText.diagramErrorLine': 'Erro no diagrama (linha {{line}})',
   'editorText.diagramStepAfter': '+ Passo depois',

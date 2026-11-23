@@ -223,7 +223,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         ctx.update(remarkStringifyOptionsCtx, prev => ({ ...prev, ...STRINGIFY_OPTIONS }));
         ctx.inject(externalHistoryCtx, external);
         ctx.inject(diagramInsertCtx, { sample: labels.diagram.sample, onInserted: () => diagramInsertedRef.current?.() });
-        ctx.inject(diagramBarCtx, { bar: labels.diagram.bar, words: labels.diagram.words, hint: labels.diagram.hint });
+        ctx.inject(diagramBarCtx, { bar: labels.diagram.bar, words: labels.diagram.words, hint: labels.diagram.flowHint });
       })
       .use(defaultCodeLanguagePlugin)
       .use(headingLevelFixPlugin)

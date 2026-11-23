@@ -37,6 +37,8 @@ export type EditorText = {
     edit: string;
     show: string;
     hint: string;
+    /** Dica dos fluxogramas, que têm a barra do nó (M12). */
+    flowHint: string;
     error: (line?: number) => string;
     /** Os cinco modelos do menu "/" (M11), nesta ordem. */
     templates: DiagramTemplate[];
@@ -85,6 +87,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
       edit: k('diagramEdit'),
       show: k('diagramShow'),
       hint: k('diagramHint'),
+      flowHint: k('diagramFlowHint'),
       templates: [
         { key: 'flow', label: k('diagramFlow'), sample: k('diagramSample'), icon: DIAGRAM_ICON },
         { key: 'sequence', label: k('diagramSequence'), sample: k('diagramSampleSequence'), icon: SEQUENCE_ICON },

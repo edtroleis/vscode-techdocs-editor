@@ -1,4 +1,5 @@
 import type { Mermaid } from 'mermaid';
+import { isFlowchart } from './flowchartEdit';
 
 /**
  * Diagramas Mermaid no editor visual (spec 06): a prévia do bloco de código do Crepe desenha os blocos
@@ -15,6 +16,8 @@ export type DiagramText = {
   error: (line?: number) => string;
   /** Dica embaixo do desenho (M10). */
   hint: string;
+  /** Dica dos fluxogramas, que também têm a barra do nó (M12). */
+  flowHint: string;
 };
 
 /** Erro de sintaxe de um bloco: a linha no arquivo e a mensagem do Mermaid. */
@@ -119,13 +122,13 @@ async function drawCached(mermaid: Mermaid, code: string): Promise<string> {
   }
 }
 
-function diagramElement(svg: string, text: DiagramText): HTMLElement {
+function diagramElement(svg: string, text: DiagramText, code: string): HTMLElement {
   const element = document.createElement('div');
   element.className = 'mermaid-diagram';
   element.innerHTML = svg;
   const hint = document.createElement('p');
   hint.className = 'mermaid-hint';
-  hint.textContent = text.hint;
+  hint.textContent = isFlowchart(code) ? text.flowHint : text.hint;
   element.append(hint);
   return element;
 }
@@ -145,7 +148,7 @@ function errorElement(text: DiagramText, message: string, code: string): HTMLEle
 /** Desenha (ou explica o erro de) um diagrama. */
 async function render(mermaid: Mermaid, code: string, text: DiagramText): Promise<HTMLElement> {
   try {
-    return diagramElement(await drawCached(mermaid, code), text);
+    return diagramElement(await drawCached(mermaid, code), text, code);
   } catch (error) {
     return errorElement(text, messageOf(error), code);
   }
