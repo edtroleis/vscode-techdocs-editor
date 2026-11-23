@@ -6,9 +6,12 @@ import { bodyLines, type CodeRange, idPattern } from './diagramSource';
 
 export type FlowchartWords = { step: string; decision: string; yes: string; no: string };
 
-/** Setas: com texto no meio (`-- x -->`, `== x ==>`, `-. x .->`) ou simples, com `|texto|` opcional depois. */
+/**
+ * Setas de qualquer comprimento (`-->`, `--->`, `---`, `===`, `==>`, `-.-`, `-.->`, `~~~`), com as pontas `<`, `o`
+ * e `x`, com texto no meio (`-- x -->`, `== x ==>`, `-. x .->`) ou `|texto|` depois.
+ */
 const ARROW = new RegExp(
-  String.raw`\s*<?(?:--\s+[^-|]+?\s+-->|==\s+[^=|]+?\s+==>|-\.\s+.+?\s+\.->|-->|---|-\.->|==>|--o(?![\p{L}\p{N}_])|--x(?![\p{L}\p{N}_]))(?:\s*\|[^|]*\|)?\s*`,
+  String.raw`\s*(?:<|(?<=\s)[ox])?(?:--\s+(?:(?!--).)+?\s+(?:-{2,}[>ox]|-{3,})|==\s+(?:(?!==).)+?\s+(?:={2,}[>ox]|={3,})|-\.\s+(?:(?!\.-).)+?\s+\.-+>?|-{2,}[>ox]|-{3,}|={2,}[>ox]|={3,}|-\.+->?|~{3,})(?:\s*\|[^|]*\|)?\s*`,
   'gu',
 );
 const ID = /^[\p{L}\p{N}_][\p{L}\p{N}_-]*/u;
@@ -29,6 +32,9 @@ function split(text: string): { pieces: string[]; arrows: string[] } {
 }
 
 const pieceId = (piece: string) => ID.exec(piece)?.[0];
+
+/** O texto sem o que está dentro das formas, das aspas e dos `|rótulos|` (onde `&`, `;` e ids não contam). */
+const outsideLabels = (text: string) => text.replace(/"[^"]*"|\[[^\]]*\]|\([^)]*\)|\{[^}]*\}|\|[^|]*\|/g, ' ');
 
 export function isFlowchart(code: string): boolean {
   return /^(flowchart|graph)\b/.test(bodyLines(code).type);
@@ -87,7 +93,7 @@ export function connect(code: string, from: string, to: string, words: Flowchart
 
 /**
  * Tira o nó, as setas ligadas a ele e as linhas style/class/click dele; os pedaços de cada lado viram linhas.
- * Linhas com `&` que citam o nó não dão para mudar com segurança: o código volta igual.
+ * Linhas com `&`, vários comandos (`;`) ou setas que não entendo, citando o nó, voltam o código igual.
  */
 export function removeNode(code: string, id: string): string {
   const { lines } = bodyLines(code);
@@ -106,9 +112,13 @@ export function removeNode(code: string, id: string): string {
       const rest = ids.filter((x) => x !== id);
       next = meta[1] !== 'style' && rest.length ? [indent + `${meta[1]} ${rest.join(',')}${meta[3]}`] : [];
     } else {
+      const bare = outsideLabels(text);
+      if (!word.test(bare)) continue;
+      // Vários comandos (`;`) ou nós (`&`) na linha: não dá para mudar com segurança
+      if (/[;&]/.test(bare.trim().replace(/;$/, ''))) return code;
       const { pieces, arrows } = split(text);
-      if (!pieces.some((p) => pieceId(p) === id)) continue;
-      if (pieces.some((p) => /(^|\s)&(\s|$)/.test(p))) return code;
+      // A id está na linha fora de um pedaço que eu entendo (seta desconhecida): não mexe
+      if (!pieces.some((p) => pieceId(p) === id)) return code;
       next = [];
       let run = '';
       pieces.forEach((p, i) => {

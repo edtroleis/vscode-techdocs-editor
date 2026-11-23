@@ -44,4 +44,26 @@ describe('flowchartEdit', () => {
   it('removeNode: id com hífen não leva my-node junto', () =>
     expect(removeNode('flowchart LR\n  my-node --> node', 'node')).toBe('flowchart LR\n  my-node'));
   it('removeNode: o último nó deixa só o tipo', () => expect(removeNode('flowchart LR\n  A[Só]', 'A')).toBe('flowchart LR'));
+  it('removeNode: vários comandos com ; na linha não perde outro nó', () => {
+    const code = 'flowchart LR\n  A --> B; C --> D';
+    expect(removeNode(code, 'B')).toBe(code);
+  });
+  it('removeNode: & sem espaços não perde o outro nó', () => {
+    const code = 'flowchart LR\n  A&B --> C';
+    expect(removeNode(code, 'A')).toBe(code);
+  });
+  it('removeNode: setas longas, ===, -.- e ~~~', () => {
+    expect(removeNode('flowchart LR\n  A[a] ---> B[b]\n  B --> C[c]\n  style B fill:#f00', 'B')).toBe('flowchart LR\n  A[a]\n  C[c]');
+    expect(removeNode('flowchart LR\n  A === B ==> C', 'B')).toBe('flowchart LR\n  A\n  C');
+    expect(removeNode('flowchart LR\n  A -.- B ~~~ C', 'B')).toBe('flowchart LR\n  A\n  C');
+    expect(removeNode('flowchart LR\n  A o--o B --x C', 'B')).toBe('flowchart LR\n  A\n  C');
+  });
+  it('removeNode: seta com texto que tem hífen', () =>
+    expect(removeNode('flowchart LR\n  A[a] -- pre-check --> B[b]', 'B')).toBe('flowchart LR\n  A[a]'));
+  it('removeNode: id que aparece fora dos pedaços que entendo: código igual', () => {
+    const code = 'flowchart LR\n  A[a] -->> B[b]';
+    expect(removeNode(code, 'B')).toBe(code);
+  });
+  it('connect: seta longa já existente não duplica', () => expect(connect('flowchart LR\n  A ---> C', 'A', 'C', W)).toBeUndefined());
 });
+
