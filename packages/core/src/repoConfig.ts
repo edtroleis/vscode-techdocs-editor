@@ -1,4 +1,4 @@
-import { parse as parseYaml, parseDocument } from 'yaml';
+import { isMap, parse as parseYaml, parseDocument } from 'yaml';
 import type { GitHubClient } from './github';
 
 /**
@@ -13,6 +13,8 @@ import type { GitHubClient } from './github';
  *   checkHelp:                # mensagem em linguagem simples por nome de job (somada às do portal)
  *     build: A documentação não pôde ser montada.
  * catalog: off                # auto | required | off: o catalog-info.yaml na conferência (spec 04)
+ * templates:
+ *   repository: acme/docs-templates/templates   # os templates do time (spec 08), no formato da TA3
  * ```
  */
 export const REPO_CONFIG_FILE = '.techdocs-editor.yaml';
@@ -35,6 +37,8 @@ export type RepoConfig = {
     checkHelp: Record<string, string>;
   };
   catalog?: CatalogMode;
+  /** O repositório de templates do time (spec 08, TR6): vence a configuração do usuário. */
+  templates?: { repository: string };
 };
 
 export const EMPTY_REPO_CONFIG: RepoConfig = { verification: { checkHelp: {} } };
@@ -58,8 +62,10 @@ export function parseRepoConfig(text: string): RepoConfig {
   const verification = isRecord(data) && isRecord(data.verification) ? data.verification : {};
   const { mode, startTimeoutSeconds, checkHelp } = verification;
   const catalog = isRecord(data) ? data.catalog : undefined;
+  const repository = isRecord(data) && isRecord(data.templates) ? data.templates.repository : undefined;
   return {
     ...(CATALOG_MODES.includes(catalog as CatalogMode) && { catalog: catalog as CatalogMode }),
+    ...(typeof repository === 'string' && repository.trim() && { templates: { repository: repository.trim() } }),
     verification: {
       mode: MODES.includes(mode as VerificationMode) ? (mode as VerificationMode) : undefined,
       startTimeoutSeconds:
@@ -83,6 +89,25 @@ export function setCatalogMode(text: string | undefined, mode: CatalogMode): str
   if (doc.errors.length || !isRecord(doc.toJS())) return `${text.replace(/\n*$/, '\n')}catalog: ${mode}\n`;
   doc.set('catalog', mode);
   return doc.toString({ lineWidth: 0 });
+}
+
+/**
+ * O `.techdocs-editor.yaml` com `templates.repository` (undefined no valor: tira, e o `templates:` vazio sai junto).
+ * O resto do arquivo, comentários incluídos, fica como estava.
+ */
+export function setTemplatesRepository(text: string | undefined, repository: string | undefined): string {
+  const doc = parseDocument(text?.trim() ? text : '');
+  if (doc.errors.length || (text?.trim() && !isRecord(doc.toJS()))) {
+    return repository ? `${(text ?? '').replace(/\n*$/, '\n')}templates:\n  repository: ${repository}\n` : (text ?? '');
+  }
+  if (repository) doc.setIn(['templates', 'repository'], repository);
+  else {
+    doc.deleteIn(['templates', 'repository']);
+    const rest = doc.get('templates', true);
+    if (rest == null || (isMap(rest) && !rest.items.length)) doc.delete('templates');
+  }
+  const out = doc.toString({ lineWidth: 0 });
+  return out === '{}\n' ? '' : out;
 }
 
 /** A configuração do repositório na branch `ref`; sem o arquivo, a vazia. */

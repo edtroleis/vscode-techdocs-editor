@@ -1,4 +1,4 @@
-import { EMPTY_REPO_CONFIG, parseRepoConfig, setCatalogMode } from './repoConfig';
+import { EMPTY_REPO_CONFIG, parseRepoConfig, setCatalogMode, setTemplatesRepository } from './repoConfig';
 
 describe('.techdocs-editor.yaml', () => {
   it('lê o modo, o tempo para começar e as mensagens dos checks', () => {
@@ -55,5 +55,21 @@ describe('catalog no .techdocs-editor.yaml', () => {
     const text = '# do time\nverification:\n  mode: editor # sem pipeline\n';
     expect(setCatalogMode(text, 'required')).toBe(`${text}catalog: required\n`);
     expect(setCatalogMode('catalog: off # antes\nverification:\n  mode: editor\n', 'auto')).toBe('catalog: auto # antes\nverification:\n  mode: editor\n');
+  });
+});
+
+describe('templates.repository no .techdocs-editor.yaml (spec 08, TR6)', () => {
+  it('lê o repositório de templates do time; vazio ou de outro tipo é ignorado', () => {
+    expect(parseRepoConfig('templates:\n  repository: acme/docs-templates/templates@v2\n').templates).toEqual({ repository: 'acme/docs-templates/templates@v2' });
+    expect(parseRepoConfig('templates:\n  repository: "  "\n').templates).toBeUndefined();
+    expect(parseRepoConfig('templates:\n  repository: 3\n').templates).toBeUndefined();
+    expect(parseRepoConfig('templates: acme/x\n').templates).toBeUndefined();
+  });
+
+  it('grava e tira o valor sem mexer no resto do arquivo', () => {
+    expect(setTemplatesRepository(undefined, 'acme/t')).toBe('templates:\n  repository: acme/t\n');
+    const text = '# do time\ncatalog: off\n';
+    expect(setTemplatesRepository(text, 'acme/t')).toBe('# do time\ncatalog: off\ntemplates:\n  repository: acme/t\n');
+    expect(setTemplatesRepository('catalog: off\ntemplates:\n  repository: acme/t\n', undefined)).toBe('catalog: off\n');
   });
 });
