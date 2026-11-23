@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-23
+
 ### Added
 
 - **Drag and drop in Mermaid flowcharts:** drag from a node to another node to connect them, or to an empty space
