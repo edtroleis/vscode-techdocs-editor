@@ -67,6 +67,8 @@ class NodeBar {
     document.addEventListener('keydown', this.onKeyDown, true);
     document.addEventListener('pointermove', this.onPointerMove);
     document.addEventListener('pointerup', this.onPointerUp);
+    document.addEventListener('pointercancel', this.cancelDrag);
+    window.addEventListener('blur', this.cancelDrag);
     window.addEventListener('scroll', this.onScroll, true);
     window.addEventListener('resize', this.close);
   }
@@ -81,6 +83,8 @@ class NodeBar {
     document.removeEventListener('keydown', this.onKeyDown, true);
     document.removeEventListener('pointermove', this.onPointerMove);
     document.removeEventListener('pointerup', this.onPointerUp);
+    document.removeEventListener('pointercancel', this.cancelDrag);
+    window.removeEventListener('blur', this.cancelDrag);
     window.removeEventListener('scroll', this.onScroll, true);
     window.removeEventListener('resize', this.close);
   }
@@ -208,6 +212,14 @@ class NodeBar {
     // Espaço vazio do mesmo desenho (a dica embaixo dele conta): um passo novo, como + Passo depois
     if (under.closest('.mermaid-diagram') && under.closest('.milkdown-code-block') === found.block)
       void this.run(found, code => addNode(code, found.id, 'step', this.text().words));
+  };
+
+  /** O arrasto foi interrompido (toque cancelado, a janela perdeu o foco): não liga nem cria nada. */
+  private readonly cancelDrag = () => {
+    this.press = undefined;
+    if (!this.dragging) return;
+    this.stopDragging();
+    this.swallowClick = true;
   };
 
   private startDragging(found: FoundNode) {

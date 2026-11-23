@@ -86,3 +86,19 @@ test('modo leitura e sequência: arrastar não faz nada', async ({ page }) => {
   await expect(page.locator('.mermaid-drag-line')).toHaveCount(0);
   expect(await page.evaluate(() => window.harness.saved())).toBeUndefined();
 });
+
+test('arrasto interrompido (pointercancel ou a janela perde o foco): a linha some e nada muda', async ({ page }) => {
+  await openEditor(page, flow);
+  await drag(page, node(page, 'Início'), await center(node(page, 'Fim')), false);
+  await expect(page.locator('.mermaid-drag-line')).toBeVisible();
+  await page.evaluate(() => document.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true })));
+  await expect(page.locator('.mermaid-drag-line')).toHaveCount(0);
+  await page.mouse.up();
+  await drag(page, node(page, 'Início'), await center(node(page, 'Fim')), false);
+  await expect(page.locator('.mermaid-drag-line')).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(page.locator('.mermaid-drag-line')).toHaveCount(0);
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  expect(await saved(page)).toBeUndefined();
+});
