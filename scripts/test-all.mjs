@@ -11,14 +11,15 @@ import { spawn } from 'node:child_process';
 
 /**
  * Média das execuções que passaram em 2026-10-31 (WSL2; 2 a 3 rodadas por suíte, o e2e só 1), em segundos; editor e
- * web medidos de novo em 2026-11-05 (cresceram com o Mermaid). O limite é
+ * web medidos de novo em 2026-11-05 (cresceram com o Mermaid); webview em 2026-11-23 (203 testes, com as páginas
+ * dos sites e dos exemplos de templates). O limite é
  * a média + 10%. Estimativa: refazer a conta com a tabela do fim quando as suítes crescerem.
  */
 const AVERAGE = {
   typecheck: 8.8,
   unit: 3.6,
   build: 1.6,
-  webview: 30.5,
+  webview: 42.0,
   bundle: 2.9,
   editor: 215.0,
   vscode: 86.4,
