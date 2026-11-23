@@ -59,6 +59,7 @@ class NodeBar {
 
   destroy() {
     this.close();
+    clearTimeout(this.failTimer);
     this.view.dom.removeEventListener('click', this.onClick);
     this.view.dom.removeEventListener('dblclick', this.close);
     document.removeEventListener('pointerdown', this.onPointerDown, true);
@@ -67,8 +68,8 @@ class NodeBar {
     window.removeEventListener('resize', this.close);
   }
 
-  /** O documento mudou (digitar no código, desfazer): a barra e o modo Ligar não valem mais. */
-  docChanged() {
+  /** O documento mudou (digitar no código, desfazer) ou virou só leitura: a barra e o modo Ligar não valem mais. */
+  changed() {
     this.close();
   }
 
@@ -180,7 +181,10 @@ class NodeBar {
     this.connecting = true;
     target.block.classList.add('mermaid-connecting');
     const hint = this.hint(target.block);
-    if (hint) hint.textContent = this.text().bar.connectHint;
+    if (!hint) return;
+    // A mensagem de erro de antes sai (e o tempo dela não troca a dica no meio do Ligar)
+    this.clearFailure(hint);
+    hint.textContent = this.text().bar.connectHint;
   }
 
   private stopConnecting() {
@@ -192,26 +196,35 @@ class NodeBar {
     if (hint) hint.textContent = this.text().hint;
   }
 
+  private failTimer: ReturnType<typeof setTimeout> | undefined;
+
   /** A mensagem do M16 no lugar da dica, por alguns segundos. */
   private fail(block: Element) {
     const hint = this.hint(block);
     if (!hint) return;
+    this.clearFailure(hint);
     hint.textContent = this.text().bar.failed;
     hint.classList.add('mermaid-hint-error');
     hint.setAttribute('role', 'status');
-    setTimeout(() => {
+    this.failTimer = setTimeout(() => {
       if (!hint.isConnected || !hint.classList.contains('mermaid-hint-error')) return;
+      this.clearFailure(hint);
       hint.textContent = this.text().hint;
-      hint.classList.remove('mermaid-hint-error');
-      hint.removeAttribute('role');
     }, FAILED_MS);
+  }
+
+  private clearFailure(hint: HTMLElement) {
+    clearTimeout(this.failTimer);
+    this.failTimer = undefined;
+    hint.classList.remove('mermaid-hint-error');
+    hint.removeAttribute('role');
   }
 
   /** Calcula o código novo, valida com o Mermaid e troca o conteúdo do bloco numa transação. */
   private async run(target: { block: Element; pos: number; id: string }, change: (code: string) => Change) {
     const { view } = this;
     const node = view.state.doc.nodeAt(target.pos);
-    if (node?.type.name !== 'code_block') return;
+    if (!view.editable || node?.type.name !== 'code_block') return;
     const before = node.textContent;
     const next = change(before);
     if (!next) return;
@@ -219,7 +232,7 @@ class NodeBar {
     const valid = await isValidDiagram(next.code);
     // Mudou no meio da validação: desiste
     const now = view.state.doc.nodeAt(target.pos);
-    if (now?.type.name !== 'code_block' || now.textContent !== before || view.nodeDOM(target.pos) !== target.block) return;
+    if (!view.editable || now?.type.name !== 'code_block' || now.textContent !== before || view.nodeDOM(target.pos) !== target.block) return;
     if (!valid) return this.fail(target.block);
     const tr = view.state.tr.replaceWith(target.pos + 1, target.pos + 1 + now.content.size, view.state.schema.text(next.code));
     view.dispatch(tr);
@@ -235,7 +248,7 @@ export const diagramNodeBarPlugin = $prose(
         const bar = new NodeBar(view, () => ctx.get(diagramBarCtx));
         return {
           update: (view, prev) => {
-            if (!view.state.doc.eq(prev.doc)) bar.docChanged();
+            if (!view.state.doc.eq(prev.doc) || !view.editable) bar.changed();
           },
           destroy: () => bar.destroy(),
         };

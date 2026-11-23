@@ -116,3 +116,36 @@ test('digitar no código redesenha e fecha a barra', async ({ page }) => {
   await page.keyboard.type('x');
   await expect(bar(page)).toBeHidden();
 });
+
+test('modo leitura ligado com a barra aberta: a barra fecha e nada muda', async ({ page }) => {
+  await openEditor(page, flow);
+  await node(page, 'Fim').click();
+  await expect(bar(page)).toBeVisible();
+  await page.evaluate(() => window.harness.setReadOnly(true));
+  await expect(bar(page)).toBeHidden();
+  expect(await saved(page)).toBeUndefined();
+});
+
+test('modo leitura ligado no modo Ligar: o clique no destino não liga', async ({ page }) => {
+  await openEditor(page, flow);
+  await node(page, 'Início').click();
+  await button(page, 'Ligar a…').click();
+  await page.evaluate(() => window.harness.setReadOnly(true));
+  await node(page, 'Fim').click();
+  await page.waitForTimeout(500);
+  expect(await saved(page)).toBeUndefined();
+});
+
+test('Ligar a… logo depois da mensagem de erro: a dica do Ligar fica, sem o vermelho', async ({ page }) => {
+  await openEditor(page, page1('flowchart LR\n  A & B --> C'));
+  await node(page, 'C').click();
+  await button(page, 'Apagar').click();
+  await expect(hint(page)).toHaveClass(/mermaid-hint-error/);
+  await node(page, 'C').click();
+  await button(page, 'Ligar a…').click();
+  await expect(hint(page)).toHaveText('Clique no nó de destino (Esc cancela)');
+  await expect(hint(page)).not.toHaveClass(/mermaid-hint-error/);
+  // O tempo da mensagem de erro (6 s) passa e a dica do Ligar continua
+  await page.waitForTimeout(6_500);
+  await expect(hint(page)).toHaveText('Clique no nó de destino (Esc cancela)');
+});

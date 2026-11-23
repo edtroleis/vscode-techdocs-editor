@@ -46,6 +46,8 @@ type Harness = {
   /** Problemas que sobram depois das correções automáticas (travam o Salvar). */
   lintCommitted: () => LintFinding[];
   editor: MarkdownEditorHandle | null;
+  /** Liga ou desliga o modo leitura com o editor aberto (como o host faz). */
+  setReadOnly: (readOnly: boolean) => void;
 };
 
 declare global {
@@ -78,38 +80,43 @@ const harness: Harness = {
   get editor() {
     return ref.current;
   },
+  setReadOnly: readOnly => render(readOnly),
 };
 window.harness = harness;
 
-createRoot(document.getElementById('root')!).render(
-  <MarkdownEditor
-    ref={ref}
-    text={text}
-    initialValue={toEditor(initial)}
-    onChange={markdown => {
-      harness.editorMarkdown = markdown;
-      harness.changes++;
-    }}
-    onUploadImage={async file => {
-      harness.uploads.push(file.name);
-      return `../assets/${file.name}`;
-    }}
-    onImportImage={async url => {
-      harness.imports.push(url);
-      return url.includes('sem-acesso') ? undefined : `assets/${url.split('/').pop()!.split('?')[0]}`;
-    }}
-    resolveImage={async url => {
-      harness.resolved.push(url);
-      return url ? PICTURE : '';
-    }}
-    problemLines={[]}
-    readOnly={params.get('readonly') === '1'}
-    // Páginas do site para a caixa de link, como o host manda (a página aberta é guias/deploy.md)
-    linkPages={async () => [
-      { title: 'Início', href: '../index.md', detail: 'index.md' },
-      { title: 'Referência da API', href: '../referencia-da-api.md', detail: 'referencia-da-api.md' },
-      { title: 'Rotina de backup', href: 'backup.md', detail: 'guias/backup.md', section: 'Guias' },
-      { title: 'Rascunho', href: '../rascunho.md', detail: 'rascunho.md', outside: true },
-    ]}
-  />,
-);
+const root = createRoot(document.getElementById('root')!);
+const render = (readOnly: boolean) =>
+  root.render(
+    <MarkdownEditor
+      ref={ref}
+      text={text}
+      initialValue={toEditor(initial)}
+      onChange={markdown => {
+        harness.editorMarkdown = markdown;
+        harness.changes++;
+      }}
+      onUploadImage={async file => {
+        harness.uploads.push(file.name);
+        return `../assets/${file.name}`;
+      }}
+      onImportImage={async url => {
+        harness.imports.push(url);
+        return url.includes('sem-acesso') ? undefined : `assets/${url.split('/').pop()!.split('?')[0]}`;
+      }}
+      resolveImage={async url => {
+        harness.resolved.push(url);
+        return url ? PICTURE : '';
+      }}
+      problemLines={[]}
+      readOnly={readOnly}
+      // Páginas do site para a caixa de link, como o host manda (a página aberta é guias/deploy.md)
+      linkPages={async () => [
+        { title: 'Início', href: '../index.md', detail: 'index.md' },
+        { title: 'Referência da API', href: '../referencia-da-api.md', detail: 'referencia-da-api.md' },
+        { title: 'Rotina de backup', href: 'backup.md', detail: 'guias/backup.md', section: 'Guias' },
+        { title: 'Rascunho', href: '../rascunho.md', detail: 'rascunho.md', outside: true },
+      ]}
+    />,
+  );
+
+render(params.get('readonly') === '1');
