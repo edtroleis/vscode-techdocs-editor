@@ -1,3 +1,4 @@
+import type { DiagramViewerText } from './diagramViewer';
 import { commandsCtx } from '@milkdown/kit/core';
 import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark';
 import { DIAGRAM_GROUPS, DIAGRAM_TEMPLATES, type DiagramGroup } from './diagramTemplates';
@@ -67,6 +68,8 @@ export type EditorText = {
     sinceWarning: (since: string) => string;
     /** Diagrama maior que os limites do Mermaid (M27). */
     tooBig: string;
+    /** Botão Ampliar e janela de zoom (M28). */
+    viewer: DiagramViewerText;
     /** Barra do nó no fluxograma (M12–M16). */
     bar: DiagramBarText;
     /** Textos que a barra põe no código. */
@@ -137,6 +140,16 @@ export function editorTextFrom(t: TextLookup): EditorText {
         sinceTitle: since => t('editorText.diagramSinceTitle', { since }),
       },
       tooBig: k('diagramTooBig'),
+      viewer: {
+        open: k('diagramZoom'),
+        title: k('diagramZoomTitle'),
+        zoomIn: k('diagramZoomIn'),
+        zoomOut: k('diagramZoomOut'),
+        fit: k('diagramZoomFit'),
+        actualSize: k('diagramZoomActual'),
+        close: k('diagramGalleryClose'),
+        help: k('diagramZoomHelp'),
+      },
       sinceWarning: since =>
         since.startsWith('12') ? k('diagramMermaid12Warning') : t('editorText.diagramSinceWarning', { since }),
       error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),

@@ -282,3 +282,63 @@ test('diagrama grande demais: a mensagem dos limites no lugar do desenho', async
   await openEditor(page, page1(`pie\n${'  "Fatia" : 1\n'.repeat(4000)}`));
   await expect(block(page).locator('.mermaid-error')).toContainText('Diagrama grande demais');
 });
+
+// Botão Ampliar e janela de zoom (M28)
+const viewer = (page: Page) => page.locator('.diagram-viewer');
+const percent = (page: Page) => viewer(page).locator('.diagram-viewer-percent');
+
+test('Ampliar: sempre à vista num desenho largo; a janela ajusta, aproxima, volta a 100% e fecha com Esc', async ({
+  page,
+}) => {
+  const { errors } = await openEditor(page, page1(chain(40)));
+  const zoom = block(page).locator('.mermaid-zoom');
+  await expect(zoom).toHaveCSS('opacity', '1');
+  await zoom.click();
+  await expect(viewer(page)).toBeVisible();
+  await expect(viewer(page).locator('svg').getByText('Etapa 0', { exact: true })).toBeInViewport();
+  // Ajustar um desenho muito largo não o deixa ilegível
+  const fitted = parseInt((await percent(page).innerText()) ?? '0');
+  expect(fitted).toBeGreaterThanOrEqual(35);
+  const stage = viewer(page).locator('.diagram-viewer-stage');
+  const box = (await stage.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, -300);
+  await expect.poll(async () => parseInt(await percent(page).innerText())).toBeGreaterThan(fitted);
+  await viewer(page).getByRole('button', { name: 'Tamanho real (1)' }).click();
+  await expect(percent(page)).toHaveText('100%');
+  await page.keyboard.press('-');
+  await expect(percent(page)).toHaveText('80%');
+  // Tab fica na janela
+  for (let i = 0; i < 8; i++) await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => !!document.activeElement?.closest('.diagram-viewer'))).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(viewer(page)).toHaveCount(0);
+  await expect(zoom).toBeFocused();
+  // Nada mudou no texto: o bloco segue desenhado, sem abrir o código
+  await expect(block(page).locator('.mermaid-diagram > svg')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('Ampliar: num desenho pequeno só aparece ao passar o mouse; arrastar move o desenho', async ({ page }) => {
+  await openEditor(page, page1('flowchart LR\n  A[Início] --> B[Fim]'));
+  const zoom = block(page).locator('.mermaid-zoom');
+  await expect(block(page).locator('.mermaid-diagram > svg')).toBeVisible();
+  await expect(zoom).toHaveCSS('opacity', '0');
+  await block(page).hover();
+  await expect(zoom).toHaveCSS('opacity', '1');
+  await zoom.click();
+  await expect(percent(page)).toHaveText('100%');
+  const canvas = viewer(page).locator('.diagram-viewer-canvas');
+  const before = (await canvas.boundingBox())!;
+  const stage = (await viewer(page).locator('.diagram-viewer-stage').boundingBox())!;
+  await page.mouse.move(stage.x + 20, stage.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(stage.x + 120, stage.y + 70, { steps: 4 });
+  await page.mouse.up();
+  const after = (await canvas.boundingBox())!;
+  expect(Math.round(after.x - before.x)).toBe(100);
+  expect(Math.round(after.y - before.y)).toBe(50);
+  // Clicar fora fecha
+  await page.mouse.click(5, 5);
+  await expect(viewer(page)).toHaveCount(0);
+});

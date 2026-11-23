@@ -356,3 +356,133 @@
 .milkdown .diagram-gallery-name .diagram-since-chip {
   margin-left: 0;
 }
+
+/* Botão Ampliar e janela de zoom (spec 06, M28) */
+.milkdown .mermaid-view {
+  position: relative;
+}
+/* A prévia do Crepe rola e cortaria o botão, que sobe para a linha de cima; nos diagramas quem rola é o desenho */
+.milkdown .milkdown-code-block.mermaid-block .preview-panel .preview {
+  overflow: visible;
+}
+/* Na linha do Copiar/Editar do bloco (24 px logo acima do desenho), à direita, no mesmo estilo: não cobre o desenho */
+.milkdown .milkdown-code-block .mermaid-view .mermaid-zoom {
+  position: absolute;
+  top: -24px;
+  right: 0;
+  z-index: 1;
+  height: 24px;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 100px;
+  background: var(--crepe-color-secondary);
+  color: var(--crepe-color-on-surface-variant);
+  font-family: var(--crepe-font-default);
+  font-size: calc(var(--crepe-base-font-size, 16px) * 0.75);
+  font-weight: 600;
+  line-height: 16px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+/* Como o Copiar/Editar: ao passar o mouse no bloco; num desenho grande, sempre */
+.milkdown .milkdown-code-block:hover .mermaid-view .mermaid-zoom,
+.milkdown .milkdown-code-block .mermaid-view.mermaid-big .mermaid-zoom,
+.milkdown .milkdown-code-block .mermaid-view .mermaid-zoom:focus-visible {
+  opacity: 1;
+}
+.milkdown .mermaid-view .mermaid-zoom:focus-visible,
+.milkdown .diagram-viewer button:focus-visible {
+  outline: 2px solid var(--crepe-color-primary);
+  outline-offset: 1px;
+}
+.milkdown .diagram-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  padding: 24px;
+  background: color-mix(in srgb, var(--crepe-color-on-surface), transparent 60%);
+}
+.milkdown .diagram-viewer {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--crepe-color-surface);
+  color: var(--crepe-color-on-surface);
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 8px;
+  box-shadow: var(--crepe-shadow-1);
+  overflow: hidden;
+  font: 13px var(--crepe-font-default);
+}
+.milkdown .diagram-viewer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--crepe-color-outline);
+}
+.milkdown .diagram-viewer-title {
+  margin-right: auto;
+  padding-left: 4px;
+  font-weight: 600;
+}
+.milkdown .diagram-viewer-bar button {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 9px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.milkdown .diagram-viewer-bar button:hover {
+  background: var(--crepe-color-hover);
+}
+.milkdown .diagram-viewer-percent {
+  min-width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.milkdown .diagram-viewer-stage {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  background: var(--crepe-color-background);
+}
+.milkdown .diagram-viewer-stage.dragging {
+  cursor: grabbing;
+}
+.milkdown .diagram-viewer-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+.milkdown .diagram-viewer-canvas svg {
+  display: block;
+  max-width: none;
+}
+.milkdown .diagram-viewer-canvas foreignObject p {
+  margin: 0;
+  padding: 0;
+}
+.milkdown .diagram-viewer-help {
+  padding: 6px 12px;
+  border-top: 1px solid var(--crepe-color-outline);
+  font-size: 12px;
+  opacity: 0.75;
+}
+@media (prefers-reduced-motion: reduce) {
+  .milkdown .milkdown-code-block .mermaid-view .mermaid-zoom {
+    transition: none;
+  }
+}

@@ -1,4 +1,5 @@
 import type { Mermaid } from 'mermaid';
+import { type DiagramViewerText, openDiagramViewer } from './diagramViewer';
 import { diagramSince } from './diagramTemplates';
 import { isFlowchart } from './flowchartEdit';
 
@@ -23,7 +24,48 @@ export type DiagramText = {
   sinceWarning: (since: string) => string;
   /** Diagrama maior que os limites do Mermaid (M27). */
   tooBig: string;
+  /** Botão Ampliar e janela de zoom (M28). */
+  viewer: DiagramViewerText;
 };
+
+/** Desenho maior que isto (largura ou altura natural) não cabe bem no bloco: o botão Ampliar fica sempre à vista. */
+const BIG_WIDTH = 900;
+const BIG_HEIGHT = 600;
+
+/**
+ * O botão Ampliar (M28) por delegação: o Crepe copia a prévia como HTML (`innerHTML`), sem os listeners. O texto é o
+ * da última prévia criada (um editor por página).
+ */
+let viewerText: DiagramViewerText | undefined;
+let zoomListening = false;
+function listenZoom() {
+  if (zoomListening || typeof document === 'undefined') return;
+  zoomListening = true;
+  const target = (event: Event) =>
+    event.target instanceof Element ? event.target.closest<HTMLElement>('.milkdown .mermaid-zoom') : null;
+  // Sem o mousedown, o ProseMirror põe o cursor no bloco
+  document.addEventListener(
+    'mousedown',
+    event => {
+      if (!target(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    true,
+  );
+  document.addEventListener(
+    'click',
+    event => {
+      const zoom = target(event);
+      if (!zoom || !viewerText) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const drawn = zoom.parentElement?.querySelector<SVGSVGElement>('.mermaid-diagram > svg');
+      if (drawn) openDiagramViewer(drawn, viewerText, zoom);
+    },
+    true,
+  );
+}
 
 /**
  * Limites do Mermaid (os padrões, que o site também usa): acima de 50 mil caracteres ele desenha um aviso no lugar do
@@ -160,9 +202,20 @@ async function drawCached(mermaid: Mermaid, code: string): Promise<string> {
 }
 
 function diagramElement(svg: string, text: DiagramText, code: string): HTMLElement {
+  // O botão fica fora do .mermaid-diagram, que rola para o lado: assim ele não sai do canto
+  const view = document.createElement('div');
+  view.className = 'mermaid-view';
   const element = document.createElement('div');
   element.className = 'mermaid-diagram';
   element.innerHTML = readableSvg(svg);
+  const zoom = document.createElement('button');
+  zoom.type = 'button';
+  zoom.className = 'mermaid-zoom';
+  zoom.textContent = text.viewer.open;
+  zoom.title = text.viewer.open;
+  const size = /<svg[^>]*\sviewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/.exec(svg);
+  if (size && (Number(size[1]) > BIG_WIDTH || Number(size[2]) > BIG_HEIGHT)) view.classList.add('mermaid-big');
+  view.append(zoom, element);
   const hint = document.createElement('p');
   hint.className = 'mermaid-hint';
   hint.textContent = isFlowchart(code) ? text.flowHint : text.hint;
@@ -174,7 +227,7 @@ function diagramElement(svg: string, text: DiagramText, code: string): HTMLEleme
     warning.textContent = `⚠ ${text.sinceWarning(since)}`;
     element.append(warning);
   }
-  return element;
+  return view;
 }
 
 function errorElement(text: DiagramText, message: string, code: string): HTMLElement {
@@ -211,6 +264,8 @@ export const mermaidPreview =
   (text: DiagramText) =>
   (language: string, content: string, apply: (value: null | string | HTMLElement) => void): null | undefined => {
     if (language.trim().toLowerCase() !== 'mermaid' || !content.trim()) return null;
+    viewerText = text.viewer;
+    listenZoom();
     enqueue(mermaid => render(mermaid, content, text)).then(apply, () => apply(null));
     return undefined;
   };
