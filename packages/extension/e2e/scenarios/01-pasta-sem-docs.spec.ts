@@ -59,7 +59,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
   await story.step('Escolher o template "Docs de serviço" (em português, como o README)', async () => {
     const panel = await previewPanel(page);
     await story.check('os templates seguem a língua do README', () => expect(panel.locator('#f-template option')).toContainText(['Docs de serviço']));
-    await panel.locator('#f-template').selectOption({ index: 2 });
+    await panel.locator('#f-template').selectOption({ label: 'Docs de serviço' });
     await expect(previewRow(panel, 'arquitetura.md')).toBeVisible();
     await pause(page, 1_500);
   });

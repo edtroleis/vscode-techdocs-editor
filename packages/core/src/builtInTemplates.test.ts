@@ -86,6 +86,9 @@ describe('templates da extensão', () => {
     expect(Object.keys(BUILT_IN_SITES.en)).toHaveLength(9);
     // O em branco é o primeiro (o padrão)
     expect(Object.keys(BUILT_IN_SITES.en)[0]).toBe('blank');
+    // Os outros pelo nome na língua (em português, Biblioteca antes de Docs de serviço)
+    expect(Object.keys(BUILT_IN_SITES['pt-br'])).toEqual(['blank', 'api', 'library', 'service-docs', 'golden-path', 'platform', 'project', 'runbooks', 'team-wiki']);
+    expect(Object.keys(BUILT_IN_SITES.en)).toEqual(['blank', 'api', 'golden-path', 'platform', 'library', 'runbooks', 'project', 'service-docs', 'team-wiki']);
   });
 
   for (const language of ['en', 'pt-br'] as const) {

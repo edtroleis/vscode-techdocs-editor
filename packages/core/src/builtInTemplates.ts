@@ -38,7 +38,9 @@ export const BUILT_IN_SITES: Record<TemplateLanguage, Record<string, Record<stri
       const [id, ...rest] = path.split('/');
       if (rest.length) (sites[id] ??= {})[rest.join('/')] = text;
     }
-    const ids = Object.keys(sites).sort((a, b) => (a === 'blank' ? -1 : b === 'blank' ? 1 : a.localeCompare(b)));
+    // O em branco primeiro (o padrão); os outros pelo nome na língua, como aparecem na lista
+    const name = (id: string) => /^name:\s*(.+)$/m.exec(sites[id]['template.yml'] ?? '')?.[1].trim() ?? id;
+    const ids = Object.keys(sites).sort((a, b) => (a === 'blank' ? -1 : b === 'blank' ? 1 : name(a).localeCompare(name(b), language)));
     return [language, Object.fromEntries(ids.map(id => [id, sites[id]]))];
   }),
 ) as Record<TemplateLanguage, Record<string, Record<string, string>>>;
