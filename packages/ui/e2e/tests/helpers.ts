@@ -30,7 +30,11 @@ export const editor = (page: Page) => page.locator('.milkdown .ProseMirror');
 export async function openEditor(page: Page, md = ORIGINAL) {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`/?md=${encodeURIComponent(md)}`);
+  if (md.length > 8_000) {
+    // A URL tem limite no servidor da página de teste: o Markdown grande vai por um script antes de carregar
+    await page.addInitScript(text => (window.harnessMarkdown = text), md);
+    await page.goto('/');
+  } else await page.goto(`/?md=${encodeURIComponent(md)}`);
   await editor(page).waitFor();
   await expect(page.locator('.top-bar-item')).toHaveCount(TOP_BAR.length);
   return { errors };

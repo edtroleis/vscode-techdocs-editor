@@ -15,8 +15,8 @@ import { join } from 'node:path';
 /**
  * Média das execuções que passaram em 2026-10-31 (WSL2; 2 a 3 rodadas por suíte, o e2e só 1), em segundos; editor e
  * web medidos de novo em 2026-11-05 (cresceram com o Mermaid); webview e web em 2026-11-23 (203 e 58 testes, com os
- * templates da 0.14.0; o webview com o WSL ocupado, entre 45 e 50 s); o web de novo no push da tag da 0.14.1 (76 s).
- * O limite é a média + 25% (MARGIN). Estimativa: refazer a conta com a tabela do fim quando as suítes crescerem.
+ * templates da 0.14.0; o webview com o WSL ocupado, entre 45 e 50 s); o web de novo no push da tag da 0.14.1 (76 s);
+ * editor + 60 s em 2026-11-23 (exemplos do site do Mermaid, mermaid-site-examples.spec.ts). O limite é a média + 25% (MARGIN). Estimativa: refazer a conta com a tabela do fim quando as suítes crescerem.
  */
 const AVERAGE = {
   typecheck: 8.8,
@@ -24,7 +24,7 @@ const AVERAGE = {
   build: 1.6,
   webview: 47.7,
   bundle: 2.9,
-  editor: 215.0,
+  editor: 275.0,
   vscode: 86.4,
   web: 72.0,
   e2e: 205.4,

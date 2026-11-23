@@ -17,6 +17,7 @@
     "test:all": "node scripts/test-all.mjs",
     "test:unit": "vitest run",
     "test:editor": "playwright test -c packages/ui/e2e/playwright.config.ts",
+    "test:mermaid-examples": "playwright test -c packages/ui/e2e/playwright.config.ts mermaid-site-examples",
     "test:webview": "npm run build && playwright test -c packages/extension/test/webview/playwright.config.ts",
     "test:vscode": "npm run build && node packages/extension/test/vscode/run.mjs",
     "test:web": "npm run build && node packages/extension/test/vscode/run-web.mjs",
@@ -26,7 +27,8 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "test:bundle": "node packages/extension/test/bundle-size.mjs",
     "record:videos": "node scripts/make-videos.mjs",
-    "sync-templates": "node scripts/sync-templates.mjs"
+    "sync-templates": "node scripts/sync-templates.mjs",
+    "sync-mermaid-examples": "node scripts/sync-mermaid-examples.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

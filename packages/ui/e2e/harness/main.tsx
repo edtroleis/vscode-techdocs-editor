@@ -53,11 +53,13 @@ type Harness = {
 declare global {
   interface Window {
     harness: Harness;
+    /** Markdown inicial grande demais para a URL (o servidor recusa acima de ~16 KB): os testes põem aqui antes de carregar. */
+    harnessMarkdown?: string;
   }
 }
 
 const params = new URLSearchParams(window.location.search);
-const initial = params.get('md') ?? '# Página\n\nTexto inicial.\n';
+const initial = window.harnessMarkdown ?? params.get('md') ?? '# Página\n\nTexto inicial.\n';
 
 const lintConfig = parseLintConfig('.markdownlint.yaml', lintConfigText);
 
