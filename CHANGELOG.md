@@ -6,8 +6,21 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- 29 Mermaid diagram templates in the `/` menu, in five groups (Flows, Structure, Planning, Charts, Ideas): user
+  journey, swimlanes, event modeling, classes, architecture, blocks, C4, packet, requirements, file tree, timeline,
+  Kanban, Git, pie, XY chart, quadrant, radar, Sankey, treemap, mind map, Ishikawa, Venn, Wardley map and Cynefin,
+  besides the five from before. Examples in the language of the editor.
+- The diagram button of the toolbar opens a gallery with a preview of each template, a filter by group and search.
+- Diagram types that need a newer Mermaid than some TechDocs setups have show a "Backstage 11.x+" tag and a note
+  under the drawing.
+- Every example of the Mermaid documentation (617) is opened in the visual editor on each release
+  (`npm run test:mermaid-examples`).
+
 ### Changed
 
+- Diagrams use the colorful Mermaid themes of mermaid.js.org (`redux-color`, `redux-dark-color`) in the editor.
 - A folder with no documentation has a single **Create the documentation** button, which asks how to start:
   **Blank** (as before, in one click) or **Choose a template…**. The **Choose a Template Here…** command is gone
   from the command palette; **New documentation site…** is still there.

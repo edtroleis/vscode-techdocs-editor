@@ -1,4 +1,5 @@
 import type { Mermaid } from 'mermaid';
+import { diagramSince } from './diagramTemplates';
 import { isFlowchart } from './flowchartEdit';
 
 /**
@@ -18,6 +19,8 @@ export type DiagramText = {
   hint: string;
   /** Dica dos fluxogramas, que também têm a barra do nó (M12). */
   flowHint: string;
+  /** Aviso dos tipos novos do Mermaid, que o TechDocs só desenha numa versão mais nova (M23). */
+  sinceWarning: (since: string) => string;
 };
 
 /** Erro de sintaxe de um bloco: a linha no arquivo e a mensagem do Mermaid. */
@@ -34,8 +37,14 @@ let renders = 0;
 const sources = new Map<string, string>();
 
 const configure = (mermaid: Mermaid) =>
-  // strict: rótulos sem HTML e `click` sem javascript:
-  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme, suppressErrorRendering: true });
+  mermaid.initialize({
+    startOnLoad: false,
+    // strict: rótulos sem HTML e `click` sem javascript:
+    securityLevel: 'strict',
+    // Os temas coloridos do mermaid.js.org (M24), no claro e no escuro
+    theme: theme === 'dark' ? 'redux-dark-color' : 'redux-color',
+    suppressErrorRendering: true,
+  });
 
 function load(): Promise<Mermaid> {
   loading ??= import('mermaid').then(
@@ -130,6 +139,13 @@ function diagramElement(svg: string, text: DiagramText, code: string): HTMLEleme
   hint.className = 'mermaid-hint';
   hint.textContent = isFlowchart(code) ? text.flowHint : text.hint;
   element.append(hint);
+  const since = diagramSince(code);
+  if (since) {
+    const warning = document.createElement('p');
+    warning.className = 'mermaid-warning';
+    warning.textContent = `⚠ ${text.sinceWarning(since)}`;
+    element.append(warning);
+  }
   return element;
 }
 
@@ -165,6 +181,9 @@ export const mermaidPreview =
     enqueue(mermaid => render(mermaid, content, text)).then(apply, () => apply(null));
     return undefined;
   };
+
+/** Desenha `code` fora de um bloco (miniaturas da galeria, M22): o SVG, ou erro se o código não for válido. */
+export const drawDiagram = (code: string): Promise<string> => enqueue(mermaid => drawCached(mermaid, code));
 
 /** Troca o tema dos diagramas e redesenha os que estão na tela, um por vez na fila. */
 export function setMermaidTheme(next: MermaidTheme) {

@@ -55,6 +55,10 @@ automático, entrou depois como passo futuro (ver M10 e M11).
 | M18 | Editor visual | **Arrastar de um nó a um espaço vazio do desenho cria um passo ligado a ele**, como **+ Passo depois** (M13), e abre o código com o nome selecionado. Soltar fora do desenho, no próprio nó, ou apertar Esc cancela | ✅ |
 | M19 | Editor visual | **Durante o arrasto:** uma linha tracejada sai do nó até o ponteiro, o nó embaixo do ponteiro fica destacado, e a dica vira "Solte num nó para ligar, ou num espaço vazio para criar um passo (Esc cancela)" (en: "Drop on a node to connect, or on an empty space to add a step (Esc cancels)"). Menos de 5 px de movimento conta como clique (abre a barra, M12). A dica dos fluxogramas passa a ser "Clique ou arraste um nó para acrescentar e ligar; clique duas vezes num texto para editá-lo" (en: "Click or drag a node to add and connect; double-click a text to edit it") | ✅ |
 | M20 | Editor visual | O arrastar usa as mesmas funções e regras da barra (M16: uma transação, só se o `parse` aceita, a mensagem se não der); nada no modo leitura nem nos outros tipos de diagrama | ✅ |
+| M21 | Editor visual | **29 modelos no menu "/"**, em cinco grupos do menu: Fluxos (fluxograma, sequência, estados, jornada do usuário, raias, modelagem de eventos), Estrutura (classes, entidades, arquitetura, blocos, C4, pacote, requisitos, árvore de arquivos), Planejamento (Gantt, linha do tempo, Kanban, Git), Gráficos (pizza, XY, quadrante, radar, Sankey, treemap) e Ideias (mapa mental, Ishikawa, Venn, Wardley, Cynefin). Nome "Diagrama: …" (o filtro "/diagrama" acha todos) e exemplo no idioma da pessoa | ✅ |
+| M22 | Editor visual | **Galeria:** o botão de diagrama da barra abre uma janela com a miniatura de cada modelo, filtro por grupo e busca pelo nome (sem acento); clicar ou Enter insere o exemplo, setas andam entre os cartões, Esc fecha sem mudar nada | ✅ |
+| M23 | Editor visual | **Tipos novos do Mermaid** (treemap 11.10, Ishikawa e Venn 11.13, árvore e Wardley 11.14, modelagem de eventos 11.15, raias e Cynefin 11.16; Use Case e Agentflow do 12): etiqueta "Backstage 11.x+" no menu e na galeria, e aviso embaixo do desenho com a versão que o TechDocs precisa | ✅ |
+| M24 | Editor visual | **Cores como no mermaid.js.org:** temas `redux-color` (claro) e `redux-dark-color` (escuro) no lugar de `default`/`dark`. No site publicado as cores continuam as do MkDocs Material ou do addon do Backstage | ✅ |
 
 ### M10 e M11: decisões (2026-11-20)
 
@@ -73,6 +77,18 @@ automático, entrou depois como passo futuro (ver M10 e M11).
 - **Mapa do desenho para o código** num módulo próprio (`diagramSource.ts`, sem DOM do editor), testado por
   unitários: é a peça que o passo 3 reaproveita.
 
+
+### M21 a M24: decisões (2026-11-23)
+
+- **Quais tipos:** os que o Mermaid 11 desenha. Os 21 que existem desde a 11.6 (o mínimo do addon do Backstage) entram
+  sem aviso; os 8 que pedem uma 11 mais nova entram com a etiqueta e o aviso (M23). Use Case e Agentflow (só no 12)
+  e ZenUML (plugin à parte) ficam fora: quebrariam no site publicado.
+- **Menu e galeria:** o menu "/" para quem digita, a galeria (com o desenho de cada modelo) pelo botão da barra.
+- **Aviso nos dois lugares:** etiqueta no menu e na galeria, faixa embaixo do desenho.
+- **Protótipo aprovado:** https://claude.ai/artifact/1eSwZB8e9DdMB4DEpNus34
+- **Exemplos do site como teste:** os 617 exemplos do mermaid.js.org (introdução e sintaxe de cada tipo) ficam em
+  `packages/ui/e2e/fixtures/mermaid-site-examples.json` e abrem no editor visual a cada release
+  (`mermaid-site-examples.spec.ts`; `npm run sync-mermaid-examples` baixa de novo ao atualizar o Mermaid).
 
 ### M17 a M20: decisões (2026-11-23)
 

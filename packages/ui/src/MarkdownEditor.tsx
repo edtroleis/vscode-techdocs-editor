@@ -1,5 +1,6 @@
 import { mermaidPreview } from './mermaidPreview';
 import { diagramDoubleClickPlugin } from './diagramDoubleClick';
+import { diagramMenuChipsPlugin } from './diagramGallery';
 import { diagramBarCtx, diagramNodeBarPlugin } from './diagramNodeBar';
 import { mermaidBlockClassPlugin } from './mermaidBlockClass';
 import { diagramInsertCtx } from './insertDiagram';
@@ -222,7 +223,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .config(ctx => {
         ctx.update(remarkStringifyOptionsCtx, prev => ({ ...prev, ...STRINGIFY_OPTIONS }));
         ctx.inject(externalHistoryCtx, external);
-        ctx.inject(diagramInsertCtx, { sample: labels.diagram.sample, onInserted: () => diagramInsertedRef.current?.() });
+        ctx.inject(diagramInsertCtx, {
+          sample: labels.diagram.sample,
+          onInserted: () => diagramInsertedRef.current?.(),
+          templates: labels.diagram.templates,
+          gallery: labels.diagram.gallery,
+        });
         ctx.inject(diagramBarCtx, { bar: labels.diagram.bar, words: labels.diagram.words, hint: labels.diagram.flowHint });
       })
       .use(defaultCodeLanguagePlugin)
@@ -234,6 +240,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(diagramDoubleClickPlugin)
       .use(diagramNodeBarPlugin)
       .use(mermaidBlockClassPlugin)
+      .use(diagramMenuChipsPlugin)
       .use(visualSearchPlugin)
       .use(imageAltPlugin(src => uploadedNames.current.get(src)));
     crepeRef.current = crepe;

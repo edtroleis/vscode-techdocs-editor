@@ -1,5 +1,6 @@
 import { editorViewCtx } from '@milkdown/kit/core';
 import { createSlice, type Ctx } from '@milkdown/kit/ctx';
+import type { DiagramGalleryText, DiagramTemplate } from './labels';
 
 /**
  * Inserir um diagrama Mermaid (spec 06, M4) pelo menu "/" e pela barra: um bloco de código `mermaid` com um
@@ -10,6 +11,9 @@ export type DiagramInsert = {
   sample: string;
   /** Avisado depois de cada inserção (a extensão configura o mkdocs.yml no primeiro diagrama, M7). */
   onInserted?: () => void;
+  /** Modelos e textos da galeria do botão da barra (M22); sem eles, o botão insere o fluxograma. */
+  templates?: DiagramTemplate[];
+  gallery?: DiagramGalleryText;
 };
 
 export const diagramInsertCtx = createSlice<DiagramInsert>({ sample: 'flowchart LR\n  A --> B' }, 'docsEditorDiagramInsert');

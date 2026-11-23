@@ -1,14 +1,34 @@
 import { commandsCtx } from '@milkdown/kit/core';
 import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark';
-import { DIAGRAM_ICON, ENTITIES_ICON, GANTT_ICON, SEQUENCE_ICON, STATE_ICON } from './icons';
+import { DIAGRAM_GROUPS, DIAGRAM_TEMPLATES, type DiagramGroup } from './diagramTemplates';
 import type { DiagramBarText } from './diagramNodeBar';
 import type { FlowchartWords } from './flowchartEdit';
 import { insertDiagram } from './insertDiagram';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
 
-/** Um modelo de diagrama do menu "/" (spec 06, M11). */
-export type DiagramTemplate = { key: 'flow' | 'sequence' | 'state' | 'gantt' | 'entities'; label: string; sample: string; icon: string };
+/** Um modelo de diagrama do menu "/" e da galeria (spec 06, M11 e M21). */
+export type DiagramTemplate = {
+  key: string;
+  group: DiagramGroup;
+  label: string;
+  sample: string;
+  icon: string;
+  /** Tipo novo do Mermaid: versão mínima que o TechDocs precisa (M23). */
+  since?: string;
+};
+
+/** Textos da galeria de diagramas (M22) e do aviso dos tipos novos (M23). */
+export type DiagramGalleryText = {
+  title: string;
+  all: string;
+  search: string;
+  close: string;
+  groups: Record<DiagramGroup, string>;
+  /** Etiqueta curta do tipo novo ("Backstage 11.16+") e a explicação dela. */
+  sinceChip: (since: string) => string;
+  sinceTitle: (since: string) => string;
+};
 
 /** Busca um texto traduzido pela chave (ex.: "editorText.quote"), com as variáveis. */
 export type TextLookup = (key: string, vars?: Record<string, string | number>) => string;
@@ -40,8 +60,11 @@ export type EditorText = {
     /** Dica dos fluxogramas, que têm a barra do nó (M12). */
     flowHint: string;
     error: (line?: number) => string;
-    /** Os cinco modelos do menu "/" (M11), nesta ordem. */
+    /** Os modelos do menu "/" e da galeria (M11, M21), nesta ordem. */
     templates: DiagramTemplate[];
+    gallery: DiagramGalleryText;
+    /** Aviso embaixo do desenho de um tipo novo do Mermaid (M23). */
+    sinceWarning: (since: string) => string;
     /** Barra do nó no fluxograma (M12–M16). */
     bar: DiagramBarText;
     /** Textos que a barra põe no código. */
@@ -88,13 +111,31 @@ export function editorTextFrom(t: TextLookup): EditorText {
       show: k('diagramShow'),
       hint: k('diagramHint'),
       flowHint: k('diagramFlowHint'),
-      templates: [
-        { key: 'flow', label: k('diagramFlow'), sample: k('diagramSample'), icon: DIAGRAM_ICON },
-        { key: 'sequence', label: k('diagramSequence'), sample: k('diagramSampleSequence'), icon: SEQUENCE_ICON },
-        { key: 'state', label: k('diagramState'), sample: k('diagramSampleState'), icon: STATE_ICON },
-        { key: 'gantt', label: k('diagramGantt'), sample: k('diagramSampleGantt'), icon: GANTT_ICON },
-        { key: 'entities', label: k('diagramEntities'), sample: k('diagramSampleEntities'), icon: ENTITIES_ICON },
-      ],
+      templates: DIAGRAM_TEMPLATES.map(({ key, name, group, icon, since }) => ({
+        key,
+        group,
+        icon,
+        since,
+        label: k(`diagram${name}`),
+        sample: k(key === 'flow' ? 'diagramSample' : `diagramSample${name}`),
+      })),
+      gallery: {
+        title: k('diagramGalleryTitle'),
+        all: k('diagramGalleryAll'),
+        search: k('diagramGallerySearch'),
+        close: k('diagramGalleryClose'),
+        groups: {
+          flows: k('diagramGroupFlows'),
+          structure: k('diagramGroupStructure'),
+          planning: k('diagramGroupPlanning'),
+          charts: k('diagramGroupCharts'),
+          ideas: k('diagramGroupIdeas'),
+        },
+        sinceChip: since => t('editorText.diagramSinceChip', { since }),
+        sinceTitle: since => t('editorText.diagramSinceTitle', { since }),
+      },
+      sinceWarning: since =>
+        since.startsWith('12') ? k('diagramMermaid12Warning') : t('editorText.diagramSinceWarning', { since }),
       error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),
       bar: {
         step: k('diagramStepAfter'),
@@ -166,24 +207,22 @@ export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
     codeBlock: { label: text.codeBlock },
     table: { label: text.table },
   },
-  // Os cinco modelos de diagrama Mermaid (spec 06, M4 e M11), logo depois do bloco de código. O menu do Crepe só
-  // filtra pelo nome: "Diagrama: …" faz "/diagrama" achar os cinco
+  // Os modelos de diagrama Mermaid (spec 06, M4, M11 e M21), um grupo do menu para cada tipo de assunto. O menu do
+  // Crepe só filtra pelo nome: "Diagrama: …" faz "/diagrama" achar todos
   buildMenu: builder => {
-    const advanced = builder.getGroup('advanced');
-    const items = advanced.group.items;
-    for (const template of text.diagram.templates) {
-      advanced.addItem(`mermaid-${template.key}`, {
-        label: template.label,
-        icon: template.icon,
-        onRun: ctx => {
-          ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
-          insertDiagram(ctx, template.sample);
-        },
-      });
+    for (const group of DIAGRAM_GROUPS) {
+      const added = builder.addGroup(`diagrams-${group}`, text.diagram.gallery.groups[group]);
+      for (const template of text.diagram.templates.filter(t => t.group === group)) {
+        added.addItem(`mermaid-${template.key}`, {
+          label: template.label,
+          icon: template.icon,
+          onRun: ctx => {
+            ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
+            insertDiagram(ctx, template.sample);
+          },
+        });
+      }
     }
-    const added = items.splice(items.length - text.diagram.templates.length);
-    const code = items.findIndex(i => i.key === 'code');
-    items.splice(code >= 0 ? code + 1 : items.length, 0, ...added);
   },
 });
 

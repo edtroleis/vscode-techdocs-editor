@@ -101,6 +101,12 @@ const TOP_BAR_UNDO = 14;
 /** Posição do botão Diagrama (Mermaid) na barra fixa. */
 const TOP_BAR_DIAGRAM = 11;
 
+/** O botão de diagrama abre a galeria (spec 06, M22): escolhe o fluxograma nela. */
+function insertFlowchart(session: { clickTopBar(index: number): void; click(selector: string): void }) {
+  session.clickTopBar(TOP_BAR_DIAGRAM);
+  session.click('.diagram-gallery-card[data-key="flow"]');
+}
+
 const pages = async () =>
   (await vscode.workspace.findFiles('wiki*/docs/**/*.md')).sort((a, b) => a.path.localeCompare(b.path));
 
@@ -245,14 +251,14 @@ export function defineTests() {
       try {
         await write('# Diagramas\n\nTexto.\n');
         const { session } = await openVisual(page());
-        session.clickTopBar(TOP_BAR_DIAGRAM);
+        insertFlowchart(session);
         await until(read, text => text.includes('- name: mermaid'), 'o mkdocs.yml não foi configurado');
         ok((await read()).startsWith(original.trimEnd()), 'o resto do mkdocs.yml mudou');
         await until(() => messages, list => list.length === 1, 'a mensagem não apareceu');
         equal(messages[0], 'Configured Mermaid diagrams in wiki/mkdocs.yml.', 'texto da mensagem');
         // Segundo diagrama: nada muda, nada a dizer
         const configured = await read();
-        session.clickTopBar(TOP_BAR_DIAGRAM);
+        insertFlowchart(session);
         await new Promise(resolve => setTimeout(resolve, 1000));
         equal(await read(), configured, 'o segundo diagrama mexeu no mkdocs.yml');
         equal(messages.length, 1, 'mensagem repetida no segundo diagrama');
@@ -260,7 +266,7 @@ export function defineTests() {
         await vscode.workspace.fs.writeFile(mkdocs, new TextEncoder().encode(original));
         await until(read, text => text === original, 'o mkdocs.yml não voltou para o teste do Desfazer');
         answer = 'Undo';
-        session.clickTopBar(TOP_BAR_DIAGRAM);
+        insertFlowchart(session);
         await until(() => messages, list => list.length === 2, 'a mensagem não apareceu de novo');
         await until(read, text => text === original, 'Desfazer não devolveu o mkdocs.yml');
       } finally {
@@ -283,7 +289,7 @@ export function defineTests() {
       try {
         await vscode.workspace.fs.writeFile(loose, new TextEncoder().encode('# Solto\n\nTexto.\n'));
         const { session, document } = await openVisual(loose);
-        session.clickTopBar(TOP_BAR_DIAGRAM);
+        insertFlowchart(session);
         await until(() => document.getText(), text => text.includes('```mermaid'), 'o diagrama não entrou');
         await new Promise(resolve => setTimeout(resolve, 1000));
         equal(messages.length, 0, 'mensagem numa página fora de um site');

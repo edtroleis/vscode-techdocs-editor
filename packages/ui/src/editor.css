@@ -194,3 +194,157 @@
   white-space: pre;
   overflow-x: auto;
 }
+/* Tipos novos do Mermaid (M23): aviso embaixo do desenho e etiqueta no menu "/" e na galeria */
+.milkdown .mermaid-warning {
+  flex-basis: 100%;
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--docs-editor-warning, #b58100), transparent 88%);
+  color: var(--crepe-color-on-surface);
+  font-family: var(--crepe-font-default);
+  font-size: 0.85em;
+  text-align: left;
+}
+.milkdown .ProseMirror[contenteditable='false'] .mermaid-warning {
+  display: none;
+}
+.milkdown-slash-menu li[data-since]::after,
+.diagram-since-chip {
+  content: attr(data-since);
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--docs-editor-warning, #b58100), transparent 82%);
+  color: var(--crepe-color-on-surface);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+/* Galeria de diagramas (M22), aberta pelo botão de diagrama da barra */
+.milkdown .diagram-gallery-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px 16px;
+  background: color-mix(in srgb, var(--crepe-color-on-surface), transparent 75%);
+}
+.milkdown .diagram-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(880px, 100%);
+  max-height: calc(100vh - 80px);
+  padding: 14px;
+  background: var(--crepe-color-surface);
+  color: var(--crepe-color-on-surface);
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 8px;
+  box-shadow: var(--crepe-shadow-1);
+  font-family: var(--crepe-font-default);
+  font-size: 13px;
+}
+.milkdown .diagram-gallery-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.milkdown .diagram-gallery-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.milkdown .diagram-gallery-search {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 4px;
+  background: var(--crepe-color-background, transparent);
+  color: inherit;
+  font: inherit;
+}
+.milkdown .diagram-gallery-close {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.milkdown .diagram-gallery-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.milkdown .diagram-gallery-filter {
+  padding: 2px 10px;
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.milkdown .diagram-gallery-filter[aria-pressed='true'] {
+  border-color: var(--crepe-color-primary);
+  color: var(--crepe-color-primary);
+}
+.milkdown .diagram-gallery-grid {
+  display: grid;
+  grid-auto-rows: max-content;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+}
+.milkdown .diagram-gallery-card {
+  display: grid;
+  grid-template-rows: 96px auto;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.milkdown .diagram-gallery-card[hidden] {
+  display: none;
+}
+.milkdown .diagram-gallery-card:hover,
+.milkdown .diagram-gallery-card:focus-visible {
+  border-color: var(--crepe-color-primary);
+  outline: none;
+}
+.milkdown .diagram-gallery-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  overflow: hidden;
+  background: var(--crepe-color-hover);
+  pointer-events: none;
+}
+.milkdown .diagram-gallery-thumb svg {
+  max-width: 100%;
+  max-height: 88px;
+  height: auto;
+}
+.milkdown .diagram-gallery-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 5px 8px;
+}
+.milkdown .diagram-gallery-name .diagram-since-chip {
+  margin-left: 0;
+}

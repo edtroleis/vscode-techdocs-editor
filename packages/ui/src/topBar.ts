@@ -9,7 +9,7 @@ import { NodeSelection } from '@milkdown/kit/prose/state';
 import type { Command, EditorState } from '@milkdown/kit/prose/state';
 import { externalHistoryCtx } from './externalHistory';
 import { DIAGRAM_ICON, icon } from './icons';
-import { insertDiagram } from './insertDiagram';
+import { openDiagramGallery } from './diagramGallery';
 import { inlineCodeTyping, toggleInlineCodeTyping } from './inlineCodeTyping';
 
 
@@ -147,7 +147,7 @@ export function buildTopBar(builder: TopBarBuilder) {
   }
 
   // Diagrama Mermaid (spec 06, M4), ao lado do bloco de código
-  block.addItem('mermaid', { icon: DIAGRAM_ICON, active: () => false, onRun: insertDiagram });
+  block.addItem('mermaid', { icon: DIAGRAM_ICON, active: () => false, onRun: openDiagramGallery });
 
   const more = builder.getGroup('more');
   const [quote, hr] = more.group.items as TopBarItem[];

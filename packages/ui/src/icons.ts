@@ -10,3 +10,8 @@ export const SEQUENCE_ICON = icon('M5 3h2v18H5zm12 0h2v18h-2zM7 8h7V6l3 3-3 3v-2
 export const STATE_ICON = icon('M6 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm3 2h3v2H9zm6-3h4a3 3 0 0 1 0 8h-4a3 3 0 0 1 0-8zm0 2a1 1 0 0 0 0 4h4a1 1 0 0 0 0-4z');
 export const GANTT_ICON = icon('M3 5h9v3H3zm5 6h10v3H8zm6 6h7v3h-7z');
 export const ENTITIES_ICON = icon('M2 5h8v14H2zm2 2v2h4V7zm10-2h8v14h-8zm2 2v2h4V7zm-6 4h4v2h-4z');
+
+/** Ícones dos grupos de modelos novos (spec 06, M21): estrutura, gráficos e ideias. */
+export const STRUCTURE_ICON = icon('M3 3h7v6H3zm11 0h7v6h-7zM8 15h8v6H8zM6 9h1v3h10V9h1v4h-5.5v2h-1v-2H6z');
+export const CHART_ICON = icon('M4 20V10h3v10zm6.5 0V4h3v16zM17 20v-7h3v7z');
+export const IDEA_ICON = icon('M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM11 2h2v4h-2zm0 16h2v4h-2zM2 11h4v2H2zm16 0h4v2h-4z');

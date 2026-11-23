@@ -1,7 +1,8 @@
 import { expect, Page, test } from '@playwright/test';
+import { DIAGRAM_TEMPLATES } from '../../src/diagramTemplates';
 import { en } from '../../src/messages/en';
 import { ptBR } from '../../src/messages/pt-BR';
-import { clickTopBar, editor, newLineAtEnd, openEditor, saved, slash, topBarButton } from './helpers';
+import { clickTopBar, editor, newLineAtEnd, openEditor, saved, slash, topBarButton, expectSaved } from './helpers';
 
 /** Diagramas Mermaid no editor visual (spec 06, M1–M3). */
 
@@ -83,9 +84,9 @@ test('menu /: "Diagrama: fluxograma" insere o exemplo', async ({ page }) => {
   expect(await saved(page)).toBe(`# Página\n\nTexto inicial.\n\n${SAMPLE}`);
 });
 
-// Cinco modelos no menu / (M11), nas duas línguas: cada exemplo desenha sem erro
-const MODELS = ['Flow', 'Sequence', 'State', 'Gantt', 'Entities'] as const;
-const sampleKey = (m: (typeof MODELS)[number]) => (m === 'Flow' ? 'editorText.diagramSample' : `editorText.diagramSample${m}`);
+// Os modelos do menu / (M11, M21), nas duas línguas: cada exemplo desenha sem erro
+const MODELS = DIAGRAM_TEMPLATES.map(t => t.name);
+const sampleKey = (m: string) => (m === 'Flow' ? 'editorText.diagramSample' : `editorText.diagramSample${m}`);
 for (const [lang, messages] of [['', ptBR], ['en', en]] as const) {
   for (const model of MODELS) {
     const name = (messages as Record<string, string>)[`editorText.diagram${model}`];
@@ -94,7 +95,8 @@ for (const [lang, messages] of [['', ptBR], ['en', en]] as const) {
       await editor(page).waitFor();
       await newLineAtEnd(page);
       await slash(page, name);
-      await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
+      // > svg: a arquitetura tem SVGs dentro do desenho (os ícones)
+      await expect(block(page).locator('.mermaid-diagram > svg')).toBeVisible();
       await expect(block(page).locator('.mermaid-error')).toHaveCount(0);
       const sample = (messages as Record<string, string>)[sampleKey(model)];
       await expect.poll(() => saved(page)).toContain(sample);
@@ -102,13 +104,55 @@ for (const [lang, messages] of [['', ptBR], ['en', en]] as const) {
   }
 }
 
-test('barra: o botão "Diagrama (Mermaid)" insere o exemplo', async ({ page }) => {
+// Galeria do botão da barra (M22)
+const gallery = (page: Page) => page.locator('.diagram-gallery');
+const cards = (page: Page) => gallery(page).locator('.diagram-gallery-card:visible');
+
+test('barra: o botão "Diagrama (Mermaid)" abre a galeria; o cartão escolhido insere o exemplo', async ({ page }) => {
   await openEditor(page);
   await expect(topBarButton(page, 'diagram')).toHaveAttribute('title', 'Diagrama (Mermaid)');
   await newLineAtEnd(page);
   await clickTopBar(page, 'diagram');
+  await expect(gallery(page)).toBeVisible();
+  await expect(cards(page)).toHaveCount(29);
+  // As miniaturas chegam desenhadas
+  await expect(gallery(page).locator('[data-key="pie"] .diagram-gallery-thumb svg')).toBeVisible();
+  await gallery(page).locator('[data-key="flow"]').click();
+  await expect(gallery(page)).toHaveCount(0);
   await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
-  expect(await saved(page)).toBe(`# Página\n\nTexto inicial.\n\n${SAMPLE}`);
+  await expectSaved(page, `# Página\n\nTexto inicial.\n\n${SAMPLE}`);
+});
+
+test('galeria: filtro por grupo, busca sem acento, Enter escolhe e Esc fecha sem mudar nada', async ({ page }) => {
+  await openEditor(page);
+  await newLineAtEnd(page);
+  await clickTopBar(page, 'diagram');
+  await gallery(page).getByRole('button', { name: 'Gráficos' }).click();
+  await expect(cards(page)).toHaveCount(6);
+  await expect(gallery(page).locator('[data-key="treemap"] .diagram-since-chip')).toHaveText('Backstage 11.10+');
+  await gallery(page).getByRole('button', { name: 'Todos' }).click();
+  await page.keyboard.press('Escape');
+  await expect(gallery(page)).toHaveCount(0);
+  expect(await saved(page)).toBeUndefined();
+  await clickTopBar(page, 'diagram');
+  await expect(gallery(page).locator('.diagram-gallery-search')).toBeFocused();
+  await page.keyboard.type('grafico');
+  await expect(cards(page).locator('.diagram-gallery-name')).toHaveText(['gráfico XY']);
+  await page.keyboard.press('Enter');
+  await expect(gallery(page)).toHaveCount(0);
+  await expect.poll(() => saved(page)).toContain('xychart-beta');
+});
+
+test('tipo novo do Mermaid: aviso embaixo do desenho com a versão que o TechDocs precisa', async ({ page }) => {
+  await openEditor(page, page1(ptBR['editorText.diagramSampleVenn']));
+  await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
+  await expect(block(page).locator('.mermaid-warning')).toContainText('Mermaid 11.13 ou mais novo');
+});
+
+test('tipo comum: sem aviso', async ({ page }) => {
+  await openEditor(page, page1('pie title Pets\n  "Cães" : 3\n  "Gatos" : 2'));
+  await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
+  await expect(block(page).locator('.mermaid-warning')).toHaveCount(0);
 });
 
 // Clique duplo leva ao código (M10)

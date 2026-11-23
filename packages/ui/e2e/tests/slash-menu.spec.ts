@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { DIAGRAM_TEMPLATES } from '../../src/diagramTemplates';
+import { ptBR } from '../../src/messages/pt-BR';
 import {
   backspace,
   chooseHeading,
@@ -41,20 +43,22 @@ test.describe('menu /: itens oferecidos', () => {
       'Lista de tarefas',
       'Imagem',
       'Bloco de código',
-      'Diagrama: fluxograma',
-      'Diagrama: sequência',
-      'Diagrama: estados',
-      'Diagrama: cronograma (Gantt)',
-      'Diagrama: entidades',
       'Tabela',
+      // Os modelos de diagrama, um grupo do menu por assunto (spec 06, M21)
+      ...DIAGRAM_TEMPLATES.map(t => ptBR[`editorText.diagram${t.name}` as keyof typeof ptBR]),
     ]);
   });
 
-  test('/diagrama mostra os cinco modelos', async ({ page }) => {
+  test('/diagrama mostra os 29 modelos em cinco grupos, com a etiqueta nos tipos novos', async ({ page }) => {
     await openEditor(page);
     await newLineAtEnd(page);
     await page.keyboard.type('/diagrama');
-    await expect(page.locator('.milkdown-slash-menu li > span:not(.milkdown-icon)')).toHaveCount(5);
+    await expect(page.locator('.milkdown-slash-menu li > span:not(.milkdown-icon)')).toHaveCount(29);
+    await expect(page.locator('.milkdown-slash-menu .menu-group h6')).toHaveText(['Fluxos', 'Estrutura', 'Planejamento', 'Gráficos', 'Ideias']);
+    const venn = page.locator('.milkdown-slash-menu li', { hasText: 'Diagrama: Venn' });
+    await expect(venn).toHaveAttribute('data-since', 'Backstage 11.13+');
+    await expect(venn).toHaveAttribute('title', 'Precisa do Mermaid 11.13 ou mais novo no Backstage');
+    await expect(page.locator('.milkdown-slash-menu li[data-since]')).toHaveCount(8);
   });
 
   test('filtra pelo que é digitado depois da barra', async ({ page }) => {
