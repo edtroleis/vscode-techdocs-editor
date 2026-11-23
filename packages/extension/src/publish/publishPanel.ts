@@ -27,6 +27,7 @@ import { RemoteGit } from './remoteGit';
 import { type Strip, type StripAction, stripFor } from './strip';
 import type { LocalGit, PageDoc } from './types';
 import { DocumentPage, gitApi, VscodeGit } from './vscodeGit';
+import { isWebUrl } from '../imageUpload';
 
 /** O que o webview do painel desenha. */
 export type PanelState =
@@ -340,7 +341,7 @@ export class PublishPanel implements vscode.WebviewViewProvider, vscode.Disposab
 
   private async onMessage(message: PanelMessage) {
     if (message.type === 'ready') return this.post();
-    if (message.type === 'openUrl') return vscode.env.openExternal(vscode.Uri.parse(message.url));
+    if (message.type === 'openUrl') return isWebUrl(message.url) && vscode.env.openExternal(vscode.Uri.parse(message.url));
     if (message.type === 'showLine') return this.showLine(message.path, message.line);
     const publisher = this.publisher;
     switch (message.action) {

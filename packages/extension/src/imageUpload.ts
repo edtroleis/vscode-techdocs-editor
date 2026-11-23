@@ -28,6 +28,48 @@ export function imageTarget(pagePath: string, docsDir: string | undefined, name:
   return { path, link: relativePath(pageDir, path) };
 }
 
+/** Só endereços da web: o painel abre fora do VS Code só o que é http(s) (nada de command:, file: e afins). */
+export function isWebUrl(url: string): boolean {
+  try {
+    return /^https?:$/.test(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+}
+
+const safeDecode = (text: string) => {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+};
+
+/** O corpo da resposta, parando de ler (e falhando) quando passa do limite: o servidor pode não dizer o tamanho. */
+async function readLimited(response: Response, limit: number): Promise<Uint8Array> {
+  if (!response.body) return new Uint8Array(await response.arrayBuffer());
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      void reader.cancel();
+      throw new Error('tooLarge');
+    }
+    chunks.push(value);
+  }
+  const data = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    data.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return data;
+}
+
 const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg' };
 
 /**
@@ -43,8 +85,8 @@ export async function downloadImage(url: string, maxMB: number, get: typeof fetc
   const mime = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
   const length = Number(response.headers.get('content-length') ?? 0);
   if (length > maxMB * 1024 * 1024) throw new Error('tooLarge');
-  const data = new Uint8Array(await response.arrayBuffer());
-  let name = decodeURIComponent(parsed.pathname.split('/').pop() ?? '') || 'imagem';
+  const data = await readLimited(response, maxMB * 1024 * 1024);
+  let name = safeDecode(parsed.pathname.split('/').pop() ?? '') || 'imagem';
   if (!/\.[a-z0-9]{2,5}$/i.test(name) && EXTENSIONS[mime]) name = `${name}.${EXTENSIONS[mime]}`;
   return { name, mime, data };
 }
