@@ -2,7 +2,7 @@ import { EditorView as CodeView } from '@codemirror/view';
 import { Plugin, PluginKey } from '@milkdown/kit/prose/state';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { $prose } from '@milkdown/kit/utils';
-import { locateInDiagram, type DiagramTarget } from './diagramSource';
+import { type CodeRange, locateInDiagram, type DiagramTarget } from './diagramSource';
 
 /**
  * Clique duplo num texto do desenho Mermaid leva ao código (spec 06, M10). O bloco de código do Crepe fica como
@@ -26,7 +26,7 @@ export function targetFromElement(element: Element): DiagramTarget {
 }
 
 /** A posição do bloco de código cujo DOM é `dom`. */
-function blockPosition(view: EditorView, dom: Element): number | undefined {
+export function blockPosition(view: EditorView, dom: Element): number | undefined {
   let found: number | undefined;
   view.state.doc.descendants((node, pos) => {
     if (found !== undefined) return false;
@@ -36,16 +36,13 @@ function blockPosition(view: EditorView, dom: Element): number | undefined {
   return found;
 }
 
-function onDoubleClick(view: EditorView, event: MouseEvent) {
-  const target = event.target;
-  if (!view.editable || !(target instanceof Element) || !target.closest('.mermaid-diagram')) return;
-  const block = target.closest('.milkdown-code-block');
-  const pos = block ? blockPosition(view, block) : undefined;
-  if (!block || pos === undefined) return;
-  event.preventDefault();
+/**
+ * Abre o código do bloco (aperta o Editar do Crepe se está só no desenho) com `range` selecionado no CodeMirror.
+ * Usada pelo clique duplo e pela barra do nó depois de criar um nó (M13).
+ */
+export function openCodeAt(view: EditorView, block: Element, pos: number, range: CodeRange) {
   // O texto do nó agora, não o do desenho (que pode estar atrasado)
   const code = view.state.doc.nodeAt(pos)?.textContent ?? '';
-  const range = locateInDiagram(code, targetFromElement(target)) ?? { from: 0, to: 0 };
   const select = () => {
     const dom = block.querySelector<HTMLElement>('.cm-editor');
     const editor = dom && CodeView.findFromDOM(dom);
@@ -59,6 +56,17 @@ function onDoubleClick(view: EditorView, event: MouseEvent) {
   block.querySelector<HTMLElement>('.preview-toggle-button')?.click();
   // O Vue mostra o código numa microtarefa agendada pelo clique; esta roda depois dela (se ainda não, no quadro seguinte)
   queueMicrotask(() => (hidden() ? requestAnimationFrame(select) : select()));
+}
+
+function onDoubleClick(view: EditorView, event: MouseEvent) {
+  const target = event.target;
+  if (!view.editable || !(target instanceof Element) || !target.closest('.mermaid-diagram')) return;
+  const block = target.closest('.milkdown-code-block');
+  const pos = block ? blockPosition(view, block) : undefined;
+  if (!block || pos === undefined) return;
+  event.preventDefault();
+  const code = view.state.doc.nodeAt(pos)?.textContent ?? '';
+  openCodeAt(view, block, pos, locateInDiagram(code, targetFromElement(target)) ?? { from: 0, to: 0 });
 }
 
 export const diagramDoubleClickPlugin = $prose(

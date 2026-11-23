@@ -110,6 +110,44 @@
 .milkdown .ProseMirror[contenteditable='false'] .mermaid-hint {
   display: none;
 }
+.milkdown .mermaid-hint-error {
+  color: var(--crepe-color-error);
+}
+.milkdown .mermaid-connecting .mermaid-diagram,
+.milkdown .mermaid-connecting .mermaid-diagram g.node {
+  cursor: crosshair;
+}
+/* Barra do nó no fluxograma (M12) */
+.milkdown .ProseMirror[contenteditable='true'] .mermaid-diagram g.node {
+  cursor: pointer;
+}
+.mermaid-node-bar {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--crepe-color-surface);
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 6px;
+  box-shadow: var(--crepe-shadow-1);
+  font-family: var(--crepe-font-default);
+}
+.mermaid-node-bar button {
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--crepe-color-on-surface);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mermaid-node-bar button:hover,
+.mermaid-node-bar button:focus-visible {
+  background: var(--crepe-color-hover);
+}
 .milkdown .mermaid-error {
   padding: 8px 12px;
   border-left: 3px solid var(--crepe-color-error);

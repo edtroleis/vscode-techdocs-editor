@@ -1,6 +1,8 @@
 import { commandsCtx } from '@milkdown/kit/core';
 import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark';
 import { DIAGRAM_ICON, ENTITIES_ICON, GANTT_ICON, SEQUENCE_ICON, STATE_ICON } from './icons';
+import type { DiagramBarText } from './diagramNodeBar';
+import type { FlowchartWords } from './flowchartEdit';
 import { insertDiagram } from './insertDiagram';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
@@ -38,6 +40,10 @@ export type EditorText = {
     error: (line?: number) => string;
     /** Os cinco modelos do menu "/" (M11), nesta ordem. */
     templates: DiagramTemplate[];
+    /** Barra do nó no fluxograma (M12–M16). */
+    bar: DiagramBarText;
+    /** Textos que a barra põe no código. */
+    words: FlowchartWords;
   };
   table: string;
   quote: string;
@@ -87,6 +93,15 @@ export function editorTextFrom(t: TextLookup): EditorText {
         { key: 'entities', label: k('diagramEntities'), sample: k('diagramSampleEntities'), icon: ENTITIES_ICON },
       ],
       error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),
+      bar: {
+        step: k('diagramStepAfter'),
+        decision: k('diagramAddDecision'),
+        connect: k('diagramConnect'),
+        remove: k('diagramDelete'),
+        connectHint: k('diagramConnectHint'),
+        failed: k('diagramEditFailed'),
+      },
+      words: { step: k('diagramNewStep'), decision: k('diagramNewDecision'), yes: k('diagramYes'), no: k('diagramNo') },
     },
     table: k('table'),
     quote: k('quote'),

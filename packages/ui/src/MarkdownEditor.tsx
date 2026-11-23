@@ -1,5 +1,6 @@
 import { mermaidPreview } from './mermaidPreview';
 import { diagramDoubleClickPlugin } from './diagramDoubleClick';
+import { diagramBarCtx, diagramNodeBarPlugin } from './diagramNodeBar';
 import { diagramInsertCtx } from './insertDiagram';
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
@@ -221,6 +222,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         ctx.update(remarkStringifyOptionsCtx, prev => ({ ...prev, ...STRINGIFY_OPTIONS }));
         ctx.inject(externalHistoryCtx, external);
         ctx.inject(diagramInsertCtx, { sample: labels.diagram.sample, onInserted: () => diagramInsertedRef.current?.() });
+        ctx.inject(diagramBarCtx, { bar: labels.diagram.bar, words: labels.diagram.words, hint: labels.diagram.hint });
       })
       .use(defaultCodeLanguagePlugin)
       .use(headingLevelFixPlugin)
@@ -229,6 +231,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(inlineCodeTypingPlugin)
       .use(listCaretFixPlugin)
       .use(diagramDoubleClickPlugin)
+      .use(diagramNodeBarPlugin)
       .use(visualSearchPlugin)
       .use(imageAltPlugin(src => uploadedNames.current.get(src)));
     crepeRef.current = crepe;

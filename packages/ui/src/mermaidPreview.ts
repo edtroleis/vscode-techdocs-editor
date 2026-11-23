@@ -181,6 +181,18 @@ export function setMermaidTheme(next: MermaidTheme) {
   }
 }
 
+/** Se o código é um diagrama que o Mermaid aceita (pela fila, como os desenhos). */
+export function isValidDiagram(code: string): Promise<boolean> {
+  return enqueue(async mermaid => {
+    try {
+      await mermaid.parse(code);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
 /** Erros de sintaxe dos blocos, com a linha no arquivo (a do bloco + a linha do erro no diagrama). */
 export function diagramErrors(blocks: { line: number; code: string }[]): Promise<DiagramError[]> {
   return enqueue(async mermaid => {
