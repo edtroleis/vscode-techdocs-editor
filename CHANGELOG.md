@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-23
+
 ### Added
 
 - **Click a node of a Mermaid flowchart** for **+ Step after**, **+ Decision**, **Connect to…** and **Delete**.
@@ -15,6 +17,12 @@ All notable changes to the TechDocs Editor extension. The format follows
 ### Changed
 
 - Mermaid blocks no longer show the language picker: changing the language of a diagram would erase the drawing.
+
+### Fixed
+
+- Updated markdownlint to 0.42.2, which removes a slow-regex vulnerability (high severity) in a library it uses.
+- The publish panel only opens web addresses (http and https).
+- An image pasted from another tool stops downloading at the size limit even when the server does not say its size.
 
 ## [0.11.1] - 2026-11-20
 
