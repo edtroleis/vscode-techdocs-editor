@@ -113,6 +113,9 @@ VS Code for the Web).
   timeline (Gantt) or entities), or a flowchart from the toolbar (**Diagram (Mermaid)**). **Edit** on the block
   shows the code, with the diagram redrawn below as you type.
 - **Double-click a text in the drawing** to go to it in the code, selected and ready to type over.
+- **Click a node of a flowchart** for **+ Step after**, **+ Decision**, **Connect to…** and **Delete**: the code
+  changes for you (a new step opens with its name selected; arrows out of a decision get Yes and No), and only if
+  the diagram stays valid. One Ctrl+Z undoes it.
 - **Syntax errors** show in place of the diagram, with the line, and in the Problems panel while the page is open
   in the visual editor.
 - **The site draws them too:** the first diagram adds the Mermaid block of `pymdownx.superfences` to `mkdocs.yml`

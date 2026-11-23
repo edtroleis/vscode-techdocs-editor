@@ -113,6 +113,9 @@ para a Web).
   cronograma (Gantt) ou entidades), ou um fluxograma pela barra (**Diagrama (Mermaid)**). **Editar** no bloco
   mostra o código, com o diagrama redesenhado embaixo enquanto você digita.
 - **Clique duas vezes num texto do desenho** para ir até ele no código, selecionado e pronto para digitar por cima.
+- **Clique num nó de um fluxograma** para **+ Passo depois**, **+ Decisão**, **Ligar a…** e **Apagar**: o código
+  muda sozinho (o passo novo abre com o nome selecionado; as setas que saem de uma decisão levam Sim e Não), e só
+  se o diagrama continua válido. Um Ctrl+Z desfaz.
 - **Erros de sintaxe** aparecem no lugar do diagrama, com a linha, e no painel Problemas enquanto a página está
   aberta no editor visual.
 - **O site também desenha:** o primeiro diagrama acrescenta o bloco do Mermaid do `pymdownx.superfences` ao

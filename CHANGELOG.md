@@ -6,6 +6,12 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Click a node of a Mermaid flowchart** for **+ Step after**, **+ Decision**, **Connect to…** and **Delete**.
+  The code changes line by line (comments and order stay), a new step opens with its name selected, arrows out of a
+  decision get Yes and No, and nothing changes if the result would not be a valid diagram. One Ctrl+Z undoes it.
+
 ## [0.11.1] - 2026-11-20
 
 The 0.11.0 tag was not published (the release tests failed); its changes ship here.
