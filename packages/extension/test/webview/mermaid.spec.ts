@@ -3,8 +3,8 @@ import { expect, Page, test } from '@playwright/test';
 import { openWebview } from './webview';
 
 const PAGE = '# Página\n\n```mermaid\nflowchart LR\n  A-->B\n```\n';
-// Preenchimento das caixas em cada tema do Mermaid
-const DARK_FILL = '#1f2020';
+// Cor que só o tema escuro colorido do Mermaid usa (redux-dark-color, M24)
+const DARK_FILL = 'fill:#cccccc';
 const svg = (page: Page) => page.locator('.mermaid-diagram svg');
 /** O diagrama está com o tema escuro (sem despejar o SVG inteiro numa falha). */
 const dark = (page: Page) => svg(page).evaluate((el, fill) => el.outerHTML.includes(fill), DARK_FILL);
