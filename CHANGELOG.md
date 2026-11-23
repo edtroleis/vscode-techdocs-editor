@@ -18,16 +18,12 @@ All notable changes to the TechDocs Editor extension. The format follows
 - Every example of the Mermaid documentation (617) is opened in the visual editor on each release
   (`npm run test:mermaid-examples`).
 
-- The site draws diagrams in the same colors as the editor: the first diagram (and the fix of **Check**) adds the
-  editor's Mermaid and `javascripts/techdocs-mermaid.js` to `extra_javascript` in `mkdocs.yml`. The README shows the
-  Backstage `app-config.yaml` for the same colors there.
+- The README shows the Backstage `app-config.yaml` for the same diagram colors as the editor.
 
-- Wide diagrams stay readable: they shrink to 60% at most and the block scrolls sideways, in the editor and on the
-  site. Diagrams over the Mermaid limits (500 links, 50,000 characters) show a clear message, and **Check** points
-  them out.
+- Wide diagrams stay readable in the editor: they shrink to 60% at most and the block scrolls sideways. Diagrams over
+  the Mermaid limits (500 links, 50,000 characters) show a clear message, and **Check** points them out.
 
-- **Enlarge** on a diagram opens it in a window with zoom (mouse wheel, + and −), drag to move, **Fit** and **100%**,
-  in the editor and on the site. On the site, switching between light and dark redraws the diagrams in the right colors.
+- **Enlarge** on a diagram opens it in a window with zoom (mouse wheel, + and −), drag to move, **Fit** and **100%**.
 
 ### Changed
 

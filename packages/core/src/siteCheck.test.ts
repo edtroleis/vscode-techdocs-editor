@@ -1,4 +1,4 @@
-import { addMermaidConfig, addMermaidFence, MERMAID_COLORS_FILE, MERMAID_COLORS_SCRIPT } from './mermaidConfig';
+import { addMermaidFence } from './mermaidConfig';
 import { catalogInfoSkeleton, checkSite, pageRefs, SiteFinding, SiteSnapshot } from './siteCheck';
 
 const MKDOCS = `# Site do time
@@ -61,37 +61,15 @@ describe('checkSite', () => {
     expect(codes(checkSite(site()))).not.toContain('mermaid-config-missing');
   });
 
-  it('cores do editor no site (M25): o mkdocs.yml e o script, cada um com o seu ajuste', () => {
-    const pages = { 'index.md': '# Início\n\n```mermaid\nflowchart LR\n  A-->B\n```\n' };
-    // Sem nada: o ajuste do mkdocs.yml já traz as cores; o script falta à parte
-    const first = checkSite(site({ pages, files: ['index.md'] }));
-    expect(first.find(f => f.code === 'mermaid-config-missing')!.fix!.apply(MKDOCS)).toContain(MERMAID_COLORS_FILE);
-    expect(first.find(f => f.code === 'mermaid-colors-script-missing')).toMatchObject({ severity: 'info', file: `svc/docs/${MERMAID_COLORS_FILE}` });
-    expect(first.find(f => f.code === 'mermaid-colors-script-missing')!.fix!.apply(undefined)).toBe(MERMAID_COLORS_SCRIPT);
-    // Bloco do superfences sem as cores: só a dica das cores
-    const fence = addMermaidFence(MKDOCS);
-    const onlyFence = checkSite(site({ pages, files: ['index.md'], mkdocsYml: fence }));
-    expect(codes(onlyFence)).not.toContain('mermaid-config-missing');
-    expect(onlyFence.find(f => f.code === 'mermaid-colors-missing')).toMatchObject({ severity: 'info' });
-    // mkdocs.yml com as cores e sem o script: o arquivo que falta é aviso
-    const full = addMermaidConfig(MKDOCS);
-    const noScript = checkSite(site({ pages, files: ['index.md'], mkdocsYml: full }));
-    expect(codes(noScript)).not.toContain('mermaid-colors-missing');
-    expect(noScript.find(f => f.code === 'mermaid-colors-script-missing')).toMatchObject({ severity: 'warning' });
-    // Tudo no lugar: nada
-    const done = checkSite(site({ pages, files: ['index.md', MERMAID_COLORS_FILE], mkdocsYml: full }));
-    expect(codes(done).filter(c => c.startsWith('mermaid'))).toEqual([]);
-  });
 
   it('diagrama grande demais (M27): aviso na página e na linha do bloco', () => {
     const chain = `flowchart LR\n${Array.from({ length: 501 }, (_, i) => `  N${i} --> N${i + 1}`).join('\n')}`;
     const pages = { 'index.md': '# Início\n\n```mermaid\nflowchart LR\n  A-->B\n```\n', 'big.md': `# Grande\n\n\`\`\`mermaid\n${chain}\n\`\`\`\n` };
-    const found = checkSite(site({ pages, files: ['index.md', 'big.md', MERMAID_COLORS_FILE], mkdocsYml: addMermaidConfig(MKDOCS) }));
+    const found = checkSite(site({ pages, files: ['index.md', 'big.md'], mkdocsYml: addMermaidFence(MKDOCS) }));
     expect(found.filter(f => f.code === 'mermaid-too-big')).toEqual([
       expect.objectContaining({ severity: 'warning', file: 'svc/docs/big.md', line: 4 }),
     ]);
   });
-
 
   it('nav, páginas fora do nav, links e imagens, plugin e catalog-info.yaml', () => {
     const findings = checkSite(site());

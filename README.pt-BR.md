@@ -116,7 +116,7 @@ Code), sem rede (também no VS Code para a Web).
   Cynefin) têm a etiqueta "Backstage 11.x+" e um aviso embaixo do desenho: o Backstage só os desenha com essa versão
   do Mermaid ou mais nova.
 - **Amplie** um diagrama grande numa janela com zoom (roda do mouse), arrastar para mover, **Ajustar** e **100%**.
-  Diagramas largos também ficam legíveis na página: param de encolher e rolam para o lado.
+  Diagramas largos também ficam legíveis no editor: param de encolher e rolam para o lado.
 - **Clique duas vezes num texto do desenho** para ir até ele no código, selecionado e pronto para digitar por cima.
 - **Clique num nó de um fluxograma** para **+ Passo depois**, **+ Decisão**, **Ligar a…** e **Apagar**: o código
   muda sozinho (o passo novo abre com o nome selecionado; as setas que saem de uma decisão levam Sim e Não), e só
@@ -125,14 +125,11 @@ Code), sem rede (também no VS Code para a Web).
   depois dele.
 - **Erros de sintaxe** aparecem no lugar do diagrama, com a linha, e no painel Problemas enquanto a página está
   aberta no editor visual.
-- **O site também desenha, nas mesmas cores:** o primeiro diagrama acrescenta ao `mkdocs.yml` o bloco do Mermaid do
-  `pymdownx.superfences` e, no `extra_javascript`, o Mermaid e as cores do editor (o script fica em
-  `docs/javascripts/techdocs-mermaid.js`, que também leva o **Ampliar** ao site e redesenha os diagramas quando o
-  leitor troca entre claro e escuro), com **Desfazer**. O botão **Conferir** aponta os sites com diagramas e
-  sem a configuração.
-- **No Backstage**, o TechDocs precisa do addon de Mermaid, instalado pelos administradores do Backstage, e os
-  scripts do site não rodam lá: as cores vêm do addon. Para as mesmas cores do editor (addon com o Mermaid 11.17 ou
-  mais novo), no `app-config.yaml`:
+- **O site também desenha:** o primeiro diagrama acrescenta o bloco do Mermaid do `pymdownx.superfences` ao
+  `mkdocs.yml` (com **Desfazer**), e o botão **Conferir** aponta os sites com diagramas e sem a configuração, e os
+  diagramas acima dos limites do Mermaid (500 ligações, 50 mil caracteres).
+- **No Backstage**, o TechDocs precisa do addon de Mermaid, instalado pelos administradores do Backstage; as cores
+  vêm dele. Para as mesmas cores do editor (addon com o Mermaid 11.17 ou mais novo), no `app-config.yaml`:
 
   ```yaml
   techdocs:

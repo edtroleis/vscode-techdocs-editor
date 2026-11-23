@@ -59,11 +59,11 @@ automático, entrou depois como passo futuro (ver M10 e M11).
 | M22 | Editor visual | **Galeria:** o botão de diagrama da barra abre uma janela com a miniatura de cada modelo, filtro por grupo e busca pelo nome (sem acento); clicar ou Enter insere o exemplo, setas andam entre os cartões, Esc fecha sem mudar nada | ✅ |
 | M23 | Editor visual | **Tipos novos do Mermaid** (treemap 11.10, Ishikawa e Venn 11.13, árvore e Wardley 11.14, modelagem de eventos 11.15, raias e Cynefin 11.16; Use Case e Agentflow do 12): etiqueta "Backstage 11.x+" no menu e na galeria, e aviso embaixo do desenho com a versão que o TechDocs precisa | ✅ |
 | M24 | Editor visual | **Cores como no mermaid.js.org:** temas `redux-color` (claro) e `redux-dark-color` (escuro) no lugar de `default`/`dark`. No site publicado as cores continuam as do MkDocs Material ou do addon do Backstage | ✅ |
-| M25 | Site | **Site nas mesmas cores do editor:** o primeiro diagrama (e o ajuste do Conferir) põe no `extra_javascript` do `mkdocs.yml` o mesmo Mermaid do editor (unpkg, versão fixa) e `javascripts/techdocs-mermaid.js`, criado no `docs_dir`: ele troca as cores do MkDocs Material pelos temas `redux-color`/`redux-dark-color` (claro ou escuro como a página) e usa a fonte da página. O Conferir aponta o que falta (`mermaid-colors-missing`, `mermaid-colors-script-missing`). No Backstage os scripts do site não rodam: o README mostra o `app-config.yaml` do addon com os mesmos temas | ✅ |
+| M25 | Site | ~~Site nas mesmas cores do editor por um script no `extra_javascript`~~ Removido: o Backstage não roda os scripts do site. As cores no Backstage vêm do addon (o README mostra o `app-config.yaml`) | ❌ |
 | M26 | Editor visual | Diagramas com a fonte do editor; rótulos sem o espaçamento dos parágrafos do editor (cortava o texto embaixo); miniaturas da galeria numa fila e num cache à parte (uma por vez, sem atrasar nem tirar do cache os diagramas da página); Tab preso na galeria | ✅ |
-| M27 | Editor visual e site | **Diagramas grandes:** um desenho largo não encolhe abaixo de 60% do tamanho natural (o texto continua legível) e o bloco rola para o lado, a partir do começo, no editor e no site (pelo script das cores). Acima dos limites do Mermaid (mais de 500 ligações ou 50 mil caracteres), a mensagem "Diagrama grande demais…" no lugar do desenho, e o Conferir aponta a página (`mermaid-too-big`), porque o site também não desenha | ✅ |
+| M27 | Editor visual e site | **Diagramas grandes:** um desenho largo não encolhe abaixo de 60% do tamanho natural (o texto continua legível) e o bloco rola para o lado, a partir do começo, no editor. Acima dos limites do Mermaid (mais de 500 ligações ou 50 mil caracteres), a mensagem "Diagrama grande demais…" no lugar do desenho, e o Conferir aponta a página (`mermaid-too-big`), porque o site também não desenha | ✅ |
 | M28 | Editor visual | **Ampliar:** botão na linha do Copiar/Editar do bloco (sempre à vista num desenho com mais de 900 px de largura ou 600 de altura; nos outros, ao passar o mouse) abre o desenho numa janela por cima da página: zoom pela roda do mouse no ponteiro, arrastar para mover, −/+, **Ajustar** (um desenho muito largo ajusta pela altura, a partir da esquerda, para continuar legível) e **100%**; teclado +, −, 0, 1, setas, Tab dentro da janela, Esc fecha e devolve o foco ao botão. Só olha: o texto não muda. Protótipo aprovado | ✅ |
-| M29 | Site | **Ampliar no site e troca de claro/escuro:** o script das cores põe o botão Ampliar em cada diagrama (dentro do shadow root fechado do Material, que chega pelo `fn` do `render`) e abre a mesma janela de zoom do editor, nas cores do Material e na língua da página (pt ou inglês). Trocar entre claro e escuro pelo botão do site redesenha os diagramas com o tema certo (antes ficavam com as cores do modo em que a página abriu) | ✅ |
+| M29 | Site | ~~Ampliar no site e redesenho ao trocar claro/escuro, pelo mesmo script~~ Removido junto com o M25 | ❌ |
 
 ### M10 e M11: decisões (2026-11-20)
 
@@ -89,10 +89,11 @@ automático, entrou depois como passo futuro (ver M10 e M11).
   sem aviso; os 8 que pedem uma 11 mais nova entram com a etiqueta e o aviso (M23). Use Case e Agentflow (só no 12)
   e ZenUML (plugin à parte) ficam fora: quebrariam no site publicado.
 - **Menu e galeria:** o menu "/" para quem digita, a galeria (com o desenho de cada modelo) pelo botão da barra.
-- **Aviso nos dois lugares:** etiqueta no menu e na galeria, faixa embaixo do desenho. Com o M25 o site do MkDocs usa
-  o mesmo Mermaid do editor; o aviso fala só do addon do Backstage.
-- **Site colorido como o editor (M25), e não o contrário:** decisão do usuário. Conferido num site MkDocs Material
-  9.8.2 de verdade, no claro e no escuro.
+- **Aviso nos dois lugares:** etiqueta no menu e na galeria, faixa embaixo do desenho. O aviso fala do addon do
+  Backstage, que é onde a documentação é lida.
+- **Nada no site que o Backstage não rode (M25 e M29 removidos):** decisão do usuário. O site chegou a ter um script
+  com as cores, a rolagem e o Ampliar (conferido em MkDocs Material 9.8.2), mas o Backstage não roda scripts do site:
+  só valeria no MkDocs puro. O que ajuda a trabalhar fica no editor; as cores do Backstage vêm do `app-config.yaml`.
 - **Protótipo aprovado:** https://claude.ai/artifact/1eSwZB8e9DdMB4DEpNus34
 - **Exemplos do site como teste:** os 617 exemplos do mermaid.js.org (introdução e sintaxe de cada tipo) ficam em
   `packages/ui/e2e/fixtures/mermaid-site-examples.json` e abrem no editor visual a cada release

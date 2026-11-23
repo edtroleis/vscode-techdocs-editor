@@ -115,7 +115,7 @@ no network (also in VS Code for the Web).
 - **Newer diagram types** (treemap, Ishikawa, Venn, file tree, Wardley, event modeling, swimlanes, Cynefin) carry a
   "Backstage 11.x+" tag and a note under the drawing: Backstage draws them only with that Mermaid version or newer.
 - **Enlarge** a big diagram in a window with zoom (mouse wheel), drag to move, **Fit** and **100%**. Wide diagrams
-  stay readable in the page too: they stop shrinking and scroll sideways.
+  stay readable in the editor too: they stop shrinking and scroll sideways.
 - **Double-click a text in the drawing** to go to it in the code, selected and ready to type over.
 - **Click a node of a flowchart** for **+ Step after**, **+ Decision**, **Connect to…** and **Delete**: the code
   changes for you (a new step opens with its name selected; arrows out of a decision get Yes and No), and only if
@@ -123,14 +123,11 @@ no network (also in VS Code for the Web).
 - **Drag from a node** to another node to connect them, or to an empty space of the drawing to add a step after it.
 - **Syntax errors** show in place of the diagram, with the line, and in the Problems panel while the page is open
   in the visual editor.
-- **The site draws them too, in the same colors:** the first diagram adds the Mermaid block of
-  `pymdownx.superfences` to `mkdocs.yml`, plus the editor's Mermaid and colors in `extra_javascript` (the script
-  goes to `docs/javascripts/techdocs-mermaid.js`, which also brings **Enlarge** to the site and redraws the diagrams
-  when the reader switches between light and dark), with **Undo**. The **Check** button points out sites with
-  diagrams and no setup.
-- **In Backstage**, TechDocs needs the Mermaid addon, installed by the Backstage admins, and the site scripts don't
-  run there: the colors come from the addon. For the same colors as the editor (addon with Mermaid 11.17 or newer),
-  in `app-config.yaml`:
+- **The site draws them too:** the first diagram adds the Mermaid block of `pymdownx.superfences` to `mkdocs.yml`
+  (with **Undo**), and the **Check** button points out sites with diagrams and no setup, and diagrams over the
+  Mermaid limits (500 links, 50,000 characters).
+- **In Backstage**, TechDocs needs the Mermaid addon, installed by the Backstage admins; the colors come from it.
+  For the same colors as the editor (addon with Mermaid 11.17 or newer), in `app-config.yaml`:
 
   ```yaml
   techdocs:
