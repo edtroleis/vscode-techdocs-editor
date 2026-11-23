@@ -29,6 +29,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # A cópia dos templates bate com a tag do repositório de templates (spec 08, TR3)
+      - run: npm run sync-templates -- --check
       - run: npx playwright install --with-deps chromium
       - run: npm run test:fast
       - run: npm run test:bundle

@@ -1,6 +1,5 @@
-import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { BUILT_IN_SITES, BUILT_IN_TEMPLATES, templateLanguage } from './builtInTemplates';
+import { BUILT_IN_EXAMPLES, BUILT_IN_SITES, BUILT_IN_TEMPLATES, TEMPLATES_SOURCE, templateLanguage } from './builtInTemplates';
+import { TEMPLATES_FILES } from './templatesBundle.generated';
 import { lintFindings } from './lint';
 import { buildSitePages, parseSiteTemplate, siteUsedFields } from './siteTemplates';
 import { AUTOMATIC_FIELDS, fileNameFor, fillTemplate, firstToFill, parseTemplate, usedFields } from './templates';
@@ -9,14 +8,34 @@ import { AUTOMATIC_FIELDS, fileNameFor, fillTemplate, firstToFill, parseTemplate
 const SAMPLE_VALUES = { title: 'Página de exemplo', date: '2026-10-28', site_name: 'Wiki', owner: 'time-docs' };
 
 describe('templates da extensão', () => {
-  const dir = join(__dirname, '..', 'templates');
+  /** Os caminhos da cópia do repositório de templates que começam com `prefix`, sem ele. */
+  const paths = (prefix: string) => Object.keys(TEMPLATES_FILES).filter(p => p.startsWith(prefix)).map(p => p.slice(prefix.length));
 
-  it('todo arquivo de templates/ está no registro, nas duas línguas', () => {
+  it('a cópia vem de uma tag do repositório de templates (spec 08, TR3)', () => {
+    expect(TEMPLATES_SOURCE.repository).toBe('https://github.com/edtroleis/techdocs-templates');
+    expect(TEMPLATES_SOURCE.ref).toMatch(/^v\d+\.\d+\.\d+$/);
+    expect(TEMPLATES_SOURCE.commit).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it('toda página de templates/<língua>/<categoria>/ está no registro, nas duas línguas', () => {
     for (const language of ['en', 'pt-br'] as const) {
-      const files = readdirSync(join(dir, language)).filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, '')).sort();
+      const files = paths(`templates/${language}/`)
+        .filter(p => !p.startsWith('sites/') && p.endsWith('.md'))
+        .map(p => p.split('/').pop()!.replace(/\.md$/, ''))
+        .sort();
       expect(Object.keys(BUILT_IN_TEMPLATES[language]).sort()).toEqual(files);
     }
-    expect(Object.keys(BUILT_IN_TEMPLATES.en)).toHaveLength(13);
+    expect(Object.keys(BUILT_IN_TEMPLATES.en)).toHaveLength(17);
+  });
+
+  it('todo template aponta para um exemplo que existe na mesma língua (spec 08)', () => {
+    for (const language of ['en', 'pt-br'] as const) {
+      for (const [id, text] of Object.entries(BUILT_IN_TEMPLATES[language])) {
+        const example = parseTemplate(id, text)!.example;
+        expect(example, `${language}/${id}`).toBeTruthy();
+        expect(BUILT_IN_EXAMPLES[language][example!], `${language}/${example}`).toBeDefined();
+      }
+    }
   });
 
   it('toda página criada tem um primeiro trecho a preencher (TP7)', () => {
@@ -57,10 +76,11 @@ describe('templates da extensão', () => {
 
   it('todo arquivo de templates/<língua>/sites/ está no registro', () => {
     for (const language of ['en', 'pt-br'] as const) {
-      const sites = readdirSync(join(dir, language, 'sites')).sort();
+      const files = paths(`templates/${language}/sites/`);
+      const sites = [...new Set(files.map(p => p.split('/')[0]))].sort();
       expect(Object.keys(BUILT_IN_SITES[language]).sort()).toEqual(sites);
       for (const id of sites) {
-        expect(Object.keys(BUILT_IN_SITES[language][id]).sort(), `${language}/${id}`).toEqual(readdirSync(join(dir, language, 'sites', id)).sort());
+        expect(Object.keys(BUILT_IN_SITES[language][id]).sort(), `${language}/${id}`).toEqual(files.filter(p => p.startsWith(`${id}/`)).map(p => p.slice(id.length + 1)).sort());
       }
     }
     expect(Object.keys(BUILT_IN_SITES.en)).toHaveLength(4);

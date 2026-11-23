@@ -65,16 +65,23 @@ so they break, and get fixed, like any other test when the UI changes.
 
 ### Documentation templates
 
-Built-in templates live in `packages/core/templates/<language>/<id>.md`, one file per language with the same
-`id`, registered in `packages/core/src/builtInTemplates.ts`. A new template needs both languages and passes:
+Built-in templates and their examples come from
+[edtroleis/techdocs-templates](https://github.com/edtroleis/techdocs-templates), pinned to a tag. Change a template
+there (a pull request, with its CI green), tag a new version, then bring it in:
+
+```bash
+npm run sync-templates -- v1.1.0
+```
+
+The script writes `packages/core/src/templatesBundle.generated.ts`; never edit that file by hand (CI runs
+`npm run sync-templates -- --check`). Every template, in both languages, then passes:
 
 - `npm run test:unit`: the `template:` block, the fields it uses, and a clean formatting check;
 - `npm run test:webview`: the page opens in the visual editor without a single change (tables aligned, short
   lines, only Markdown the editor edits).
 
-Built-in site templates live in `packages/core/templates/<language>/sites/<id>/` (a `template.yml` and the
-`source` files it lists), registered in `BUILT_IN_SITES` in the same file. The same two suites build each site
-and check every page.
+Site templates come from `templates/<language>/sites/<id>/` in the same repository. The same two suites build each
+site and check every page.
 
 ## Releasing
 

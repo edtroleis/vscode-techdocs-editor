@@ -25,7 +25,8 @@
     "roundtrip": "npm run build && node packages/extension/test/webview/roundtrip.mjs",
     "prepare": "git config core.hooksPath .githooks || true",
     "test:bundle": "node packages/extension/test/bundle-size.mjs",
-    "record:videos": "node scripts/make-videos.mjs"
+    "record:videos": "node scripts/make-videos.mjs",
+    "sync-templates": "node scripts/sync-templates.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
