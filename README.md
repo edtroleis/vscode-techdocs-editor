@@ -276,6 +276,11 @@ written:
 | Service docs | Service home page, Architecture, Operations and support, and the first ADR |
 | Team wiki | Home (how to use the wiki), Onboarding, Guides, an example wiki page |
 | Golden path | Overview, Getting started tutorial, Troubleshooting |
+| API | Overview and first call, Authentication, API reference, Errors, Changelog |
+| Library / SDK | Overview with a minimal example, Installation, Getting started, Usage guide, API reference, Contributing |
+| Internal platform | What it offers, Getting access, Golden path, Support and SLAs, Glossary |
+| Operations runbooks | Alert index, Escalation, an example runbook, an example postmortem |
+| Project / initiative | Goal, status and people, RFC, Roadmap, the first decision (ADR), Release notes |
 
 Your own site templates are folders in `.techdocs/templates/` with a `template.yml`: each file comes from a
 page template (`page`, yours or a built-in one) or from a file in the folder (`source`).

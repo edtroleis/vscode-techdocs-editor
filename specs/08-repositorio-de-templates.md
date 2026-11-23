@@ -109,6 +109,7 @@ pt-BR.
 | TR6 | Repositório da documentação | `templates.repository` no `.techdocs-editor.yaml`, entre a configuração do usuário e a política; ignorado em workspace não confiável | ✅ |
 | TR7 | Empresa | `policy` na configuração `techdocsEditor.templates.repository`, se o VS Code aceitar (ver "Conferir"); a engrenagem mostra o valor travado | ❌ fora (ver decisões) |
 | TR8 | Documentação | README e README.pt-BR: o repositório de templates, "Ver exemplo", a engrenagem e como uma empresa deixa o seu como padrão (os três níveis); CHANGELOG; spec 04 aponta para esta | ✅ |
+| TR9 | Sites | Cinco templates de site novos no repositório (`v1.1.0`): API, Biblioteca / SDK, Plataforma interna, Runbooks de operação e Projeto / iniciativa, em inglês e pt-BR, reaproveitando os templates de página; exemplos preenchidos das páginas próprias de cada site, na seção Sites dos dois sites de exemplo. Na extensão, a cópia na tag nova e o teste dos sites aceitando os campos das páginas | ✅ |
 
 ## Decisões da implementação (2026-11-23)
 

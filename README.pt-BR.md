@@ -276,9 +276,15 @@ gravar qualquer coisa:
 
 | Site | Páginas |
 |------|---------|
+| Em branco (o padrão) | Só a página inicial, para começar do zero |
 | Docs de serviço | Página inicial do serviço, Arquitetura, Operação e suporte e o primeiro ADR |
 | Wiki de time | Início (como usar a wiki), Onboarding, Guias, uma página de wiki de exemplo |
 | Golden path | Visão geral, tutorial de primeiros passos, Solução de problemas |
+| API | Visão geral e primeira chamada, Autenticação, Referência da API, Erros, Histórico de mudanças |
+| Biblioteca / SDK | Visão geral com um exemplo mínimo, Instalação, Primeiros passos, Guia de uso, Referência da API, Como contribuir |
+| Plataforma interna | O que ela oferece, Como pedir acesso, Golden path, Suporte e SLAs, Glossário |
+| Runbooks de operação | Índice de alertas, Escalonamento, um runbook de exemplo, um pós-mortem de exemplo |
+| Projeto / iniciativa | Objetivo, situação e pessoas, RFC, Cronograma, a primeira decisão (ADR), Notas de release |
 
 Os seus templates de site são diretórios em `.techdocs/templates/` com um `template.yml`: cada arquivo vem de um
 template de página (`page`, seu ou da extensão) ou de um arquivo do diretório (`source`).

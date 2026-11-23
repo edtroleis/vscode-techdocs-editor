@@ -83,7 +83,7 @@ describe('templates da extensão', () => {
         expect(Object.keys(BUILT_IN_SITES[language][id]).sort(), `${language}/${id}`).toEqual(files.filter(p => p.startsWith(`${id}/`)).map(p => p.slice(id.length + 1)).sort());
       }
     }
-    expect(Object.keys(BUILT_IN_SITES.en)).toHaveLength(4);
+    expect(Object.keys(BUILT_IN_SITES.en)).toHaveLength(9);
     // O em branco é o primeiro (o padrão)
     expect(Object.keys(BUILT_IN_SITES.en)[0]).toBe('blank');
   });
@@ -96,10 +96,15 @@ describe('templates da extensão', () => {
         expect(site.description).not.toBe('');
         const sources = sitePageSources(language, files);
         const used = siteUsedFields(site, sources);
-        // Os campos das páginas (ex.: status do ADR) teriam de ser declarados no site: hoje nenhum é usado
-        expect(used.filter(f => !AUTOMATIC_FIELDS.includes(f))).toEqual([]);
+        // Os campos das páginas (ex.: status do ADR) vêm declarados nelas: o painel usa o padrão, o comando pergunta
+        const pageFields = site.files.flatMap(file =>
+          file.page ? (parseTemplate(file.page, BUILT_IN_TEMPLATES[language][file.page] ?? '')?.fields ?? []) : [],
+        );
+        const declared = [...AUTOMATIC_FIELDS, ...site.fields.map(f => f.name), ...pageFields.map(f => f.name)];
+        expect(used.filter(f => !declared.includes(f))).toEqual([]);
         expect(Object.keys(files).filter(f => f !== 'template.yml' && !site.files.some(s => s.source === f))).toEqual([]);
-        for (const page of buildSitePages(site, sources, SAMPLE_VALUES)) {
+        const values = { ...Object.fromEntries(pageFields.map(f => [f.name, f.default ?? ''])), ...SAMPLE_VALUES };
+        for (const page of buildSitePages(site, sources, values)) {
           expect(lintFindings(page.content, { default: true }).map(f => `${page.path}: ${f.rule} linha ${f.line}`)).toEqual([]);
           expect(page.content).not.toContain('{{');
         }

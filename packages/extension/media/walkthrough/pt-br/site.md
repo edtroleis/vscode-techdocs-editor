@@ -11,6 +11,7 @@ meu-servico/
     └── arquitetura.md
 ```
 
-**Novo site de documentação** cria tudo isso a partir de um template: Docs de serviço, Wiki de time ou Golden path.
+**Novo site de documentação** cria tudo isso a partir de um template: Docs de serviço, Wiki de time, Golden path, API, Biblioteca / SDK, Plataforma interna, Runbooks de operação ou
+Projeto / iniciativa.
 
 **Preparar a documentação** corrige o que falta num site que já existe, uma mudança por vez, com o diff antes.

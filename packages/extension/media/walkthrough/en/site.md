@@ -11,6 +11,7 @@ my-service/
     └── architecture.md
 ```
 
-**New documentation site** creates all of it from a template: Service docs, Team wiki or Golden path.
+**New documentation site** creates all of it from a template: Service docs, Team wiki, Golden path, API, Library / SDK, Internal platform, Operations runbooks or Project /
+initiative.
 
 **Prepare the documentation** fixes what an existing site is missing, one change at a time, with the diff first.

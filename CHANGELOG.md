@@ -14,6 +14,9 @@ All notable changes to the TechDocs Editor extension. The format follows
   organized by Diátaxis. The extension ships a copy of a tagged version, so nothing changes offline.
 - Four new templates: Short how-to, RFC / design doc, Release notes and Glossary (17 in all, in English and
   Portuguese).
+- Five new site templates in **New documentation**: API, Library / SDK, Internal platform, Operations runbooks and
+  Project / initiative (nine in all, with Blank). Each one builds on the page templates and has filled-in examples
+  in the templates repository.
 - **See an example**: the eye next to each template in the **New page** list opens a filled-in example in the
   Markdown preview, with no network.
 - **Template options** (gear): the templates repository in use and where it comes from, test access, built-in

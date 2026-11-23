@@ -58,6 +58,15 @@ Criam o `mkdocs.yml`, o `docs/` com as páginas e o `nav`. Para o TechDocs, dize
 | Docs de serviço | Página inicial do serviço; Arquitetura; Operação e suporte; `adr/` com o primeiro ADR ("Registrar decisões de arquitetura") |
 | Wiki de time | Início (como usar a wiki); Onboarding; Guias; Página de wiki de exemplo |
 | Golden path | Visão geral (o template Golden path); Tutorial; Solução de problemas |
+| API | Visão geral e primeira chamada; Autenticação; Referência da API; Erros; Histórico de mudanças (Notas de release) |
+| Biblioteca / SDK | Visão geral com exemplo mínimo; Instalação; Primeiros passos (Tutorial); Guia de uso (Guia); Referência da API; Como contribuir |
+| Plataforma interna | O que oferece; Como pedir acesso; Golden path; Suporte e SLAs; Glossário |
+| Runbooks de operação | Índice de alertas; Escalonamento; `runbooks/` com um runbook de exemplo; `pos-mortems/` com um pós-mortem de exemplo |
+| Projeto / iniciativa | Objetivo, situação e pessoas; RFC; Cronograma; `adr/` com a primeira decisão; Notas de release |
+
+Os cinco últimos vêm da spec 08 (TR9). As páginas que vêm de um template de página com campos (o `alert` do
+runbook, o `status` da RFC e do ADR, a `version` das notas de release) usam o padrão do campo no painel **Nova
+documentação**; o comando pergunta por eles.
 
 ## Requisitos
 
