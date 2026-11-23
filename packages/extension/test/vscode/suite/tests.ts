@@ -67,6 +67,7 @@ type Api = {
   publish: PublishPanel;
   central: CentralTemplates;
   catalogOptions: CatalogOptions;
+  templateOptions: import('../../../src/templates/templateOptions').TemplateOptions;
   prepare: PrepareContext;
   preview: SitePreview;
   useTestSiteChoice: typeof useTestSiteChoice;
@@ -1237,6 +1238,21 @@ export function defineTests() {
       }
     });
 
+    test('Ver exemplo: a prévia do exemplo da cópia do pacote, sem rede (spec 08, TR4)', async () => {
+      const { builtInPageTemplates } = await import('../../../src/templates/templateSources');
+      const { exampleText, hasExample, openTemplateExample } = await import('../../../src/templates/templateExamples');
+      const runbook = builtInPageTemplates('pt-br').find(c => c.template.id === 'runbook')!;
+      ok(hasExample(runbook), 'o runbook tem exemplo');
+      ok(await openTemplateExample(runbook), 'abriu o exemplo');
+      const uri = vscode.Uri.from({ scheme: 'techdocs-example', path: `/pt-br/${runbook.template.example}` });
+      const doc = await vscode.workspace.openTextDocument(uri);
+      ok(doc.getText().startsWith('# '), `o exemplo tem texto:\n${doc.getText().slice(0, 120)}`);
+      equal(doc.getText(), exampleText(uri), 'o texto vem da cópia do pacote');
+      // Sem exemplo (a página em branco, ou um template do repositório): sem botão
+      ok(!hasExample({ template: { ...runbook.template, example: undefined }, origin: 'builtIn', language: 'pt-br' }), 'sem exemplo, sem botão');
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    });
+
     test('templates da extensão na língua do site, não na do VS Code', async () => {
       const { newPage } = await api();
       try {
@@ -1670,6 +1686,43 @@ export function defineTests() {
         publish.useTestGitHub(undefined);
         await config.update('repository', undefined, vscode.ConfigurationTarget.Workspace);
         for (const path of ['wiki/docs/disco.md', 'site-empresa']) await remove(path);
+      }
+    });
+
+    test('templates.repository do .techdocs-editor.yaml vence a configuração do usuário (spec 08, TR6)', async () => {
+      const { templatesOrigin } = await import('../../../src/templates/centralTemplates');
+      const config = vscode.workspace.getConfiguration('techdocsEditor.templates');
+      const yaml = file('.techdocs-editor.yaml');
+      const before = await vscode.workspace.fs.readFile(yaml).then(b => b, () => undefined);
+      await config.update('repository', 'acme/pessoal', vscode.ConfigurationTarget.Workspace);
+      try {
+        equal((await templatesOrigin(file('wiki/docs'))).from, 'settings', 'sem o arquivo, vale a configuração');
+        await vscode.workspace.fs.writeFile(yaml, new TextEncoder().encode('catalog: auto\ntemplates:\n  repository: acme/do-time/templates\n'));
+        const origin = await templatesOrigin(file('wiki/docs'));
+        equal(`${origin.from} ${origin.value}`, 'repository acme/do-time/templates', 'o do time vence');
+      } finally {
+        await config.update('repository', undefined, vscode.ConfigurationTarget.Workspace);
+        if (before) await vscode.workspace.fs.writeFile(yaml, before);
+        else await vscode.workspace.fs.delete(yaml).then(undefined, () => undefined);
+      }
+    });
+
+    test('Opções dos templates: para o time grava no .techdocs-editor.yaml; voltar ao padrão tira (spec 08, TR5)', async () => {
+      const { templateOptions } = await api();
+      const { templatesOrigin } = await import('../../../src/templates/centralTemplates');
+      const yaml = file('.techdocs-editor.yaml');
+      const before = await vscode.workspace.fs.readFile(yaml).then(b => b, () => undefined);
+      const text = async () => new TextDecoder().decode(await vscode.workspace.fs.readFile(yaml).then(b => b, () => new Uint8Array()));
+      try {
+        equal(await templateOptions.choose(file(''), { action: 'change', repository: 'acme/do-time/templates', scope: 'team' }), 'change', 'gravou');
+        ok((await text()).includes('templates:\n  repository: acme/do-time/templates'), await text());
+        equal((await templatesOrigin(file('wiki/docs'))).from, 'repository', 'a origem é o repositório da documentação');
+        equal(await templateOptions.choose(file(''), { action: 'reset', scope: 'team' }), 'reset', 'voltou ao padrão');
+        ok(!(await text()).includes('templates:'), await text());
+        equal((await templatesOrigin(file('wiki/docs'))).from, 'default', 'sem repositório');
+      } finally {
+        if (before) await vscode.workspace.fs.writeFile(yaml, before);
+        else await vscode.workspace.fs.delete(yaml).then(undefined, () => undefined);
       }
     });
 

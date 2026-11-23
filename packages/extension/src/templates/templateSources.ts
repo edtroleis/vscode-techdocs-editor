@@ -4,7 +4,11 @@ import { BUILT_IN_SITES, BUILT_IN_TEMPLATES, templateLanguage, type TemplateLang
 import { gitApi } from '../publish/vscodeGit';
 
 /** Template de página da lista: da extensão, ou do repositório ou da empresa (TA3), com a origem (TP2). */
-export type PageChoice = { template: DocTemplate; origin: 'builtIn' } | { template: DocTemplate; origin: 'repository' | 'central'; source: string };
+export type PageChoice =
+  | { template: DocTemplate; origin: 'builtIn'; language?: TemplateLanguage }
+  | { template: DocTemplate; origin: 'repository'; source: string }
+  /** `exampleUrl`: a página de exemplo no GitHub (spec 08). */
+  | { template: DocTemplate; origin: 'central'; source: string; exampleUrl?: string };
 
 /** Template de site: os arquivos vêm do registro da extensão ou da pasta do template no repositório. */
 export type SiteChoice =
@@ -98,7 +102,7 @@ export const builtInPageTemplates = (language: TemplateLanguage): PageChoice[] =
   Object.entries(BUILT_IN_TEMPLATES[language])
     .map(([id, text]) => parseTemplate(id, text))
     .filter((t): t is DocTemplate => Boolean(t))
-    .map(template => ({ template, origin: 'builtIn' as const }));
+    .map(template => ({ template, origin: 'builtIn' as const, language }));
 
 /** As subpastas com `template.yml` das pastas de templates, na ordem delas: o primeiro de cada id vale (TP8). */
 export async function repositorySiteTemplates(folders: vscode.Uri[]): Promise<SiteChoice[]> {

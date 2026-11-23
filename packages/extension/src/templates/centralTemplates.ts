@@ -1,14 +1,18 @@
 import * as vscode from 'vscode';
 import {
+  centralExampleUrl,
   centralLabel,
   GitHubError,
   centralTemplates,
   CentralTemplatesSource,
   DocTemplate,
   loadCentralTemplates,
+  parseRepoConfig,
   parseTemplatesRepository,
+  REPO_CONFIG_FILE,
   SiteTemplate,
 } from '@edtroleis/techdocs-editor-core';
+import { readText } from './templateSources';
 import { anonymousClientFor, clientFor, gitHubErrorText } from '../publish/githubAuth';
 
 /** A cópia guardada passa a ser conferida no GitHub depois de uma hora (e pelo comando "Atualizar"). */
@@ -17,6 +21,9 @@ export const CENTRAL_REFRESH_MS = 60 * 60 * 1000;
 /** Templates centrais prontos para a lista: a origem e o que a pasta tem. */
 export type CentralTemplatesState = {
   label: string;
+  source: CentralTemplatesSource;
+  /** A pasta de idioma usada, se o repositório tem pastas de idioma (spec 08). */
+  language?: string;
   pages: DocTemplate[];
   sites: { template: SiteTemplate; files: Record<string, string> }[];
 };
@@ -34,20 +41,19 @@ export class CentralTemplates {
 
   constructor(private readonly context: Pick<vscode.ExtensionContext, 'globalStorageUri' | 'globalState'>) {}
 
-  /**
-   * A origem configurada. Sem confiar no workspace, só vale a configuração do usuário: a da pasta faria a
-   * extensão chamar a rede por conta de um repositório que a pessoa nem confirmou.
-   */
-  source(scope?: vscode.Uri): CentralTemplatesSource | undefined {
-    const config = vscode.workspace.getConfiguration('techdocsEditor.templates', scope);
-    const value = vscode.workspace.isTrusted ? config.get<string>('repository') : config.inspect<string>('repository')?.globalValue;
-    return parseTemplatesRepository(value);
+  /** A origem configurada (ver templatesOrigin). */
+  async source(scope?: vscode.Uri): Promise<CentralTemplatesSource | undefined> {
+    return parseTemplatesRepository((await templatesOrigin(scope)).value);
   }
 
-  /** Os templates centrais: a cópia guardada, conferida no GitHub se tem mais de uma hora (ou com `force`). */
-  async get(scope?: vscode.Uri, force = false): Promise<CentralTemplatesState | undefined> {
-    const source = this.source(scope);
+  /**
+   * Os templates centrais: a cópia guardada, conferida no GitHub se tem mais de uma hora (ou com `force`). Com as
+   * pastas de idioma do repositório de templates (spec 08), os da `language` (a do site).
+   */
+  async get(scope?: vscode.Uri, force = false, language = 'en'): Promise<CentralTemplatesState | undefined> {
+    const source = await this.source(scope);
     if (!source) return undefined;
+    const state = (label: string, files: Record<string, string>): CentralTemplatesState => ({ label, source, ...centralTemplates(files, language) });
     const label = centralLabel(source);
     const key = `${source.host}/${source.slug}/${source.folder}@${source.ref ?? ''}`;
     const cache = this.memory?.key === key ? this.memory : await this.readCache(key);
@@ -114,4 +120,40 @@ export class CentralTemplates {
   }
 }
 
-const state = (label: string, files: Record<string, string>): CentralTemplatesState => ({ label, ...centralTemplates(files) });
+
+/** Os templates de página da empresa como itens da lista, com o endereço do exemplo de cada um no GitHub. */
+export const centralPageChoices = (company: CentralTemplatesState | undefined) =>
+  (company?.pages ?? []).map(template => ({
+    template,
+    origin: 'central' as const,
+    source: company!.label,
+    ...(template.example && { exampleUrl: centralExampleUrl(company!.source, company!.language, template.example) }),
+  }));
+
+/** De onde vem o repositório de templates em uso (spec 08, TR5 e TR6). */
+export type TemplatesOrigin = {
+  value?: string;
+  /** `repository`: o `.techdocs-editor.yaml` da documentação; `settings`: a configuração do VS Code; `default`: nenhum. */
+  from: 'repository' | 'settings' | 'default';
+  /** A pasta do repositório da documentação (onde fica ou ficaria o `.techdocs-editor.yaml`). */
+  folder?: vscode.Uri;
+};
+
+/**
+ * O repositório de templates para `scope`: o `templates.repository` do `.techdocs-editor.yaml` na raiz do repositório
+ * da documentação (o padrão do time) vence a configuração do VS Code. Sem confiar no workspace, nem o arquivo nem a
+ * configuração da pasta valem, só a do usuário: senão a extensão chamaria a rede por conta de um repositório que a
+ * pessoa nem confirmou.
+ */
+export async function templatesOrigin(scope?: vscode.Uri): Promise<TemplatesOrigin> {
+  const trusted = vscode.workspace.isTrusted;
+  const folder = (scope && vscode.workspace.getWorkspaceFolder(scope)?.uri) ?? vscode.workspace.workspaceFolders?.[0]?.uri;
+  if (trusted && folder) {
+    const text = await readText(vscode.Uri.joinPath(folder, REPO_CONFIG_FILE));
+    const value = text === undefined ? undefined : parseRepoConfig(text).templates?.repository;
+    if (value) return { value, from: 'repository', folder };
+  }
+  const inspect = vscode.workspace.getConfiguration('techdocsEditor.templates', scope).inspect<string>('repository');
+  const value = (trusted ? (inspect?.workspaceFolderValue ?? inspect?.workspaceValue ?? inspect?.globalValue) : inspect?.globalValue)?.trim();
+  return value ? { value, from: 'settings', folder } : { from: 'default', folder };
+}

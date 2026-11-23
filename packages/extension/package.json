@@ -125,6 +125,12 @@
         "icon": "$(wand)"
       },
       {
+        "command": "techdocsEditor.templateOptions",
+        "title": "%command.templateOptions%",
+        "category": "TechDocs",
+        "icon": "$(gear)"
+      },
+      {
         "command": "techdocsEditor.checkOptions",
         "title": "%command.checkOptions%",
         "category": "TechDocs",
@@ -697,6 +703,11 @@
           "command": "techdocsEditor.newSite",
           "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
           "group": "1_create@1"
+        },
+        {
+          "command": "techdocsEditor.templateOptions",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
+          "group": "1_create@9"
         },
         {
           "command": "techdocsEditor.openRemote",

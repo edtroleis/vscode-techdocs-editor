@@ -117,5 +117,6 @@
   "command.usePageTitle": "Usar o título da página no menu",
   "command.treeOpenToSide": "Abrir ao lado",
   "command.copyToPage": "Copiar para uma página",
-  "command.visualKeepKey": "Atalho do editor visual"
+  "command.visualKeepKey": "Atalho do editor visual",
+  "command.templateOptions": "Opções dos templates"
 }

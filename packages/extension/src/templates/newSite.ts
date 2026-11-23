@@ -19,7 +19,7 @@ import { catalogModeFor, siteRepository } from '../catalogOptions';
 import type { ProposedChanges } from '../proposedChange';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import { timing } from '../timing';
-import type { CentralTemplates } from './centralTemplates';
+import { centralPageChoices, type CentralTemplates } from './centralTemplates';
 import {
   builtInEnabled,
   builtInPageTemplates,
@@ -238,22 +238,24 @@ export class NewSiteCommand {
   async siteChoices(folders: vscode.Uri[], root: vscode.Uri): Promise<{ repository: SiteChoice[]; central: SiteChoice[]; builtIn: SiteChoice[] }> {
     const repository = await repositorySiteTemplates(folders);
     const ids = new Set(repository.map(c => c.template.id));
-    const company = await this.central?.get(root);
+    const language = await this.language(root);
+    const company = await this.central?.get(root, false, language);
     const central: SiteChoice[] = (company?.sites ?? [])
       .filter(s => !ids.has(s.template.id))
       .map(s => ({ ...s, origin: 'central', source: company!.label }));
     central.forEach(c => ids.add(c.template.id));
-    const builtIn = builtInEnabled(root) ? builtInSiteTemplates(await this.language(root)).filter(c => !ids.has(c.template.id)) : [];
+    const builtIn = builtInEnabled(root) ? builtInSiteTemplates(language).filter(c => !ids.has(c.template.id)) : [];
     return { repository, central, builtIn };
   }
 
   /** Os templates de página (para o texto das páginas): os do repositório, os da empresa e os da extensão. */
   async pageChoices(folders: vscode.Uri[], root: vscode.Uri): Promise<PageChoice[]> {
-    const company = await this.central?.get(root);
+    const language = await this.language(root);
+    const company = await this.central?.get(root, false, language);
     return [
       ...(await repositoryPageTemplates(folders)),
-      ...(company?.pages ?? []).map(template => ({ template, origin: 'central' as const, source: company!.label })),
-      ...builtInPageTemplates(await this.language(root)),
+      ...centralPageChoices(company),
+      ...builtInPageTemplates(language),
     ];
   }
 

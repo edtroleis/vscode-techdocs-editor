@@ -28,6 +28,8 @@ import { SitePreview } from './templates/sitePreview';
 import { TreeActions, useTestAnswers } from './treeActions';
 import { ExplorerSync } from './explorerSync';
 import { VisualEditorProvider } from './visualEditorProvider';
+import { registerTemplateExamples } from './templates/templateExamples';
+import { TemplateOptions } from './templates/templateOptions';
 
 export function activate(context: vscode.ExtensionContext) {
   // Cenários de usuário (e2e/scenarios): login no GitHub por token, nunca na extensão publicada. No navegador não há
@@ -68,10 +70,13 @@ export function activate(context: vscode.ExtensionContext) {
   const repoCheck = new RepoCheck(sites, lint, newSite, proposals);
   const checkView = new CheckView(repoCheck);
   const catalogOptions = new CatalogOptions(repoCheck);
+  const templateOptions = new TemplateOptions(central, repoCheck);
   const preview = new SitePreview(context.extensionUri, newSite);
   newSite.usePreview(preview);
   const prepare = new PrepareContext(sites);
   context.subscriptions.push(
+    registerTemplateExamples(),
+    vscode.commands.registerCommand('techdocsEditor.templateOptions', () => templateOptions.choose()),
     remotes,
     vscode.workspace.registerFileSystemProvider(REMOTE_SCHEME, remoteFs, { isCaseSensitive: true }),
     resolveSaveConflicts(remoteFs, conflicts),
@@ -223,7 +228,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, treeActions, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick, useTestAnswers };
+  return { provider, treeActions, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick, useTestAnswers };
 }
 
 /**
@@ -250,7 +255,7 @@ function docsPageContext(sites: LocalSites): vscode.Disposable {
 
 /** "Atualizar os templates da empresa" (TA3): confere no GitHub agora, sem esperar a hora. */
 async function refreshCentralTemplates(central: CentralTemplates) {
-  if (!central.source()) {
+  if (!(await central.source(vscode.workspace.workspaceFolders?.[0]?.uri))) {
     const open = vscode.l10n.t('Open settings');
     const answer = await vscode.window.showInformationMessage(
       vscode.l10n.t('No company templates are set. Point techdocsEditor.templates.repository to the repository with them.'),
@@ -259,7 +264,7 @@ async function refreshCentralTemplates(central: CentralTemplates) {
     if (answer === open) await vscode.commands.executeCommand('workbench.action.openSettings', 'techdocsEditor.templates.repository');
     return;
   }
-  const result = await central.get(undefined, true);
+  const result = await central.get(vscode.workspace.workspaceFolders?.[0]?.uri, true);
   if (result) {
     void vscode.window.showInformationMessage(
       vscode.l10n.t('Company templates from {0}: {1} page templates and {2} site templates.', result.label, result.pages.length, result.sites.length),

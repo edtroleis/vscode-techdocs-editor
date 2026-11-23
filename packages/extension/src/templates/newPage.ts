@@ -28,7 +28,8 @@ import { publishConfig } from '../publish/publishConfig';
 import { remoteUri } from '../remote/remoteFs';
 import type { RemoteRepos, RepoAccess } from '../remote/remoteRepos';
 import { VisualEditorProvider } from '../visualEditorProvider';
-import type { CentralTemplates } from './centralTemplates';
+import { centralPageChoices, type CentralTemplates } from './centralTemplates';
+import { hasExample, openTemplateExample } from './templateExamples';
 import {
   builtInEnabled,
   builtInPageTemplates,
@@ -337,11 +338,10 @@ export class NewPageCommand {
    */
   private async templates(destination: Destination): Promise<PageChoice[]> {
     const repository = await repositoryPageTemplates(destination.templateFolders);
-    const company = await this.central?.get(destination.scope);
-    const central = (company?.pages ?? []).map(template => ({ template, origin: 'central' as const, source: company!.label }));
-    const builtIn = builtInEnabled(destination.scope)
-      ? builtInPageTemplates(await siteTemplateLanguage(await destination.mkdocs(), [destination.docsDir]))
-      : [];
+    const language = await siteTemplateLanguage(await destination.mkdocs(), [destination.docsDir]);
+    const company = await this.central?.get(destination.scope, false, language);
+    const central = centralPageChoices(company);
+    const builtIn = builtInEnabled(destination.scope) ? builtInPageTemplates(language) : [];
     return mergeTemplates<PageChoice>(repository, central, builtIn);
   }
 
@@ -383,14 +383,10 @@ export class NewPageCommand {
             : vscode.l10n.t('needs a newer version of the extension'),
           detail: c.template.description,
           choice: c,
+          ...(supported && hasExample(c) && { buttons: [exampleButton] }),
         });
       }
-      const picked = await vscode.window.showQuickPick(items, {
-        title: vscode.l10n.t('New page from template'),
-        placeHolder: vscode.l10n.t('Choose the kind of page'),
-        matchOnDetail: true,
-      });
-      choice = picked?.choice;
+      choice = await pickWithExamples(items);
     }
     if (choice && !isTemplateSupported(choice.template)) {
       void vscode.window.showWarningMessage(
@@ -511,4 +507,38 @@ function activeRemotePage(): vscode.Uri | undefined {
 function activeCustomEditorUri(): vscode.Uri | undefined {
   const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
   return input instanceof vscode.TabInputCustom ? input.uri : undefined;
+}
+
+const exampleButton: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('eye'), tooltip: vscode.l10n.t('See an example') };
+
+/**
+ * A lista de templates com o botão "Ver exemplo" (spec 08, TR4). O exemplo abre ao lado e a lista continua aberta
+ * (não some ao perder o foco), para escolher depois de ver.
+ */
+function pickWithExamples(items: (vscode.QuickPickItem & { choice?: PageChoice })[]): Promise<PageChoice | undefined> {
+  const quickPick = vscode.window.createQuickPick<(typeof items)[number]>();
+  quickPick.title = vscode.l10n.t('New page from template');
+  quickPick.placeholder = vscode.l10n.t('Choose the kind of page');
+  quickPick.matchOnDetail = true;
+  quickPick.ignoreFocusOut = true;
+  quickPick.items = items;
+  const optionsButton: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('gear'), tooltip: vscode.l10n.t('Template options') };
+  quickPick.buttons = [optionsButton];
+  return new Promise(resolve => {
+    let picked: PageChoice | undefined;
+    quickPick.onDidTriggerButton(() => {
+      quickPick.hide();
+      void vscode.commands.executeCommand('techdocsEditor.templateOptions');
+    });
+    quickPick.onDidTriggerItemButton(event => event.item.choice && void openTemplateExample(event.item.choice));
+    quickPick.onDidAccept(() => {
+      picked = quickPick.selectedItems[0]?.choice;
+      quickPick.hide();
+    });
+    quickPick.onDidHide(() => {
+      quickPick.dispose();
+      resolve(picked);
+    });
+    quickPick.show();
+  });
 }
