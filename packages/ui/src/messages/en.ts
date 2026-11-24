@@ -254,6 +254,7 @@ export const en: Record<string, string> = {
   'editorText.link': 'Link',
   'editorText.linkPlaceholder': 'Page of the site, or an address (https://…)',
   'editorText.linkOutsideMenu': 'not in the menu',
+  'editorText.linkDocs': 'Backstage docs',
   'editorText.topBar.bold': 'Bold (Ctrl+B)',
   'editorText.topBar.italic': 'Italic (Ctrl+I)',
   'editorText.topBar.table': 'Table (click again, inside the table, to remove it)',
@@ -305,4 +306,10 @@ export const en: Record<string, string> = {
   'editorText.tdCardAdd': '+ Card',
   'editorText.tdCardTitle': 'Card title',
   'editorText.tdCardText': 'A short description of the card.',
+  'editorText.tdButton': 'Button',
+  'editorText.tdButtonLabel': 'Button text',
+  'editorText.tdGlossary': 'Glossary',
+  'editorText.tdGlossaryTerm': 'Term',
+  'editorText.tdGlossaryMeaning': 'What the term means.',
+  'editorText.tdDocLink': 'Link to another doc',
 };

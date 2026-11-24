@@ -6,6 +6,17 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Buttons** (`[Text](address){ .md-button }`, also `.md-button--primary`) show as buttons and **glossaries**
+  (a term and `:   meaning` on the line below) as term and indented meaning; `{ .md-button }` and `:` show only with
+  the cursor in the paragraph. **/** → **Button** and **Glossary** insert them.
+- **Link to another doc** (in the **/** menu and in the link box): the docs of the other sites in the workspace,
+  read from their `catalog-info.yaml`, by title. Choosing one writes `/docs/default/component/<name>/`, the path
+  that opens in any Backstage (instead of `http://localhost:3000/docs/…`).
+- **TechDocs** button in the toolbar, with the same group as the **/** menu. The component goes in a new
+  paragraph after the cursor, without erasing the text there.
+
 ## [0.17.0] - 2026-11-24
 
 ### Added

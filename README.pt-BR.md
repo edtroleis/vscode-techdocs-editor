@@ -51,8 +51,12 @@ um diagrama Mermaid e o ajuste da formatação ([vídeo, MP4](https://github.com
 
 - **Abrir uma página nunca a altera.** Salvar só mexe no que você editou: o resto do arquivo fica igual,
   byte a byte (também o fim de linha do Windows), e os diffs e revisões continuam pequenos.
-- **A sintaxe do MkDocs fica.** Admonitions (`!!! note`), blocos recolhíveis (`???`), abas de conteúdo
-  (`===`) e o front matter no topo da página (`---`) continuam como blocos protegidos, em vez de virar HTML.
+- **Os componentes do TechDocs aparecem como no Backstage.** Avisos (`!!! note`), recolhíveis (`???`), abas
+  (`===`), cards, botões (`{ .md-button }`) e glossário (termo e `:   significado`) se editam no visual, e o
+  arquivo continua com a sintaxe do MkDocs. O grupo **TechDocs** fica no menu `/` e num botão da barra; **Link
+  para outra doc** procura as docs dos outros sites do workspace (pelo `catalog-info.yaml`) e grava
+  `/docs/default/component/<nome>/`, que abre em qualquer Backstage. O front matter (`---`) fica como bloco
+  protegido.
 - **Edição conhecida:** barra de ferramentas como a de um editor de texto, `/` para inserir blocos,
   tabelas (Tab cria uma linha), listas de tarefas, blocos de código com cores, links para as outras páginas do
   site e imagens. As imagens mantêm o texto alternativo.
@@ -506,8 +510,8 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 - No modo local, o painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
 - Modo remoto, ainda não: o VS Code para a Web. Veja o [plano](specs/00-visao-geral.md#fases).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.
-- Algumas construções avançadas do Material for MkDocs, como grid cards e blocos HTML com `markdown`, ainda
-  estão sendo reforçadas. Confira o diff antes de commitar páginas que as usam.
+- Blocos HTML com `markdown` (fora os cards) e outras construções avançadas do Material for MkDocs ainda
+  estão sendo reforçados. Confira o diff antes de commitar páginas que as usam.
 
 ## Contribuir
 

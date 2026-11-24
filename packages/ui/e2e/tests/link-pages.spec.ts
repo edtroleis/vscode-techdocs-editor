@@ -12,7 +12,8 @@ test.describe('caixa de link: páginas do site', () => {
     await clickTopBar(page, 'link');
     const input = page.locator('.milkdown-link-edit input');
     await expect(input).toBeFocused();
-    await expect(suggestions(page)).toHaveText([/Início/, /Referência da API/, /Rotina de backup/, /Rascunho.*fora do menu/]);
+    await expect(suggestions(page)).toHaveText([/Início/, /Referência da API/, /Rotina de backup/, /Rascunho.*fora do menu/, /Golden Path de Arquitetura/]);
+    await expect(page.locator('.docs-link-pages .group')).toHaveText('Docs do Backstage');
     await input.pressSequentially('referencia', { delay: 20 });
     await expect(suggestions(page)).toHaveText([/Referência da API/]);
     await input.press('Enter');

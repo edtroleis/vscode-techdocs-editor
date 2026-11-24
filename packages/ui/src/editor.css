@@ -783,3 +783,51 @@
 .milkdown .td-cards .content-dom > :last-child {
   margin-bottom: 0;
 }
+
+/* Botão do Material ([Texto](endereço){ .md-button }) e glossário (Termo / :   Significado), ver techdocsInline.ts */
+.milkdown .ProseMirror a:has(> .td-md-button) {
+  text-decoration: none;
+}
+.milkdown .ProseMirror .td-md-button {
+  display: inline-block;
+  border: 2px solid var(--crepe-color-primary);
+  border-radius: 4px;
+  padding: 2px 16px;
+  font-weight: 700;
+  color: var(--crepe-color-primary);
+  text-decoration: none;
+}
+.milkdown .ProseMirror .td-md-button--primary {
+  background: var(--crepe-color-primary);
+  color: var(--crepe-color-on-primary, #fff);
+}
+.milkdown .ProseMirror .td-attrs {
+  margin-left: 6px;
+  font-size: 0.8em;
+  color: var(--crepe-color-outline);
+}
+.milkdown .ProseMirror .td-hidden {
+  display: none;
+}
+.milkdown .ProseMirror p.td-deflist {
+  padding-left: 24px;
+}
+.milkdown .ProseMirror .td-deflist [data-type='hardbreak'][data-is-inline='true'] {
+  display: block;
+  height: 0;
+  overflow: hidden;
+}
+.milkdown .ProseMirror .td-dt {
+  font-weight: 600;
+  margin-left: -24px;
+}
+.milkdown .ProseMirror .td-dd-mark {
+  color: var(--crepe-color-outline);
+}
+.milkdown .docs-link-pages .group {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}

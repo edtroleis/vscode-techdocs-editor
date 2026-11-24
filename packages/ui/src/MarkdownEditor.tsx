@@ -7,6 +7,7 @@ import { diagramMenuChipsPlugin } from './diagramGallery';
 import { diagramBarCtx, diagramNodeBarPlugin } from './diagramNodeBar';
 import { mermaidBlockClassPlugin } from './mermaidBlockClass';
 import { componentsCtx, techdocsComponents } from './techdocsComponents';
+import { techdocsInlinePlugin } from './techdocsInline';
 import { diagramInsertCtx } from './insertDiagram';
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
@@ -239,6 +240,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         ctx.inject(componentsCtx, labels.components);
       })
       .use(techdocsComponents)
+      .use(techdocsInlinePlugin)
       .use(defaultCodeLanguagePlugin)
       .use(headingLevelFixPlugin)
       .use(singleTitlePlugin)
@@ -345,7 +347,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           root.current,
           () => crepe.editor.ctx.get(editorViewCtx),
           async () => (await linkPagesRef.current?.()) ?? [],
-          () => ({ outside: textRef.current.linkOutsideMenu }),
+          () => ({ outside: textRef.current.linkOutsideMenu, docs: textRef.current.linkDocs }),
         )
       : () => {};
     // Imagens carregando, janela redimensionada etc. mudam a posição dos blocos

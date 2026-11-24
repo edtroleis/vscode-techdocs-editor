@@ -16,7 +16,7 @@ export type WebviewLabels = {
 };
 
 /** Página do site para a caixa de link do editor visual (ver ui/src/linkPages.ts). */
-export type LinkPageView = { title: string; href: string; detail: string; section?: string; outside?: boolean };
+export type LinkPageView = { title: string; href: string; detail: string; section?: string; outside?: boolean; doc?: boolean };
 
 export type HostMessage =
   /** Conteúdo do arquivo ao abrir (formato do repositório, com `\n`). */

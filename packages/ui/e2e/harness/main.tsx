@@ -117,6 +117,8 @@ const render = (readOnly: boolean) =>
         { title: 'Referência da API', href: '../referencia-da-api.md', detail: 'referencia-da-api.md' },
         { title: 'Rotina de backup', href: 'backup.md', detail: 'guias/backup.md', section: 'Guias' },
         { title: 'Rascunho', href: '../rascunho.md', detail: 'rascunho.md', outside: true },
+        // Outra doc do Backstage, de outro site do workspace
+        { title: 'Golden Path de Arquitetura', href: '/docs/default/component/wiki-golden-path/', detail: 'wiki-golden-path', doc: true },
       ]}
     />,
   );

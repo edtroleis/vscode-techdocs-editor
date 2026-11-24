@@ -708,6 +708,27 @@ export function defineTests() {
       );
     });
 
+    test('caixa de link: as docs do Backstage dos outros sites (catalog-info.yaml), sem as do próprio site', async () => {
+      const { docs } = await api();
+      await docs.ready;
+      await until(() => siteItem(docs, 'wiki'), Boolean, 'site wiki não está na árvore');
+      const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
+      const catalog = (name: string, title: string) =>
+        `apiVersion: backstage.io/v1alpha1\nkind: Component\nmetadata:\n  name: ${name}\n  title: ${title}\n  annotations:\n    backstage.io/techdocs-ref: dir:.\n`;
+      await write('wiki/catalog-info.yaml', catalog('wiki', 'Wiki'));
+      await write('wiki-demo/catalog-info.yaml', catalog('wiki-demo', 'Wiki de exemplo'));
+      try {
+        equal(
+          JSON.stringify(await docs.docLinks(file('wiki/docs/guias/imagens.md'))),
+          JSON.stringify([{ title: 'Wiki de exemplo', href: '/docs/default/component/wiki-demo/', detail: 'wiki-demo', doc: true }]),
+          'docs do Backstage na caixa de link',
+        );
+      } finally {
+        await vscode.workspace.fs.delete(file('wiki/catalog-info.yaml'));
+        await vscode.workspace.fs.delete(file('wiki-demo/catalog-info.yaml'));
+      }
+    });
+
     test('site com nav: na ordem do nav, página que não existe e páginas fora do nav', async () => {
       const { docs } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));

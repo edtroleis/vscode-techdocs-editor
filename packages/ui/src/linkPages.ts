@@ -10,9 +10,11 @@ export type LinkPage = {
   section?: string;
   /** Fora do menu do site (`nav`). */
   outside?: boolean;
+  /** Outra doc do Backstage (`/docs/default/component/x/`), de outro site do workspace. */
+  doc?: boolean;
 };
 
-export type LinkPagesText = { outside: string };
+export type LinkPagesText = { outside: string; docs: string };
 
 /** Endereço com esquema (https:, mailto:), âncora ou caminho absoluto: a pessoa está digitando um link, não uma página. */
 const TYPED_LINK = /^([a-z][a-z0-9+.-]*:|#|\/)/i;
@@ -61,7 +63,7 @@ export function attachLinkPages(root: HTMLElement, view: () => EditorView, pages
       input.closest('.milkdown-link-edit')!.appendChild(list);
     }
     list.replaceChildren(
-      ...shown.map((page, i) => {
+      ...shown.flatMap((page, i) => {
         const option = document.createElement('div');
         option.setAttribute('role', 'option');
         option.setAttribute('aria-selected', String(i === active));
@@ -74,12 +76,19 @@ export function attachLinkPages(root: HTMLElement, view: () => EditorView, pages
         detail.textContent = page.outside ? `${page.detail} · ${text().outside}` : page.detail;
         option.append(title, detail);
         option.addEventListener('click', () => choose(page));
+        if (page.doc) option.classList.add('doc');
         option.addEventListener('mousemove', () => {
           if (active === i) return;
           active = i;
           render();
         });
-        return option;
+        if (!page.doc || shown[i - 1]?.doc) return [option];
+        // As docs do Backstage, depois das páginas do site, com o nome do grupo
+        const heading = document.createElement('div');
+        heading.className = 'group';
+        heading.setAttribute('role', 'presentation');
+        heading.textContent = text().docs;
+        return [heading, option];
       }),
     );
     place();

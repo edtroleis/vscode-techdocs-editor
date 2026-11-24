@@ -7,7 +7,8 @@ import type { DiagramBarText } from './diagramNodeBar';
 import { type FlowchartWords, LINE_STYLES, SHAPES } from './flowchartEdit';
 import type { MermaidCompleteText } from './mermaidComplete';
 import { insertDiagram } from './insertDiagram';
-import { type ComponentsText, insertComponent, MENU_KINDS } from './techdocsComponents';
+import { type ComponentsText, MENU_KINDS } from './techdocsComponents';
+import { techdocsItems } from './techdocsMenu';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
 
@@ -99,6 +100,8 @@ export type EditorText = {
   link: string;
   linkPlaceholder: string;
   linkOutsideMenu: string;
+  /** Grupo das outras docs do Backstage na caixa de link. */
+  linkDocs: string;
   topBar: { bold: string; italic: string; table: string; divider: string; undo: string; redo: string };
   uploadImage: string;
   uploadImageInline: string;
@@ -214,6 +217,12 @@ export function editorTextFrom(t: TextLookup): EditorText {
       collapsible: k('tdCollapsible'),
       tabs: k('tdTabs'),
       cards: k('tdCards'),
+      button: k('tdButton'),
+      buttonLabel: k('tdButtonLabel'),
+      glossary: k('tdGlossary'),
+      glossaryTerm: k('tdGlossaryTerm'),
+      glossaryMeaning: k('tdGlossaryMeaning'),
+      docLink: k('tdDocLink'),
       card: { add: k('tdCardAdd'), title: k('tdCardTitle'), text: k('tdCardText') },
       kind: k('tdKind'),
       kindTitle: k('tdKindTitle'),
@@ -243,6 +252,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
     link: k('link'),
     linkPlaceholder: k('linkPlaceholder'),
     linkOutsideMenu: k('linkOutsideMenu'),
+    linkDocs: k('linkDocs'),
     topBar: {
       bold: k('topBar.bold'),
       italic: k('topBar.italic'),
@@ -265,13 +275,6 @@ export const headingOptions = (text: EditorText) => [
   { label: text.paragraph, level: null },
   ...[1, 2, 3, 4, 5, 6].map(level => ({ label: text.heading(level), level })),
 ];
-
-const svg = (inner: string) =>
-  `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">${inner}</svg>`;
-const ICON_ADMONITION = svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><circle cx="6.5" cy="6.5" r=".6" fill="currentColor"/><path d="M7 13h10M7 16h7"/>');
-const ICON_COLLAPSIBLE = svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M6 8l2 2 2-2M12 9h6M7 14h10M7 17h7"/>');
-const ICON_CARDS = svg('<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/>');
-const ICON_TABS = svg('<path d="M3 8V5.5A1.5 1.5 0 0 1 4.5 4H10v4M10 8V4h5v4"/><rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M7 13h10M7 16h6"/>');
 
 /** Menu "/" (o filtro do menu usa estes nomes: "/tab" acha "Tabela"). */
 export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
@@ -302,20 +305,15 @@ export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
   // Os modelos de diagrama Mermaid (spec 06, M4, M11 e M21), um grupo do menu para cada tipo de assunto. O menu do
   // Crepe só filtra pelo nome: "Diagrama: …" faz "/diagrama" achar todos
   buildMenu: builder => {
-    // Os componentes do TechDocs (spec 01, M1): "/techdocs", "/aviso", "/abas"
+    // Os componentes do TechDocs (spec 01, M1): "/techdocs", "/aviso", "/abas" (o mesmo grupo do botão da barra)
     const techdocs = builder.addGroup('techdocs', text.components.group);
-    for (const [kind, label, icon] of [
-      ['admonition', text.components.admonition, ICON_ADMONITION],
-      ['collapsible', text.components.collapsible, ICON_COLLAPSIBLE],
-      ['tabs', text.components.tabs, ICON_TABS],
-      ['cards', text.components.cards, ICON_CARDS],
-    ] as const) {
-      techdocs.addItem(`techdocs-${kind}`, {
-        label,
-        icon,
+    for (const item of techdocsItems(text.components)) {
+      techdocs.addItem(`techdocs-${item.id}`, {
+        label: item.label,
+        icon: item.icon,
         onRun: ctx => {
           ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
-          insertComponent(ctx, kind);
+          item.run(ctx);
         },
       });
     }
@@ -362,6 +360,7 @@ const topBarLabels = (text: EditorText) => [
   text.topBar.table,
   text.codeBlock,
   text.diagram.label,
+  text.components.group,
   text.quote,
   text.topBar.divider,
   text.topBar.undo,

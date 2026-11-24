@@ -29,6 +29,13 @@ export type ComponentsText = {
   collapsible: string;
   tabs: string;
   cards: string;
+  /** Botão, glossário e link para outra doc (techdocsInline.ts). */
+  button: string;
+  buttonLabel: string;
+  glossary: string;
+  glossaryTerm: string;
+  glossaryMeaning: string;
+  docLink: string;
   /** Barra dos cards: + Card e o card novo. */
   card: { add: string; title: string; text: string };
   /** Barra do aviso. */
@@ -59,6 +66,12 @@ export const componentsCtx = createSlice<ComponentsText>(
     collapsible: 'Collapsible',
     tabs: 'Tabs',
     cards: 'Cards',
+    button: 'Button',
+    buttonLabel: 'Button text',
+    glossary: 'Glossary',
+    glossaryTerm: 'Term',
+    glossaryMeaning: 'What the term means.',
+    docLink: 'Link to another doc',
     card: { add: '+ Card', title: 'Card title', text: 'A short description of the card.' },
     kind: 'Type',
     kindTitle: 'Admonition type',

@@ -254,6 +254,7 @@ export const ptBR: Record<string, string> = {
   'editorText.link': 'Link',
   'editorText.linkPlaceholder': 'Página do site ou endereço (https://…)',
   'editorText.linkOutsideMenu': 'fora do menu',
+  'editorText.linkDocs': 'Docs do Backstage',
   'editorText.topBar.bold': 'Negrito (Ctrl+B)',
   'editorText.topBar.italic': 'Itálico (Ctrl+I)',
   'editorText.topBar.table': 'Tabela (clique de novo, dentro da tabela, para remover)',
@@ -305,4 +306,10 @@ export const ptBR: Record<string, string> = {
   'editorText.tdCardAdd': '+ Card',
   'editorText.tdCardTitle': 'Título do card',
   'editorText.tdCardText': 'Uma descrição curta do card.',
+  'editorText.tdButton': 'Botão',
+  'editorText.tdButtonLabel': 'Texto do botão',
+  'editorText.tdGlossary': 'Glossário',
+  'editorText.tdGlossaryTerm': 'Termo',
+  'editorText.tdGlossaryMeaning': 'O que o termo significa.',
+  'editorText.tdDocLink': 'Link para outra doc',
 };

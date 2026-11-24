@@ -47,7 +47,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
   diagramAsk: Ask | undefined;
 
   /** Páginas do site de uma página, para a caixa de link (a árvore da Documentação, que já as conhece). */
-  linkPages: (uri: vscode.Uri) => LinkPageView[] = () => [];
+  linkPages: (uri: vscode.Uri) => Promise<LinkPageView[]> = async () => [];
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
@@ -114,7 +114,7 @@ export class EditorSession {
     private readonly status?: {
       strip(): Strip | undefined;
       action(action: StripAction): void;
-      linkPages?(): LinkPageView[];
+      linkPages?(): Promise<LinkPageView[]>;
       /** Diagrama Mermaid inserido no editor visual (spec 06, M7). */
       diagramInserted?(): void;
     },
@@ -270,7 +270,7 @@ export class EditorSession {
         void this.showLine(message.line);
         return;
       case 'linkPages':
-        this.post({ type: 'linkPages', id: message.id, pages: this.status?.linkPages?.() ?? [] });
+        void (this.status?.linkPages?.() ?? Promise.resolve([])).then(pages => this.post({ type: 'linkPages', id: message.id, pages }));
         return;
       case 'importImage':
         void this.importImage(message.url).then(link => this.post({ type: 'uploaded', id: message.id, link }));

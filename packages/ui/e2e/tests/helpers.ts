@@ -14,6 +14,7 @@ export const TOP_BAR = [
   'table',
   'codeBlock',
   'diagram',
+  'techdocs',
   'quote',
   'hr',
   'undo',

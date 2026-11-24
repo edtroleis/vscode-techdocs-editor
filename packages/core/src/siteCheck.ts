@@ -422,3 +422,28 @@ function addAnnotation(catalog: string, annotation: string): string {
   const start = lineStart(key.range[0]);
   return `${catalog.slice(0, start)}${indent}annotations:\n${indent}  ${annotation}\n${catalog.slice(start)}`;
 }
+
+/** Uma doc do Backstage descrita num `catalog-info.yaml`: o nome, o título e o caminho dela no portal. */
+export type CatalogDoc = { name: string; title: string; path: string };
+
+/**
+ * As entidades com documentação (anotação `backstage.io/techdocs-ref`) de um `catalog-info.yaml`, com o caminho
+ * `/docs/<namespace>/<kind>/<name>/`, que abre no Backstage onde a doc estiver (o mesmo de `localPortalPath`).
+ */
+export function catalogDocs(catalog: string): CatalogDoc[] {
+  const out: CatalogDoc[] = [];
+  for (const doc of parseAllDocuments(catalog)) {
+    if ('errors' in doc && doc.errors.length) continue;
+    const value = doc.toJS() as { kind?: unknown; metadata?: { name?: unknown; namespace?: unknown; title?: unknown; annotations?: Record<string, unknown> } } | null;
+    const metadata = value?.metadata;
+    const ref = metadata?.annotations?.[TECHDOCS_REF];
+    if (typeof value?.kind !== 'string' || typeof metadata?.name !== 'string' || typeof ref !== 'string' || !ref.trim()) continue;
+    const namespace = typeof metadata.namespace === 'string' && metadata.namespace ? metadata.namespace : 'default';
+    out.push({
+      name: metadata.name,
+      title: typeof metadata.title === 'string' && metadata.title.trim() ? metadata.title.trim() : metadata.name,
+      path: `/docs/${namespace.toLowerCase()}/${value.kind.toLowerCase()}/${metadata.name}/`,
+    });
+  }
+  return out;
+}

@@ -1,5 +1,5 @@
 import { addMermaidFence } from './mermaidConfig';
-import { catalogInfoSkeleton, checkSite, fixLocalPortalLinks, localPortalPath, pageRefs, SiteFinding, SiteSnapshot } from './siteCheck';
+import { catalogDocs, catalogInfoSkeleton, checkSite, fixLocalPortalLinks, localPortalPath, pageRefs, SiteFinding, SiteSnapshot } from './siteCheck';
 
 const MKDOCS = `# Site do time
 site_name: Pagamentos
@@ -260,5 +260,37 @@ describe('link para o Backstage da máquina (local-portal-link)', () => {
     expect(fixLocalPortalLinks('[a](<http://localhost:3000/docs/default/component/x/>)\n\n[r]: http://localhost:3000/docs/default/component/y/\n')).toBe(
       '[a](</docs/default/component/x/>)\n\n[r]: /docs/default/component/y/\n',
     );
+  });
+});
+
+describe('catalogDocs', () => {
+  it('as entidades com techdocs-ref, com o caminho do portal', () => {
+    const yaml = [
+      'apiVersion: backstage.io/v1alpha1',
+      'kind: Component',
+      'metadata:',
+      '  name: wiki-golden-path',
+      '  title: Golden Path de Arquitetura',
+      '  annotations:',
+      '    backstage.io/techdocs-ref: dir:.',
+      '---',
+      'kind: System',
+      'metadata:',
+      '  name: sem-docs',
+      '---',
+      'kind: API',
+      'metadata:',
+      '  name: pagamentos',
+      '  namespace: Financeiro',
+      '  annotations:',
+      '    backstage.io/techdocs-ref: url:https://exemplo.com',
+    ].join('\n');
+    expect(catalogDocs(yaml)).toEqual([
+      { name: 'wiki-golden-path', title: 'Golden Path de Arquitetura', path: '/docs/default/component/wiki-golden-path/' },
+      { name: 'pagamentos', title: 'pagamentos', path: '/docs/financeiro/api/pagamentos/' },
+    ]);
+  });
+  it('YAML com erro não quebra', () => {
+    expect(catalogDocs('kind: [\nmetadata')).toEqual([]);
   });
 });

@@ -51,8 +51,12 @@ Mermaid diagram and fixing formatting ([video, MP4](https://github.com/edtroleis
 
 - **Opening a page never changes it.** Saving only touches what you edited: the rest of the file stays byte
   for byte (Windows line endings too), so diffs and reviews stay small.
-- **MkDocs syntax is kept.** Admonitions (`!!! note`), collapsible blocks (`???`), content tabs (`===`) and the
-  front matter at the top of the page (`---`) stay as protected blocks instead of being turned into HTML.
+- **TechDocs components look like in Backstage.** Admonitions (`!!! note`), collapsible blocks (`???`), tabs
+  (`===`), cards, buttons (`{ .md-button }`) and glossaries (term and `:   meaning`) are edited visually, and the
+  file keeps the MkDocs syntax. The **TechDocs** group is in the `/` menu and in a toolbar button; **Link to
+  another doc** searches the docs of the other sites in the workspace (by their `catalog-info.yaml`) and writes
+  `/docs/default/component/<name>/`, which opens in any Backstage. The front matter (`---`) stays as a protected
+  block.
 - **Familiar editing:** a toolbar like a word processor, `/` to insert blocks, tables (Tab adds a row), task
   lists, code blocks with syntax highlighting, links to the other pages of the site and images. Images keep their
   alt text.
@@ -506,7 +510,7 @@ otherwise). Only pages inside a `docs_dir` are checked.
 - In local mode, the publishing panel needs a clone with a GitHub remote and VS Code's Git extension.
 - Remote mode, not yet: VS Code for the Web. See the [roadmap](specs/00-visao-geral.md#fases).
 - Math (LaTeX) is off, as in TechDocs' default MkDocs setup.
-- Some advanced Material for MkDocs constructs, such as grid cards and HTML blocks with `markdown`, are still
+- HTML blocks with `markdown` (other than cards) and other advanced Material for MkDocs constructs are still
   being hardened. Review the diff before committing pages that use them.
 
 ## Contributing

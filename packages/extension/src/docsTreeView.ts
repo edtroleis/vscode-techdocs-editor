@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { logLine } from './timing';
 import { filesUnder } from './docsFiles';
-import { dirOf, DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, parseRemoteUri, relativePath, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
+import { catalogDocs, dirOf, DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, parseRemoteUri, relativePath, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
 import { repoDirOf, repoOf } from './chooseSites';
 import type { DocsSite } from './docsSite';
 import type { LintService } from './lintService';
@@ -455,6 +455,33 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     walk(site.filter(item => item.kind !== 'notInNav'));
     walk(site.filter(item => item.kind === 'notInNav'));
     return found;
+  }
+
+  /**
+   * As docs do Backstage dos outros sites do workspace (o `catalog-info.yaml` da pasta do site ou da raiz do
+   * repositório), com o caminho `/docs/<namespace>/<kind>/<name>/` que abre em qualquer Backstage: a caixa de link do
+   * editor visual ("Link para outra doc"). Sem as do site da página `uri`.
+   */
+  async docLinks(uri: vscode.Uri): Promise<LinkPageView[]> {
+    const own = new Set<string>();
+    const found = new Map<string, LinkPageView>();
+    const sites = this.candidates.flatMap(c => (c.local ? [c.local] : []));
+    const mine = sites.filter(local => uri.path.startsWith(`${dirOf(local.mkdocs.path)}/`)).sort((a, b) => b.mkdocs.path.length - a.mkdocs.path.length)[0];
+    await Promise.all(
+      sites.map(async local => {
+        const dirs = [vscode.Uri.joinPath(local.mkdocs, '..'), local.repoDir];
+        for (const dir of dirs) {
+          const text = await readText(vscode.Uri.joinPath(dir, 'catalog-info.yaml'));
+          if (text === undefined) continue;
+          for (const doc of catalogDocs(text)) {
+            if (local === mine) own.add(doc.path);
+            else found.set(doc.path, { title: doc.title, href: doc.path, detail: doc.name, doc: true });
+          }
+          break;
+        }
+      }),
+    );
+    return [...found.values()].filter(link => !own.has(link.href)).sort((a, b) => a.title.localeCompare(b.title));
   }
 
   /**
