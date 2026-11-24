@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-24
+
 ### Added
 
 - **Shapes in flowcharts by clicking:** the node bar has **Shape ▾**, to change the shape of the clicked node, and
