@@ -94,23 +94,16 @@ function wideWarning(text: DiagramText, width: number, code: string): HTMLElemen
   return warning;
 }
 
-const TRASH_ICON =
+export const TRASH_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
 
 /**
- * Os botões do bloco, na linha do Copiar/Editar (M28, M30): Excluir (o clique é tratado em diagramDelete.ts, que tem o
- * editor) e, se há desenho, Ampliar.
+ * Os botões do desenho (M28): Ampliar, se há desenho. O Excluir (M30) fica na barra do bloco, ao lado do Editar e do
+ * Ver diagrama (diagramDelete.ts).
  */
 function blockActions(text: DiagramText, zoom: boolean): HTMLElement {
   const actions = document.createElement('div');
   actions.className = 'mermaid-actions';
-  const remove = document.createElement('button');
-  remove.type = 'button';
-  remove.className = 'mermaid-delete';
-  remove.title = text.remove;
-  remove.setAttribute('aria-label', text.remove);
-  remove.innerHTML = TRASH_ICON;
-  actions.append(remove);
   if (zoom) {
     const open = document.createElement('button');
     open.type = 'button';

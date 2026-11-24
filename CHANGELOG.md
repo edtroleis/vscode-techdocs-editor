@@ -23,7 +23,7 @@ All notable changes to the TechDocs Editor extension. The format follows
 - Wide diagrams stay readable in the editor: they shrink to 60% at most and the block scrolls sideways. Diagrams over
   the Mermaid limits (500 links, 50,000 characters) show a clear message, and **Check** points them out.
 
-- A trash icon on a diagram deletes the whole block (Ctrl+Z brings it back).
+- A **Delete** button in the diagram's bar, next to **Edit** and **Show diagram**, deletes the whole block (Ctrl+Z brings it back).
 - **Suggestions while writing a diagram's code:** the diagram type on the first line; in flowcharts, the node shapes
   after a node (database, decision, stadium, hexagon and the others of the Mermaid docs), the arrows (dotted, thick,
   with text), the nodes already in the diagram after an arrow, and `subgraph`, `classDef` and the other keywords; in

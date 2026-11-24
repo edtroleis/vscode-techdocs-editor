@@ -362,6 +362,21 @@ test('Excluir: apaga o bloco do diagrama; Ctrl+Z traz de volta', async ({ page }
   expect(errors).toEqual([]);
 });
 
+test('Excluir: na barra do bloco, ao lado do Editar e do Ver diagrama; só nos blocos mermaid', async ({ page }) => {
+  await openEditor(page, `# Página\n\n\`\`\`mermaid\nflowchart LR\n  A-->B\n\`\`\`\n\n\`\`\`js\nconst a = 1;\n\`\`\`\n`);
+  const tools = block(page).locator('.tools-button-group');
+  await expect(block(page).locator('.mermaid-diagram > svg')).toBeVisible();
+  await expect(tools.locator('button')).toHaveText(['Copiar', 'Editar', 'Excluir']);
+  await block(page).hover();
+  await block(page).getByText('Editar').click();
+  await expect(tools.locator('button')).toHaveText(['Copiar', 'Ver diagrama', 'Excluir']);
+  // Só um Excluir: não há outro na barra da prévia
+  await expect(block(page).locator('.mermaid-delete')).toHaveCount(1);
+  await expect(page.locator('.milkdown-code-block').nth(1).locator('.mermaid-delete')).toHaveCount(0);
+  await tools.getByRole('button', { name: 'Excluir diagrama (Ctrl+Z traz de volta)' }).click();
+  await expectSaved(page, '# Página\n\n```js\nconst a = 1;\n```\n');
+});
+
 test('Excluir: também num diagrama com erro', async ({ page }) => {
   await openEditor(page, page1('flowchart LR\n  A-->'));
   await expect(block(page).locator('.mermaid-error')).toBeVisible();

@@ -76,8 +76,9 @@ export type EditorText = {
     unsupported: (kind: string) => string;
     /** Botão Ampliar e janela de zoom (M28). */
     viewer: DiagramViewerText;
-    /** Botão que apaga o bloco do diagrama (M30). */
+    /** Botão que apaga o bloco do diagrama (M30): a dica e o texto do botão. */
     remove: string;
+    removeShort: string;
     /** Barra do nó no fluxograma (M12–M16). */
     bar: DiagramBarText;
     /** Textos que a barra põe no código. */
@@ -169,6 +170,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
       },
       unsupported: kind => t('editorText.diagramUnsupported', { kind }),
       remove: k('diagramRemoveBlock'),
+      removeShort: k('diagramRemoveShort'),
       viewer: {
         open: k('diagramZoom'),
         title: k('diagramZoomTitle'),

@@ -442,6 +442,10 @@
   opacity: 1;
 }
 /* Só leitura: nada a excluir */
+/* Excluir na barra do bloco (M30): o ícone é de traço, sem o preenchimento dos ícones do Crepe */
+.milkdown .milkdown-code-block .tools-button-group .mermaid-delete svg {
+  fill: none;
+}
 .milkdown .ProseMirror[contenteditable='false'] .mermaid-delete {
   display: none;
 }

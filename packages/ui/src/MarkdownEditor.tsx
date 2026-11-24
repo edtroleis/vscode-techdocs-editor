@@ -243,7 +243,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(inlineCodeTypingPlugin)
       .use(listCaretFixPlugin)
       .use(diagramDoubleClickPlugin)
-      .use(diagramDeletePlugin)
+      .use(diagramDeletePlugin(() => textRef.current.diagram))
       .use(diagramWidePlugin)
       .use(diagramNodeBarPlugin)
       .use(mermaidBlockClassPlugin)
