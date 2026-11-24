@@ -8,12 +8,15 @@
 //
 // No fim, a tabela com o tempo de cada suíte e o limite: base para recalcular as médias quando as suítes crescerem.
 import { spawn } from 'node:child_process';
+import { openSync, readFileSync, rmSync, writeSync, closeSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /**
  * Média das execuções que passaram em 2026-10-31 (WSL2; 2 a 3 rodadas por suíte, o e2e só 1), em segundos; editor e
  * web medidos de novo em 2026-11-05 (cresceram com o Mermaid); webview e web em 2026-11-23 (203 e 58 testes, com os
- * templates da 0.14.0; o webview com o WSL ocupado, entre 45 e 50 s). O limite é a média + 25% (MARGIN).
- * Estimativa: refazer a conta com a tabela do fim quando as suítes crescerem.
+ * templates da 0.14.0; o webview com o WSL ocupado, entre 45 e 50 s); o web de novo no push da tag da 0.14.1 (76 s).
+ * O limite é a média + 25% (MARGIN). Estimativa: refazer a conta com a tabela do fim quando as suítes crescerem.
  */
 const AVERAGE = {
   typecheck: 8.8,
@@ -23,7 +26,7 @@ const AVERAGE = {
   bundle: 2.9,
   editor: 215.0,
   vscode: 86.4,
-  web: 61.5,
+  web: 72.0,
   e2e: 205.4,
 };
 /**
@@ -58,6 +61,49 @@ if (unknown.length) {
   console.error(`Suíte desconhecida: ${unknown.join(', ')}. Opções: ${STEPS.map(step => step.name).join(', ')}`);
   process.exit(2);
 }
+
+/**
+ * Uma suíte por vez na máquina (em qualquer clone ou worktree): duas juntas dividem a CPU, tudo fica duas vezes mais
+ * lento e a segunda para no limite sem teste falhando (o push da tag da 0.14.1 com outra suíte rodando). A trava é um
+ * arquivo no diretório temporário com o PID e o diretório de quem roda; a de um processo que já morreu é tomada.
+ */
+const LOCK = join(tmpdir(), 'techdocs-editor-test-all.lock');
+function lock() {
+  for (;;) {
+    try {
+      const fd = openSync(LOCK, 'wx');
+      writeSync(fd, JSON.stringify({ pid: process.pid, cwd: process.cwd(), started: new Date().toISOString() }));
+      closeSync(fd);
+      process.on('exit', () => {
+        try {
+          if (JSON.parse(readFileSync(LOCK, 'utf8')).pid === process.pid) rmSync(LOCK);
+        } catch {}
+      });
+      return;
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+    let owner;
+    try {
+      owner = JSON.parse(readFileSync(LOCK, 'utf8'));
+      process.kill(owner.pid, 0);
+    } catch (error) {
+      // Dono morto (ou arquivo pela metade): a trava ficou para trás
+      if (!owner || error.code === 'ESRCH') {
+        rmSync(LOCK, { force: true });
+        continue;
+      }
+    }
+    console.error(
+      `✖ Outra rodada do test:all já está rodando (PID ${owner.pid}, em ${owner.cwd}, desde ${owner.started}).\n` +
+        `  Duas juntas ficam lentas e param no limite sem teste falhando. Espere ela terminar ou pare ela; ` +
+        `trava em ${LOCK}.`,
+    );
+    process.exit(3);
+  }
+}
+lock();
+
 const needsBuild = STEPS.some(step => step.build && wanted.includes(step.name));
 const steps = wanted.length ? STEPS.filter(step => wanted.includes(step.name) || (step.name === 'build' && needsBuild)) : STEPS;
 
