@@ -97,7 +97,7 @@ async function closeAll() {
 }
 
 /** Posição do botão Desfazer na barra fixa (ver TOP_BAR em test/webview). */
-const TOP_BAR_UNDO = 14;
+const TOP_BAR_UNDO = 15;
 /** Posição do botão Diagrama (Mermaid) na barra fixa. */
 const TOP_BAR_DIAGRAM = 11;
 
