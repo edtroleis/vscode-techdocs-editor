@@ -20,8 +20,9 @@ export const LINT_CONFIG_FILES = [
 /**
  * Sem arquivo de configuração: todas as regras, menos o tamanho de linha. O editor visual grava cada parágrafo numa
  * linha só e não tem como quebrá-la; com a regra, nenhum parágrafo comum passaria. Quem quer a regra a liga no arquivo.
+ * O título repetido (MD024) só conta entre irmãos: notas de versão repetem "Novidades" e "Correções" em cada versão.
  */
-export const DEFAULT_LINT_CONFIG: Configuration = { default: true, MD013: false };
+export const DEFAULT_LINT_CONFIG: Configuration = { default: true, MD013: false, MD024: { siblings_only: true } };
 
 /** Conteúdo do arquivo de configuração → configuração (JSON com comentários ou YAML). */
 export function parseLintConfig(fileName: string, text: string): Configuration {

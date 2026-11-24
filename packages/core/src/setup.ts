@@ -90,6 +90,8 @@ default: true
 MD013: false   # tamanho de linha
 MD033: false   # HTML inline
 MD046: false   # estilo de bloco de código (admonitions usam indentação)
+MD024:
+  siblings_only: true   # título repetido só no mesmo nível (notas de versão repetem Novidades, Correções)
 `;
 
 /**

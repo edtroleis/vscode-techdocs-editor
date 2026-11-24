@@ -44,6 +44,12 @@ describe('lintMarkdown', () => {
     const page = `# Título\n\n${'palavra '.repeat(30).trim()}\n`;
     expect(lintMarkdown(page, DEFAULT_LINT_CONFIG)).toEqual([]);
   });
+
+  it('título repetido só reclama entre irmãos (notas de versão: Novidades em cada versão)', () => {
+    const notes = '# Notas\n\n## 1.1\n\n### Novidades\n\nA.\n\n## 1.0\n\n### Novidades\n\nB.\n';
+    expect(lintMarkdown(notes, DEFAULT_LINT_CONFIG)).toEqual([]);
+    expect(lintMarkdown('# Notas\n\n## Novidades\n\nA.\n\n## Novidades\n\nB.\n', DEFAULT_LINT_CONFIG).map(p => p.rule)).toEqual(['MD024']);
+  });
 });
 
 describe('lintFindings', () => {
