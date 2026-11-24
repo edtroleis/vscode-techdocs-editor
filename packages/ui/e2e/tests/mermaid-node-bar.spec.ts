@@ -13,11 +13,17 @@ const button = (page: Page, name: string) => bar(page).getByRole('button', { nam
 const hint = (page: Page) => block(page).locator('.mermaid-hint');
 const HINT = 'Clique ou arraste um nó para acrescentar e ligar; clique duas vezes num texto para editá-lo';
 
-test('clique num nó do fluxograma mostra a barra; + Passo depois abre o código no nome novo', async ({ page }) => {
+const menu = (page: Page) => page.locator('.mermaid-bar-menu');
+const item = (page: Page, name: string) => menu(page).getByRole('menuitemradio', { name: new RegExp(`^${name}`) });
+
+test('clique num nó do fluxograma mostra a barra embaixo dele; + Depois ▾ Etapa abre o código no nome novo', async ({ page }) => {
   await openEditor(page, flow);
   await node(page, 'Fim').click();
   await expect(bar(page)).toBeVisible();
-  await button(page, '+ Passo depois').click();
+  const nodeBox = (await node(page, 'Fim').boundingBox())!;
+  expect((await bar(page).boundingBox())!.y).toBeGreaterThan(nodeBox.y + nodeBox.height);
+  await button(page, '+ Depois').click();
+  await item(page, 'Etapa').click();
   await expect(bar(page)).toBeHidden();
   await expect(block(page).locator('.cm-content')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('Novo passo');
@@ -25,10 +31,11 @@ test('clique num nó do fluxograma mostra a barra; + Passo depois abre o código
   await expect.poll(() => saved(page)).toBe(page1(`${FLOW}\n  C --> N1[Enviar]`));
 });
 
-test('+ Decisão saindo de decisão leva Não (a 1ª seta já existe); Ctrl+Z desfaz de uma vez', async ({ page }) => {
+test('+ Depois ▾ Decisão saindo de decisão leva Não (a 1ª seta já existe); Ctrl+Z desfaz de uma vez', async ({ page }) => {
   await openEditor(page, flow);
   await node(page, 'Decisão').click();
-  await button(page, '+ Decisão').click();
+  await button(page, '+ Depois').click();
+  await item(page, 'Decisão').click();
   await expect.poll(() => saved(page)).toBe(page1(`${FLOW}\n  B -- Não --> N1{Nova decisão?}`));
   await page.keyboard.press('Control+z');
   await expect.poll(() => saved(page)).toBe(flow);
@@ -148,4 +155,86 @@ test('Ligar a… logo depois da mensagem de erro: a dica do Ligar fica, sem o ve
   // O tempo da mensagem de erro (6 s) passa e a dica do Ligar continua
   await page.waitForTimeout(6_500);
   await expect(hint(page)).toHaveText('Clique no nó de destino (Esc cancela)');
+});
+
+test('Forma ▾ marca a forma atual e troca (M33); Esc fecha só o menu', async ({ page }) => {
+  await openEditor(page, flow);
+  await node(page, 'Início').click();
+  await button(page, 'Forma').click();
+  await expect(menu(page)).toBeVisible();
+  await expect(menu(page).getByRole('menuitemradio')).toHaveCount(10);
+  await expect(item(page, 'Etapa')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+  await expect(menu(page)).toBeHidden();
+  await expect(bar(page)).toBeVisible();
+  await button(page, 'Forma').click();
+  await item(page, 'Banco de dados').click();
+  await expect.poll(() => saved(page)).toBe(page1(FLOW.replace('A[Início]', 'A[(Início)]')));
+  await expect(menu(page)).toBeHidden();
+});
+
+test('Forma ▾ Documento usa a sintaxe nova e desenha', async ({ page }) => {
+  await openEditor(page, flow);
+  await node(page, 'Fim').click();
+  await button(page, 'Forma').click();
+  await item(page, 'Documento').click();
+  await expect.poll(() => saved(page)).toBe(page1(FLOW.replace('C[Fim]', 'C@{ shape: doc, label: "Fim" }')));
+  await expect(node(page, 'Fim')).toBeVisible();
+});
+
+test('Texto do nó abre o código com o texto selecionado', async ({ page }) => {
+  await openEditor(page, flow);
+  await node(page, 'Fim').click();
+  await button(page, 'Texto').click();
+  await expect(block(page).locator('.cm-content')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('Fim');
+});
+
+const LABELED = 'flowchart TD\n  A[Receber] --> B{Tem?}\n  B -->|Sim| C[Separar]';
+/** Clica a `offset` pixels do meio da linha da seta `n` do desenho (na diagonal da linha, não da caixa dela). */
+async function clickEdge(page: Page, n: number, offset = 4) {
+  await page.waitForTimeout(300);
+  const point = await block(page)
+    .locator('.mermaid-diagram .edgePaths path')
+    .nth(n)
+    .evaluate((path: SVGPathElement) => {
+      const middle = path.getPointAtLength(path.getTotalLength() / 2);
+      const screen = new DOMPoint(middle.x, middle.y).matrixTransform(path.getScreenCTM()!);
+      return { x: screen.x, y: screen.y };
+    });
+  await page.mouse.click(point.x + offset, point.y);
+}
+const edgeLabel = (page: Page, text: string) => block(page).locator('.mermaid-diagram .edgeLabels > .edgeLabel', { hasText: text });
+
+test('clique na seta (no texto dela) mostra a barra da ligação e destaca a seta (M34)', async ({ page }) => {
+  await openEditor(page, page1(LABELED));
+  await edgeLabel(page, 'Sim').click();
+  await expect(bar(page)).toBeVisible();
+  await expect(bar(page).getByRole('button')).toHaveText([/^Linha/, 'Texto', 'Inverter', 'Apagar ligação']);
+  await expect(block(page).locator('path.mermaid-edge-selected')).toHaveCount(1);
+  await button(page, 'Linha').click();
+  await expect(item(page, 'Normal')).toHaveAttribute('aria-checked', 'true');
+  await item(page, 'Pontilhada').click();
+  await expect.poll(() => saved(page)).toBe(page1(LABELED.replace('B -->|Sim| C', 'B -.->|Sim| C')));
+});
+
+test('clique na linha da seta, perto dela, também abre a barra; Apagar ligação deixa os nós', async ({ page }) => {
+  await openEditor(page, page1(LABELED));
+  // Uns pixels ao lado da linha de A para B
+  await clickEdge(page, 0);
+  await expect(bar(page)).toBeVisible();
+  await button(page, 'Apagar ligação').click();
+  await expect.poll(() => saved(page)).toBe(page1('flowchart TD\n  A[Receber]\n  B{Tem?}\n  B -->|Sim| C[Separar]'));
+});
+
+test('Inverter e Texto da seta', async ({ page }) => {
+  await openEditor(page, page1(LABELED));
+  await edgeLabel(page, 'Sim').click();
+  await button(page, 'Inverter').click();
+  await expect.poll(() => saved(page)).toBe(page1('flowchart TD\n  A[Receber] --> B{Tem?}\n  C[Separar]\n  C -->|Sim| B'));
+  await clickEdge(page, 0, 3);
+  await button(page, 'Texto').click();
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('texto');
+  await page.keyboard.type('pedido');
+  await expect.poll(() => saved(page)).toContain('A[Receber] -->|pedido| B{Tem?}');
 });

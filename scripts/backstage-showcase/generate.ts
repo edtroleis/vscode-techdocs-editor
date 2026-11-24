@@ -16,6 +16,7 @@ import { buildSitePages, parseSiteTemplate, siteMkdocsYml } from '../../packages
 import { TEMPLATES_FILES, TEMPLATES_SOURCE } from '../../packages/core/src/templatesBundle.generated';
 import { TEMPLATE_CATEGORIES, fillTemplate, parseTemplate, type DocTemplate } from '../../packages/core/src/templates';
 import { DIAGRAM_GROUPS, DIAGRAM_TEMPLATES } from '../../packages/ui/src/diagramTemplates';
+import { addNode, LINE_STYLES, reverseEdge, setEdgeStyle, setShape, SHAPES } from '../../packages/ui/src/flowchartEdit';
 import { en } from '../../packages/ui/src/messages/en';
 import { ptBR } from '../../packages/ui/src/messages/pt-BR';
 import mermaidSite from '../../packages/ui/e2e/fixtures/mermaid-site-examples.json';
@@ -142,6 +143,30 @@ const GROUP_TITLES: Record<string, string> = { flows: 'Flows', structure: 'Struc
     });
     pages.push({ path: `${group}.md`, title: GROUP_TITLES[group], content: `# ${GROUP_TITLES[group]}\n\n${sections.join('\n')}` });
   }
+  // As formas e as linhas da barra do nó (M33, M34), escritas pelo próprio código da barra
+  const words = { step: en['editorText.diagramNewStep'], decision: en['editorText.diagramNewDecision'], yes: 'Yes', no: 'No' };
+  // Uma fila de nós, um de cada forma: + Depois ▾ cria cada um, e o texto vira o nome da forma
+  let shapes = 'flowchart LR\n  A[Start]';
+  let last = 'A';
+  for (const shape of SHAPES) {
+    const { code, label } = addNode(shapes, last, shape, words);
+    shapes = code.slice(0, label.from) + en[`editorText.diagramShape.${shape}`] + code.slice(label.to);
+    last = /--> (N\d+)[^\n]*$/.exec(shapes)![1];
+  }
+  // As mesmas formas trocadas com Forma ▾ a partir de uma etapa (o texto com / ganha aspas)
+  let changed = `flowchart LR\n${SHAPES.map((shape, i) => `  S${i}[${en[`editorText.diagramShape.${shape}`]}]`).join('\n')}`;
+  SHAPES.forEach((shape, i) => (changed = setShape(changed, `S${i}`, shape)));
+  let lines = 'flowchart LR';
+  LINE_STYLES.forEach((style, i) => {
+    lines += `\n  L${i}a[${style}] -->|${en[`editorText.diagramLine.${style}`]}| L${i}b[ ]`;
+    lines = setEdgeStyle(lines, i, `L${i}a`, `L${i}b`, style)!;
+  });
+  const reversed = reverseEdge('flowchart LR\n  A[One] -.->|text| B[Two]', 0, 'A', 'B')!;
+  pages.push({
+    path: 'node-bar.md',
+    title: 'Node bar',
+    content: `# Node bar\n\nThe shapes of **Shape ▾** and **+ After ▾**, and the lines of **Line ▾**, written by the editor node bar.\n\n## Shapes\n\n${fence(shapes)}\n## Shapes changed with Shape ▾\n\n${fence(changed)}\n## Lines\n\n${fence(lines)}\n## Reversed link\n\n${fence(reversed)}`,
+  });
   site(
     { name: 'showcase-mermaid-gallery', title: 'Mermaid: editor gallery', group: 'mermaid', language: 'both' },
     mkdocs('Mermaid: editor gallery', pages.map(p => ({ [p.title]: p.path }))),

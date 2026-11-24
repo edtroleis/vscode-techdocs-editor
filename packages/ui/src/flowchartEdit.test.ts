@@ -1,4 +1,4 @@
-import { addNode, connect, isFlowchart, removeNode } from './flowchartEdit';
+import { addNode, connect, edgeLabel, edgeStyle, isFlowchart, nodeShape, removeEdge, removeNode, reverseEdge, setEdgeStyle, setShape } from './flowchartEdit';
 
 const W = { step: 'Novo passo', decision: 'Nova decisão?', yes: 'Sim', no: 'Não' };
 const flow = 'flowchart LR\n  A[Início] --> B{Decisão}\n  B --> C[Fim]';
@@ -67,3 +67,62 @@ describe('flowchartEdit', () => {
   it('connect: seta longa já existente não duplica', () => expect(connect('flowchart LR\n  A ---> C', 'A', 'C', W)).toBeUndefined());
 });
 
+
+describe('formas e setas (M33, M34)', () => {
+  const f = 'flowchart TD\n  A[Receber pedido] --> B{Tem estoque?}\n  B -->|Sim| C[Separar]\n  B -- Não --> D';
+  it('setShape troca os delimitadores e mantém o texto', () => {
+    expect(setShape(f, 'A', 'database')).toContain('A[(Receber pedido)] --> B{Tem estoque?}');
+    expect(setShape(f, 'C', 'start')).toContain('B -->|Sim| C([Separar])');
+    expect(setShape(f, 'B', 'step')).toContain('A[Receber pedido] --> B[Tem estoque?]');
+  });
+  it('setShape: documento com a sintaxe @{ } e volta', () => {
+    const doc = setShape(f, 'C', 'doc');
+    expect(doc).toContain('C@{ shape: doc, label: "Separar" }');
+    expect(nodeShape(doc, 'C')).toBe('doc');
+    expect(setShape(doc, 'C', 'step')).toContain('C[Separar]');
+  });
+  it('setShape: nó sem forma ganha a id como texto; :::classe e aspas ficam', () => {
+    expect(setShape(f, 'D', 'circle')).toContain('B -- Não --> D((D))');
+    expect(setShape('flowchart LR\n  A["a (b)"]:::x --> B', 'A', 'io')).toContain('A[/"a (b)"/]:::x --> B');
+  });
+  it('setShape: texto com parênteses ganha aspas', () =>
+    expect(setShape('flowchart LR\n  A[a (b)]', 'A', 'round')).toContain('A("a (b)")'));
+  it('nodeShape: forma atual', () => {
+    expect(nodeShape(f, 'A')).toBe('step');
+    expect(nodeShape(f, 'B')).toBe('decision');
+    expect(nodeShape(f, 'D')).toBe('step');
+  });
+  it('addNode com forma: texto selecionável', () => {
+    const r = addNode(f, 'C', 'database', W);
+    expect(r.code).toContain('  C --> N1[(Novo passo)]');
+    expect(r.code.slice(r.label.from, r.label.to)).toBe('Novo passo');
+    const d = addNode(f, 'C', 'doc', W);
+    expect(d.code.slice(d.label.from, d.label.to)).toBe('Novo passo');
+  });
+  it('setEdgeStyle: pela ordem do desenho, mantém o texto', () => {
+    expect(setEdgeStyle(f, 0, 'A', 'B', 'dotted')).toContain('A[Receber pedido] -.-> B{Tem estoque?}');
+    expect(setEdgeStyle(f, 1, 'B', 'C', 'thick')).toContain('B ==>|Sim| C[Separar]');
+    expect(setEdgeStyle(f, 2, 'B', 'D', 'both')).toContain('B <-->|Não| D');
+    expect(edgeStyle(f, 2, 'B', 'D')).toBe('normal');
+    expect(edgeStyle('flowchart LR\n  A --- B', 0, 'A', 'B')).toBe('open');
+    expect(edgeStyle('flowchart LR\n  A -.-> B', 0, 'A', 'B')).toBe('dotted');
+  });
+  it('seta que não confere (código mudou) ou linha com &: nada muda', () => {
+    expect(setEdgeStyle(f, 0, 'B', 'C', 'thick')).toBeUndefined();
+    expect(setEdgeStyle('flowchart LR\n  A & B --> C\n  C --> D', 0, 'A', 'C', 'thick')).toBeUndefined();
+    expect(setEdgeStyle('flowchart LR\n  A & B --> C\n  C --> D', 2, 'C', 'D', 'thick')).toContain('C ==> D');
+  });
+  it('edgeLabel: seleciona o texto que existe ou cria', () => {
+    const has = edgeLabel(f, 1, 'B', 'C', 'texto')!;
+    expect(has.code.slice(has.label.from, has.label.to)).toBe('Sim');
+    const created = edgeLabel(f, 0, 'A', 'B', 'texto')!;
+    expect(created.code).toContain('A[Receber pedido] -->|texto| B{Tem estoque?}');
+    expect(created.code.slice(created.label.from, created.label.to)).toBe('texto');
+  });
+  it('removeEdge: os nós ficam', () => {
+    expect(removeEdge(f, 0, 'A', 'B')).toBe('flowchart TD\n  A[Receber pedido]\n  B{Tem estoque?}\n  B -->|Sim| C[Separar]\n  B -- Não --> D');
+    expect(removeEdge('flowchart LR\n  A --> B --> C', 1, 'B', 'C')).toBe('flowchart LR\n  A --> B\n  C');
+  });
+  it('reverseEdge: mesmo estilo e texto, no outro sentido', () =>
+    expect(reverseEdge(f, 1, 'B', 'C')).toBe('flowchart TD\n  A[Receber pedido] --> B{Tem estoque?}\n  C[Separar]\n  B -- Não --> D\n  C -->|Sim| B'));
+});

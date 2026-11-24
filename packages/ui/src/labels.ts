@@ -4,7 +4,7 @@ import { commandsCtx } from '@milkdown/kit/core';
 import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark';
 import { DIAGRAM_GROUPS, DIAGRAM_TEMPLATES, type DiagramGroup } from './diagramTemplates';
 import type { DiagramBarText } from './diagramNodeBar';
-import type { FlowchartWords } from './flowchartEdit';
+import { type FlowchartWords, LINE_STYLES, SHAPES } from './flowchartEdit';
 import type { MermaidCompleteText } from './mermaidComplete';
 import { insertDiagram } from './insertDiagram';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
@@ -185,13 +185,23 @@ export function editorTextFrom(t: TextLookup): EditorText {
         since.startsWith('12') ? k('diagramMermaid12Warning') : t('editorText.diagramSinceWarning', { since }),
       error: line => (line ? t('editorText.diagramErrorLine', { line }) : k('diagramError')),
       bar: {
-        step: k('diagramStepAfter'),
-        decision: k('diagramAddDecision'),
         connect: k('diagramConnect'),
         remove: k('diagramDelete'),
         connectHint: k('diagramConnectHint'),
         dragHint: k('diagramDragHint'),
         failed: k('diagramEditFailed'),
+        shape: k('diagramShape'),
+        after: k('diagramAfter'),
+        text: k('diagramText'),
+        line: k('diagramLine'),
+        reverse: k('diagramReverse'),
+        removeEdge: k('diagramRemoveEdge'),
+        shapeTitle: k('diagramShapeTitle'),
+        afterTitle: k('diagramAfterTitle'),
+        lineTitle: k('diagramLineTitle'),
+        edgeText: k('diagramEdgeText'),
+        shapes: Object.fromEntries(SHAPES.map(s => [s, { name: k(`diagramShape.${s}`), hint: k(`diagramShapeHint.${s}`) }])) as DiagramBarText['shapes'],
+        lines: Object.fromEntries(LINE_STYLES.map(s => [s, k(`diagramLine.${s}`)])) as DiagramBarText['lines'],
       },
       words: { step: k('diagramNewStep'), decision: k('diagramNewDecision'), yes: k('diagramYes'), no: k('diagramNo') },
     },

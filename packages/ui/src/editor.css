@@ -185,6 +185,81 @@
 .mermaid-node-bar button:focus-visible {
   background: var(--crepe-color-hover);
 }
+.mermaid-node-bar button[aria-expanded='true'] {
+  background: var(--crepe-color-selected, var(--crepe-color-hover));
+}
+.mermaid-node-bar .mermaid-bar-caret {
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.mermaid-bar-menu {
+  position: fixed;
+  z-index: 21;
+  padding: 6px;
+  background: var(--crepe-color-surface);
+  color: var(--crepe-color-on-surface);
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 8px;
+  box-shadow: var(--crepe-shadow-2, var(--crepe-shadow-1));
+  font-family: var(--crepe-font-default);
+  font-size: 13px;
+}
+.mermaid-bar-menu-title {
+  padding: 2px 6px 6px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.mermaid-bar-menu-items {
+  display: grid;
+  gap: 2px;
+}
+.mermaid-shape-menu .mermaid-bar-menu-items {
+  grid-template-columns: repeat(2, 200px);
+}
+.mermaid-bar-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mermaid-bar-menu button:hover,
+.mermaid-bar-menu button:focus-visible {
+  background: var(--crepe-color-hover);
+}
+.mermaid-bar-menu button[aria-checked='true'] {
+  background: var(--crepe-color-selected, var(--crepe-color-hover));
+  font-weight: 600;
+}
+.mermaid-bar-menu svg {
+  flex: none;
+  fill: var(--crepe-color-surface);
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.mermaid-bar-menu svg .head {
+  fill: currentColor;
+  stroke: none;
+}
+.mermaid-bar-menu small {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.2;
+  opacity: 0.7;
+}
+.milkdown .mermaid-diagram path.mermaid-edge-selected {
+  stroke: var(--crepe-color-primary) !important;
+  stroke-width: 3px !important;
+}
 .milkdown .mermaid-error {
   padding: 8px 12px;
   border-left: 3px solid var(--crepe-color-error);

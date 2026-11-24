@@ -6,6 +6,20 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Shapes in flowcharts by clicking:** the node bar has **Shape ▾**, to change the shape of the clicked node, and
+  **+ After ▾**, to add the next node in any shape. Ten shapes, each with a thumbnail and what it is for: step,
+  start/end, decision, database, input/output, document, subroutine, preparation, rounded and circle. **Text** opens
+  the code with the node text selected.
+- **Click a link (arrow) of a flowchart** to change its line (normal, dotted, thick, no arrowhead, arrowheads on both
+  ends), write its text, reverse it or delete it. The nodes stay.
+
+### Changed
+
+- The node bar shows under the node, so it no longer covers the bar of the block. **+ Step after** and **+ Decision**
+  became **+ After ▾**.
+
 ## [0.15.0] - 2026-11-24
 
 ### Added

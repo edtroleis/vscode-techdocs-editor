@@ -213,7 +213,9 @@ test.describe('mermaid', () => {
     const bar = editor.locator('.mermaid-node-bar');
     await expect(bar).toBeVisible();
     await pause(page, 1_500);
-    await clickLike(page, bar.getByRole('button', { name: '+ Step after', exact: true }));
+    await clickLike(page, bar.getByRole('button', { name: '+ After', exact: true }));
+    await pause(page, 800);
+    await clickLike(page, page.locator('.mermaid-bar-menu').getByRole('menuitemradio', { name: /^Step/ }));
     await expect(code).toContainText('C --> N1[New step]');
     await pause(page, 800);
     await typeSlowly(page, 'Receipt sent');
