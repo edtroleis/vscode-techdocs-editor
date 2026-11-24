@@ -7,6 +7,7 @@ import type { DiagramBarText } from './diagramNodeBar';
 import { type FlowchartWords, LINE_STYLES, SHAPES } from './flowchartEdit';
 import type { MermaidCompleteText } from './mermaidComplete';
 import { insertDiagram } from './insertDiagram';
+import { type ComponentsText, insertComponent, MENU_KINDS } from './techdocsComponents';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
 
@@ -86,6 +87,8 @@ export type EditorText = {
     /** Autocompletar no código do diagrama (M31). */
     complete: MermaidCompleteText;
   };
+  /** Componentes do TechDocs: avisos, recolhíveis e abas (spec 01, M1). */
+  components: ComponentsText;
   table: string;
   quote: string;
   divider: string;
@@ -205,6 +208,29 @@ export function editorTextFrom(t: TextLookup): EditorText {
       },
       words: { step: k('diagramNewStep'), decision: k('diagramNewDecision'), yes: k('diagramYes'), no: k('diagramNo') },
     },
+    components: {
+      group: k('tdGroup'),
+      admonition: k('tdAdmonition'),
+      collapsible: k('tdCollapsible'),
+      tabs: k('tdTabs'),
+      kind: k('tdKind'),
+      kindTitle: k('tdKindTitle'),
+      kinds: Object.fromEntries(MENU_KINDS.map(kind => [kind, k(`tdKind.${kind}`)])) as ComponentsText['kinds'],
+      collapse: k('tdCollapse'),
+      collapseTitle: k('tdCollapseTitle'),
+      collapseModes: { open: k('tdCollapse.open'), closed: k('tdCollapse.closed'), expanded: k('tdCollapse.expanded') },
+      remove: k('tdRemove'),
+      tab: {
+        name: n => t('editorText.tdTabName', { n }),
+        add: k('tdTabAdd'),
+        menuTitle: k('tdTabMenu'),
+        rename: k('tdTabRename'),
+        moveLeft: k('tdTabLeft'),
+        moveRight: k('tdTabRight'),
+        addAfter: k('tdTabAfter'),
+        remove: k('tdTabRemove'),
+      },
+    },
     table: k('table'),
     quote: k('quote'),
     divider: k('divider'),
@@ -238,6 +264,12 @@ export const headingOptions = (text: EditorText) => [
   ...[1, 2, 3, 4, 5, 6].map(level => ({ label: text.heading(level), level })),
 ];
 
+const svg = (inner: string) =>
+  `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">${inner}</svg>`;
+const ICON_ADMONITION = svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><circle cx="6.5" cy="6.5" r=".6" fill="currentColor"/><path d="M7 13h10M7 16h7"/>');
+const ICON_COLLAPSIBLE = svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M6 8l2 2 2-2M12 9h6M7 14h10M7 17h7"/>');
+const ICON_TABS = svg('<path d="M3 8V5.5A1.5 1.5 0 0 1 4.5 4H10v4M10 8V4h5v4"/><rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M7 13h10M7 16h6"/>');
+
 /** Menu "/" (o filtro do menu usa estes nomes: "/tab" acha "Tabela"). */
 export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
   textGroup: {
@@ -267,6 +299,22 @@ export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
   // Os modelos de diagrama Mermaid (spec 06, M4, M11 e M21), um grupo do menu para cada tipo de assunto. O menu do
   // Crepe só filtra pelo nome: "Diagrama: …" faz "/diagrama" achar todos
   buildMenu: builder => {
+    // Os componentes do TechDocs (spec 01, M1): "/techdocs", "/aviso", "/abas"
+    const techdocs = builder.addGroup('techdocs', text.components.group);
+    for (const [kind, label, icon] of [
+      ['admonition', text.components.admonition, ICON_ADMONITION],
+      ['collapsible', text.components.collapsible, ICON_COLLAPSIBLE],
+      ['tabs', text.components.tabs, ICON_TABS],
+    ] as const) {
+      techdocs.addItem(`techdocs-${kind}`, {
+        label,
+        icon,
+        onRun: ctx => {
+          ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
+          insertComponent(ctx, kind);
+        },
+      });
+    }
     for (const group of DIAGRAM_GROUPS) {
       const added = builder.addGroup(`diagrams-${group}`, text.diagram.gallery.groups[group]);
       for (const template of text.diagram.templates.filter(t => t.group === group)) {

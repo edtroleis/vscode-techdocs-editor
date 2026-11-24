@@ -33,3 +33,39 @@ export const headingLevelFixPlugin = $prose(
       },
     }),
 );
+
+/**
+ * O Título 1 é o nome da página (lint MD025): um Título 1 novo numa página que já tem um vira Título 2, venha da
+ * barra, do menu "/", de `# ` ou de colar. Só os títulos que viraram Título 1 nesta edição: abrir um arquivo com
+ * dois Títulos 1 não muda nada.
+ */
+const singleKey = new PluginKey('docs-editor-single-h1');
+
+export const singleTitlePlugin = $prose(
+  () =>
+    new Plugin({
+      key: singleKey,
+      appendTransaction(transactions, oldState, newState) {
+        if (!transactions.some(tr => tr.docChanged)) return null;
+        const before = new Set<number>();
+        oldState.doc.forEach((node, pos) => {
+          if (node.type.name !== 'heading' || node.attrs.level !== 1) return;
+          let mapped = pos;
+          for (const tr of transactions) mapped = tr.mapping.map(mapped, 1);
+          before.add(mapped);
+        });
+        const h1: { pos: number; fresh: boolean }[] = [];
+        newState.doc.forEach((node, pos) => {
+          if (node.type.name === 'heading' && node.attrs.level === 1) h1.push({ pos, fresh: !before.has(pos) });
+        });
+        if (h1.length < 2 || !h1.some(h => h.fresh)) return null;
+        // Sem Título 1 antigo, o primeiro dos novos fica
+        const keep = h1.some(h => !h.fresh) ? undefined : h1[0].pos;
+        const tr = newState.tr;
+        for (const { pos, fresh } of h1) {
+          if (fresh && pos !== keep) tr.setNodeMarkup(pos, undefined, { ...newState.doc.nodeAt(pos)!.attrs, level: 2 });
+        }
+        return tr.docChanged ? tr : null;
+      },
+    }),
+);

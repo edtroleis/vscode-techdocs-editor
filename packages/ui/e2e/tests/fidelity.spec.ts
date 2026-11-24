@@ -66,13 +66,14 @@ test('editar e voltar ao texto original avisa a volta (não salva a versão inte
   await expectSaved(page, WIKI_PAGE);
 });
 
-test('admonition e abas aparecem como bloco protegido e voltam iguais', async ({ page }) => {
+test('admonition e abas aparecem como componentes e voltam iguais', async ({ page }) => {
   await openEditor(page, WIKI_PAGE);
-  const raw = page.locator('.milkdown-code-block', { hasText: '!!! tip' });
-  await expect(raw).toHaveCount(1);
-  await expect(page.locator('.milkdown-code-block', { hasText: '=== "Linux"' })).toHaveCount(1);
+  await expect(page.locator('.milkdown-code-block', { hasText: '!!!' })).toHaveCount(0);
+  const tip = page.locator('.td-admonition.td-kind-tip');
+  await expect(tip.locator('.td-title')).toHaveText('Dica');
+  await expect(page.locator('.td-tabs [role=tab]')).toHaveText(['Linux', 'Windows']);
   // Editar dentro do admonition
-  await raw.locator('.cm-line', { hasText: 'Segundo parágrafo' }).click();
+  await tip.locator('p', { hasText: 'Segundo parágrafo' }).click();
   await page.keyboard.press('End');
   await page.keyboard.type(' Editado.');
   await expectSaved(page, WIKI_PAGE.replace('Segundo parágrafo da dica.', 'Segundo parágrafo da dica. Editado.'));
@@ -80,16 +81,12 @@ test('admonition e abas aparecem como bloco protegido e voltam iguais', async ({
 
 test('remover um admonition', async ({ page }) => {
   await openEditor(page, WIKI_PAGE);
-  const raw = page.locator('.milkdown-code-block', { hasText: '!!! tip' });
-  await raw.locator('.cm-content').click();
-  await page.keyboard.press('Control+a');
-  await page.keyboard.press('Backspace');
-  await page.keyboard.press('Backspace');
-  await expect(raw).toHaveCount(0);
+  await page.locator('.td-admonition p', { hasText: 'Segundo parágrafo' }).click();
+  await page.locator('.td-bar button', { hasText: 'Excluir' }).click();
+  await expect(page.locator('.td-admonition')).toHaveCount(0);
   await expect.poll(() => saved(page)).toBeDefined();
   const result = await saved(page);
   expect(result).not.toContain('!!! tip');
-  expect(result).not.toContain('```mkdocs');
   expect(result).toContain('=== "Linux"');
 });
 
@@ -121,6 +118,6 @@ test('números de linha ao lado dos blocos batem com o arquivo', async ({ page }
   const lines = page.locator('.milkdown').locator('xpath=../..').locator('> span');
   await expect(lines.first()).toHaveText('1');
   const numbers = (await lines.allTextContents()).map(t => t.replace(/\D/g, ''));
-  // Título (1), parágrafo (3), admonition (5), abas (10 e 16), tabela (20)...
-  expect(numbers.slice(0, 6)).toEqual(['1', '3', '5', '10', '16', '20']);
+  // Título (1), parágrafo (3), admonition (5), aba escolhida (10; a outra, na 16, não aparece), tabela (20)...
+  expect(numbers.slice(0, 5)).toEqual(['1', '3', '5', '10', '20']);
 });

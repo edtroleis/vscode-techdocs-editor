@@ -6,6 +6,7 @@ import { diagramDoubleClickPlugin } from './diagramDoubleClick';
 import { diagramMenuChipsPlugin } from './diagramGallery';
 import { diagramBarCtx, diagramNodeBarPlugin } from './diagramNodeBar';
 import { mermaidBlockClassPlugin } from './mermaidBlockClass';
+import { componentsCtx, techdocsComponents } from './techdocsComponents';
 import { diagramInsertCtx } from './insertDiagram';
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
@@ -18,7 +19,7 @@ import { replaceChanged } from './externalContent';
 import { ExternalHistory, externalHistoryCtx } from './externalHistory';
 import { listCaretFixPlugin } from './listCaretFix';
 import { imageAltPlugin } from './imageAlt';
-import { headingLevelFixPlugin } from './headingLevelFix';
+import { headingLevelFixPlugin, singleTitlePlugin } from './headingLevelFix';
 import { tableTabRowPlugin } from './tableTabRow';
 import { attachLinkPages, LinkPage } from './linkPages';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
@@ -235,9 +236,12 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           gallery: labels.diagram.gallery,
         });
         ctx.inject(diagramBarCtx, { bar: labels.diagram.bar, words: labels.diagram.words, hint: labels.diagram.flowHint });
+        ctx.inject(componentsCtx, labels.components);
       })
+      .use(techdocsComponents)
       .use(defaultCodeLanguagePlugin)
       .use(headingLevelFixPlugin)
+      .use(singleTitlePlugin)
       .use(tableTabRowPlugin)
       .use(pasteHtmlPlugin(() => importRef.current))
       .use(inlineCodeTypingPlugin)
@@ -275,12 +279,15 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         const base = container.current?.getBoundingClientRect().top ?? 0;
         const next: LineMark[] = [];
         let index = 0;
-        view.state.doc.forEach((_node, offset) => {
+        view.state.doc.forEach((node, offset) => {
+          // Parágrafo vazio não vai para o Markdown: não tem linha (e não pode tomar a do bloco seguinte)
+          if (node.type.name === 'paragraph' && node.content.size === 0) return;
           const start = starts[index];
           const following = starts[index + 1];
           index++;
           const dom = view.nodeDOM(offset);
-          if (!start || !(dom instanceof HTMLElement)) return;
+          // Sem caixa na tela (a aba que não está escolhida): sem número
+          if (!start || !(dom instanceof HTMLElement) || !dom.getClientRects().length) return;
           const line = toRepo[start - 1];
           const last = following ? toRepo[following - 1] - 1 : Infinity;
           // As linhas apontadas são da versão salva: com edição nova, as marcas ficam para depois de salvar

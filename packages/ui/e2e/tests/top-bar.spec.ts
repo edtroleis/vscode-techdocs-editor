@@ -33,8 +33,10 @@ test.describe('barra: título', () => {
       await openEditor(page);
       await paragraph(page).click();
       await chooseHeading(page, `Título ${level}`);
-      await expectSaved(page, withParagraph(`${'#'.repeat(level)} Texto inicial.`));
-      await expect(page.locator('.top-bar-heading-label')).toHaveText(`Título ${level}`);
+      // A página já tem Título 1 (o nome dela): o segundo vira Título 2 (single-title.spec.ts)
+      const saved = level === 1 ? 2 : level;
+      await expectSaved(page, withParagraph(`${'#'.repeat(saved)} Texto inicial.`));
+      await expect(page.locator('.top-bar-heading-label')).toHaveText(`Título ${saved}`);
       await expectSavable(page);
 
       await chooseHeading(page, 'Parágrafo');

@@ -147,8 +147,8 @@ function admonitionType(panel: Element): string {
 }
 
 /**
- * C4: o painel vira o aviso do MkDocs (`!!! note "Título"` e o corpo com 4 espaços), no bloco `mkdocs` em que o
- * editor mostra os avisos (ver `toEditor`).
+ * C4: o painel vira o aviso do MkDocs (`!!! note "Título"` e o corpo com 4 espaços), na forma em que o editor
+ * mostra os avisos (ver `toEditor`): uma citação com o cabeçalho em código na primeira linha e o corpo depois.
  */
 function admonition(doc: Document, panel: Element): Element {
   const child = (...classes: string[]) => [...panel.children].find(c => classes.some(k => c.classList.contains(k)));
@@ -158,65 +158,24 @@ function admonition(doc: Document, panel: Element): Element {
   const body = panel.querySelector('.confluence-information-macro-body, [data-panel-content]') ?? child('content') ?? panel;
   // Os ícones do painel (svg, span de ícone) ficam de fora
   body.querySelectorAll('svg, .aui-icon, [data-panel-icon], .confluence-information-macro-icon').forEach(e => e.remove());
-  const text = toMarkdown(body).trim();
-  const head = `!!! ${admonitionType(panel)}${title ? ` "${title.replace(/"/g, "'")}"` : ''}`;
-  const lines = text ? text.split('\n').map(l => (l ? `    ${l}` : '')) : [];
-  return codeBlock(doc, [head, ...lines].join('\n'), 'mkdocs');
-}
-
-/** Markdown simples do corpo de um painel: parágrafos, listas, código, negrito, itálico e links. */
-function toMarkdown(el: Element): string {
-  const blocks: string[] = [];
-  const inline = (node: ChildNode): string => {
-    if (node.nodeType === 3) return (node.textContent ?? '').replace(/\s+/g, ' ');
-    if (!isElement(node)) return '';
-    const inner = [...node.childNodes].map(inline).join('');
-    switch (node.tagName) {
-      case 'STRONG':
-      case 'B':
-        return inner.trim() ? `**${inner.trim()}**` : '';
-      case 'EM':
-      case 'I':
-        return inner.trim() ? `*${inner.trim()}*` : '';
-      case 'CODE':
-        return `\`${node.textContent ?? ''}\``;
-      case 'A':
-        return node.getAttribute('href') ? `[${inner.trim()}](${node.getAttribute('href')})` : inner;
-      case 'BR':
-        return '\n';
-      case 'IMG':
-        return `![${node.getAttribute('alt') ?? ''}](${node.getAttribute('src') ?? ''})`;
-      default:
-        return inner;
+  const quote = doc.createElement('blockquote');
+  const head = doc.createElement('p');
+  const code = doc.createElement('code');
+  code.textContent = `!!! ${admonitionType(panel)}${title ? ` "${title.replace(/"/g, "'")}"` : ''}`;
+  head.append(code);
+  quote.append(head);
+  // O texto solto (sem parágrafo) vai num parágrafo
+  let loose: Element | undefined;
+  for (const node of [...body.childNodes]) {
+    if (isElement(node) && /^(P|DIV|H[1-6]|UL|OL|PRE|BLOCKQUOTE|TABLE)$/.test(node.tagName)) {
+      loose = undefined;
+      quote.append(node);
+    } else if (isElement(node) || node.textContent?.trim()) {
+      if (!loose) quote.append((loose = doc.createElement('p')));
+      loose.append(node);
     }
-  };
-  const walk = (parent: Element) => {
-    let line = '';
-    const flush = () => {
-      if (line.trim()) blocks.push(line.trim());
-      line = '';
-    };
-    for (const node of [...parent.childNodes]) {
-      if (isElement(node) && /^(P|DIV|H[1-6]|BLOCKQUOTE)$/.test(node.tagName)) {
-        flush();
-        if (node.querySelector('p, ul, ol, pre, div')) walk(node);
-        else line = [...node.childNodes].map(inline).join('');
-        flush();
-      } else if (isElement(node) && /^(UL|OL)$/.test(node.tagName)) {
-        flush();
-        blocks.push([...node.children].map((li, i) => `${node.tagName === 'OL' ? `${i + 1}.` : '-'} ${[...li.childNodes].map(inline).join('').trim()}`).join('\n'));
-      } else if (isElement(node) && node.tagName === 'PRE') {
-        flush();
-        const lang = node.getAttribute('data-language') ?? '';
-        blocks.push(`\`\`\`${lang || 'text'}\n${node.textContent ?? ''}\n\`\`\``);
-      } else {
-        line += inline(node);
-      }
-    }
-    flush();
-  };
-  walk(el);
-  return blocks.join('\n\n');
+  }
+  return quote;
 }
 
 /** Nome legível da imagem pelo arquivo do endereço: `diagrama-de-rede.png` → "diagrama de rede". */

@@ -262,7 +262,8 @@ function restoreComponents(lines: Line[], process: (lines: Line[]) => Line[]): L
     // As abas levam uma linha em branco entre o título e o corpo, como na documentação do pymdownx
     const tab = header[2].startsWith('===');
     out.push({ ...lines[i], text: header[2] });
-    if (tab && inner.length) out.push({ text: '', origin: lines[i].origin });
+    // (a linha nova aponta para o corpo, que vem logo depois: o título continua na linha dele)
+    if (tab && inner.length) out.push({ text: '', origin: inner[0].origin });
     out.push(...inner.map(l => ({ ...l, text: l.text.trim() ? `    ${l.text}` : '' })));
     i = end - 1;
   }

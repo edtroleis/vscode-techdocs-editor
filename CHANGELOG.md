@@ -6,6 +6,21 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Admonitions, collapsible blocks and tabs in the visual editor:** they look like in Backstage (Material colors and
+  icons) instead of raw text. Click an admonition for **Type ▾**, **Collapsible ▾** and **Delete**; the title and the
+  text are edited in place. Tabs switch on click, rename on double-click, **+** adds one and the right-click menu
+  moves or deletes a tab. The **/** menu has a TechDocs group (Admonition, Collapsible, Tabs). Pasted Confluence and
+  Outline panels become admonitions right away. The file keeps the MkDocs syntax: opening and saving without changes
+  changes nothing.
+
+### Fixed
+
+- A second **Heading 1** (from the top bar, the **/** menu, `# ` or a paste) becomes Heading 2 when the page already
+  has one: Heading 1 is the page name, and the lint flagged it.
+- Line numbers next to the visual editor shifted after an empty line (two blocks showed the same number).
+
 ## [0.16.0] - 2026-11-24
 
 ### Added

@@ -44,6 +44,10 @@ test.describe('menu /: itens oferecidos', () => {
       'Imagem',
       'Bloco de código',
       'Tabela',
+      // Os componentes do TechDocs (spec 01, M1)
+      'Aviso',
+      'Recolhível',
+      'Abas',
       // Os modelos de diagrama, um grupo do menu por assunto (spec 06, M21)
       ...DIAGRAM_TEMPLATES.map(t => ptBR[`editorText.diagram${t.name}` as keyof typeof ptBR]),
     ]);
@@ -92,7 +96,8 @@ test.describe('menu /: inserir e remover', () => {
       await newLineAtEnd(page);
       await slash(page, `Título ${level}`);
       await page.keyboard.type('Seção');
-      await expectSaved(page, `${ORIGINAL}\n${'#'.repeat(level)} Seção\n`);
+      // A página já tem Título 1 (o nome dela): o segundo vira Título 2 (single-title.spec.ts)
+      await expectSaved(page, `${ORIGINAL}\n${'#'.repeat(level === 1 ? 2 : level)} Seção\n`);
       await expectSavable(page);
 
       // Remover: voltar a parágrafo e apagar o texto (voltar ao original também é mudança)
