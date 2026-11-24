@@ -1,4 +1,5 @@
 import { DEFAULT_API_BASE_URL, GitHubClient, GitHubTransport, graphqlUrl, userTransport } from './github';
+import { FakeGitHub } from '../test/fakeGitHub';
 
 describe('GitHubClient', () => {
   it('consulta o GitHub sem cache do navegador (rascunho descartado não pode reaparecer)', async () => {
@@ -164,5 +165,58 @@ describe('pipelines de qualquer CI', () => {
     const client = clientWith({ '/repos/dono/wiki/rules/branches/main': [] });
 
     expect(await client.getBranchRules('main')).toEqual({ requiresPullRequest: false, requiredApprovals: 0, requiredChecks: [] });
+  });
+});
+
+describe('envio do repositório inteiro (spec 09)', () => {
+  const setup = () => {
+    const github = new FakeGitHub({ 'docs/index.md': '# Início\n' });
+    const client = new GitHubClient({ ...userTransport(github.token), fetch: github.fetch }, github.slug);
+    return { github, client };
+  };
+
+  it('cria o repositório privado na conta ou na organização', async () => {
+    const { github, client } = setup();
+    const mine = await client.createRepository({ owner: github.login, org: false, name: 'guia-x', private: true });
+    expect(mine).toEqual({ slug: `${github.login}/guia-x`, cloneUrl: `https://github.com/${github.login}/guia-x.git`, defaultBranch: 'main' });
+    await client.createRepository({ owner: 'acme', org: true, name: 'guia-y', private: true });
+    expect(github.createdRepos).toEqual([
+      { path: '/user/repos', name: 'guia-x', private: true, auto_init: false },
+      { path: '/orgs/acme/repos', name: 'guia-y', private: true, auto_init: false },
+    ]);
+  });
+
+  it('a identidade traz o nome, os e-mails e o e-mail privado do GitHub', async () => {
+    const { github, client } = setup();
+    github.userId = 123;
+    github.login = 'msilva';
+    github.userName = 'Maria Silva';
+    github.emails = [{ email: 'maria@acme.com', primary: true }];
+    expect(await client.getIdentity()).toEqual({
+      login: 'msilva',
+      name: 'Maria Silva',
+      emails: [{ email: 'maria@acme.com', primary: true }],
+      noreply: '123+msilva@users.noreply.github.com',
+    });
+  });
+
+  it('donos possíveis: a conta e as organizações', async () => {
+    const { github, client } = setup();
+    github.orgs = ['acme'];
+    expect(await client.listRepoOwners()).toEqual([
+      { login: github.login, org: false },
+      { login: 'acme', org: true },
+    ]);
+  });
+
+  it('o estado da revisão vale pelo último parecer de cada revisor', async () => {
+    const { github, client } = setup();
+    github.push('docs/x', github.commit('docs: x', { 'docs/index.md': '# Novo\n' }));
+    const pr = await client.createPullRequest({ branch: 'docs/x', base: 'main', title: 't', body: '', draft: false });
+    expect(await client.getReviewState(pr.number)).toEqual({ state: 'waiting' });
+    github.review(pr.number, 'ana', 'CHANGES_REQUESTED');
+    expect(await client.getReviewState(pr.number)).toEqual({ state: 'changesRequested', by: 'ana' });
+    github.review(pr.number, 'ana', 'APPROVED');
+    expect(await client.getReviewState(pr.number)).toEqual({ state: 'approved', by: 'ana' });
   });
 });

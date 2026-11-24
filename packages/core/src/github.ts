@@ -250,6 +250,46 @@ export class GitHubClient {
     return user.login;
   }
 
+  /** Nome e e-mails da conta, para o nome e e-mail do Git na primeira vez (spec 09, tela 13). */
+  async getIdentity(): Promise<{ login: string; name: string; emails: Array<{ email: string; primary: boolean }>; noreply: string }> {
+    const user = await this.request<any>('GET', '/user');
+    // Sem o escopo `user:email` a lista não vem: fica só o e-mail privado
+    const emails = await this.request<any[]>('GET', '/user/emails').catch(() => []);
+    return {
+      login: user.login,
+      name: user.name ?? user.login,
+      emails: emails.filter(e => e.verified !== false).map(e => ({ email: e.email, primary: Boolean(e.primary) })),
+      noreply: `${user.id}+${user.login}@users.noreply.github.com`,
+    };
+  }
+
+  /** Onde a pessoa pode criar um repositório: a conta e as organizações dela. */
+  async listRepoOwners(): Promise<Array<{ login: string; org: boolean }>> {
+    const [login, orgs] = await Promise.all([this.getLogin(), this.request<any[]>('GET', '/user/orgs?per_page=100')]);
+    return [{ login, org: false }, ...orgs.map(o => ({ login: o.login as string, org: true }))];
+  }
+
+  /** Cria um repositório vazio (sem README): o primeiro envio leva a documentação. */
+  async createRepository(opts: { owner: string; org: boolean; name: string; private: boolean }): Promise<{ slug: string; cloneUrl: string; defaultBranch: string }> {
+    const path = opts.org ? `/orgs/${opts.owner}/repos` : '/user/repos';
+    const repo = await this.request<any>('POST', path, { name: opts.name, private: opts.private, auto_init: false });
+    return { slug: repo.full_name, cloneUrl: repo.clone_url, defaultBranch: repo.default_branch ?? 'main' };
+  }
+
+  /** A revisão do PR pelo último parecer de cada revisor (comentário solto não muda nada). */
+  async getReviewState(pr: number): Promise<{ state: 'waiting' | 'approved' | 'changesRequested'; by?: string }> {
+    const reviews = await this.request<any[]>('GET', `/repos/${this.slug}/pulls/${pr}/reviews?per_page=100`);
+    const last = new Map<string, string>();
+    for (const review of reviews) {
+      if (['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) last.set(review.user?.login, review.state);
+    }
+    const find = (state: string) => [...last].find(([, s]) => s === state)?.[0];
+    const changes = find('CHANGES_REQUESTED');
+    if (changes) return { state: 'changesRequested', by: changes };
+    const approved = find('APPROVED');
+    return approved ? { state: 'approved', by: approved } : { state: 'waiting' };
+  }
+
   async getRepo(): Promise<Repo> {
     const repo = await this.request<any>('GET', `/repos/${this.slug}`);
     return {

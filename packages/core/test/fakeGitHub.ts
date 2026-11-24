@@ -46,6 +46,13 @@ const sha1 = (text: string) => createHash('sha1').update(text).digest('hex');
 export class FakeGitHub {
   readonly slug: string;
   login = 'pessoa-teste';
+  userId = 1;
+  userName = 'Pessoa Teste';
+  emails: Array<{ email: string; primary: boolean }> = [];
+  orgs: string[] = [];
+  /** Os `POST` de criar repositório (spec 09), na ordem. */
+  readonly createdRepos: Array<Record<string, unknown>> = [];
+  private readonly reviews = new Map<number, Array<{ user: { login: string }; state: string }>>();
   readonly refs = new Map<string, string>();
   readonly commits = new Map<string, FakeCommit>();
   readonly pulls: FakePull[] = [];
@@ -147,6 +154,11 @@ export class FakeGitHub {
     this.token = `${this.token}-novo`;
   }
 
+  /** Um parecer de `login` no PR (`APPROVED`, `CHANGES_REQUESTED`, `COMMENTED`). */
+  review(pr: number, login: string, state: string) {
+    this.reviews.set(pr, [...(this.reviews.get(pr) ?? []), { user: { login }, state }]);
+  }
+
   /** A próxima chamada `method` cujo caminho casa com `path` falha com `status`. */
   failNext(method: string, path: RegExp, status: number, message: string) {
     this.failures.push({ method, path, status, message });
@@ -237,7 +249,15 @@ export class FakeGitHub {
     const ok = (json: unknown, status = 200) => ({ status, json });
     const notFound = { status: 404, json: { message: 'Not Found' } };
 
-    if (method === 'GET' && path === '/user') return ok({ login: this.login });
+    if (method === 'GET' && path === '/user') return ok({ login: this.login, id: this.userId, name: this.userName });
+    if (method === 'GET' && path === '/user/emails') return ok(this.emails.map(e => ({ ...e, verified: true })));
+    if (method === 'GET' && path === '/user/orgs') return ok(this.orgs.map(login => ({ login })));
+    const create = method === 'POST' && (path === '/user/repos' ? this.login : path.match(/^\/orgs\/([^/]+)\/repos$/)?.[1]);
+    if (create) {
+      this.createdRepos.push({ path, ...body });
+      const fullName = `${create}/${body.name}`;
+      return ok({ full_name: fullName, clone_url: `https://github.com/${fullName}.git`, default_branch: 'main' }, 201);
+    }
     if (method === 'POST' && path === '/graphql') {
       const pr = this.pulls.find(p => `PR_${p.number}` === body.variables?.id);
       if (!pr) return ok({ errors: [{ message: 'Could not resolve to a node' }] });
@@ -458,6 +478,8 @@ export class FakeGitHub {
       }
       return ok(list.slice(0, Number(url.searchParams.get('per_page') ?? 30)));
     }
+    m = rest.match(/^\/pulls\/(\d+)\/reviews$/);
+    if (m && method === 'GET') return ok(this.reviews.get(Number(m[1])) ?? []);
     m = rest.match(/^\/pulls\/(\d+)$/);
     if (m) {
       const pr = this.pulls.find(p => p.number === Number(m![1]));
