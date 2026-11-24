@@ -1,4 +1,5 @@
 import { mermaidPreview } from './mermaidPreview';
+import { mermaidCompletion } from './mermaidComplete';
 import { diagramDeletePlugin } from './diagramDelete';
 import { diagramDoubleClickPlugin } from './diagramDoubleClick';
 import { diagramMenuChipsPlugin } from './diagramGallery';
@@ -192,6 +193,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         // Diagramas Mermaid (spec 06): o bloco abre desenhado; Editar mostra o código com a prévia embaixo
         [Crepe.Feature.CodeMirror]: {
           renderPreview: mermaidPreview(labels.diagram),
+          // Sugestões no código dos diagramas (M31): tipos, formas, setas, nós e palavras-chave
+          extensions: [mermaidCompletion(() => labels.diagram.complete)],
           previewOnlyByDefault: true,
           previewToggleText: (previewOnly: boolean) => (previewOnly ? labels.diagram.edit : labels.diagram.show),
           previewLabel: labels.code.preview,

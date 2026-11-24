@@ -4,6 +4,7 @@ import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark'
 import { DIAGRAM_GROUPS, DIAGRAM_TEMPLATES, type DiagramGroup } from './diagramTemplates';
 import type { DiagramBarText } from './diagramNodeBar';
 import type { FlowchartWords } from './flowchartEdit';
+import type { MermaidCompleteText } from './mermaidComplete';
 import { insertDiagram } from './insertDiagram';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
@@ -76,6 +77,8 @@ export type EditorText = {
     bar: DiagramBarText;
     /** Textos que a barra põe no código. */
     words: FlowchartWords;
+    /** Autocompletar no código do diagrama (M31). */
+    complete: MermaidCompleteText;
   };
   table: string;
   quote: string;
@@ -118,6 +121,17 @@ export function editorTextFrom(t: TextLookup): EditorText {
       show: k('diagramShow'),
       hint: k('diagramHint'),
       flowHint: k('diagramFlowHint'),
+      complete: {
+        detail: key => k(`mc.${key}`),
+        text: k('mcText'),
+        // A primeira linha de cada modelo (sem o front matter) é o começo do tipo: "flowchart LR", "sequenceDiagram"
+        types: DIAGRAM_TEMPLATES.map(({ key, name }) => ({
+          header: headerOf(k(key === 'flow' ? 'diagramSample' : `diagramSample${name}`)),
+          label: k(`diagram${name}`)
+            .replace(/^[^:]+:\s*/, '')
+            .replace(/^./, c => c.toUpperCase()),
+        })),
+      },
       templates: DIAGRAM_TEMPLATES.map(({ key, name, group, icon, since }) => ({
         key,
         group,
@@ -313,3 +327,11 @@ export const markdownViewPhrases = (t: TextLookup): Record<string, string> => {
     'No diagnostics': k('noDiagnostics'),
   };
 };
+
+/** A primeira linha que conta de um exemplo de diagrama: sem o front matter (`---`) e sem os comentários (`%%`). */
+function headerOf(sample: string) {
+  const lines = sample.split('\n');
+  let at = 0;
+  if (lines[0]?.trim() === '---') at = lines.findIndex((line, i) => i > 0 && line.trim() === '---') + 1;
+  return lines.slice(at).find(line => line.trim() && !line.trim().startsWith('%%'))?.trim() ?? '';
+}

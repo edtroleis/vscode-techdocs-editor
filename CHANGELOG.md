@@ -24,6 +24,11 @@ All notable changes to the TechDocs Editor extension. The format follows
   the Mermaid limits (500 links, 50,000 characters) show a clear message, and **Check** points them out.
 
 - A trash icon on a diagram deletes the whole block (Ctrl+Z brings it back).
+- **Suggestions while writing a diagram's code:** the diagram type on the first line; in flowcharts, the node shapes
+  after a node (database, decision, stadium, hexagon and the others of the Mermaid docs), the arrows (dotted, thick,
+  with text), the nodes already in the diagram after an arrow, and `subgraph`, `classDef` and the other keywords; in
+  sequence diagrams, the participants, arrows and blocks; the keywords of class, state, ER, Gantt, pie, Git, journey
+  and timeline diagrams. Each suggestion says what it is, in the language of the editor. Ctrl+Space opens the list.
 - **Enlarge** on a diagram opens it in a window with zoom (mouse wheel, + and −), drag to move, **Fit** and **100%**.
 
 ### Changed

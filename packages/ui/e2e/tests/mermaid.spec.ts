@@ -369,3 +369,55 @@ test('Excluir: também num diagrama com erro', async ({ page }) => {
   await block(page).locator('.mermaid-delete').click();
   await expect(page.locator('.milkdown-code-block')).toHaveCount(0);
 });
+
+/** Abre o código do primeiro bloco e põe o cursor no fim da última linha. */
+async function editAtEnd(page: Page) {
+  await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();
+  await block(page).hover();
+  await block(page).getByText('Editar').click();
+  const code = block(page).locator('.cm-content');
+  await expect(code).toBeVisible();
+  await code.locator('.cm-line').last().click();
+  await page.keyboard.press('End');
+}
+
+test('autocompletar (M31): formas depois do nó, setas e os nós que já existem; Enter escolhe', async ({ page }) => {
+  await openEditor(page, page1('flowchart LR\n  A[Início] --> B{Decisão}'));
+  await editAtEnd(page);
+  const popup = page.locator('.cm-tooltip-autocomplete');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('B -');
+  await expect(popup).toContainText('Seta pontilhada');
+  await page.keyboard.type('->');
+  // Enter só depois de a lista se atualizar (quem digita leva mais que isso)
+  await expect(popup.locator('li[aria-selected="true"]')).toContainText('-->');
+  // O CodeMirror ignora o Enter nos primeiros 75 ms da lista (interactionDelay), para não engolir um Enter rápido
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Enter');
+  // Depois da seta, os nós do diagrama com o texto deles
+  await expect(popup).toContainText('Início');
+  await page.keyboard.type('Db[(');
+  await expect(popup.locator('li[aria-selected="true"]')).toContainText('Banco de dados (cilindro)');
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Pedidos');
+  await expect(block(page).locator('.mermaid-diagram svg')).toContainText('Pedidos');
+  await expectSaved(page, page1('flowchart LR\n  A[Início] --> B{Decisão}\n  B --> Db[(Pedidos)]'));
+});
+
+test('autocompletar (M31): primeira linha sugere os tipos; outro bloco de código fica sem sugestão', async ({ page }) => {
+  await openEditor(page, `${page1('flowchart LR\n  A --> B')}\n\`\`\`js\nconst a = 1;\n\`\`\`\n`);
+  await editAtEnd(page);
+  const popup = page.locator('.cm-tooltip-autocomplete');
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.press('Shift+End');
+  await page.keyboard.type('seq');
+  await expect(popup).toContainText('sequenceDiagram');
+  await page.keyboard.press('Escape');
+  const js = page.locator('.milkdown-code-block').nth(1).locator('.cm-content');
+  await js.locator('.cm-line').last().click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('\nsub');
+  await page.waitForTimeout(500);
+  await expect(popup.filter({ hasText: 'subgraph' })).toHaveCount(0);
+});
