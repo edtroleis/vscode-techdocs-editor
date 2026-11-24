@@ -97,6 +97,15 @@ const builds = [
     format: 'iife',
     target: 'es2022',
   },
+  // Webviews do envio (spec 09): a tela de envio e o painel Envio, HTML simples
+  {
+    ...common,
+    entryPoints: { send: 'webview/send.ts', sendView: 'webview/sendView.ts' },
+    outdir: 'dist/webview',
+    platform: 'browser',
+    format: 'iife',
+    target: 'es2022',
+  },
   // Webview da prévia da documentação nova: também HTML simples
   {
     ...common,
