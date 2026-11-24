@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-24
+
 ### Added
 
 - 29 Mermaid diagram templates in the `/` menu, in five groups (Flows, Structure, Planning, Charts, Ideas): user
