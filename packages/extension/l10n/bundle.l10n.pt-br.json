@@ -64,6 +64,7 @@
   "Refresh": "Atualizar",
   "Details": "Detalhes",
   "Could not save the page.": "Não foi possível salvar a página.",
+  "Git is not available in this VS Code.": "O Git não está disponível neste VS Code.",
   "Set up this repository? Merge settings and branch protection change now; the new files go in a pull request for the team to review.": "Configurar este repositório? As opções de merge e a proteção da branch mudam agora; os arquivos novos vão num pull request para o time revisar.",
   "Set up checks": "Configurar verificações",
   "Set up checks for the docs editor": "Configura as verificações do editor de docs",

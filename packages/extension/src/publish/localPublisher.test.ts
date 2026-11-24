@@ -1,66 +1,11 @@
 import { GitHubClient, userTransport } from '@edtroleis/techdocs-editor-core';
-import { FakeCommit, FakeGitHub } from '../../../core/test/fakeGitHub';
+import { FakeGitHub } from '../../../core/test/fakeGitHub';
+import { FakeGit } from '../../test/fakeGit';
 import { LocalPublisher, PublishConfig, PublishView } from './localPublisher';
-import type { LocalGit, PageDoc } from './types';
+import type { PageDoc } from './types';
 
 const INDEX = '# Início\n\nTexto da página.\n';
 const OTHER = '# Outra\n\nOutra página.\n';
-
-/** Clone local simulado: árvore de trabalho, índice e branches; o push chega ao GitHub simulado. */
-class FakeGit implements LocalGit {
-  readonly branches = new Map<string, FakeCommit>();
-  current = 'main';
-  work: Record<string, string>;
-  readonly staged = new Set<string>();
-  constructor(private readonly github: FakeGitHub) {
-    const main = github.head('main')!;
-    this.branches.set('main', main);
-    this.work = { ...main.files };
-  }
-  private get head() {
-    return this.branches.get(this.current)!;
-  }
-  refresh = async () => {};
-  remoteUrl = () => `https://github.com/${this.github.slug}.git`;
-  currentBranch = () => this.current;
-  headSha = () => this.head.sha;
-  headMessage = async () => this.head.message;
-  hasLocalBranch = async (name: string) => this.branches.has(name);
-  changed = (paths: string[]) => paths.filter(p => this.work[p] !== undefined && this.work[p] !== this.head.files[p]);
-  changedFiles = () => Object.keys(this.work).filter(p => this.work[p] !== this.head.files[p]);
-  tracked = (path: string) => this.head.files[path] !== undefined;
-  stagedOutside = (paths: string[]) => [...this.staged].filter(p => !paths.includes(p));
-  async createBranch(name: string, from?: string) {
-    this.branches.set(name, from ? this.branches.get(from)! : this.head);
-    this.current = name;
-  }
-  async checkout(name: string) {
-    const before = this.head.files;
-    const target = this.branches.get(name)!;
-    const work = { ...target.files };
-    // Como o git: as alterações não commitadas vão junto
-    for (const [path, content] of Object.entries(this.work)) if (content !== before[path]) work[path] = content;
-    this.work = work;
-    this.current = name;
-  }
-  async deleteBranch(name: string) {
-    this.branches.delete(name);
-  }
-  async commit(paths: string[], message: string) {
-    const files = { ...this.head.files };
-    for (const p of paths) files[p] = this.work[p];
-    this.branches.set(this.current, this.github.commit(message, files));
-  }
-  async commitEmpty(message: string) {
-    this.branches.set(this.current, this.github.commit(message, this.head.files));
-  }
-  async push(branch: string) {
-    this.github.push(branch, this.branches.get(branch)!);
-  }
-  async discardChanges(paths: string[]) {
-    for (const p of paths) this.work[p] = this.head.files[p];
-  }
-}
 
 /** Página aberta no editor: texto não salvo até `save`. */
 class FakePage implements PageDoc {

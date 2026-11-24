@@ -1,5 +1,6 @@
 import Mocha from 'mocha';
 import { definePublishTests } from './publish';
+import { defineSendTests } from './send';
 import { defineRemoteTests } from './remote';
 import { defineTests } from './tests';
 
@@ -11,6 +12,7 @@ export function run(): Promise<void> {
   defineTests();
   definePublishTests();
   defineRemoteTests();
+  defineSendTests();
   return new Promise((resolve, reject) =>
     mocha.run(failures => (failures ? reject(new Error(`${failures} teste(s) falharam`)) : resolve())),
   );

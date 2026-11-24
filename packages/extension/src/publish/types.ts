@@ -1,3 +1,4 @@
+import type { FileChange } from '@edtroleis/techdocs-editor-core';
 /**
  * O que o painel de publicação usa do Git e da página, sem `vscode`: em produção, o `vscode.git` e o
  * documento aberto (`vscodeGit.ts`); nos testes unitários, versões simuladas (D3-1 da spec 00).
@@ -34,6 +35,29 @@ export interface LocalGit {
   push(branch: string): Promise<void>;
   /** Descarta as alterações não commitadas de `paths`. */
   discardChanges(paths: string[]): Promise<void>;
+}
+
+/** O Git do repositório inteiro, para o envio (spec 09). */
+export interface RepoGit extends LocalGit {
+  /** Caminho da raiz no disco. */
+  readonly root: string;
+  /** A branch principal do `origin` (o `origin/HEAD`); undefined sem `origin`. */
+  defaultBranch(): string | undefined;
+  fetch(): Promise<void>;
+  /** Arquivos diferentes entre `ref` e o HEAD + árvore de trabalho + não versionados, pelo conteúdo. */
+  diffWith(ref: string): Promise<FileChange[]>;
+  /** Merge de `ref` na branch atual; os caminhos em conflito ([] = juntou sozinho). */
+  merge(ref: string): Promise<string[]>;
+  /** Volta `paths` ao conteúdo de `ref` (o que não existe em `ref` é apagado), sem commit. */
+  restoreFrom(ref: string, paths: string[]): Promise<void>;
+  /**
+   * Volta à `branch` levando as mudanças contra `base` como não commitadas. Se a `branch` mudou um desses arquivos
+   * desde a `base`, não mexe em nada e devolve os caminhos (nada se perde).
+   */
+  unstackOnto(branch: string, base: string): Promise<string[]>;
+  addRemote(name: string, url: string): Promise<void>;
+  /** Nome e e-mail do Git que valem neste repositório (o do repositório, senão o global). */
+  identity(): Promise<{ name?: string; email?: string }>;
 }
 
 export interface PageDoc {

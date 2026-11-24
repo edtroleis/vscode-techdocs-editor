@@ -68,7 +68,8 @@ const builds = [
     conditions: ['worker'],
     format: 'cjs',
     target: 'es2022',
-    external: ['vscode'],
+    // O Git direto (vscodeGit.ts) só roda no desktop: no navegador o import dinâmico nunca é chamado
+    external: ['vscode', 'node:child_process'],
   },
   // Webview: React + Milkdown; o CSS importado sai em dist/webview/main.css. Em ESM com `splitting`:
   // as linguagens dos blocos de código (`@codemirror/language-data`) vêm em pedaços à parte, carregados
@@ -142,7 +143,7 @@ const builds = [
     // TEST_GREP=Templates também no navegador, onde não há process.env
     define: { 'process.env.TEST_GREP': JSON.stringify(process.env.TEST_GREP ?? ''), 'process.env.CI': JSON.stringify(process.env.CI ?? '') },
     target: 'es2022',
-    external: ['vscode'],
+    external: ['vscode', 'node:child_process'],
   },
 ];
 
