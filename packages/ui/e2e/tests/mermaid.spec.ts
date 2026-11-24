@@ -370,6 +370,45 @@ test('Excluir: também num diagrama com erro', async ({ page }) => {
   await expect(page.locator('.milkdown-code-block')).toHaveCount(0);
 });
 
+// Diagrama largo para o TechDocs (M32)
+const WIDE = `flowchart LR\n  ${Array.from({ length: 12 }, (_, i) => `N${i}[Etapa número ${i}]`).join(' --> ')}`;
+
+test('Diagrama largo: aviso do tamanho no Backstage, ver na largura do TechDocs e virar de cima para baixo', async ({ page }) => {
+  const { errors } = await openEditor(page, page1(WIDE));
+  const warning = block(page).locator('.mermaid-wide');
+  await expect(warning).toContainText(/aparece em \d+% do tamanho/);
+  const svg = block(page).locator('.mermaid-diagram > svg');
+  const editing = (await svg.boundingBox())!.width;
+  const size = warning.getByRole('button', { name: 'Ver como no Backstage' });
+  await size.click();
+  await expect(warning.getByRole('button', { name: 'Ver no tamanho de edição' })).toBeVisible();
+  const asTechdocs = (await svg.boundingBox())!.width;
+  expect(asTechdocs).toBeLessThanOrEqual(700);
+  expect(asTechdocs).toBeLessThan(editing);
+  await warning.getByRole('button', { name: 'Ver no tamanho de edição' }).click();
+  await expect.poll(async () => (await svg.boundingBox())!.width).toBe(editing);
+  await warning.getByRole('button', { name: 'Desenhar de cima para baixo' }).click();
+  await expectSaved(page, page1(WIDE.replace('flowchart LR', 'flowchart TD')));
+  await expect(block(page).locator('.mermaid-wide')).toHaveCount(0);
+  await page.keyboard.press('Control+z');
+  await expectSaved(page, page1(WIDE));
+  expect(errors).toEqual([]);
+});
+
+test('Diagrama largo que não é fluxograma de lado: só o aviso e o Ver como no Backstage', async ({ page }) => {
+  await openEditor(page, page1(WIDE.replace('flowchart LR', 'flowchart TD').replace(/ --> /g, '\n  ')));
+  await expect(block(page).locator('.mermaid-diagram > svg')).toBeVisible();
+  // Doze nós soltos lado a lado também passam da página
+  await expect(block(page).locator('.mermaid-wide')).toBeVisible();
+  await expect(block(page).locator('.mermaid-wide-turn')).toHaveCount(0);
+});
+
+test('ZenUML: diz que é um complemento à parte, em vez de erro de sintaxe', async ({ page }) => {
+  await openEditor(page, page1('zenuml\n  Alice->Bob: Oi'));
+  await expect(block(page).locator('.mermaid-error')).toContainText('ZenUML é um complemento à parte do Mermaid');
+  await expect(block(page).locator('.mermaid-error pre')).toHaveCount(0);
+});
+
 /** Abre o código do primeiro bloco e põe o cursor no fim da última linha. */
 async function editAtEnd(page: Page) {
   await expect(block(page).locator('.mermaid-diagram svg')).toBeVisible();

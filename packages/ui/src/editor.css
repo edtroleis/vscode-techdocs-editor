@@ -214,6 +214,34 @@
   font-size: 0.85em;
   text-align: left;
 }
+/* Diagrama largo para o TechDocs (M32): o aviso tem os botões; "Ver como no Backstage" mostra na largura da página
+   do TechDocs (TECHDOCS_WIDTH em mermaidPreview.ts), como o addon do Mermaid desenha */
+.milkdown .mermaid-wide p {
+  margin: 0;
+}
+.milkdown .mermaid-wide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px !important;
+}
+.milkdown .mermaid-wide-actions button {
+  padding: 2px 10px;
+  border: 1px solid color-mix(in srgb, var(--crepe-color-on-surface), transparent 70%);
+  border-radius: 4px;
+  background: var(--crepe-color-surface);
+  color: var(--crepe-color-on-surface);
+  font: inherit;
+  cursor: pointer;
+}
+.milkdown .mermaid-wide-actions button:hover {
+  background: var(--crepe-color-hover);
+}
+.milkdown .mermaid-as-techdocs .mermaid-diagram svg {
+  min-width: 0 !important;
+  width: 700px;
+  max-width: 100%;
+}
 .milkdown .ProseMirror[contenteditable='false'] .mermaid-warning {
   display: none;
 }

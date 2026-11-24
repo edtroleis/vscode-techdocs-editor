@@ -1,7 +1,10 @@
 import type { Mermaid } from 'mermaid';
 import { type DiagramViewerText, openDiagramViewer } from './diagramViewer';
-import { diagramSince } from './diagramTemplates';
+import { diagramKind, diagramSince } from './diagramTemplates';
 import { isFlowchart } from './flowchartEdit';
+
+/** Tipos que o Mermaid só desenha com um complemento à parte, que nem o editor nem o Backstage carregam (M32). */
+const UNSUPPORTED: Record<string, string> = { zenuml: 'ZenUML' };
 
 /**
  * Diagramas Mermaid no editor visual (spec 06): a prévia do bloco de código do Crepe desenha os blocos
@@ -24,11 +27,72 @@ export type DiagramText = {
   sinceWarning: (since: string) => string;
   /** Diagrama maior que os limites do Mermaid (M27). */
   tooBig: string;
+  /** Diagrama largo para a página do TechDocs (M32). */
+  wide: WideDiagramText;
+  /** Tipo que nem o editor nem o Backstage desenham, como o ZenUML (M32). */
+  unsupported: (kind: string) => string;
   /** Botão Ampliar e janela de zoom (M28). */
   viewer: DiagramViewerText;
   /** Botão que apaga o bloco do diagrama (M30). */
   remove: string;
 };
+
+/** Aviso do diagrama largo para o TechDocs e os botões dele (M32). */
+export type WideDiagramText = {
+  warning: (percent: number) => string;
+  /** Mostra o desenho na largura da página do TechDocs, e volta. */
+  asTechdocs: string;
+  asEditor: string;
+  /** Troca `LR`/`RL` por `TD` no fluxograma. */
+  turn: string;
+};
+
+/**
+ * Largura do texto da página do TechDocs no Backstage (M32): a janela menos uns 814 px dos menus (466 px numa tela de
+ * 1280, 626 em 1440, 1106 em 1920; medido na vitrine, spec 03). 700 é uma janela de uns 1500 px. O addon do Mermaid
+ * encolhe o desenho até caber, e o Backstage não tem zoom.
+ */
+export const TECHDOCS_WIDTH = 700;
+/** Abaixo desta escala no TechDocs o texto do diagrama fica pequeno (16 px viram menos de 11). */
+const TECHDOCS_MIN_SCALE = 0.7;
+
+/** Quanto do tamanho o diagrama de largura natural `width` tem no TechDocs (1 se cabe). */
+export const techdocsScale = (width: number) => Math.min(1, TECHDOCS_WIDTH / width);
+
+/** Fluxograma desenhado da esquerda para a direita (ou ao contrário): dá para virar com um clique. */
+export const sidewaysFlowchart = (code: string) =>
+  /^\s*(?:---\r?\n[\s\S]*?\r?\n---[^\n]*\n)?(?:\s*%%[^\n]*\n)*\s*(?:flowchart|graph)[ \t]+(?:LR|RL)\b/i.test(code);
+
+/** O código com o fluxograma de cima para baixo (só a direção da primeira linha do diagrama). */
+export const turnTopDown = (code: string) => code.replace(/^(\s*(?:---\r?\n[\s\S]*?\r?\n---[^\n]*\n)?(?:\s*%%[^\n]*\n)*\s*(?:flowchart|graph)[ \t]+)(?:LR|RL)\b/i, '$1TD');
+
+/** Aviso do diagrama largo, com os botões; o clique é tratado em diagramWide.ts (o Crepe copia a prévia sem listeners). */
+function wideWarning(text: DiagramText, width: number, code: string): HTMLElement | undefined {
+  const scale = techdocsScale(width);
+  if (scale >= TECHDOCS_MIN_SCALE) return undefined;
+  const warning = document.createElement('div');
+  warning.className = 'mermaid-warning mermaid-wide';
+  const message = document.createElement('p');
+  message.textContent = `⚠ ${text.wide.warning(Math.round(scale * 100))}`;
+  const actions = document.createElement('p');
+  actions.className = 'mermaid-wide-actions';
+  const size = document.createElement('button');
+  size.type = 'button';
+  size.className = 'mermaid-wide-size';
+  size.textContent = text.wide.asTechdocs;
+  size.dataset.asTechdocs = text.wide.asTechdocs;
+  size.dataset.asEditor = text.wide.asEditor;
+  actions.append(size);
+  if (sidewaysFlowchart(code)) {
+    const turn = document.createElement('button');
+    turn.type = 'button';
+    turn.className = 'mermaid-wide-turn';
+    turn.textContent = text.wide.turn;
+    actions.append(turn);
+  }
+  warning.append(message, actions);
+  return warning;
+}
 
 const TRASH_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
@@ -245,6 +309,11 @@ function diagramElement(svg: string, text: DiagramText, code: string): HTMLEleme
   hint.className = 'mermaid-hint';
   hint.textContent = isFlowchart(code) ? text.flowHint : text.hint;
   element.append(hint);
+  const wide = size ? wideWarning(text, Number(size[1]), code) : undefined;
+  if (wide) {
+    view.classList.add('mermaid-wide-view');
+    element.append(wide);
+  }
   const since = diagramSince(code);
   if (since) {
     const warning = document.createElement('p');
@@ -266,6 +335,13 @@ function errorElement(text: DiagramText, message: string, code: string): HTMLEle
   const title = document.createElement('strong');
   if (isTooBig(message)) {
     title.textContent = text.tooBig;
+    element.append(title);
+    return view;
+  }
+  // Tipo que é um complemento à parte (ZenUML): o Mermaid diz só "nenhum tipo de diagrama achado"
+  const unsupported = UNSUPPORTED[diagramKind(code)];
+  if (unsupported) {
+    title.textContent = text.unsupported(unsupported);
     element.append(title);
     return view;
   }

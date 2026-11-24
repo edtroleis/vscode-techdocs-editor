@@ -1,6 +1,7 @@
 import { mermaidPreview } from './mermaidPreview';
 import { mermaidCompletion } from './mermaidComplete';
 import { diagramDeletePlugin } from './diagramDelete';
+import { diagramWidePlugin } from './diagramWide';
 import { diagramDoubleClickPlugin } from './diagramDoubleClick';
 import { diagramMenuChipsPlugin } from './diagramGallery';
 import { diagramBarCtx, diagramNodeBarPlugin } from './diagramNodeBar';
@@ -243,6 +244,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       .use(listCaretFixPlugin)
       .use(diagramDoubleClickPlugin)
       .use(diagramDeletePlugin)
+      .use(diagramWidePlugin)
       .use(diagramNodeBarPlugin)
       .use(mermaidBlockClassPlugin)
       .use(diagramMenuChipsPlugin)

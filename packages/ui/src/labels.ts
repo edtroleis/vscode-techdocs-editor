@@ -1,4 +1,5 @@
 import type { DiagramViewerText } from './diagramViewer';
+import type { WideDiagramText } from './mermaidPreview';
 import { commandsCtx } from '@milkdown/kit/core';
 import { clearTextInCurrentBlockCommand } from '@milkdown/kit/preset/commonmark';
 import { DIAGRAM_GROUPS, DIAGRAM_TEMPLATES, type DiagramGroup } from './diagramTemplates';
@@ -69,6 +70,10 @@ export type EditorText = {
     sinceWarning: (since: string) => string;
     /** Diagrama maior que os limites do Mermaid (M27). */
     tooBig: string;
+    /** Diagrama largo para a página do TechDocs (M32). */
+    wide: WideDiagramText;
+    /** Tipo que nem o editor nem o Backstage desenham, como o ZenUML (M32). */
+    unsupported: (kind: string) => string;
     /** Botão Ampliar e janela de zoom (M28). */
     viewer: DiagramViewerText;
     /** Botão que apaga o bloco do diagrama (M30). */
@@ -156,6 +161,13 @@ export function editorTextFrom(t: TextLookup): EditorText {
         sinceTitle: since => t('editorText.diagramSinceTitle', { since }),
       },
       tooBig: k('diagramTooBig'),
+      wide: {
+        warning: percent => t('editorText.diagramWide', { percent }),
+        asTechdocs: k('diagramWideAsTechdocs'),
+        asEditor: k('diagramWideAsEditor'),
+        turn: k('diagramWideTurn'),
+      },
+      unsupported: kind => t('editorText.diagramUnsupported', { kind }),
       remove: k('diagramRemoveBlock'),
       viewer: {
         open: k('diagramZoom'),
