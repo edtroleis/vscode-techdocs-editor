@@ -57,6 +57,34 @@ Testes e2e visuais (o VS Code com janela, como uma pessoa usaria: `npm run test:
 relatório de capturas, ou os e2e com `HEADED=1`) só rodam quando o dono do projeto pede, em momentos que ele
 escolhe. Ninguém os roda por conta própria durante o desenvolvimento.
 
+### Vitrine no Backstage (2026-11-24)
+
+`npm run test:backstage` publica no Backstage local (`~/code/backstage`, ou `BACKSTAGE_DIR`) o que a extensão
+entrega e abre cada página como uma pessoa abriria. Só roda quando pedido: não entra no `test:all` nem no CI.
+
+- **O que publica** (24 docs, ~210 páginas, ~680 diagramas): os templates de página e os de site, nas duas línguas,
+  preenchidos pelo mesmo código da extensão (os templates da tag que vem no core); os exemplos do repositório de
+  templates; os modelos da galeria de diagramas; e todos os exemplos do mermaid.js.org (a cópia em
+  `packages/ui/e2e/fixtures/mermaid-site-examples.json`).
+- **Como:** gera um site MkDocs por doc e um `catalog-info.yaml` com todas; sobe (ou reinicia) o Backstage com
+  `BACKSTAGE_EXTRA_CONFIG=app-config.showcase.local.yaml`, que acrescenta a location do arquivo (a API do catálogo só
+  aceita `url`); publica com o `techdocs-cli` e o publicador do Azurite do portal; entra como convidado e abre cada
+  página.
+- **O que confere:** a página abriu; cada diagrama desenhado pelo addon do Mermaid (ou com erro, ou sem desenho);
+  diagramas encolhidos para caber (texto pequeno) ou mais largos que a página; tabelas largas; Markdown cru (`!!!`,
+  `===`, cercas) e campos `{{ }}` sem valor; imagens quebradas; erros no console; páginas lentas.
+- **Relatório:** `node_modules/.cache/backstage-showcase/report/index.html`, com o resumo, as sugestões tiradas do que
+  se repete e a captura de cada página (no WSL, copiado para `C:\Users\Public\techdocs-backstage` e aberto). Cada
+  passo tem limite de tempo.
+- **Validação na extensão (todas as docs do catálogo, não só as da vitrine):** acha o diretório de cada doc pela
+  location (o clone em `repos/` do Backstage, ou o arquivo) e o `techdocs-ref: dir:`, e roda o código da extensão: o
+  "Conferir a documentação" (`checkSite` e o lint) e a ida e volta no editor visual (o bundle do webview). Quando o
+  texto que o editor gravaria muda, compara o HTML do MkDocs do original e do novo, com o `mkdocs.yml` do site e os
+  plugins (o techdocs-core põe as extensões do TechDocs, como o `mdx_truly_sane_lists`, que muda o recuo das listas):
+  só conta como erro o que muda no Backstage; lista solta ou junta é só o espaço entre os itens.
+- `--only <parte do nome>` confere só algumas docs; `--skip-publish` só confere o que já está publicado;
+  `--skip-validate` pula a validação na extensão.
+
 ## Segurança
 
 | Área | Requisito |

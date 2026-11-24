@@ -30,6 +30,12 @@ All notable changes to the TechDocs Editor extension. The format follows
   sequence diagrams, the participants, arrows and blocks; the keywords of class, state, ER, Gantt, pie, Git, journey
   and timeline diagrams. Each suggestion says what it is, in the language of the editor. Ctrl+Space opens the list.
 - **Enlarge** on a diagram opens it in a window with zoom (mouse wheel, + and −), drag to move, **Fit** and **100%**.
+- A diagram too wide for the Backstage page gets a warning in the visual editor: how big it will look in TechDocs
+  (which has no zoom), a button to see it at the TechDocs width, and, for left-to-right flowcharts, a button to draw it
+  top to bottom.
+- `npm run test:backstage` (development): publishes every template, site, example and Mermaid diagram to a local
+  Backstage, opens each page as a reader would, checks every doc in the catalog with the extension, and writes a report
+  with screenshots and suggestions.
 
 ### Changed
 
@@ -42,6 +48,9 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 - Text in diagram boxes was cut at the bottom in the visual editor (the editor's paragraph spacing).
 - Opening the diagram gallery no longer delays the diagrams of the page; Tab stays inside the gallery.
+- A ZenUML diagram explains that it is a separate Mermaid add-on that neither the editor nor Backstage draws, and suggests a sequence diagram, instead of showing a syntax error.
+- The editor no longer adds a backslash to a dot after a `w` (`flow\.html`); MkDocs showed it as a plain dot, but it cluttered the change.
+- The formatting check no longer flags the same heading under different sections (release notes repeat "Added" in each version).
 
 ## [0.14.1] - 2026-11-23
 
