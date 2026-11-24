@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-24
+
 ### Added
 
 - **Admonitions, collapsible blocks and tabs in the visual editor:** they look like in Backstage (Material colors and
