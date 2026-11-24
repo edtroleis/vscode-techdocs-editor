@@ -123,11 +123,13 @@ export function defaultCodeLanguage(markdown: string) {
  * Tira as barras que o editor põe antes de `&` e de `@` (`?a=1\&b=2`, `hello\@x.com`): no CommonMark são
  * escapes, mas o Python-Markdown do MkDocs não os conhece e mantém a barra, e o link, a imagem ou o e-mail quebram.
  * O `&` que forma uma entidade (`\&amp;`) continua escapado; dentro de código (`` `…` ``) nada muda.
+ * Também a barra que ele põe no ponto depois de um `w` (`flow\.html`, `treeView\.html`), por cautela com os links
+ * `www.` do GFM: só `www.` vira link, e esse continua escapado.
  */
 const unescapeForMkdocs = (line: string) =>
   line
     .split(/(`+[^`]*?`+)/)
-    .map((part, i) => (i % 2 ? part : part.replace(/\\&(?!#?\w+;)/g, '&').replace(/\\@/g, '@')))
+    .map((part, i) => (i % 2 ? part : part.replace(/\\&(?!#?\w+;)/g, '&').replace(/\\@/g, '@').replace(/(?<!ww)(?<=w)\\\./gi, '.')))
     .join('');
 
 const tidy = (lines: Line[]) =>

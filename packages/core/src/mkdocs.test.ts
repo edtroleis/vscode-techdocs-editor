@@ -95,6 +95,18 @@ describe('fromEditor (ajustes ao salvar)', () => {
     );
   });
 
+  it('ponto depois de w sem a barra que o editor põe, menos em www.', () => {
+    expect(fromEditor('# syntax/agentflow\\.html\n\ntreeView\\.html e www\\.exemplo.com e `flow\\.x`\n')).toBe(
+      '# syntax/agentflow.html\n\ntreeView.html e www\\.exemplo.com e `flow\\.x`\n',
+    );
+  });
+
+  it('lista dentro de lista e o resto do item com o recuo do texto do item (o mdx_truly_sane_lists do techdocs-core)', () => {
+    // Conferido com o mkdocs build e o techdocs-core: com 4 espaços depois de "- ", a lista de dentro e os cards quebram
+    const editor = '<div class="grid cards" markdown>\n\n- 🛑 __Pare__\n\n  ---\n\n  Corpo.\n\n</div>\n\n- a\n  - b\n\n1. x\n\n   segundo\n';
+    expect(fromEditor(editor)).toBe(editor);
+  });
+
   it('não mexe em * que não é marcador de lista', () => {
     const markdown = '* item com *ênfase*\n\n*ênfase* no início\n\n* * *\n';
     expect(fromEditor(markdown)).toBe('- item com *ênfase*\n\n*ênfase* no início\n\n* * *\n');
