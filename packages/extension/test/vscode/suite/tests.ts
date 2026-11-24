@@ -1657,13 +1657,18 @@ export function defineTests() {
       // GitHub simulado mínimo (o FakeGitHub do core usa node:crypto, que a suíte web não tem): repositório privado
       const calls: string[] = [];
       let offline = false;
-      // Commit novo a cada execução: a cópia de uma execução anterior (no perfil dos testes) não serve
+      // Repositório e commit novos a cada execução: a cópia e o "precisa de login" de uma execução anterior (no perfil
+      // dos testes, ou da primeira tentativa no CI, que repete o teste uma vez) não servem
       const commit = `c${Date.now()}`;
+      const repo = `acme/tpl-${commit}`;
       const reply = (status: number, json: unknown) => new Response(JSON.stringify(json), { status, headers: { 'content-type': 'application/json' } });
       const fetchFake = async (input: RequestInfo | URL, init?: RequestInit) => {
-        const path = new URL(String(input)).pathname.replace('/repos/acme/tpl', '');
+        const full = new URL(String(input)).pathname;
+        const path = full.replace(`/repos/${repo}`, '');
         const auth = (init?.headers as Record<string, string> | undefined)?.Authorization;
-        calls.push(`${auth ? 'login' : 'anon'} ${path}`);
+        // Só os pedidos ao repositório dos templates: o do workspace (acme/wiki) também passa por aqui, pela faixa e
+        // pelo painel de publicação, na hora que eles quiserem
+        if (full.startsWith(`/repos/${repo}`)) calls.push(`${auth ? 'login' : 'anon'} ${path}`);
         if (offline) throw new TypeError('fetch failed');
         if (!auth) return reply(404, { message: 'Not Found' });
         if (path === '') return reply(200, { default_branch: 'main', permissions: {} });
@@ -1674,7 +1679,7 @@ export function defineTests() {
         return reply(404, { message: 'Not Found' });
       };
       publish.useTestGitHub(() => ({ baseUrl: 'https://api.github.com', headers: { Authorization: 'Bearer token' }, fetch: fetchFake }));
-      await config.update('repository', 'acme/tpl/templates', vscode.ConfigurationTarget.Workspace);
+      await config.update('repository', `${repo}/templates`, vscode.ConfigurationTarget.Workspace);
       try {
         ok(await central.get(undefined, true), 'templates da empresa não lidos');
         ok(calls[0].startsWith('anon '), `primeiro sem login: ${calls[0]}`);
