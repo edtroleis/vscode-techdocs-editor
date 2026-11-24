@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-24
+
 ### Added
 
 - **Buttons** (`[Text](address){ .md-button }`, also `.md-button--primary`) show as buttons and **glossaries**
