@@ -564,5 +564,14 @@
   "Mermaid diagram too big: Mermaid draws up to 500 links and 50,000 characters, and the site shows a notice instead. Split it into smaller diagrams.": "Diagrama Mermaid grande demais: o Mermaid desenha até 500 ligações e 50 mil caracteres, e o site mostra um aviso no lugar. Divida em diagramas menores.",
   "Mermaid diagrams too big": "Diagramas Mermaid grandes demais",
   "Links to the Backstage on your machine": "Links para o Backstage da sua máquina",
-  "Link with the address of the Backstage on your machine ({0}): people reading in the portal cannot open it. Use only the path, {1}, which opens in any Backstage.": "Link com o endereço do Backstage da sua máquina ({0}): quem lê no portal não consegue abrir. Use só o caminho, {1}, que abre em qualquer Backstage."
+  "Link with the address of the Backstage on your machine ({0}): people reading in the portal cannot open it. Use only the path, {1}, which opens in any Backstage.": "Link com o endereço do Backstage da sua máquina ({0}): quem lê no portal não consegue abrir. Use só o caminho, {1}, que abre em qualquer Backstage.",
+  "This repository requires review: send it for review instead.": "Este repositório exige revisão: envie para revisão.",
+  "Undo this change? It goes back to what is on GitHub.": "Desfazer esta mudança? Ela volta a ser como está no GitHub.",
+  "Give up this send? The review request is closed and your changes stay on this computer.": "Desistir do envio? O pedido de revisão é fechado e suas alterações continuam no computador.",
+  "Give up": "Desistir do envio",
+  "updates {0}": "atualiza {0}",
+  "removes {0}": "remove {0}",
+  "moves {0}": "move {0}",
+  "updates the menu": "atualiza o menu do site",
+  "adds images": "acrescenta imagens"
 }

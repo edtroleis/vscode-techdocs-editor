@@ -154,6 +154,15 @@ export class FakeGitHub {
     this.token = `${this.token}-novo`;
   }
 
+  /** Quem cuida do repositório faz o merge do PR no GitHub: a principal passa a ter o que a branch tem. */
+  mergePull(number: number) {
+    const pr = this.pulls.find(p => p.number === number)!;
+    const head = this.head(pr.head)!;
+    this.push(pr.base, this.commit(`Merge #${number}`, head.files, [this.refs.get(pr.base)!, head.sha]));
+    pr.state = 'closed';
+    pr.merged = true;
+  }
+
   /** Um parecer de `login` no PR (`APPROVED`, `CHANGES_REQUESTED`, `COMMENTED`). */
   review(pr: number, login: string, state: string) {
     this.reviews.set(pr, [...(this.reviews.get(pr) ?? []), { user: { login }, state }]);
