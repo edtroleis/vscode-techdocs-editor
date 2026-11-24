@@ -50,20 +50,20 @@ test('Ctrl+S logo depois de digitar grava tudo e a aba fica limpa', async ({ vsc
   await expect(activeTabDirty(page)).toHaveCount(0);
 });
 
-test('# no começo de um título faz dele Título 1, em vez de descer um nível', async ({ vscode: { page, file } }) => {
+test('# no começo de um título dá o nível pelo número de #, em vez de somar ao nível do título', async ({ vscode: { page, file } }) => {
   await openVisual(page, PAGE);
-  // "Como editar" é Título 2: com "# " no começo vira Título 1
+  // "Como editar" é Título 2: com "### " no começo vira Título 3 (não Título 5)
   await prose(page).locator('h2', { hasText: 'Como editar' }).click();
   await page.keyboard.press('Home');
-  await page.keyboard.type('# ');
-  await expect(prose(page).locator('h1', { hasText: 'Como editar' })).toBeVisible();
+  await page.keyboard.type('### ');
+  await expect(prose(page).locator('h3', { hasText: 'Como editar' })).toBeVisible();
   // E o Título 1 da página continua Título 1
   await prose(page).locator('h1', { hasText: 'Wiki de Demonstração' }).click();
   await page.keyboard.press('Home');
   await page.keyboard.type('# ');
   await expect(prose(page).locator('h1', { hasText: 'Wiki de Demonstração' })).toBeVisible();
   await save(page);
-  await expect.poll(() => file(PAGE)).toMatch(/^# Wiki de Demonstração\n[\s\S]*\n# Como editar\n/);
+  await expect.poll(() => file(PAGE)).toMatch(/^# Wiki de Demonstração\n[\s\S]*\n### Como editar\n/);
 });
 
 test('Ctrl+Z dentro do visual desfaz uma vez só, e Ctrl+Y refaz', async ({ vscode: { page, file } }) => {
