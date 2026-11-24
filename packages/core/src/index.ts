@@ -26,3 +26,4 @@ export * from './navEdit';
 export * from './bringIntoDocs';
 export * from './pasteClean';
 export * from './mermaidConfig';
+export * from './sendItems';
