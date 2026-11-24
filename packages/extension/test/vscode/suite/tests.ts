@@ -1090,7 +1090,7 @@ export function defineTests() {
         await docs.selectFolder(file('pasta-vazia'));
         equal(docs.folderWithoutDocs?.path, file('pasta-vazia').path, 'a pasta não virou a atual');
         equal(docs.getChildren().length, 0, 'a árvore mostrou um site');
-        await vscode.commands.executeCommand('techdocsEditor.createHere');
+        await vscode.commands.executeCommand('techdocsEditor.createHere', 'blank');
         await until(() => sites.all().some(s => s.mkdocs.path.endsWith('/pasta-vazia/mkdocs.yml')), Boolean, 'o site não foi criado');
         ok((await read('pasta-vazia/mkdocs.yml')).startsWith('site_name: Pasta vazia\n'), `mkdocs.yml: ${await read('pasta-vazia/mkdocs.yml')}`);
         ok(await exists('pasta-vazia/docs/index.md'), 'sem a página inicial');

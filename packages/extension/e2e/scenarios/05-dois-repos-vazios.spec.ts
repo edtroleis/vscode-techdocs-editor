@@ -138,9 +138,10 @@ test('dois repos vazios: documentação pelo Explorer e pela seção TechDocs', 
   });
 
   let home = '';
-  await story.step('Create the documentation: um clique cria o mkdocs.yml e a página inicial', async () => {
+  await story.step('Create the documentation › Blank: cria o mkdocs.yml e a página inicial', async () => {
     const started = Date.now();
     await click(page, techdocs(page).getByRole('button', { name: 'Create the documentation' }));
+    await pick(page, 'Blank');
     await written('mkdocs-empty-local/mkdocs.yml').toContain('site_name:');
     await written('mkdocs-empty-local/docs/index.md').toMatch(/^# /);
     home = read('mkdocs-empty-local/docs/index.md').split('\n')[0].replace(/^# /, '');
@@ -302,12 +303,16 @@ test('dois repos vazios: documentação pelo Explorer e pela seção TechDocs', 
     await palette(page, 'TechDocs: Switch Directory or Repo');
     await pick(page, 'mkdocs-empty-remote');
     await pick(page, 'Use this folder');
-    await expect(techdocs(page).getByRole('button', { name: /Choose a template/ })).toBeVisible({ timeout: 30_000 });
+    await story.check('um botão só para criar: sem o Choose a template… separado', async () => {
+      await expect(techdocs(page).getByRole('button', { name: 'Create the documentation' })).toBeVisible({ timeout: 30_000 });
+      await expect(techdocs(page).getByRole('button', { name: /Choose a template/ })).toHaveCount(0);
+    });
     await pause(page);
   });
 
-  await story.step('Escolher um template: o painel Nova documentação, e Criar', async () => {
-    await click(page, techdocs(page).getByRole('button', { name: /Choose a template/ }));
+  await story.step('Create the documentation › Choose a template…: o painel Nova documentação, e Criar', async () => {
+    await click(page, techdocs(page).getByRole('button', { name: 'Create the documentation' }));
+    await pick(page, 'Choose a template');
     const panel = await previewPanel(page);
     await expect(panel.locator('#f-siteName')).toHaveValue(/mkdocs empty remote/i);
     await story.check('o catalog-info.yaml vem desmarcado', () => expect(panel.getByLabel('Include catalog-info.yaml')).not.toBeChecked());

@@ -6,6 +6,11 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- A folder with no documentation has a single **Create the documentation** button, which asks how to start:
+  **Blank** (as before, in one click) or **Choose a template…**.
+
 ## [0.14.1] - 2026-11-23
 
 ### Fixed

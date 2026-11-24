@@ -553,5 +553,11 @@
   "owner/repo[/folder][@ref], or host/owner/repo for GitHub Enterprise": "dono/repo[/diretório][@ref], ou host/dono/repo no GitHub Enterprise",
   "Use owner/repo, optionally with /folder and @ref": "Use dono/repo, se quiser com /diretório e @ref",
   "Back to the default where?": "Voltar ao padrão onde?",
-  "The workspace settings still set techdocsEditor.templates.{0} to {1}, and they win over your settings.": "As configurações da workspace ainda põem techdocsEditor.templates.{0} em {1}, e elas vencem as suas."
+  "The workspace settings still set techdocsEditor.templates.{0} to {1}, and they win over your settings.": "As configurações da workspace ainda põem techdocsEditor.templates.{0} em {1}, e elas vencem as suas.",
+  "Blank": "Em branco",
+  "mkdocs.yml and the home page, with the folder name as the site name. Uses the pages already in docs/ and the README.": "mkdocs.yml e a página inicial, com o nome do diretório como nome do site. Usa as páginas que já estão em docs/ e o README.",
+  "Choose a template…": "Escolher um template…",
+  "API, library, platform, runbooks, project, service docs, team wiki…": "API, biblioteca, plataforma, runbooks, projeto, docs de serviço, wiki do time…",
+  "Create the documentation": "Criar a documentação",
+  "How do you want to start?": "Como quer começar?"
 }

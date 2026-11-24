@@ -94,7 +94,7 @@
   "command.openMinePr": "Open Review Request on GitHub",
   "command.signIn": "Sign In to GitHub",
   "viewsWelcome.chooseSite": "Choose the documentation you want to edit.\n[Choose directory or repo…](command:techdocsEditor.chooseSite)\n[Open from GitHub by link…](command:techdocsEditor.openRemote)\n[Open another folder…](command:workbench.action.files.openFolder)",
-  "viewsWelcome.emptyFolder": "This folder has no documentation yet.\n[Create the documentation](command:techdocsEditor.createHere)\nCreates mkdocs.yml and the home page (docs/index.md), with the folder name as the site name. Pages already in docs/ and the README are used.\n[Choose a template…](command:techdocsEditor.newSiteHere)\n[Switch directory or repo…](command:techdocsEditor.chooseSite)",
+  "viewsWelcome.emptyFolder": "This folder has no documentation yet.\n[Create the documentation](command:techdocsEditor.createHere)\nCreates mkdocs.yml and the home page (docs/index.md): blank, with the folder name as the site name and the pages already in docs/ and the README, or from a template (API, library, runbooks, team wiki…).\n[Switch directory or repo…](command:techdocsEditor.chooseSite)",
   "config.maintainer": "Show the **Maintenance** section in the TechDocs sidebar: checking the documentation (mkdocs.yml, nav, catalog-info.yaml, links and images), preparing the repository and its options. For whoever maintains the documentation; people who only write pages do not need it.",
   "command.renameItem": "Rename",
   "command.duplicatePage": "Duplicate",

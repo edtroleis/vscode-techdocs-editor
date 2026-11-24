@@ -94,7 +94,7 @@
   "command.openMinePr": "Abrir Pedido de Revisão no GitHub",
   "command.signIn": "Entrar no GitHub",
   "viewsWelcome.chooseSite": "Escolha a documentação que você quer editar.\n[Escolher diretório ou repo…](command:techdocsEditor.chooseSite)\n[Abrir do GitHub pelo link…](command:techdocsEditor.openRemote)\n[Abrir outro diretório…](command:workbench.action.files.openFolder)",
-  "viewsWelcome.emptyFolder": "Este diretório ainda não tem documentação.\n[Criar a documentação](command:techdocsEditor.createHere)\nCria o mkdocs.yml e a página inicial (docs/index.md), com o nome do diretório como nome do site. Usa as páginas que já estão em docs/ e o README.\n[Escolher um template…](command:techdocsEditor.newSiteHere)\n[Trocar diretório ou repo…](command:techdocsEditor.chooseSite)",
+  "viewsWelcome.emptyFolder": "Este diretório ainda não tem documentação.\n[Criar a documentação](command:techdocsEditor.createHere)\nCria o mkdocs.yml e a página inicial (docs/index.md): em branco, com o nome do diretório como nome do site e as páginas que já estão em docs/ e o README, ou de um template (API, biblioteca, runbooks, wiki do time…).\n[Trocar diretório ou repo…](command:techdocsEditor.chooseSite)",
   "config.maintainer": "Mostra a seção **Manutenção** na barra lateral TechDocs: conferir a documentação (mkdocs.yml, nav, catalog-info.yaml, links e imagens), preparar o repositório e as opções. Para quem mantém a documentação; quem só escreve páginas não precisa.",
   "command.renameItem": "Renomear",
   "command.duplicatePage": "Duplicar",
