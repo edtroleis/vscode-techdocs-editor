@@ -65,6 +65,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # O VS Code de teste antes, com novas tentativas: um ETIMEDOUT na rede derrubava o job (Release da 0.13.0)
+      - name: Baixar o VS Code de teste
+        run: node scripts/download-vscode.mjs
       - run: npm run test:vscode
       - run: npm run test:web
       - run: npm run test:e2e
