@@ -34,7 +34,8 @@ A suíte completa (~9 min local e ~6 min no CI) só roda na publicação. No dia
 ### Limite de tempo das suítes (2026-10-31)
 
 Suíte travada não segura a publicação por uma hora: `scripts/test-all.mjs` roda as suítes uma depois da outra, cada uma
-com limite de média + 10% (mínimo de 30 s). Passou do limite: mata a suíte e os filhos dela (VS Code, Chromium), mostra
+com limite de média + 25% (mínimo de 30 s; era 10%, que parava o hook pela carga da máquina, sem teste falhando).
+Passou do limite: mata a suíte e os filhos dela (VS Code, Chromium), mostra
 o fim da saída e para com o código 124; o próximo passo é investigar a causa, não aumentar o limite. As médias são uma
 estimativa das execuções de 2026-10-31 no WSL2 e ficam no topo do script; a tabela do fim de cada execução é a base
 para refazer a conta quando as suítes crescerem. `TEST_TIMEOUT_SCALE=2` dobra os limites numa máquina mais lenta, e

@@ -1,4 +1,4 @@
-// Todas as suítes, uma depois da outra, cada uma com limite de tempo: a média medida + 10% (spec 03, "Limite de tempo
+// Todas as suítes, uma depois da outra, cada uma com limite de tempo: a média medida + 25% (spec 03, "Limite de tempo
 // das suítes"). Passou do limite: mata o processo e os filhos dele (VS Code, Chromium), mostra o fim da saída e para,
 // em vez de ficar travado. O build roda uma vez só, antes das suítes que usam o dist/.
 //
@@ -12,8 +12,8 @@ import { spawn } from 'node:child_process';
 /**
  * Média das execuções que passaram em 2026-10-31 (WSL2; 2 a 3 rodadas por suíte, o e2e só 1), em segundos; editor e
  * web medidos de novo em 2026-11-05 (cresceram com o Mermaid); webview e web em 2026-11-23 (203 e 58 testes, com os
- * templates da 0.14.0; o webview com o WSL ocupado, entre 45 e 50 s). O limite é
- * a média + 10%. Estimativa: refazer a conta com a tabela do fim quando as suítes crescerem.
+ * templates da 0.14.0; o webview com o WSL ocupado, entre 45 e 50 s). O limite é a média + 25% (MARGIN).
+ * Estimativa: refazer a conta com a tabela do fim quando as suítes crescerem.
  */
 const AVERAGE = {
   typecheck: 8.8,
@@ -26,7 +26,13 @@ const AVERAGE = {
   web: 61.5,
   e2e: 205.4,
 };
-/** Abaixo disso a variação (cache do tsc, disco) pesa mais que os 10%: nenhum limite menor que este. */
+/**
+ * Folga sobre a média. Era 10%: na release da 0.14.0 o hook parou três vezes sem nenhum teste falhar, com a máquina
+ * ocupada por outros programas (o webview foi de 42 a 50 s). 25% ainda pega o que trava (para em minutos, não em
+ * horas) e não falha por carga.
+ */
+const MARGIN = 1.25;
+/** Abaixo disso a variação (cache do tsc, disco) pesa mais que a folga: nenhum limite menor que este. */
 const MIN_LIMIT = 30;
 const SCALE = Number(process.env.TEST_TIMEOUT_SCALE ?? 1) || 1;
 
@@ -43,7 +49,7 @@ const STEPS = [
   { name: 'e2e', run: playwright('packages/extension/e2e/playwright.config.ts'), build: true },
 ];
 
-const limitOf = name => Math.max(MIN_LIMIT, Math.ceil(AVERAGE[name] * 1.1)) * SCALE;
+const limitOf = name => Math.max(MIN_LIMIT, Math.ceil(AVERAGE[name] * MARGIN)) * SCALE;
 const seconds = ms => (ms / 1000).toFixed(1);
 
 const wanted = process.argv.slice(2);
@@ -128,7 +134,7 @@ for (const r of results) {
 const last = results.at(-1);
 if (last?.timedOut) {
   console.error(
-    `\n✖ ${last.name} passou de ${last.limit}s (média + 10%) e foi interrompida: algo travou ou ficou mais lento.` +
+    `\n✖ ${last.name} passou de ${last.limit}s (média + 25%) e foi interrompida: algo travou ou ficou mais lento.` +
       `\nO fim da saída, para investigar (rode só ela: node scripts/test-all.mjs ${last.name}):\n`,
   );
   console.error(last.tail.filter(line => line.trim()).slice(-30).join('\n'));
