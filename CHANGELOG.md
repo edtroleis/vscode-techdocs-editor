@@ -6,6 +6,17 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-23
+
+### Fixed
+
+- A documentation site opened from GitHub (without cloning) uses the `templates.repository` from the
+  `.techdocs-editor.yaml` of that repository, not from the first folder open in VS Code.
+- **New documentation site** from the command no longer asks, one box at a time, for the fields of the pages inside
+  (release version, RFC and ADR status, runbook alert): it uses their defaults, like the panel. Change them in the
+  page.
+- The site templates in **New documentation** are in alphabetical order in each language, with Blank first.
+
 ## [0.14.0] - 2026-11-23
 
 ### Added
