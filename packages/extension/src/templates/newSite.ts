@@ -359,12 +359,14 @@ export class NewSiteCommand {
       if (owner) values.owner = owner;
     }
     // O campo declarado no template de site vale mais que o de mesmo nome num template de página
-    const declared = [...template.fields, ...pageFields];
+    // Os campos das páginas de dentro (a versão das notas de release, o status da RFC e do ADR, o alerta do runbook)
+    // ficam com o padrão, como no painel: perguntar um por um, para cada página, cansa; a pessoa muda na página
+    for (const field of pageFields) if (values[field.name] === undefined && !template.fields.some(f => f.name === field.name)) values[field.name] = field.default ?? '';
     const asked = [
       ...(used.includes('owner') && values.owner === undefined
         ? [{ name: 'owner', prompt: vscode.l10n.t('Team or person who owns this documentation'), default: await gitUserName(root) }]
         : []),
-      ...declared.filter((f, i) => f.name !== 'owner' && used.includes(f.name) && values[f.name] === undefined && declared.findIndex(d => d.name === f.name) === i),
+      ...template.fields.filter((f, i) => f.name !== 'owner' && used.includes(f.name) && values[f.name] === undefined && template.fields.findIndex(d => d.name === f.name) === i),
     ];
     for (const field of asked) {
       const value = await vscode.window.showInputBox({ title: template.name, prompt: field.prompt, value: field.default });

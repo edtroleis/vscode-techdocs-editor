@@ -1316,6 +1316,19 @@ export function defineTests() {
       }
     });
 
+    test('novo site pelo comando: os campos das páginas de dentro ficam com o padrão, sem perguntar (0.14.1)', async () => {
+      const { newSite } = await api();
+      try {
+        // Só o nome e o dono: a versão das notas de release viria numa caixa a mais, e o teste ficaria parado nela
+        const result = await newSite.run(undefined, { template: 'api', folder: file('site-api'), values: { site_name: 'Pagamentos', owner: 'time-pag' } });
+        ok(result?.mkdocs.path.endsWith('/site-api/mkdocs.yml'), `mkdocs.yml: ${result?.mkdocs.path}`);
+        const changelog = await read('site-api/docs/changelog.md');
+        ok(changelog.includes('## 1.0.0 ('), `a versão padrão: ${changelog.slice(0, 80)}`);
+      } finally {
+        await remove('site-api');
+      }
+    });
+
     test('novo site: mkdocs.yml com nav e techdocs-core, páginas no docs/, site reconhecido e anotação do catalog-info.yaml', async () => {
       const { newSite, sites, docs } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));
