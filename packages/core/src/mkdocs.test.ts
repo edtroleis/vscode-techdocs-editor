@@ -17,16 +17,36 @@ describe('toEditor / fromEditor (blocos do MkDocs)', () => {
     ['details aberto', '???+ warning\n    Aberto.\n'],
     ['abas', '=== "Linux"\n\n    Use bash.\n\n=== "Windows"\n\n    Use PowerShell.\n'],
     ['admonition com código dentro', '!!! example\n    ```bash\n    echo oi\n    ```\n'],
-  ])('%s vira bloco protegido e volta igual', (_name, block) => {
+  ])('%s vira componente (citação com o cabeçalho em código) e volta igual', (_name, block) => {
     const markdown = `# Título\n\n${block}\nDepois.\n`;
     const editor = toEditor(markdown);
-    expect(editor).toMatch(/^`{3,}mkdocs$/m);
+    expect(editor).toMatch(/^> `(!!!|\?\?\?|===)/m);
     expect(fromEditor(editor)).toBe(markdown);
   });
 
-  it('cerca maior que as crases do conteúdo', () => {
-    const editor = toEditor('!!! example\n    ```bash\n    echo\n    ```\n');
-    expect(editor.split('\n')[0]).toBe('````mkdocs');
+  it('o corpo entra sem o recuo; código dentro continua código', () => {
+    expect(toEditor('!!! example "Exemplo"\n    ```bash\n    echo\n    ```\n')).toBe('> `!!! example "Exemplo"`\n>\n> ```bash\n> echo\n> ```\n');
+  });
+
+  it('cabeçalho com crase: cerca maior', () => {
+    const markdown = '!!! note "Use `x`"\n    Corpo.\n';
+    expect(toEditor(markdown)).toBe('> `` !!! note "Use `x`" ``\n>\n> Corpo.\n');
+    expect(fromEditor(toEditor(markdown))).toBe(markdown);
+  });
+
+  it('aviso dentro de aviso, e aviso dentro de aba', () => {
+    const markdown = '=== "A"\n\n    !!! tip\n        Dentro.\n\n    Fora.\n\n=== "B"\n\n    Outra.\n';
+    expect(toEditor(markdown)).toBe('> `=== "A"`\n>\n> > `!!! tip`\n> >\n> > Dentro.\n>\n> Fora.\n\n> `=== "B"`\n>\n> Outra.\n');
+    expect(fromEditor(toEditor(markdown))).toBe(markdown);
+  });
+
+  it('!!! dentro de bloco de código não vira componente', () => {
+    const markdown = '```text\n!!! tip\n    nada\n```\n';
+    expect(toEditor(markdown)).toBe(markdown);
+  });
+
+  it('o corpo passa pelos mesmos ajustes do resto da página', () => {
+    expect(fromEditor('> `!!! tip`\n>\n> * item  \n> * outro\n')).toBe('!!! tip\n    - item\n    - outro\n');
   });
 
   it('front matter no topo vira bloco protegido e volta igual', () => {
@@ -174,8 +194,8 @@ describe('fromEditor (ajustes ao salvar)', () => {
     expect(fromEditor('Texto')).toBe('Texto\n');
   });
 
-  it('mantém o conteúdo cru dos blocos do MkDocs, inclusive espaços', () => {
-    const markdown = '!!! tip\n    Linha com espaço no fim  \n';
+  it('aviso sem corpo volta igual', () => {
+    const markdown = '!!! note "Só o título"\n\nDepois.\n';
     expect(fromEditor(toEditor(markdown))).toBe(markdown);
   });
 });
@@ -187,10 +207,10 @@ describe('defaultCodeLanguage', () => {
 });
 
 describe('repoLineNumbers', () => {
-  it('blocos do MkDocs: as cercas não contam como linhas do arquivo', () => {
+  it('componentes: a linha em branco depois do cabeçalho não conta como linha do arquivo', () => {
     const editor = toEditor('# T\n\n!!! tip\n    Corpo.\n\nFim.\n');
-    // # T | vazio | ```mkdocs | !!! tip | Corpo. | ``` | vazio | Fim.
-    expect(repoLineNumbers(editor, { saved: false })).toEqual([1, 2, 3, 3, 4, 5, 5, 6, 7]);
+    // # T | vazio | > `!!! tip` | > | > Corpo. | vazio | Fim.
+    expect(repoLineNumbers(editor, { saved: false })).toEqual([1, 2, 3, 4, 4, 5, 6, 7]);
   });
 
   it('saved: linhas que o tidy remove apontam para a próxima', () => {

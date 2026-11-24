@@ -4,8 +4,10 @@
  * O editor entende CommonMark + GFM. Sintaxe própria do MkDocs, como admonitions
  * (`!!! tip "Dica"` com corpo indentado) e abas (`=== "Aba"`), seria achatada num parágrafo
  * comum e quebraria a página.
- * Por isso esses blocos entram no editor como bloco de código com a linguagem `mkdocs`
- * (editável como texto cru) e voltam ao formato original ao salvar.
+ * Por isso, no editor, cada aviso, recolhível ou aba vira uma citação cuja primeira linha é o cabeçalho em código
+ * (`` > `!!! tip "Dica"` ``) e o resto é o corpo, sem o recuo: o editor mostra o componente (spec 01, M1) e edita o
+ * corpo como o resto da página. Ao salvar, volta ao formato do MkDocs, com o corpo recuado em 4 espaços. O front
+ * matter entra como bloco de código com a linguagem `mkdocs` (texto cru).
  */
 
 const RAW_LANG = 'mkdocs';
@@ -20,39 +22,66 @@ export const STRINGIFY_OPTIONS = { bullet: '-', rule: '-' } as const;
 // Abertura de admonition/details ("!!! tipo", "??? tipo", "???+ tipo") ou de aba ('=== "Título"')
 const BLOCK_START = /^(!!!|\?\?\?\+?|===\+?)\s+\S/;
 
+/** O cabeçalho em código: a cerca de crases maior que qualquer sequência dentro dele. */
+function quoteHeader(header: string): string {
+  const longest = Math.max(0, ...(header.match(/`+/g) ?? []).map(m => m.length));
+  const fence = '`'.repeat(longest + 1);
+  return longest ? `${fence} ${header} ${fence}` : `${fence}${header}${fence}`;
+}
+
+/** Os avisos, recolhíveis e abas (na coluna 0, fora de blocos de código) viram citações com o cabeçalho em código. */
+function blocksToEditor(lines: string[]): string[] {
+  const out: string[] = [];
+  let fence: string | undefined;
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (fence || marker) {
+      if (!fence) fence = marker![1];
+      else if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = undefined;
+      out.push(lines[i++]);
+      continue;
+    }
+    if (!BLOCK_START.test(line)) {
+      out.push(lines[i++]);
+      continue;
+    }
+    const header = lines[i++].replace(/\s+$/, '');
+    // Corpo: linhas indentadas (ou em branco seguidas de mais corpo indentado), sem o recuo
+    const body: string[] = [];
+    while (i < lines.length) {
+      if (/^( {4}|\t)/.test(lines[i])) body.push(lines[i++].replace(/^( {4}|\t)/, ''));
+      else if (lines[i].trim() === '' && i + 1 < lines.length && /^( {4}|\t)/.test(lines[i + 1])) {
+        body.push('');
+        i++;
+      } else break;
+    }
+    while (body.length && !body[0].trim()) body.shift();
+    // A citação precisa de uma linha em branco antes (senão continua o parágrafo de cima)
+    if (out.length && out[out.length - 1].trim()) out.push('');
+    out.push(`> ${quoteHeader(header)}`);
+    const inner = blocksToEditor(body);
+    if (inner.length) out.push('>', ...inner.map(l => (l ? `> ${l}` : '>')));
+    // E uma depois, para o que vem em seguida não entrar na citação
+    if (i < lines.length && lines[i].trim()) out.push('');
+  }
+  return out;
+}
+
 /** Markdown do repositório → Markdown para o editor. */
 export function toEditor(markdown: string): string {
   const lines = markdown.split('\n');
   const out: string[] = [];
-  let i = 0;
+  let start = 0;
   // Front matter (`---` na 1ª linha até o próximo `---`): o editor faria dele uma linha horizontal e um parágrafo
-  // ("title: … tags:"); entra protegido, como os blocos do MkDocs
+  // ("title: … tags:"); entra protegido, como texto cru
   const frontEnd = lines[0] === '---' ? lines.indexOf('---', 1) : -1;
   if (frontEnd > 1 && /^[\w-]+:/.test(lines[1])) {
     out.push('```' + RAW_LANG, ...lines.slice(0, frontEnd + 1), '```');
-    i = frontEnd + 1;
+    start = frontEnd + 1;
   }
-  while (i < lines.length) {
-    if (!BLOCK_START.test(lines[i])) {
-      out.push(lines[i++]);
-      continue;
-    }
-    const block = [lines[i++]];
-    // Corpo: linhas indentadas (ou em branco seguidas de mais corpo indentado)
-    while (i < lines.length) {
-      if (/^( {4}|\t)/.test(lines[i])) {
-        block.push(lines[i++]);
-      } else if (lines[i].trim() === '' && i + 1 < lines.length && /^( {4}|\t)/.test(lines[i + 1])) {
-        block.push(lines[i++]);
-      } else {
-        break;
-      }
-    }
-    // A cerca precisa ser maior que qualquer sequência de crases do bloco (ex.: código dentro do admonition)
-    const longest = Math.max(2, ...block.map(l => Math.max(0, ...(l.match(/`+/g) ?? []).map(m => m.length))));
-    const fence = '`'.repeat(longest + 1);
-    out.push(fence + RAW_LANG, ...block, fence);
-  }
+  out.push(...blocksToEditor(lines.slice(start)));
   // Blocos sem linguagem já aparecem como `text` no editor (o mesmo que será salvo)
   return defaultCodeLanguage(out.join('\n'));
 }
@@ -194,6 +223,53 @@ function restoreRawBlocks(lines: Line[]): Line[] {
   return out;
 }
 
+/** A linha de cabeçalho de um aviso, recolhível ou aba no editor: `` > `!!! tip "Dica"` ``. */
+const QUOTED_HEADER = /^> ?(`+) ?((?:!!!|\?\?\?\+?|===\+?)\s+\S.*?) ?\1\s*$/;
+
+/**
+ * As citações com cabeçalho voltam ao formato do MkDocs: o cabeçalho e o corpo recuado em 4 espaços (as de dentro,
+ * antes). `process` ajusta o resto do texto (tidy e companhia), em cada nível, fora dos componentes.
+ */
+function restoreComponents(lines: Line[], process: (lines: Line[]) => Line[]): Line[] {
+  const out: Line[] = [];
+  let plain: Line[] = [];
+  let fence: string | undefined;
+  const flush = () => {
+    out.push(...process(plain));
+    plain = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const { text } = lines[i];
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(text);
+    if (fence || marker) {
+      if (!fence) fence = marker![1];
+      else if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) fence = undefined;
+      plain.push(lines[i]);
+      continue;
+    }
+    const header = QUOTED_HEADER.exec(text);
+    if (!header) {
+      plain.push(lines[i]);
+      continue;
+    }
+    flush();
+    let end = i + 1;
+    while (end < lines.length && lines[end].text.startsWith('>')) end++;
+    const body = lines.slice(i + 1, end).map(l => ({ ...l, text: l.text.replace(/^> ?/, '') }));
+    while (body.length && !body[0].text.trim()) body.shift();
+    const inner = restoreComponents(body, process);
+    while (inner.length && !inner[inner.length - 1].text.trim()) inner.pop();
+    // As abas levam uma linha em branco entre o título e o corpo, como na documentação do pymdownx
+    const tab = header[2].startsWith('===');
+    out.push({ ...lines[i], text: header[2] });
+    if (tab && inner.length) out.push({ text: '', origin: lines[i].origin });
+    out.push(...inner.map(l => ({ ...l, text: l.text.trim() ? `    ${l.text}` : '' })));
+    i = end - 1;
+  }
+  flush();
+  return out;
+}
+
 // tidy antes de restaurar: os blocos do MkDocs ainda estão protegidos dentro de cercas
 /** Largura a partir da qual a tabela sai compacta (spec 05, C8). */
 const WIDE_TABLE = 120;
@@ -233,7 +309,8 @@ const compactWideTables = (lines: Line[]): Line[] => {
   return out;
 };
 
-const toRepoLines = (markdown: string) => restoreRawBlocks(compactWideTables(renumberOrderedLists(tidy(toLines(markdown)))));
+const toRepoLines = (markdown: string) =>
+  restoreRawBlocks(restoreComponents(toLines(markdown), lines => compactWideTables(renumberOrderedLists(tidy(lines)))));
 
 /** Markdown do editor → Markdown do repositório. */
 export function fromEditor(markdown: string): string {
@@ -250,7 +327,7 @@ export function fromEditor(markdown: string): string {
 export function repoLineNumbers(markdown: string, { saved }: { saved: boolean }): number[] {
   const total = markdown.split('\n').length;
   const map = new Array<number>(total);
-  const lines = saved ? toRepoLines(markdown) : restoreRawBlocks(toLines(markdown));
+  const lines = saved ? toRepoLines(markdown) : restoreRawBlocks(restoreComponents(toLines(markdown), l => l));
   lines.forEach((line, index) => {
     map[line.origin] = index + 1;
   });
