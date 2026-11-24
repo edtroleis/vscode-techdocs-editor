@@ -19,7 +19,7 @@ import { replaceChanged } from './externalContent';
 import { ExternalHistory, externalHistoryCtx } from './externalHistory';
 import { listCaretFixPlugin } from './listCaretFix';
 import { imageAltPlugin } from './imageAlt';
-import { headingLevelFixPlugin, singleTitlePlugin } from './headingLevelFix';
+import { EXTERNAL_CHANGE, headingLevelFixPlugin, singleTitlePlugin } from './headingLevelFix';
 import { tableTabRowPlugin } from './tableTabRow';
 import { attachLinkPages, LinkPage } from './linkPages';
 import { inlineCodeTypingPlugin } from './inlineCodeTyping';
@@ -407,7 +407,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         if (!tr) return;
         applyingExternal.current = true;
         try {
-          view.dispatch(tr.setMeta('addToHistory', false));
+          view.dispatch(tr.setMeta('addToHistory', false).setMeta(EXTERNAL_CHANGE, true));
         } finally {
           applyingExternal.current = false;
         }

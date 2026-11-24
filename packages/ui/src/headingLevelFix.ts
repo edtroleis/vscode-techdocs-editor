@@ -37,16 +37,19 @@ export const headingLevelFixPlugin = $prose(
 /**
  * O Título 1 é o nome da página (lint MD025): um Título 1 novo numa página que já tem um vira Título 2, venha da
  * barra, do menu "/", de `# ` ou de colar. Só os títulos que viraram Título 1 nesta edição: abrir um arquivo com
- * dois Títulos 1 não muda nada.
+ * dois Títulos 1 não muda nada, e o texto que chega do arquivo (editor de texto, Git) também não (`EXTERNAL_CHANGE`).
  */
 const singleKey = new PluginKey('docs-editor-single-h1');
+
+/** Meta da transação com o texto que chegou do arquivo: o visual mostra o que está lá, sem ajustar. */
+export const EXTERNAL_CHANGE = 'docs-editor-external-change';
 
 export const singleTitlePlugin = $prose(
   () =>
     new Plugin({
       key: singleKey,
       appendTransaction(transactions, oldState, newState) {
-        if (!transactions.some(tr => tr.docChanged)) return null;
+        if (!transactions.some(tr => tr.docChanged) || transactions.some(tr => tr.getMeta(EXTERNAL_CHANGE))) return null;
         const before = new Set<number>();
         oldState.doc.forEach((node, pos) => {
           if (node.type.name !== 'heading' || node.attrs.level !== 1) return;
