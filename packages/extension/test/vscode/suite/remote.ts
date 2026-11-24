@@ -402,6 +402,19 @@ export function defineRemoteTests() {
       equal(github.head('docs/pessoa-teste/docs-atas-outubro')?.files['docs/atas/outubro.md'], '# Ata de outubro\n\nAta do repositório.\n', 'texto do template do repositório');
     });
 
+    test('templates do time num site remoto: o .techdocs-editor.yaml do repositório aberto, não o da pasta local (0.14.1)', async () => {
+      github.push('main', github.commit('templates do time', {
+        ...github.head('main')!.files,
+        '.techdocs-editor.yaml': 'templates:\n  repository: acme/do-time/templates\n',
+      }));
+      const { opener } = await api();
+      const { templatesOrigin } = await import('../../../src/templates/centralTemplates');
+      await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/index.md');
+      const origin = await templatesOrigin(vscode.Uri.from({ scheme: 'techdocs', authority: 'github.com', path: '/acme/wiki' }));
+      equal(`${origin.from} ${origin.value}`, 'repository acme/do-time/templates', 'o do repositório remoto');
+      equal(origin.folder, undefined, 'sem pasta: Para o time não grava no repositório remoto pelas opções');
+    });
+
     test('imagens (M6): o envio vai para o rascunho e é lido de lá; a de um rascunho salvo antes também', async () => {
       const { opener, remoteFs } = await api();
       const uri = await opener.fromInput('https://github.com/acme/wiki/blob/main/docs/guias/deploy.md');

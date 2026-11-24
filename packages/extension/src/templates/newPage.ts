@@ -246,7 +246,8 @@ export class NewPageCommand {
       folder,
       section: target instanceof DocsItem ? navSection(target) : undefined,
       where: `${ref.slug}/${site.docsDir}`,
-      scope: vscode.workspace.workspaceFolders?.[0]?.uri ?? at(site.root),
+      // O repositório remoto: os templates do time são os do .techdocs-editor.yaml dele
+      scope: at(site.root),
       templateFolders: [at(site.root ? `${site.root}/.techdocs/templates` : '.techdocs/templates'), at('.techdocs/templates')].filter(
         (folder, i, all) => all.findIndex(f => f.toString() === folder.toString()) === i,
       ),

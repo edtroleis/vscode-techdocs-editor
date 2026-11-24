@@ -7,12 +7,15 @@ import {
   CentralTemplatesSource,
   DocTemplate,
   loadCentralTemplates,
+  parseRemoteUri,
   parseRepoConfig,
   parseTemplatesRepository,
+  REMOTE_SCHEME,
   REPO_CONFIG_FILE,
   SiteTemplate,
 } from '@edtroleis/techdocs-editor-core';
 import { readText } from './templateSources';
+import { remoteUri } from '../remote/remoteFs';
 import { anonymousClientFor, clientFor, gitHubErrorText } from '../publish/githubAuth';
 
 /** A cópia guardada passa a ser conferida no GitHub depois de uma hora (e pelo comando "Atualizar"). */
@@ -153,6 +156,14 @@ export type TemplatesOrigin = {
  */
 export async function templatesOrigin(scope?: vscode.Uri): Promise<TemplatesOrigin> {
   const trusted = vscode.workspace.isTrusted;
+  // Site do GitHub aberto sem clonar: o `.techdocs-editor.yaml` da raiz daquele repositório (lido pelo GitHub). Sem
+  // `folder`: "Para o time" mudaria um arquivo do repositório remoto, e isso vai por rascunho, não pelas opções
+  const remote = scope?.scheme === REMOTE_SCHEME ? parseRemoteUri(scope.authority, scope.path) : undefined;
+  if (remote) {
+    const text = await readText(remoteUri(remote.host, remote.slug, REPO_CONFIG_FILE));
+    const value = text === undefined ? undefined : parseRepoConfig(text).templates?.repository;
+    if (value) return { value, from: 'repository' };
+  }
   // Com `scope`, só a pasta que o contém: o `.techdocs-editor.yaml` de outro repositório da workspace não vale aqui
   const folder = scope ? vscode.workspace.getWorkspaceFolder(scope)?.uri : vscode.workspace.workspaceFolders?.[0]?.uri;
   if (trusted && folder) {
