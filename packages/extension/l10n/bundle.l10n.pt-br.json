@@ -561,5 +561,7 @@
   "Create the documentation": "Criar a documentação",
   "How do you want to start?": "Como quer começar?",
   "Mermaid diagram too big: Mermaid draws up to 500 links and 50,000 characters, and the site shows a notice instead. Split it into smaller diagrams.": "Diagrama Mermaid grande demais: o Mermaid desenha até 500 ligações e 50 mil caracteres, e o site mostra um aviso no lugar. Divida em diagramas menores.",
-  "Mermaid diagrams too big": "Diagramas Mermaid grandes demais"
+  "Mermaid diagrams too big": "Diagramas Mermaid grandes demais",
+  "Links to the Backstage on your machine": "Links para o Backstage da sua máquina",
+  "Link with the address of the Backstage on your machine ({0}): people reading in the portal cannot open it. Use only the path, {1}, which opens in any Backstage.": "Link com o endereço do Backstage da sua máquina ({0}): quem lê no portal não consegue abrir. Use só o caminho, {1}, que abre em qualquer Backstage."
 }

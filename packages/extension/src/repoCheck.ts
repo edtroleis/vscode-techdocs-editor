@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { checkSite, LINT_CONFIG_FILES, SiteFinding, SiteSnapshot } from '@edtroleis/techdocs-editor-core';
+import { checkSite, LINT_CONFIG_FILES, localPortalPath, SiteFinding, SiteSnapshot } from '@edtroleis/techdocs-editor-core';
 import { backstageNear, catalogModeFor, siteRepository } from './catalogOptions';
 import type { DocsSite } from './docsSite';
 import { configDirs } from './lintProblems';
@@ -423,5 +423,7 @@ export function findingMessage(finding: SiteFinding): string {
       return vscode.l10n.t('Link to a file that does not exist: {0}', target);
     case 'missing-image':
       return vscode.l10n.t('Image that does not exist: {0}', target);
+    case 'local-portal-link':
+      return vscode.l10n.t('Link with the address of the Backstage on your machine ({0}): people reading in the portal cannot open it. Use only the path, {1}, which opens in any Backstage.', target, localPortalPath(target) ?? '');
   }
 }

@@ -36,6 +36,9 @@ All notable changes to the TechDocs Editor extension. The format follows
 - `npm run test:backstage` (development): publishes every template, site, example and Mermaid diagram to a local
   Backstage, opens each page as a reader would, checks every doc in the catalog with the extension, and writes a report
   with screenshots and suggestions.
+- **Check the documentation** points out links to TechDocs pages with the address of the Backstage on your machine
+  (`http://localhost:3000/docs/…`), which readers of the portal cannot open, and fixes them with one click (only the path
+  `/docs/…`, which opens in any Backstage).
 
 ### Changed
 
@@ -50,6 +53,7 @@ All notable changes to the TechDocs Editor extension. The format follows
 - Opening the diagram gallery no longer delays the diagrams of the page; Tab stays inside the gallery.
 - A ZenUML diagram explains that it is a separate Mermaid add-on that neither the editor nor Backstage draws, and suggests a sequence diagram, instead of showing a syntax error.
 - The editor no longer adds a backslash to a dot after a `w` (`flow\.html`); MkDocs showed it as a plain dot, but it cluttered the change.
+- Broken links and missing images inside admonitions, tabs, definitions and list items are now found too (their indentation was taken for code).
 - The formatting check no longer flags the same heading under different sections (release notes repeat "Added" in each version).
 
 ## [0.14.1] - 2026-11-23

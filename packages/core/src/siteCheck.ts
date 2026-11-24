@@ -26,6 +26,7 @@ export type SiteFindingCode =
   | 'lint-problems'
   | 'broken-link'
   | 'missing-image'
+  | 'local-portal-link'
   | 'mermaid-config-missing'
   | 'mermaid-too-big';
 
@@ -179,6 +180,17 @@ function checkPages(site: SiteSnapshot, title: string, createIndex: SiteFix, add
       const found = target !== undefined && (!folder || files.has(target) || site.files.some(f => f.startsWith(`${folder}/`)));
       if (!found) add({ code: ref.image ? 'missing-image' : 'broken-link', severity: 'error', file, line: ref.line, target: ref.target });
     }
+    for (const ref of allRefs(text)) {
+      if (!localPortalPath(ref.target)) continue;
+      add({
+        code: 'local-portal-link',
+        severity: 'warning',
+        file,
+        line: ref.line,
+        target: ref.target,
+        fix: { file, apply: current => (current === undefined ? '' : fixLocalPortalLinks(current)) },
+      });
+    }
     if (site.lintConfig) {
       const problems = lintMarkdown(text.replace(/\r\n/g, '\n'), site.lintConfig);
       if (problems.length) {
@@ -258,17 +270,33 @@ function lineOf(text: string, pattern: RegExp): number | undefined {
   return match ? text.slice(0, match.index + (match[0].startsWith('\n') ? 1 : 0)).split('\n').length : undefined;
 }
 
-/** Links e imagens de uma página (inline e por referência), fora de blocos e trechos de código. */
-export function pageRefs(markdown: string): { target: string; image: boolean; line: number }[] {
-  const refs: { target: string; image: boolean; line: number }[] = [];
+type PageRef = { target: string; image: boolean; line: number };
+
+/**
+ * Abre um bloco cujo conteúdo vem recuado: item de lista, admonition/details (`!!!`, `???`), aba (`===`) ou
+ * definição (`:   `). O recuo dentro dele é conteúdo, não código.
+ */
+const OPENS_CONTAINER = /^\s*(?:[-*+]|\d+[.)])\s|^\s*(?:!!!|\?\?\?\+?|===)\s|^:\s{3}/;
+
+/** Todos os links e imagens de uma página (inline e por referência), fora de blocos e trechos de código. */
+function allRefs(markdown: string): PageRef[] {
+  const refs: PageRef[] = [];
   let fence: string | undefined;
+  // Dentro de um item de lista, admonition, aba ou definição: o recuo de 4 espaços é o conteúdo deles
+  let container = false;
   markdown.split(/\r?\n/).forEach((raw, i) => {
     const marker = /^\s*(`{3,}|~{3,})/.exec(raw)?.[1];
     if (marker && (!fence || (marker[0] === fence[0] && marker.length >= fence.length))) {
       fence = fence ? undefined : marker;
       return;
     }
-    if (fence || /^( {4}|\t)/.test(raw)) return;
+    if (fence) return;
+    if (raw.trim()) {
+      if (OPENS_CONTAINER.test(raw)) container = true;
+      else if (!/^\s/.test(raw)) container = false;
+    }
+    // Recuo de 4 espaços fora de um desses blocos: código indentado
+    if (!container && /^( {4}|\t)/.test(raw)) return;
     const line = raw.replace(/(`+)[\s\S]*?\1/g, '');
     for (const m of line.matchAll(/(!?)\[(?:[^\]]|\][^(])*?\]\(\s*(?:<([^>]+)>|([^)\s]+))(?:\s+["'(][^)]*)?\)/g)) {
       refs.push({ target: m[2] ?? m[3], image: m[1] === '!', line: i + 1 });
@@ -276,7 +304,32 @@ export function pageRefs(markdown: string): { target: string; image: boolean; li
     const definition = /^ {0,3}\[[^\]]+\]:\s*<?(\S+?)>?(?:\s|$)/.exec(line);
     if (definition) refs.push({ target: definition[1], image: false, line: i + 1 });
   });
-  return refs.filter(ref => !isUrl(ref.target) && !ref.target.startsWith('#') && !ref.target.startsWith('/'));
+  return refs;
+}
+
+/** Links e imagens de uma página para arquivos do site: sem URLs, âncoras e caminhos absolutos. */
+export function pageRefs(markdown: string): PageRef[] {
+  return allRefs(markdown).filter(ref => !isUrl(ref.target) && !ref.target.startsWith('#') && !ref.target.startsWith('/'));
+}
+
+/**
+ * Link para uma página do TechDocs com o endereço do Backstage da máquina de quem escreveu
+ * (`http://localhost:3000/docs/default/component/x/`): para quem lê no portal, não abre. O caminho
+ * (`/docs/default/component/x/`) abre no Backstage onde a doc estiver (conferido no Backstage local, spec 03).
+ * Devolve o caminho que substitui o endereço, ou undefined se não é um desses.
+ */
+export function localPortalPath(target: string): string | undefined {
+  return /^https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?(\/docs\/[^/\s]+\/[^/\s]+\/[^/\s]+(?:[/?#]\S*)?)$/i.exec(target)?.[1];
+}
+
+/** Troca, no texto, os endereços `localhost` de páginas do TechDocs pelo caminho (ver `localPortalPath`). */
+export function fixLocalPortalLinks(markdown: string): string {
+  let out = markdown;
+  for (const ref of allRefs(markdown)) {
+    const path = localPortalPath(ref.target);
+    if (path) out = out.split(`(${ref.target})`).join(`(${path})`).split(`(<${ref.target}>)`).join(`(<${path}>)`).split(`]: ${ref.target}`).join(`]: ${path}`);
+  }
+  return out;
 }
 
 /**

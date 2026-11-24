@@ -285,7 +285,8 @@ publicação, o modo remoto e o plugin usarem a mesma. Parte **T3b**, logo depoi
 | `techdocs-plugin-missing` | erro | `techdocs-core` como primeiro item de `plugins` (ou a chave nova) |
 | `docs-dir-missing` | erro | cria `<docs_dir>/index.md` |
 | `nav-page-missing` | erro | cria a página com o título do `nav` (não tira do `nav`: nada se perde) |
-| `broken-link`, `missing-image` | erro | nenhuma: só a pessoa sabe o destino certo |
+| `broken-link`, `missing-image` | erro | nenhuma: só a pessoa sabe o destino certo. Os links dentro de admonitions, abas, definições e itens de lista também são conferidos (o recuo deles é conteúdo, não código indentado) |
+| `local-portal-link` | aviso | link para uma página do TechDocs com o endereço do Backstage da máquina (`http://localhost:3000/docs/…`, `127.0.0.1`): quem lê no portal não abre. A correção deixa só o caminho (`/docs/default/component/x/…`), que o TechDocs abre no Backstage onde a doc estiver (conferido no Backstage local). Achado pela vitrine (spec 03): 40 links em 13 docs |
 | `index-missing` | aviso | cria `index.md` com o `site_name` como título |
 | `page-not-in-nav` | aviso | `addToNav` (T2), quando há `nav` em lista |
 | `catalog-ref-missing` | aviso | a anotação em `metadata.annotations` do `kind: Component` (ou do primeiro documento) |

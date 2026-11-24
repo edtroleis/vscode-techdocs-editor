@@ -22,6 +22,7 @@ const CODE_ORDER: SiteFindingCode[] = [
   'nav-page-missing',
   'broken-link',
   'missing-image',
+  'local-portal-link',
   'mermaid-config-missing',
   'mermaid-too-big',
   'index-missing',
@@ -172,6 +173,8 @@ function groupTitle(code: SiteFindingCode): string {
       return vscode.l10n.t('Broken links');
     case 'missing-image':
       return vscode.l10n.t('Missing images');
+    case 'local-portal-link':
+      return vscode.l10n.t('Links to the Backstage on your machine');
     case 'index-missing':
       return vscode.l10n.t('Home page missing');
     case 'page-not-in-nav':

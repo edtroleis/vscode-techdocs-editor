@@ -58,6 +58,7 @@ const FINDING_TEXT = {
   'lint-problems': 'problemas de formatação',
   'broken-link': 'link quebrado',
   'missing-image': 'imagem que não existe',
+  'local-portal-link': 'link com o endereço do Backstage da máquina (localhost): o Conferir corrige com um clique',
   'mermaid-config-missing': 'diagramas sem a configuração do Mermaid no mkdocs.yml',
   'mermaid-too-big': 'diagrama maior que o limite do Mermaid',
 };
@@ -170,7 +171,25 @@ function suggestions(results) {
   return out;
 }
 
-export function writeReport({ out, manifest, entities, results, validation, frontend, elapsed }) {
+/** As docs do catálogo publicadas como o editor gravaria, comparadas com o original no Backstage. */
+function editedSection(edited) {
+  if (!edited) return '';
+  const different = edited.filter(e => !e.same);
+  const rows = different
+    .map(
+      e => `<article class="card bad"><div class="pair"><a class="shot" href="${esc(e.before)}" target="_blank"><img loading="lazy" src="${esc(e.before)}" alt="Antes"></a><a class="shot" href="${esc(e.after)}" target="_blank"><img loading="lazy" src="${esc(e.after)}" alt="Depois"></a></div>
+      <div class="body"><h4><a href="${esc(e.url)}" target="_blank">${esc(e.title)} · ${esc(e.page)}</a></h4><ul>
+      ${e.failure ? `<li class="erro">${esc(e.failure)}</li>` : ''}${e.shape.map(s => `<li class="erro">${esc(s)}</li>`).join('')}
+      ${e.textDiff ? `<li class="aviso">Texto antes: “${esc(e.textDiff.before)}”<br>depois: “${esc(e.textDiff.after)}”</li>` : ''}</ul></div></article>`,
+    )
+    .join('');
+  const docs = new Set(edited.map(e => e.doc)).size;
+  return `<h2 id="editadas">Editadas no editor e publicadas</h2>
+  <p class="muted">As ${docs} docs do catálogo que o editor muda ao salvar, publicadas no Backstage como estão e como o editor gravaria; as ${edited.length} páginas abertas nas duas versões e comparadas pelo que a pessoa vê (texto, títulos, listas, tabelas, avisos, abas, diagramas, imagens, links). No fim, o original foi publicado de novo.</p>
+  ${different.length ? `<div class="grid">${rows}</div>` : `<p class="ok">As ${edited.length} páginas aparecem iguais no Backstage.</p>`}`;
+}
+
+export function writeReport({ out, manifest, entities, results, validation, editedPublished, frontend, elapsed }) {
   const byEntity = entities.map(e => ({ e, rows: results.filter(r => r.entity === e.name) }));
   const all = results.map(r => ({ r, problems: problemsOf(r) }));
   const diagrams = {
@@ -204,7 +223,7 @@ h1{font-size:28px;margin:0 0 4px}h2{margin:32px 0 12px;font-size:21px}h3{margin:
 .filters button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .card{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--good);border-radius:8px;overflow:hidden;min-width:0}
-.card.warn{border-top-color:var(--warn)}.card.bad{border-top-color:var(--bad)}
+.card.warn{border-top-color:var(--warn)}.pair{display:grid;grid-template-columns:1fr 1fr;gap:2px}.card.bad{border-top-color:var(--bad)}
 .shot{display:block;height:180px;overflow:hidden;border-bottom:1px solid var(--line)}.shot img{width:100%;display:block}
 .body{padding:10px 12px}.body h4{margin:0;font-size:15px}.body a{color:var(--accent)}.path{margin:2px 0 6px;color:var(--muted);font-size:13px;word-break:break-all}
 ul{margin:0;padding-left:18px;font-size:13px}li.erro{color:var(--bad)}li.aviso{color:var(--warn)}li.info{color:var(--muted)}.ok{color:var(--good);font-size:13px;margin:0}
@@ -220,12 +239,14 @@ table{border-collapse:collapse;width:100%;background:var(--card)}tr.bad td:first
     <div class="stat"><b>${diagrams.ok}/${diagrams.expected}</b>diagramas desenhados</div>
     <div class="stat"><b style="color:var(--bad)">${diagrams.errors}</b>diagramas com erro</div>
     ${validation ? `<div class="stat"><b>${validation.length}</b><a href="#validacao">docs do catálogo validadas</a></div>` : ''}
+    ${editedPublished ? `<div class="stat"><b>${editedPublished.filter(e => !e.same).length}/${editedPublished.length}</b><a href="#editadas">páginas diferentes depois do editor</a></div>` : ''}
   </div>
 </header>
 <main>
   <h2>Sugestões</h2>
   ${[...suggestions(results), ...validationSuggestions(validation)].map(s => `<div class="sugg"><h4>${esc(s.title)}</h4><p>${esc(s.text)}</p></div>`).join('')}
   ${validationSection(validation)}
+  ${editedSection(editedPublished)}
   <h2>Docs no Backstage</h2>
   <div class="scroll"><table><tr><th>Doc</th><th>Páginas</th><th>Com erro</th><th>Diagramas</th></tr>
   ${byEntity.map(({ e, rows }) => `<tr><td><a href="#${esc(e.name)}">${esc(e.title)}</a></td><td>${rows.length}</td><td>${rows.filter(r => problemsOf(r).some(p => p.level === 'erro')).length}</td><td>${rows.reduce((n, r) => n + (r.diagrams?.filter(d => d.drawn).length ?? 0), 0)}/${rows.reduce((n, r) => n + r.expectedDiagrams, 0)}</td></tr>`).join('')}

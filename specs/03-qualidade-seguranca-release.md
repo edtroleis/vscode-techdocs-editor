@@ -82,6 +82,11 @@ entrega e abre cada página como uma pessoa abriria. Só roda quando pedido: nã
   texto que o editor gravaria muda, compara o HTML do MkDocs do original e do novo, com o `mkdocs.yml` do site e os
   plugins (o techdocs-core põe as extensões do TechDocs, como o `mdx_truly_sane_lists`, que muda o recuo das listas):
   só conta como erro o que muda no Backstage; lista solta ou junta é só o espaço entre os itens.
+- **Editadas no editor e publicadas:** as docs do catálogo que o editor muda ao salvar são publicadas no Backstage
+  como estão (de uma cópia limpa) e como o editor gravaria; cada página é aberta nas duas versões e comparada pelo
+  que a pessoa vê (o texto e quantos títulos, itens de lista, linhas de tabela, avisos, recolhíveis, abas, blocos de
+  código, diagramas, imagens, links e cards), com a captura das duas. No fim o original do repositório é publicado
+  de novo, mesmo se algo falhar. `--skip-edit-publish` pula esta parte.
 - `--only <parte do nome>` confere só algumas docs; `--skip-publish` só confere o que já está publicado;
   `--skip-validate` pula a validação na extensão.
 

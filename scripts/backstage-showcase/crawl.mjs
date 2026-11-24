@@ -42,8 +42,27 @@ function inspect() {
   for (const el of prose.querySelectorAll('pre, code, .mermaid')) el.remove();
   const placeholders = [...(prose.textContent ?? '').matchAll(/\{\{\s*[\w-]+\s*\}\}/g)].map(m => m[0]);
   const wideTables = [...article.querySelectorAll('table')].filter(t => t.scrollWidth > (t.parentElement?.clientWidth ?? 0) + 4).length;
+  // O que a pessoa vê, para comparar duas publicações da mesma página: o texto e quantos de cada elemento
+  const visible = article.cloneNode(true);
+  for (const el of visible.querySelectorAll('pre.mermaid, .headerlink, script, style')) el.remove();
+  const count = selector => article.querySelectorAll(selector).length;
+  const shape = {
+    títulos: count('h1, h2, h3, h4, h5, h6'),
+    'itens de lista': count('li'),
+    'linhas de tabela': count('tr'),
+    avisos: count('.admonition'),
+    recolhíveis: count('details'),
+    abas: count('.tabbed-set > input, .tabbed-labels > label'),
+    'blocos de código': count('pre:not(.mermaid)'),
+    diagramas: count('div.mermaid svg'),
+    imagens: count('img'),
+    links: count('a[href]:not(.headerlink)'),
+    cards: count('.grid.cards > ul > li'),
+  };
   return {
     loaded: true,
+    text: (visible.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    shape,
     title: article.querySelector('h1')?.textContent?.replace(/¶$/, '').trim() ?? '',
     words: text.split(/\s+/).filter(Boolean).length,
     diagrams,
@@ -55,8 +74,8 @@ function inspect() {
   };
 }
 
-export async function crawl({ frontend, entities, out, log, limit }) {
-  mkdirSync(join(out, 'shots'), { recursive: true });
+export async function crawl({ frontend, entities, out, log, limit, shots = 'shots' }) {
+  mkdirSync(join(out, shots), { recursive: true });
   const browser = await chromium.launch();
   const deadline = Date.now() + limit * 1000;
   try {
@@ -80,7 +99,7 @@ export async function crawl({ frontend, entities, out, log, limit }) {
         if (Date.now() > deadline) throw new Error(`a conferência passou de ${limit} s`);
         const { entity, page: doc } = item;
         const url = `${frontend}/docs/default/component/${entity.name}/${pageUrl(doc.path)}`;
-        const shot = `shots/${entity.name}--${doc.path.replace(/[^\w-]+/g, '_')}.jpg`;
+        const shot = `${shots}/${entity.name}--${doc.path.replace(/[^\w-]+/g, '_')}.jpg`;
         errors.length = 0;
         const at = Date.now();
         let found = { loaded: false };

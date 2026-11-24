@@ -1,5 +1,5 @@
 import { addMermaidFence } from './mermaidConfig';
-import { catalogInfoSkeleton, checkSite, pageRefs, SiteFinding, SiteSnapshot } from './siteCheck';
+import { catalogInfoSkeleton, checkSite, fixLocalPortalLinks, localPortalPath, pageRefs, SiteFinding, SiteSnapshot } from './siteCheck';
 
 const MKDOCS = `# Site do time
 site_name: Pagamentos
@@ -216,5 +216,49 @@ describe('pageRefs', () => {
       { target: 'c d.md', image: false, line: 1 },
       { target: 'refs/r.md', image: false, line: 6 },
     ]);
+  });
+});
+
+describe('pageRefs dentro de admonitions, abas, definições e listas', () => {
+  it('o recuo deles é conteúdo: os links entram; fora deles, recuo de 4 é código', () => {
+    const md = [
+      '!!! tip "Dica"',
+      '    Veja [o guia](guia.md).',
+      '',
+      '=== "Aba"',
+      '',
+      '    ![logo](img/logo.png)',
+      '',
+      'Termo',
+      ':   Ver [glossário](glossario.md).',
+      '',
+      '- Item',
+      '',
+      '      continuação com [link](lista.md)',
+      '',
+      'Parágrafo.',
+      '',
+      '    [código](codigo.md)',
+    ].join('\n');
+    expect(pageRefs(md).map(r => r.target)).toEqual(['guia.md', 'img/logo.png', 'glossario.md', 'lista.md']);
+  });
+});
+
+describe('link para o Backstage da máquina (local-portal-link)', () => {
+  it('só localhost e 127.0.0.1 apontando para o TechDocs', () => {
+    expect(localPortalPath('http://localhost:3000/docs/default/component/wiki/principios/')).toBe('/docs/default/component/wiki/principios/');
+    expect(localPortalPath('http://127.0.0.1:7007/docs/default/component/wiki#sec')).toBe('/docs/default/component/wiki#sec');
+    expect(localPortalPath('https://backstage.empresa.com/docs/default/component/wiki/')).toBeUndefined();
+    expect(localPortalPath('http://localhost:3000/catalog/default/component/wiki')).toBeUndefined();
+  });
+
+  it('acha nas páginas (também numa lista) e a correção deixa só o caminho', () => {
+    const page = '# P\n\n- Leia antes\n  ([Wiki](http://localhost:3000/docs/default/component/wiki-arquitetura)).\n\n[web](https://example.com)\n';
+    const found = checkSite(site({ pages: { 'index.md': page } })).filter(f => f.code === 'local-portal-link');
+    expect(found).toMatchObject([{ severity: 'warning', file: 'svc/docs/index.md', line: 4, target: 'http://localhost:3000/docs/default/component/wiki-arquitetura' }]);
+    expect(found[0].fix!.apply(page)).toBe(page.replace('http://localhost:3000/docs', '/docs'));
+    expect(fixLocalPortalLinks('[a](<http://localhost:3000/docs/default/component/x/>)\n\n[r]: http://localhost:3000/docs/default/component/y/\n')).toBe(
+      '[a](</docs/default/component/x/>)\n\n[r]: /docs/default/component/y/\n',
+    );
   });
 });
