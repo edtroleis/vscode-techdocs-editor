@@ -1,5 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-import { editor, expectSaved, newLineAtEnd, openEditor, slash } from './helpers';
+import { editor, expectLintClean, expectSaved, newLineAtEnd, openEditor, slash } from './helpers';
 
 /** Componentes do TechDocs no editor visual (spec 01, M1): avisos, recolhíveis e abas. */
 
@@ -158,4 +158,78 @@ test('menu /: aviso e abas entram prontos para escrever', async ({ page }) => {
     page,
     '# Página\n\nTexto inicial.\n\n!!! note "Importante"\n    Leia antes.\n\n=== "Aba 1"\n\n    Primeira.\n\n=== "Aba 2"\n',
   );
+});
+
+const CARDS = `# Início
+
+<div class="grid cards" markdown>
+
+-   🧭 __Visão geral__
+
+    ---
+
+    Princípios e camadas.
+
+    [Ver princípios →](principios.md)
+
+-   ⚖️ __Decisões__
+
+    ---
+
+    Quem decide o quê.
+
+</div>
+
+Fim.
+`;
+
+/** Como o editor grava os cards: "- " e o card recuado em 2 (o lint pede; o techdocs-core desenha igual). */
+const EDITED = CARDS.replace(/^- {3}/gm, '- ').replace(/^ {4}(?=\S)/gm, '  ');
+
+const cards = (page: Page) => page.locator('.td-cards .milkdown-list-item-block');
+
+test('cards aparecem em grade; abrir não muda nada; editar grava os cards dentro do <div>', async ({ page }) => {
+  const { errors } = await openEditor(page, CARDS);
+  await expect(cards(page)).toHaveCount(2);
+  await expect(page.locator('.td-cards .label-wrapper').first()).toBeHidden();
+  const [a, b] = [await cards(page).nth(0).boundingBox(), await cards(page).nth(1).boundingBox()];
+  expect(Math.abs(a!.y - b!.y)).toBeLessThan(2);
+  await page.waitForTimeout(800);
+  expect(await page.evaluate(() => window.harness.changes)).toBe(0);
+  expect(errors).toEqual([]);
+  await cards(page).nth(1).locator('p', { hasText: 'Quem decide' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' E quando.');
+  await expectSaved(page, EDITED.replace('Quem decide o quê.', 'Quem decide o quê. E quando.'));
+});
+
+test('+ Card cria um card no fim com o título selecionado', async ({ page }) => {
+  await openEditor(page, CARDS);
+  await cards(page).nth(0).locator('p', { hasText: 'Princípios e camadas' }).click();
+  await bar(page).getByRole('button', { name: '+ Card' }).click();
+  await expect(cards(page)).toHaveCount(3);
+  await page.keyboard.type('Operação');
+  await expectSaved(
+    page,
+    EDITED.replace('Quem decide o quê.\n', 'Quem decide o quê.\n\n- **Operação**\n\n  ---\n\n  Uma descrição curta do card.\n'),
+  );
+});
+
+test('menu /: cards entram com dois cards prontos para escrever', async ({ page }) => {
+  await openEditor(page);
+  await newLineAtEnd(page);
+  await slash(page, 'Cards');
+  await page.keyboard.type('Primeiro');
+  await expectSaved(
+    page,
+    '# Página\n\nTexto inicial.\n\n<div class="grid cards" markdown>\n\n- **Primeiro**\n\n  ---\n\n  Uma descrição curta do card.\n\n- **Título do card**\n\n  ---\n\n  Uma descrição curta do card.\n\n</div>\n',
+  );
+  await expectLintClean(page);
+});
+
+test('Excluir na barra tira os cards', async ({ page }) => {
+  await openEditor(page, CARDS);
+  await cards(page).nth(0).locator('p', { hasText: 'Princípios e camadas' }).click();
+  await bar(page).getByRole('button', { name: 'Excluir' }).click();
+  await expectSaved(page, '# Início\n\nFim.\n');
 });

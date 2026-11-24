@@ -14,6 +14,8 @@ All notable changes to the TechDocs Editor extension. The format follows
   moves or deletes a tab. The **/** menu has a TechDocs group (Admonition, Collapsible, Tabs). Pasted Confluence and
   Outline panels become admonitions right away. The file keeps the MkDocs syntax: opening and saving without changes
   changes nothing.
+- **Cards** (`<div class="grid cards" markdown>`) show as a grid of cards in the visual editor. Click a card for
+  **+ Card** and **Delete**; **/** → **Cards** inserts a grid with two cards ready to fill in.
 
 ### Fixed
 

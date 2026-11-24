@@ -301,4 +301,8 @@ export const en: Record<string, string> = {
   'editorText.tdTabRight': 'Move right',
   'editorText.tdTabAfter': 'New tab after this one',
   'editorText.tdTabRemove': 'Delete tab',
+  'editorText.tdCards': 'Cards',
+  'editorText.tdCardAdd': '+ Card',
+  'editorText.tdCardTitle': 'Card title',
+  'editorText.tdCardText': 'A short description of the card.',
 };

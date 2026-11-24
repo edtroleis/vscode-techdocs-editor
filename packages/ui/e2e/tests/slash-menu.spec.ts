@@ -48,6 +48,7 @@ test.describe('menu /: itens oferecidos', () => {
       'Aviso',
       'Recolhível',
       'Abas',
+      'Cards',
       // Os modelos de diagrama, um grupo do menu por assunto (spec 06, M21)
       ...DIAGRAM_TEMPLATES.map(t => ptBR[`editorText.diagram${t.name}` as keyof typeof ptBR]),
     ]);

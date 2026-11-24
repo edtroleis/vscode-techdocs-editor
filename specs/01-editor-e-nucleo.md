@@ -58,7 +58,7 @@ O maior risco técnico continua sendo a ida e volta. Requisitos:
 
 | # | Requisito | Origem |
 |---|-----------|--------|
-| M1 | Avisos `!!!`, recolhíveis `???`/`???+` e abas `===` aparecem como no Backstage e se editam no visual: barra do aviso (Tipo ▾, Recolhível ▾, Excluir), título e texto editáveis; abas trocam no clique, renomeiam no clique duplo, "+" cria, botão direito move e exclui; menu "/" com o grupo TechDocs. Abrir e salvar sem mexer devolve o arquivo igual. Outra sintaxe do MkDocs desconhecida continua bloco cru editável, nunca HTML | E1 |
+| M1 | Avisos `!!!`, recolhíveis `???`/`???+` e abas `===` aparecem como no Backstage e se editam no visual: barra do aviso (Tipo ▾, Recolhível ▾, Excluir), título e texto editáveis; abas trocam no clique, renomeiam no clique duplo, "+" cria, botão direito move e exclui; cards do Material (`<div class="grid cards" markdown>`) em grade, com "+ Card" e Excluir na barra (gravados com `- ` e o card recuado em 2, que o lint pede e o techdocs-core desenha igual); menu "/" com o grupo TechDocs. Abrir e salvar sem mexer devolve o arquivo igual. Outra sintaxe do MkDocs desconhecida continua bloco cru editável, nunca HTML | E1 |
 | M2 | Bloco com crases dentro ganha cerca maior que o conteúdo | Spec 05 da demo |
 | M3 | `tidy` ao salvar, fora dos blocos de código: marcador `-` e `1.` com renumeração, `---`, linguagem `text` em bloco sem linguagem, sem espaços no fim da linha, sem linhas em branco repetidas, sem `<br />` de Enter vazio | L5, L8, L9, L13, L14 |
 | M4 | **Grid cards e blocos HTML com `markdown`** protegidos como bloco cru | Pendência do plugin (quebram hoje) |

@@ -301,4 +301,8 @@ export const ptBR: Record<string, string> = {
   'editorText.tdTabRight': 'Mover para a direita',
   'editorText.tdTabAfter': 'Nova aba depois desta',
   'editorText.tdTabRemove': 'Excluir aba',
+  'editorText.tdCards': 'Cards',
+  'editorText.tdCardAdd': '+ Card',
+  'editorText.tdCardTitle': 'Título do card',
+  'editorText.tdCardText': 'Uma descrição curta do card.',
 };

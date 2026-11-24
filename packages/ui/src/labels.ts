@@ -213,6 +213,8 @@ export function editorTextFrom(t: TextLookup): EditorText {
       admonition: k('tdAdmonition'),
       collapsible: k('tdCollapsible'),
       tabs: k('tdTabs'),
+      cards: k('tdCards'),
+      card: { add: k('tdCardAdd'), title: k('tdCardTitle'), text: k('tdCardText') },
       kind: k('tdKind'),
       kindTitle: k('tdKindTitle'),
       kinds: Object.fromEntries(MENU_KINDS.map(kind => [kind, k(`tdKind.${kind}`)])) as ComponentsText['kinds'],
@@ -268,6 +270,7 @@ const svg = (inner: string) =>
   `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">${inner}</svg>`;
 const ICON_ADMONITION = svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><circle cx="6.5" cy="6.5" r=".6" fill="currentColor"/><path d="M7 13h10M7 16h7"/>');
 const ICON_COLLAPSIBLE = svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M6 8l2 2 2-2M12 9h6M7 14h10M7 17h7"/>');
+const ICON_CARDS = svg('<rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/>');
 const ICON_TABS = svg('<path d="M3 8V5.5A1.5 1.5 0 0 1 4.5 4H10v4M10 8V4h5v4"/><rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M7 13h10M7 16h6"/>');
 
 /** Menu "/" (o filtro do menu usa estes nomes: "/tab" acha "Tabela"). */
@@ -305,6 +308,7 @@ export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
       ['admonition', text.components.admonition, ICON_ADMONITION],
       ['collapsible', text.components.collapsible, ICON_COLLAPSIBLE],
       ['tabs', text.components.tabs, ICON_TABS],
+      ['cards', text.components.cards, ICON_CARDS],
     ] as const) {
       techdocs.addItem(`techdocs-${kind}`, {
         label,

@@ -21,6 +21,9 @@ export const STRINGIFY_OPTIONS = { bullet: '-', rule: '-' } as const;
 
 // Abertura de admonition/details ("!!! tipo", "??? tipo", "???+ tipo") ou de aba ('=== "Título"')
 const BLOCK_START = /^(!!!|\?\?\?\+?|===\+?)\s+\S/;
+// Abertura da grade de cards do Material ('<div class="grid cards" markdown>'), fechada pelo '</div>' na coluna 0
+const CARDS_START = /^<div\s+class="grid cards"[^>]*\smarkdown(="[^"]*")?[^>]*>\s*$/;
+const CARDS_END = /^<\/div>\s*$/;
 
 /** O cabeçalho em código: a cerca de crases maior que qualquer sequência dentro dele. */
 function quoteHeader(header: string): string {
@@ -43,11 +46,26 @@ function blocksToEditor(lines: string[]): string[] {
       out.push(lines[i++]);
       continue;
     }
-    if (!BLOCK_START.test(line)) {
+    const cards = CARDS_START.test(line) && lines.slice(i + 1).some(l => CARDS_END.test(l));
+    if (!BLOCK_START.test(line) && !cards) {
       out.push(lines[i++]);
       continue;
     }
     const header = lines[i++].replace(/\s+$/, '');
+    if (cards) {
+      // Os cards: a lista até o </div>, sem recuo
+      const body: string[] = [];
+      while (!CARDS_END.test(lines[i])) body.push(lines[i++]);
+      i++;
+      while (body.length && !body[0].trim()) body.shift();
+      while (body.length && !body[body.length - 1].trim()) body.pop();
+      if (out.length && out[out.length - 1].trim()) out.push('');
+      out.push(`> ${quoteHeader(header)}`);
+      const inner = blocksToEditor(body);
+      if (inner.length) out.push('>', ...inner.map(l => (l ? `> ${l}` : '>')));
+      if (i < lines.length && lines[i].trim()) out.push('');
+      continue;
+    }
     // Corpo: linhas indentadas (ou em branco seguidas de mais corpo indentado), sem o recuo
     const body: string[] = [];
     while (i < lines.length) {
@@ -224,7 +242,7 @@ function restoreRawBlocks(lines: Line[]): Line[] {
 }
 
 /** A linha de cabeçalho de um aviso, recolhível ou aba no editor: `` > `!!! tip "Dica"` ``. */
-const QUOTED_HEADER = /^> ?(`+) ?((?:!!!|\?\?\?\+?|===\+?)\s+\S.*?) ?\1\s*$/;
+const QUOTED_HEADER = /^> ?(`+) ?((?:!!!|\?\?\?\+?|===\+?)\s+\S.*?|<div\s+class="grid cards"[^`]*>) ?\1\s*$/;
 
 /**
  * As citações com cabeçalho voltam ao formato do MkDocs: o cabeçalho e o corpo recuado em 4 espaços (as de dentro,
@@ -259,6 +277,14 @@ function restoreComponents(lines: Line[], process: (lines: Line[]) => Line[]): L
     while (body.length && !body[0].text.trim()) body.shift();
     const inner = restoreComponents(body, process);
     while (inner.length && !inner[inner.length - 1].text.trim()) inner.pop();
+    if (header[2].startsWith('<div')) {
+      // Os cards: o <div>, a lista (como o editor a grava: "- " e o card recuado em 2, que o techdocs-core aceita e
+      // o lint pede) e o </div>. As linhas novas não têm origem no editor: não mudam os números de linha
+      out.push({ ...lines[i], text: header[2] }, { text: '', origin: -1 }, ...inner);
+      out.push({ text: '', origin: -1 }, { text: '</div>', origin: -1 });
+      i = end - 1;
+      continue;
+    }
     // As abas levam uma linha em branco entre o título e o corpo, como na documentação do pymdownx
     const tab = header[2].startsWith('===');
     out.push({ ...lines[i], text: header[2] });

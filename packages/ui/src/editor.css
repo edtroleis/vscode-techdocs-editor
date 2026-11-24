@@ -738,3 +738,48 @@
   border-top: 0;
   border-radius: 0 0 6px 6px;
 }
+
+/* Cards do Material: a lista dentro do <div class="grid cards"> vira uma grade de cartões */
+.milkdown .td-cards {
+  margin: 12px 0;
+}
+.milkdown .td-cards > ul,
+.milkdown .td-cards > ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+}
+.milkdown .td-cards > ul > .milkdown-list-item-block,
+.milkdown .td-cards > ol > .milkdown-list-item-block {
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--crepe-color-outline);
+  border-radius: 6px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.milkdown .td-cards > ul > .milkdown-list-item-block:hover,
+.milkdown .td-cards > ul > .milkdown-list-item-block:focus-within {
+  border-color: transparent;
+  box-shadow: var(--crepe-shadow-1);
+}
+.milkdown .td-cards > ul > .milkdown-list-item-block > .list-item > .label-wrapper,
+.milkdown .td-cards > ol > .milkdown-list-item-block > .list-item > .label-wrapper {
+  display: none;
+}
+.milkdown .td-cards > ul > .milkdown-list-item-block > .list-item,
+.milkdown .td-cards > ol > .milkdown-list-item-block > .list-item {
+  padding: 0;
+  gap: 0;
+}
+.milkdown .td-cards .content-dom > p:first-child {
+  margin-top: 0;
+  font-weight: 600;
+}
+.milkdown .td-cards .content-dom > hr {
+  margin: 8px 0;
+}
+.milkdown .td-cards .content-dom > :last-child {
+  margin-bottom: 0;
+}

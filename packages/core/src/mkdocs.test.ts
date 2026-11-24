@@ -243,3 +243,78 @@ describe('caminhos', () => {
     expect(docsDirFromMkdocs('site_name: X\ndocs_dir: "conteudo" # pasta\n')).toBe('conteudo');
   });
 });
+
+describe('cards do Material (spec 01, M1)', () => {
+  const CARDS = [
+    '# Início',
+    '',
+    '<div class="grid cards" markdown>',
+    '',
+    '-   🧭 __Visão geral__',
+    '',
+    '    ---',
+    '',
+    '    Princípios e camadas.',
+    '',
+    '    [Ver princípios →](visao-geral/principios.md)',
+    '',
+    '-   ⚖️ __Decisões__',
+    '',
+    '    ---',
+    '',
+    '    Quem decide o quê.',
+    '',
+    '</div>',
+    '',
+    'Fim.',
+    '',
+  ].join('\n');
+
+  it('viram citação com o cabeçalho em código e voltam iguais', () => {
+    const editor = toEditor(CARDS);
+    expect(editor).toContain('> `<div class="grid cards" markdown>`\n>\n> -   🧭 __Visão geral__');
+    expect(editor).not.toContain('</div>');
+    expect(fromEditor(editor)).toBe(CARDS);
+  });
+
+  it('a lista como o editor grava ("- " e 2 espaços) fica assim, dentro do <div>', () => {
+    const editor = [
+      '# Início',
+      '',
+      '> `<div class="grid cards" markdown>`',
+      '>',
+      '> - 🧭 __Visão geral__',
+      '>',
+      '>   ---',
+      '>',
+      '>   Princípios e camadas.',
+      '>',
+      '>   [Ver princípios →](visao-geral/principios.md)',
+      '>',
+      '> - ⚖️ __Decisões__',
+      '>',
+      '>   ---',
+      '>',
+      '>   Quem decide o quê.',
+      '',
+      'Fim.',
+      '',
+    ].join('\n');
+    expect(fromEditor(editor)).toBe(
+      CARDS.replace(/^- {3}/gm, '- ').replace(/^ {4}(?=\S)/gm, '  '),
+    );
+  });
+
+  it('sem o </div> fica como está', () => {
+    const open = '<div class="grid cards" markdown>\n\n-   Um\n';
+    expect(toEditor(open)).toBe(open);
+  });
+
+  it('números de linha: o </div> não toma a linha de ninguém', () => {
+    const editor = toEditor(CARDS);
+    const map = repoLineNumbers(editor, { saved: false });
+    const lines = editor.split('\n');
+    expect(map[lines.indexOf('Fim.')]).toBe(21);
+    expect(map[lines.indexOf('> `<div class="grid cards" markdown>`')]).toBe(3);
+  });
+});

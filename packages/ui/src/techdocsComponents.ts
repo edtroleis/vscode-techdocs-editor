@@ -1,6 +1,6 @@
 import { createSlice, type Ctx } from '@milkdown/kit/ctx';
 import { editorViewCtx } from '@milkdown/kit/core';
-import type { Node } from '@milkdown/kit/prose/model';
+import type { Node, Schema } from '@milkdown/kit/prose/model';
 import { type EditorState, Plugin, PluginKey, Selection, TextSelection } from '@milkdown/kit/prose/state';
 import { Decoration, DecorationSet, type EditorView } from '@milkdown/kit/prose/view';
 import { $nodeSchema, $prose, $remark } from '@milkdown/kit/utils';
@@ -28,6 +28,9 @@ export type ComponentsText = {
   admonition: string;
   collapsible: string;
   tabs: string;
+  cards: string;
+  /** Barra dos cards: + Card e o card novo. */
+  card: { add: string; title: string; text: string };
   /** Barra do aviso. */
   kind: string;
   kindTitle: string;
@@ -55,6 +58,8 @@ export const componentsCtx = createSlice<ComponentsText>(
     admonition: 'Admonition',
     collapsible: 'Collapsible',
     tabs: 'Tabs',
+    cards: 'Cards',
+    card: { add: '+ Card', title: 'Card title', text: 'A short description of the card.' },
     kind: 'Type',
     kindTitle: 'Admonition type',
     kinds: {
@@ -89,6 +94,10 @@ export const componentsCtx = createSlice<ComponentsText>(
 // ---------------------------------------------------------------------------------------------------------------
 // Markdown: a citação com o cabeçalho em código vira o nó (só na leitura; na escrita o nó volta a ser a citação)
 
+/** O cabeçalho dos cards do Material (`<div class="grid cards" markdown>`), guardado como está escrito. */
+export const CARDS_HEADER = /^<div\s+class="grid cards"[^>]*\smarkdown(="[^"]*")?[^>]*>$/;
+export const DEFAULT_CARDS_HEADER = '<div class="grid cards" markdown>';
+
 type Md = { type: string; children?: Md[]; value?: string; [key: string]: unknown };
 
 function quotedHeader(node: Md): string | undefined {
@@ -116,6 +125,10 @@ function transform(node: Md) {
       quotedEmpty: title === '',
       children: [{ type: 'tdTitle', value: title ?? '' }, ...body],
     });
+    return;
+  }
+  if (CARDS_HEADER.test(header)) {
+    Object.assign(node, { type: 'tdCards', header, children: body });
     return;
   }
   const tab = parseTab(header);
@@ -275,10 +288,57 @@ export const tabSchema = $nodeSchema('td_tab', () => ({
   },
 }));
 
+export const cardsSchema = $nodeSchema('td_cards', () => ({
+  content: 'block+',
+  group: 'block',
+  defining: true,
+  attrs: { header: { default: DEFAULT_CARDS_HEADER } },
+  parseDOM: [
+    { tag: 'div[data-td-cards]', getAttrs: dom => ({ header: (dom as HTMLElement).dataset.tdCards || DEFAULT_CARDS_HEADER }) },
+    {
+      tag: 'blockquote',
+      priority: 60,
+      getAttrs: dom => {
+        const header = domHeader(dom as HTMLElement);
+        return header !== undefined && CARDS_HEADER.test(header) ? { header } : false;
+      },
+      contentElement: dom => bodyOf(dom as HTMLElement),
+    },
+  ],
+  toDOM: node => ['div', { class: 'td-cards', 'data-td-cards': node.attrs.header }, 0],
+  parseMarkdown: {
+    match: ({ type }) => type === 'tdCards',
+    runner: (state, node, type) => {
+      state.openNode(type, { header: node.header }).next(node.children).closeNode();
+    },
+  },
+  toMarkdown: {
+    match: node => node.type.name === 'td_cards',
+    runner: (state, node) => {
+      state.openNode('blockquote').openNode('paragraph').addNode('inlineCode', undefined, node.attrs.header).closeNode();
+      const body: Node[] = [];
+      node.forEach(child => body.push(child));
+      if (!emptyBody(body)) body.forEach(child => state.next(child));
+      state.closeNode();
+    },
+  },
+}));
+
+/** Um card como os da documentação do Material: o título em negrito, a linha e a descrição. */
+export function newCard(schema: Schema, text: ComponentsText['card'], like?: Node): Node {
+  const { nodes, marks } = schema;
+  const item = like?.type ?? nodes.list_item;
+  return item.create({ ...(like?.attrs ?? {}), spread: true }, [
+    nodes.paragraph.create(null, schema.text(text.title, [marks.strong.create()])),
+    nodes.hr.create(),
+    nodes.paragraph.create(null, schema.text(text.text)),
+  ]);
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Inserir pelo menu "/"
 
-export type ComponentKind = 'admonition' | 'collapsible' | 'tabs';
+export type ComponentKind = 'admonition' | 'collapsible' | 'tabs' | 'cards';
 
 /** Troca o parágrafo do cursor (vazio, o "/" já saiu) pelo componente, com o cursor no lugar de escrever. */
 export function insertComponent(ctx: Ctx, kind: ComponentKind) {
@@ -288,7 +348,17 @@ export function insertComponent(ctx: Ctx, kind: ComponentKind) {
   const { $from } = state.selection;
   const paragraph = () => schema.nodes.paragraph.create();
   let node: Node;
-  if (kind === 'tabs') {
+  if (kind === 'cards') {
+    const text = ctx.get(componentsCtx).card;
+    const list = schema.nodes.bullet_list.create({ spread: true }, [newCard(schema, text), newCard(schema, text)]);
+    const from = $from.depth ? $from.before() : $from.pos;
+    const to = $from.depth ? $from.after() : $from.pos;
+    const tr = state.tr.replaceWith(from, to, schema.nodes.td_cards.create(null, list));
+    // O título do primeiro card selecionado, pronto para trocar
+    const start = from + 4;
+    tr.setSelection(TextSelection.create(tr.doc, start, start + text.title.length));
+    view.dispatch(tr.scrollIntoView());
+  } else if (kind === 'tabs') {
     const name = ctx.get(componentsCtx).tab.name;
     node = schema.nodes.td_tab.create({ title: name(1) }, paragraph());
     const second = schema.nodes.td_tab.create({ title: name(2) }, paragraph());
@@ -643,7 +713,7 @@ class AdmonitionBar {
     const { $from } = state.selection;
     for (let d = $from.depth; d > 0; d--) {
       const node = $from.node(d);
-      if (node.type.name === 'td_admonition') return { pos: $from.before(d), node };
+      if (node.type.name === 'td_admonition' || node.type.name === 'td_cards') return { pos: $from.before(d), node };
     }
     return undefined;
   }
@@ -652,7 +722,7 @@ class AdmonitionBar {
     const { view } = this;
     const target = view.editable && view.hasFocus() ? this.target(view.state) : undefined;
     if (!target) return this.hide();
-    const signature = `${target.pos}:${target.node.attrs.kind}:${target.node.attrs.marker}`;
+    const signature = `${target.pos}:${target.node.type.name}:${target.node.attrs.kind}:${target.node.attrs.marker}`;
     if (this.bar?.dataset.signature !== signature) this.build(target.pos, target.node, signature);
     this.place();
   }
@@ -666,6 +736,16 @@ class AdmonitionBar {
     bar.setAttribute('role', 'toolbar');
     bar.dataset.signature = signature;
     bar.addEventListener('pointerdown', event => event.preventDefault());
+    if (node.type.name === 'td_cards') {
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.textContent = text.card.add;
+      add.addEventListener('click', () => this.addCard());
+      bar.append(add, this.removeButton(text.remove));
+      (this.view.dom.closest('.milkdown') ?? document.body).append(bar);
+      this.bar = bar;
+      return;
+    }
     const style = kindStyle(node.attrs.kind);
     const kindName = (MENU_KINDS as readonly string[]).includes(style) ? text.kinds[style as MenuKind] : node.attrs.kind;
     const dropdown = (label: string, dot: string | undefined, open: (button: HTMLButtonElement) => void) => {
@@ -707,9 +787,15 @@ class AdmonitionBar {
         next => this.change(n => ({ ...n.attrs, marker: MARKER_OF[next] })),
       ),
     );
+    bar.append(this.removeButton(text.remove));
+    (this.view.dom.closest('.milkdown') ?? document.body).append(bar);
+    this.bar = bar;
+  }
+
+  private removeButton(label: string) {
     const remove = document.createElement('button');
     remove.type = 'button';
-    remove.textContent = text.remove;
+    remove.textContent = label;
     remove.addEventListener('click', () => {
       const now = this.current();
       if (!now) return;
@@ -717,15 +803,39 @@ class AdmonitionBar {
       this.view.dispatch(this.view.state.tr.delete(now.pos, now.pos + now.node.nodeSize).scrollIntoView());
       this.view.focus();
     });
-    bar.append(remove);
-    (this.view.dom.closest('.milkdown') ?? document.body).append(bar);
-    this.bar = bar;
+    return remove;
+  }
+
+  /** Card novo no fim da grade, com o título selecionado para trocar. */
+  private addCard() {
+    const now = this.current();
+    if (!now) return;
+    const { state } = this.view;
+    let list: { pos: number; node: Node } | undefined;
+    now.node.forEach((child, offset) => {
+      if (child.type.name === 'bullet_list' || child.type.name === 'ordered_list') list = { pos: now.pos + 1 + offset, node: child };
+    });
+    const text = this.text().card;
+    let tr = state.tr;
+    let start: number;
+    if (list) {
+      const end = list.pos + list.node.nodeSize - 1;
+      tr = tr.insert(end, newCard(state.schema, text, list.node.lastChild ?? undefined));
+      start = end + 2;
+    } else {
+      const end = now.pos + now.node.nodeSize - 1;
+      tr = tr.insert(end, state.schema.nodes.bullet_list.create({ spread: true }, newCard(state.schema, text)));
+      start = end + 3;
+    }
+    tr.setSelection(TextSelection.create(tr.doc, start, start + text.title.length));
+    this.view.dispatch(tr.scrollIntoView());
+    this.view.focus();
   }
 
   private current() {
     if (this.pos === undefined) return undefined;
     const node = this.view.state.doc.nodeAt(this.pos);
-    return node?.type.name === 'td_admonition' ? { pos: this.pos, node } : undefined;
+    return node?.type.name === 'td_admonition' || node?.type.name === 'td_cards' ? { pos: this.pos, node } : undefined;
   }
 
   private change(attrs: (node: Node) => Record<string, unknown>) {
@@ -883,4 +993,4 @@ export const techdocsComponentsPlugin = $prose(ctx => {
 });
 
 /** Tudo o que o editor usa: o Markdown, os nós e o plugin. */
-export const techdocsComponents = [remarkTechdocsComponents, titleSchema, admonitionSchema, tabSchema, techdocsComponentsPlugin].flat();
+export const techdocsComponents = [remarkTechdocsComponents, titleSchema, admonitionSchema, tabSchema, cardsSchema, techdocsComponentsPlugin].flat();
