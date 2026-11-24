@@ -133,7 +133,6 @@ export function activate(context: vscode.ExtensionContext) {
         }
       });
     }),
-    vscode.commands.registerCommand('techdocsEditor.newSiteHere', () => docs.folderWithoutDocs && newSite.run(docs.folderWithoutDocs)),
     vscode.commands.registerCommand('techdocsEditor.closeRemote', (item?: DocsItem) => item?.remote && remotes.remove(item.remote)),
     vscode.commands.registerCommand('techdocsEditor.refreshRemote', (item?: DocsItem) =>
       item?.remote ? remotes.refresh(item.remote.host, item.remote.slug) : remotes.refresh(),

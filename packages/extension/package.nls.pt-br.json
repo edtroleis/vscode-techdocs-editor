@@ -88,7 +88,6 @@
   "command.createHere": "Criar a Documentação Aqui",
   "command.openInTechDocs": "Abrir no TechDocs",
   "config.syncExplorer": "Mover, renomear ou excluir páginas e diretórios das docs no Explorer do VS Code atualiza também o menu do site (`nav` do `mkdocs.yml`) e os links das páginas. O **Ctrl+Z** do Explorer desfaz tudo junto. O que muda pelo terminal (`mv`, `rm`) não é acompanhado.",
-  "command.newSiteHere": "Escolher um Template Aqui…",
   "command.refreshMine": "Atualizar",
   "command.openMine": "Abrir Página",
   "command.openMinePr": "Abrir Pedido de Revisão no GitHub",

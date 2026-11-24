@@ -9,7 +9,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 ### Changed
 
 - A folder with no documentation has a single **Create the documentation** button, which asks how to start:
-  **Blank** (as before, in one click) or **Choose a template…**.
+  **Blank** (as before, in one click) or **Choose a template…**. The **Choose a Template Here…** command is gone
+  from the command palette; **New documentation site…** is still there.
 
 ## [0.14.1] - 2026-11-23
 

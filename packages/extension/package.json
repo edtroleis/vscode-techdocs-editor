@@ -189,11 +189,6 @@
         "category": "TechDocs"
       },
       {
-        "command": "techdocsEditor.newSiteHere",
-        "title": "%command.newSiteHere%",
-        "category": "TechDocs"
-      },
-      {
         "command": "techdocsEditor.refreshMine",
         "title": "%command.refreshMine%",
         "category": "TechDocs",
@@ -401,10 +396,6 @@
         },
         {
           "command": "techdocsEditor.createHere",
-          "when": "techdocsEditor.emptyFolder"
-        },
-        {
-          "command": "techdocsEditor.newSiteHere",
           "when": "techdocsEditor.emptyFolder"
         },
         {
