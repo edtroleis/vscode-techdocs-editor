@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cloneRepo, freshRepo, mainFile, mergePr, openPrs, type ScenarioRepo } from './github';
 import { click, expect, pause, test, type } from './story';
-import { addPage, buildSite, editorOf, previewPanel, previewRow, publishStrip, quickInput, save, techdocsIcon, treeRow, turnOnSetting } from './ui';
+import { addPage, buildSite, editorOf, previewPanel, previewRow, publishStrip, quickInput, save, sendScreen, techdocsIcon, treeRow } from './ui';
 
 const NAME = 'techdocs-cenario-vazio';
 let repo: ScenarioRepo;
@@ -22,7 +22,7 @@ test.use({
     id: '02-github-vazio',
     title: 'Repositório do GitHub vazio: criar a doc e publicar',
     summary:
-      'Um repositório do GitHub só com o README, clonado na máquina. A pessoa cria a documentação pela extensão, escreve, liga a publicação, envia (um pull request) e quem publica faz o merge no GitHub. Sem Backstage.',
+      'Um repositório do GitHub só com o README, clonado na máquina. A pessoa cria a documentação pela extensão, escreve, usa Enviar (um pull request com o site inteiro) e quem cuida do repositório faz o merge no GitHub. Sem Backstage.',
   },
 });
 
@@ -77,24 +77,25 @@ test('repositório do GitHub vazio: criar a doc e publicar', async ({ vscode: { 
     await pause(page);
   });
 
-  await story.step('Ligar a publicação no GitHub (Configurações)', async () => {
+  await story.step('Enviar (N) no topo da página: a tela mostra o que vai', async () => {
     const editor = await editorOf(page);
-    if (!(await publishStrip(editor).count())) {
-      story.suggest(
-        'Num clone do GitHub, a página não mostra como publicar: é preciso achar e ligar a configuração "techdocsEditor.local.publishPanel". A extensão podia oferecer isso ao ver o remote do GitHub (uma vez), ou a faixa podia aparecer com "Publicar no GitHub".',
-      );
-    }
-    await turnOnSetting(page, 'techdocsEditor.local.publishPanel', 'Publish Panel');
-    await expect(page.locator('.tab.active')).toContainText('index.md');
-    await story.check('a faixa de publicação aparece no editor', async () => {
-      await expect(publishStrip(await editorOf(page))).toContainText('Send for publication', { timeout: 30_000 });
+    await story.check('a faixa conta as mudanças para enviar', () =>
+      expect(publishStrip(editor)).toContainText('changes to send', { timeout: 30_000 }),
+    );
+    await click(page, publishStrip(editor).getByRole('button', { name: /^Send \(\d+\)$/ }));
+    const screen = await sendScreen(page);
+    await story.check('a tela lista as páginas novas do site', async () => {
+      await expect(screen.locator('li.item', { hasText: 'Como contribuir' })).toBeVisible({ timeout: 30_000 });
+      await expect(screen.locator('li.item .path', { hasText: 'docs/index.md' })).toBeVisible();
+      await expect(screen.getByRole('button', { name: 'Send for review' })).toBeVisible();
     });
     await pause(page, 2_000);
   });
 
-  await story.step('Enviar para publicação: o pull request leva o site inteiro', async () => {
+  await story.step('Enviar para revisão: um pull request leva o site inteiro', async () => {
+    const screen = await sendScreen(page);
+    await click(page, screen.getByRole('button', { name: 'Send for review' }));
     const editor = await editorOf(page);
-    await click(page, publishStrip(editor).getByRole('button', { name: 'Send for publication' }));
     await expect(publishStrip(editor)).toContainText('In review', { timeout: 120_000 });
     const prs = openPrs(repo);
     expect(prs).toHaveLength(1);
@@ -109,18 +110,15 @@ test('repositório do GitHub vazio: criar a doc e publicar', async ({ vscode: { 
     await pause(page, 2_000);
   });
 
-  await story.step('Quem publica faz o merge no GitHub; a página aparece como publicada', async () => {
+  await story.step('Quem cuida do repositório faz o merge no GitHub; a página diz que está na documentação', async () => {
     const [pr] = openPrs(repo);
     mergePr(repo, pr.number);
-    story.outside('O merge foi feito no GitHub (pelo gh, como quem publica faria no site): a extensão não faz merge.');
+    story.outside('O merge foi feito no GitHub (pelo gh, como quem cuida do repositório faria no site): a extensão não faz merge.');
     expect(mainFile(repo, 'mkdocs.yml')).toContain('Cenário Vazio');
     const editor = await editorOf(page);
-    await story.check('a faixa mostra que a página foi publicada (sem fechar a página)', async () => {
-      await expect(publishStrip(editor)).toContainText('Published', { timeout: 60_000 });
+    await story.check('a faixa mostra que está na documentação (sem fechar a página)', async () => {
+      await expect(publishStrip(editor)).toContainText('In the documentation', { timeout: 90_000 });
     });
-    story.suggest(
-      'Depois do merge, o clone continua na branch do rascunho (docs/<login>/...). A faixa podia oferecer "Voltar para a versão publicada" (trocar para a main, trazer o merge e apagar a branch local), para a próxima mudança começar do que está publicado.',
-    );
     await pause(page, 2_000);
   });
 

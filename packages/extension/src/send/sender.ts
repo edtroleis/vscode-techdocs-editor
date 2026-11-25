@@ -317,7 +317,8 @@ export class Sender {
     const { git, sites, pageText } = this.options;
     const changes = await git.diffWith(`origin/${this.base}`);
     const { groups, outside } = sendGroups(changes, sites(), pageText);
-    const publish = this.options.target === 'main' || this.requiredApprovals === 0;
+    // Só a configuração decide (Como enviar): sem aprovação exigida, o envio ainda é um pedido de revisão
+    const publish = this.options.target === 'main';
     this.set({ status: 'idle', groups, outside, count: itemCount(groups), primary: publish ? 'publish' : 'review' });
   }
 

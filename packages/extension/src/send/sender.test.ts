@@ -75,6 +75,16 @@ describe('envio do repositório inteiro', () => {
     expect(state()).toMatchObject({ status: 'inReview', pr: { number: pr.number }, pending: 0, review: 'waiting' });
   });
 
+  it('o botão principal segue a configuração: revisão por padrão, mesmo sem aprovação exigida; Publicar só com send.target main', async () => {
+    for (const [target, primary] of [['pullRequest', 'review'], ['main', 'publish']] as const) {
+      const { git, sender, state } = setup({ target });
+      await sender.load();
+      git.work['docs/a.md'] = '# A\n\nNovo.\n';
+      await sender.refresh();
+      expect(state(), target).toMatchObject({ status: 'idle', primary });
+    }
+  });
+
   it('numa branch de dev, o envio sai dela', async () => {
     const { github, git, sender } = setup();
     await git.createBranch('feature/x');

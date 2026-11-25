@@ -38,6 +38,8 @@ export type RepoSend = {
   state?: SendState;
   groups: SendGroup[];
   count: number;
+  /** Relê os títulos das páginas mudadas (o `Sender` usa no que vai). */
+  readTexts?: () => Promise<void>;
   /** Arquivo (`uri.toString()`) → 'M' (alterado), 'N' (novo), 'R' (em revisão). */
   marks: Map<string, 'M' | 'N' | 'R'>;
 };
@@ -249,6 +251,14 @@ export class SendService implements vscode.Disposable, vscode.FileDecorationProv
     const client = clientFor(repo.host!, repo.slug!);
     const config = vscode.workspace.getConfiguration('techdocsEditor');
     const texts = new Map<string, string>();
+    // O título de cada página (o título 1) para a lista do que vai: lido antes de abrir a tela e ao enviar
+    const readTexts = async () => {
+      const changed = (await repo.git.diffWith(`origin/${repo.git.defaultBranch()}`).catch(() => [])).map(c => c.path);
+      const fresh = await this.texts(repo, changed);
+      texts.clear();
+      fresh.forEach((v, k) => texts.set(k, v));
+    };
+    repo.readTexts = readTexts;
     const sender = new Sender({
       git: repo.git,
       client,
@@ -259,16 +269,14 @@ export class SendService implements vscode.Disposable, vscode.FileDecorationProv
         for (const document of vscode.workspace.textDocuments) {
           if (document.isDirty && document.uri.path.startsWith(`${repo.root.path}/`) && isDocsFile(relative(repo.root, document.uri.path), repo.sites)) await document.save();
         }
-        const changed = (await repo.git.diffWith(`origin/${repo.git.defaultBranch()}`).catch(() => [])).map(c => c.path);
-        const fresh = await this.texts(repo, changed);
-        texts.clear();
-        fresh.forEach((v, k) => texts.set(k, v));
+        await readTexts();
       },
       pageText: path => texts.get(path),
       l10n: vscode.l10n,
       confirm: (message, action) => this.confirm(message, action),
       onChange: state => {
-        this.setItems(repo, state.status === 'idle' ? state.groups : repo.groups, state);
+        // Entrou na documentação: o que ia no envio já está na principal (nada mais para enviar até a próxima mudança)
+        this.setItems(repo, state.status === 'idle' ? state.groups : state.status === 'merged' ? [] : repo.groups, state);
         void SendPanel.current(repo.root.toString())?.stateChanged(state);
       },
       config: {
@@ -309,6 +317,7 @@ export class SendService implements vscode.Disposable, vscode.FileDecorationProv
         if (!repo) return undefined;
       }
       const sender = await this.connect(repo, ready.firstSend ? 'main' : undefined);
+      await repo.readTexts?.();
       await sender.refresh();
     } catch (error) {
       void vscode.window.showErrorMessage(gitHubErrorText(error, vscode.l10n));

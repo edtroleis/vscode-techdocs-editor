@@ -160,6 +160,9 @@ export async function turnOnSetting(page: Page, id: string, title: string) {
 /** A faixa de publicação no alto do editor visual. */
 export const publishStrip = (editor: FrameLocator) => editor.locator('.status-strip');
 
+/** A tela de envio (spec 09): o que vai, o resumo e Enviar para revisão. */
+export const sendScreen = (page: Page) => webviewWith(page, '#summary');
+
 /** Ctrl+S e espera a aba ficar sem alteração pendente. */
 export async function save(page: Page) {
   const dirty = page.locator('.tab.active.dirty');
