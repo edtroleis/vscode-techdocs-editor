@@ -125,7 +125,11 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     if (which && which !== last) return void vscode.window.showInformationMessage(vscode.l10n.t('Only the last change in the tree can be undone.'));
     this.undos.pop();
     for (const [uri, data] of last.files) {
-      if (data) await vscode.workspace.fs.writeFile(uri, data);
+      // Pelo documento aberto, como as ações (gravar só no disco deixava o documento aberto com o texto de antes, e a
+      // ação seguinte, que grava por ele, não conseguia salvar)
+      const open = vscode.workspace.textDocuments.some(d => d.uri.toString() === uri.toString());
+      if (data && open) await writeText(uri, new TextDecoder().decode(data));
+      else if (data) await vscode.workspace.fs.writeFile(uri, data);
       else {
         await vscode.workspace.fs.delete(uri, { useTrash: false }).then(undefined, () => {});
         // Desfazer uma pasta movida: as pastas que ficaram vazias saem também
@@ -878,8 +882,7 @@ async function removeIfEmpty(dir: vscode.Uri): Promise<boolean> {
 
 
 async function readBytes(uri: vscode.Uri): Promise<Uint8Array | undefined> {
-  // Como no writeText: só o documento com mudança não salva vale mais que o disco
-  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString() && d.isDirty);
+  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
   if (open) return new TextEncoder().encode(open.getText());
   return vscode.workspace.fs.readFile(uri).then(
     data => data,
@@ -894,9 +897,7 @@ async function readText(uri: vscode.Uri): Promise<string | undefined> {
 
 /** Grava pelo documento aberto, se houver (o editor acompanha e não fica "alterado"); senão direto no disco. */
 async function writeText(uri: vscode.Uri, text: string) {
-  // Aberto com mudança não salva: pelo documento (a mudança da pessoa não se perde). Aberto sem mudança: no disco, e o
-  // VS Code recarrega; pelo documento, ele pode estar atrás do disco (gravado por fora há pouco) e o salvar falha calado
-  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString() && d.isDirty);
+  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
   if (open) {
     const edit = new vscode.WorkspaceEdit();
     edit.replace(uri, new vscode.Range(0, 0, open.lineCount, 0), text);

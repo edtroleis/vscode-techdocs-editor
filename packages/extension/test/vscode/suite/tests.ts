@@ -96,14 +96,16 @@ async function closeAll() {
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 }
 
-/** Posição do botão Desfazer na barra fixa (ver TOP_BAR em test/webview). */
-const TOP_BAR_UNDO = 15;
-/** Posição do botão Diagrama (Mermaid) na barra fixa. */
-const TOP_BAR_DIAGRAM = 11;
+/** Posição do botão Desfazer na barra fixa (o primeiro; ver TOP_BAR em packages/ui/e2e/tests/helpers.ts). */
+const TOP_BAR_UNDO = 0;
+/** Posição do botão "+ Inserir" na barra fixa. */
+const TOP_BAR_INSERT = 10;
 
-/** O botão de diagrama abre a galeria (spec 06, M22): escolhe o fluxograma nela. */
+/** "+ Inserir" › Diagrama abre a galeria (spec 06, M22): escolhe o fluxograma nela. */
 function insertFlowchart(session: { clickTopBar(index: number): void; click(selector: string): void }) {
-  session.clickTopBar(TOP_BAR_DIAGRAM);
+  session.clickTopBar(TOP_BAR_INSERT);
+  // Imagem, Tabela, Bloco de código, Diagrama…
+  session.click('.td-top-menu .mermaid-bar-menu-items > button:nth-child(4)');
   session.click('.diagram-gallery-card[data-key="flow"]');
 }
 

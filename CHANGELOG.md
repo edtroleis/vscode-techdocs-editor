@@ -23,8 +23,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 - The menu of the **TechDocs** button in the visual editor scrolls when it does not fit in the window (many kinds of
   page): the last items were cut off.
-- Tree actions read and write `mkdocs.yml` and pages from the disk when they are open without unsaved changes: a
-  menu change could be lost when the file had just changed outside the editor.
+- **Undo** in the Documentation tree puts open files back through the editor: the next change in the menu (deleting a
+  section, for example) could be lost when `mkdocs.yml` was open.
 
 ## [0.19.0] - 2026-11-25
 
