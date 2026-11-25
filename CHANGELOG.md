@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-25
+
 ### Changed
 
 - **Toolbar of the visual editor reorganized**, in one line: Undo and Redo first, then the heading, the text
