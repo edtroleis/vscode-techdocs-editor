@@ -27,16 +27,14 @@ test('todos os botões têm nome (dica ao passar o mouse e leitor de tela)', asy
   await expect(topBarButton(page, 'redo')).toHaveAttribute('title', /Refazer/);
 });
 
-test('+ Inserir: o que entra na página, com nomes, num menu; a barra cabe numa linha na janela de 770 px', async ({ page }) => {
-  await page.setViewportSize({ width: 770, height: 700 });
+test('+ Inserir: o que entra na página, com nomes, num menu; Desfazer e Refazer no começo', async ({ page }) => {
   await openEditor(page);
   await expect(topBarButton(page, 'insert')).toContainText('Inserir');
   // Desfazer e Refazer no começo, antes do título
   const undo = (await topBarButton(page, 'undo').boundingBox())!;
   const heading = (await page.locator('.top-bar-heading-button').boundingBox())!;
   expect(undo.x).toBeLessThan(heading.x);
-  const tops = await page.locator('.top-bar-item').evaluateAll(els => [...new Set(els.map(e => Math.round(e.getBoundingClientRect().top)))]);
-  expect(tops, 'a barra quebrou em mais de uma linha').toHaveLength(1);
+  // Caber numa linha: medido como fica na extensão (test/webview/toolbar.spec.ts); aqui as margens são outras
   await topBarButton(page, 'insert').click();
   await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText(['Imagem', 'Tabela', 'Bloco de código', 'Diagrama (Mermaid)', 'Citação', 'Linha horizontal']);
   await page.keyboard.press('Escape');

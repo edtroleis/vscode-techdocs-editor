@@ -228,24 +228,36 @@
   border-top: 1px solid var(--crepe-color-outline);
   padding-top: 8px;
 }
-.top-bar-item:has(.td-insert-label) {
+.milkdown .milkdown-top-bar .top-bar-inner .top-bar-item:has(.td-insert-label) {
   width: auto;
-  gap: 4px;
-  padding: 0 8px;
+  gap: 2px;
+  padding: 0 6px;
 }
-.td-insert-label {
+.milkdown .milkdown-top-bar .top-bar-inner .td-insert-label {
   font-size: 13px;
+  white-space: nowrap;
+  color: var(--crepe-color-outline);
 }
-.milkdown .milkdown-top-bar .top-bar-item:has(.td-insert-label) svg {
+.milkdown .milkdown-top-bar .top-bar-inner .top-bar-item.active .td-insert-label {
+  color: var(--crepe-color-primary);
+}
+.milkdown .milkdown-top-bar .top-bar-inner .top-bar-item:has(.td-insert-label) svg {
   width: 16px;
   height: 16px;
   fill: none;
+  stroke: currentColor;
 }
-/* Mais botões na mesma linha (protótipo da barra, opção 3): menos espaço entre eles */
-.milkdown .milkdown-top-bar .top-bar-item {
+/* Ícones só de traço (tipos de página): o Crepe pinta o fundo de todo ícone da barra */
+.milkdown .milkdown-top-bar .top-bar-inner .top-bar-item svg[fill='none'] {
+  fill: none;
+  stroke: var(--crepe-color-outline);
+}
+/* Mais botões na mesma linha (protótipo da barra, opção 3): menos espaço entre eles. Mais forte que o CSS do
+   Crepe, que na extensão carrega depois deste */
+.milkdown .milkdown-top-bar .top-bar-inner .top-bar-item {
   margin: 6px 2px;
 }
-.milkdown .milkdown-top-bar .top-bar-divider {
+.milkdown .milkdown-top-bar .top-bar-inner .top-bar-divider {
   margin: 10px 6px;
 }
 .td-top-menu {
