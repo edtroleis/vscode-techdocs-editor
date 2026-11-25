@@ -374,9 +374,13 @@ export type Ask = (kind: 'info' | 'warning', message: string, ...items: string[]
 /** O que o botão Conferir achou e fez. */
 export type CheckOutcome = { auto: number; manual: number; applied: number; undone?: boolean };
 
-/** Texto do arquivo como está no editor (com o que não foi salvo), ou do disco; undefined se não existe. */
+/**
+ * Texto do arquivo como está no editor quando tem mudança não salva; senão, do disco (undefined se não existe). O
+ * documento aberto sem mudança pode estar atrás do disco, ou ser de um arquivo já apagado: gravar por ele, no VS Code
+ * do navegador, não recriava o arquivo.
+ */
 export async function currentText(uri: vscode.Uri): Promise<string | undefined> {
-  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
+  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString() && d.isDirty);
   return open ? open.getText() : readText(uri);
 }
 
@@ -384,6 +388,12 @@ export async function currentText(uri: vscode.Uri): Promise<string | undefined> 
 export async function replaceText(uri: vscode.Uri, next: string) {
   const document = await vscode.workspace.openTextDocument(uri);
   const wasDirty = document.isDirty;
+  // Sem mudança e atrás do disco (o arquivo mudou ou foi apagado e criado de novo por fora): salvar por ele falha
+  // calado no VS Code do navegador. Grava no disco, e o VS Code recarrega o documento
+  if (!wasDirty && document.getText() !== (await readText(uri))) {
+    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(next));
+    return;
+  }
   const edit = new vscode.WorkspaceEdit();
   edit.replace(uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), next);
   if ((await vscode.workspace.applyEdit(edit)) && !wasDirty) await document.save();

@@ -15,6 +15,11 @@ All notable changes to the TechDocs Editor extension. The format follows
   for me**; switching moves the value in use. The four old settings items left the **…**; the gear of the Check
   section and the one on the **New page** list open the window.
 
+### Fixed
+
+- Saving a change to `.techdocs-editor.yaml` (for the team) could do nothing in VS Code for the Web when the file had
+  been deleted or changed outside the editor while it was still open.
+
 ## [0.20.0] - 2026-11-25
 
 ### Changed
