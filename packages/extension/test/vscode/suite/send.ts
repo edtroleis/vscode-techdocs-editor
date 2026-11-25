@@ -248,4 +248,36 @@ export function defineSendTests() {
       equal(await flow.fromLink(vscode.Uri.parse('vscode://edtroleis.techdocs-editor/open?host=github.com&repo=acme/wiki&path=../fora.md')), undefined, 'inválido');
     });
   });
+
+  suite('Configurações pelo menu da seção', function () {
+    this.timeout(30_000);
+    const config = () => vscode.workspace.getConfiguration('techdocsEditor');
+    teardown(async () => {
+      await config().update('send.target', undefined, vscode.ConfigurationTarget.Global);
+      await config().update('clone.directory', undefined, vscode.ConfigurationTarget.Global);
+    });
+
+    test('os três itens estão no menu "…" da seção Documentação', () => {
+      const pkg = vscode.extensions.getExtension('edtroleis.techdocs-editor')!.packageJSON;
+      const menu = (pkg.contributes.menus['view/title'] as Array<{ command: string; when: string; group: string }>).filter(m =>
+        m.when.includes('techdocsEditor\\.docs'),
+      );
+      for (const command of ['techdocsEditor.settings', 'techdocsEditor.sendOptions', 'techdocsEditor.cloneOptions']) {
+        const item = menu.find(m => m.command === command);
+        equal(Boolean(item) && !item!.group.startsWith('navigation'), true, `${command} no "…"`);
+      }
+    });
+
+    test('Como enviar grava send.target para a pessoa', async () => {
+      await vscode.commands.executeCommand('techdocsEditor.sendOptions', 'main');
+      equal(config().inspect('send.target')?.globalValue, 'main', 'direto na principal');
+      await vscode.commands.executeCommand('techdocsEditor.sendOptions', 'pullRequest');
+      equal(config().inspect('send.target')?.globalValue, 'pullRequest', 'para revisão');
+    });
+
+    test('Onde ficam as cópias grava clone.directory', async () => {
+      await vscode.commands.executeCommand('techdocsEditor.cloneOptions', '/dados/docs');
+      equal(config().inspect('clone.directory')?.globalValue, '/dados/docs', 'diretório');
+    });
+  });
 }

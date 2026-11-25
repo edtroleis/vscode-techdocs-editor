@@ -12,6 +12,7 @@ import { openVisualByDefault } from './openByDefault';
 import { ProposedChanges } from './proposedChange';
 import { PrepareContext } from './prepareContext';
 import { CloneFlow } from './clone/cloneFlow';
+import { chooseCloneDirectory, chooseSendTarget, openSettings } from './settingsMenu';
 import { SendService } from './send/sendService';
 import { SendView } from './send/sendView';
 import { RepoCheck } from './repoCheck';
@@ -205,6 +206,11 @@ export function activate(context: vscode.ExtensionContext) {
     send,
     sendView,
     vscode.window.registerWebviewViewProvider(SendView.viewId, sendView),
+    vscode.commands.registerCommand('techdocsEditor.settings', () => openSettings()),
+    vscode.commands.registerCommand('techdocsEditor.sendOptions', (value?: unknown) =>
+      chooseSendTarget(value === 'main' || value === 'pullRequest' ? value : undefined),
+    ),
+    vscode.commands.registerCommand('techdocsEditor.cloneOptions', (value?: unknown) => chooseCloneDirectory(typeof value === 'string' ? value : undefined)),
     vscode.commands.registerCommand('techdocsEditor.send', (target?: vscode.Uri | DocsItem) =>
       send.open(target instanceof DocsItem ? target.uri : target),
     ),

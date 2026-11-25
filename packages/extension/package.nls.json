@@ -108,5 +108,8 @@
   "config.clone.directory": "Where **Open documentation from GitHub** brings the repositories (`~` is your home directory).",
   "config.send.target": "Where **Send** puts the changes.",
   "config.send.target.pullRequest": "For review: a pull request on GitHub, followed until it is approved (default).",
-  "config.send.target.main": "Straight to the main branch, without review (for repositories that allow it)."
+  "config.send.target.main": "Straight to the main branch, without review (for repositories that allow it).",
+  "command.settings": "TechDocs Settings",
+  "command.sendOptions": "How to Send…",
+  "command.cloneOptions": "Where the GitHub Copies Go…"
 }

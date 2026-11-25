@@ -25,6 +25,10 @@ All notable changes to the TechDocs Editor extension. The format follows
   (`techdocsEditor.clone.directory`, `~/Documents/TechDocs`) and opens it. The Backstage link opens the copy you
   already have instead of cloning again.
 
+- **Settings from the Documentation section:** the **…** menu has **How to Send…** (for review or straight to the
+  documentation), **Where the GitHub Copies Go…** and **TechDocs Settings** (VS Code's settings, only the
+  extension's). No need for the command palette.
+
 ### Changed
 
 - **Ctrl+S only saves on this computer.** Nothing goes to GitHub until you use **Send**.

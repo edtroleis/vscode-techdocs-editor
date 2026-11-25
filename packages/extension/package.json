@@ -294,6 +294,21 @@
         "title": "%command.send%",
         "category": "TechDocs",
         "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "techdocsEditor.settings",
+        "title": "%command.settings%",
+        "category": "TechDocs"
+      },
+      {
+        "command": "techdocsEditor.sendOptions",
+        "title": "%command.sendOptions%",
+        "category": "TechDocs"
+      },
+      {
+        "command": "techdocsEditor.cloneOptions",
+        "title": "%command.cloneOptions%",
+        "category": "TechDocs"
       }
     ],
     "menus": {
@@ -634,6 +649,21 @@
           "command": "techdocsEditor.checkOptions",
           "when": "view == techdocsEditor.check",
           "group": "navigation@3"
+        },
+        {
+          "command": "techdocsEditor.sendOptions",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
+          "group": "9_settings@1"
+        },
+        {
+          "command": "techdocsEditor.cloneOptions",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
+          "group": "9_settings@2"
+        },
+        {
+          "command": "techdocsEditor.settings",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
+          "group": "9_settings@3"
         }
       ],
       "explorer/context": [

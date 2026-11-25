@@ -538,5 +538,14 @@
   "Choose another directory": "Escolher outro diretório",
   "The documentation comes to this computer, in {0}. You edit it here and send it to GitHub when you want.": "A documentação vem para este computador, em {0}. Você edita aqui e envia ao GitHub quando quiser.",
   "Bring it": "Trazer",
-  "Bring it here": "Trazer para cá"
+  "Bring it here": "Trazer para cá",
+  "For review": "Para revisão",
+  "Someone on the team approves on GitHub before it goes into the documentation.": "Alguém do time aprova no GitHub antes de entrar na documentação.",
+  "Straight to the documentation": "Direto na documentação",
+  "Goes into the main branch right away, without review. Only for repositories that allow it.": "Entra na branch principal na hora, sem revisão. Só para repositórios que permitem.",
+  "How to send": "Como enviar",
+  "Where Send puts your changes": "Para onde o Enviar leva as suas mudanças",
+  "Choose a directory…": "Escolher um diretório…",
+  "The documentation from GitHub comes to {0}.": "A documentação do GitHub vem para {0}.",
+  "Use this directory": "Usar este diretório"
 }
