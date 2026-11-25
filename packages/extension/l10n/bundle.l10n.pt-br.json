@@ -563,5 +563,19 @@
   "\"{0}\" has {1} MB; the limit for files is {2} MB.": "\"{0}\" tem {1} MB; o limite dos anexos é {2} MB.",
   "Could not save the file \"{0}\": {1}": "Não foi possível gravar o arquivo \"{0}\": {1}",
   "Open Settings": "Abrir Configurações",
-  "not an image": "não é uma imagem"
+  "not an image": "não é uma imagem",
+  "Images and attachments in {0}, for the whole team": "Imagens e anexos no {0}, para o time todo",
+  "Images and attachments": "Imagens e anexos",
+  "Images": "Imagens",
+  "Other attachments": "Outros anexos",
+  "Directory": "Diretório",
+  "Maximum size": "Tamanho máximo",
+  "Types": "Tipos",
+  "team": "do time",
+  "yours": "seu",
+  "Directories inside docs/. Types: extensions separated by commas, add or remove the ones you want (saved when leaving the field or with Enter); * accepts any. Executables, scripts and .md never go in, even if written here.": "Diretórios dentro de docs/. Tipos: extensões separadas por vírgula, acrescente ou apague as que quiser (grava ao sair do campo ou com Enter); * aceita qualquer uma. Executáveis, scripts e .md nunca entram, mesmo escritos aqui.",
+  "Back to default": "Voltar ao padrão",
+  "Use a directory inside docs/, without \"..\".": "Use um diretório dentro de docs/, sem \"..\".",
+  "Use a number of MB greater than zero.": "Use um número de MB maior que zero.",
+  "{0}: not accepted. Executables, scripts and .md never go in (the rest was saved).": "{0}: não aceito. Executáveis, scripts e .md nunca entram (o resto foi gravado)."
 }

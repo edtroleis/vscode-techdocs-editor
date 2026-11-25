@@ -15,10 +15,12 @@ import {
   DEFAULT_IMAGES_MAX_MB,
   parseRepoConfig,
   REPO_CONFIG_FILE,
+  setAttachments,
   withSuffix,
 } from '@edtroleis/techdocs-editor-core';
 import * as vscode from 'vscode';
 import { repositoryFolder } from './catalogOptions';
+import type { RepoCheck } from './repoCheck';
 import { readText } from './templates/templateSources';
 
 /**
@@ -140,5 +142,57 @@ export async function saveAttachment(
     if (existing && !sameBytes(existing, data)) continue;
     if (!existing) await vscode.workspace.fs.writeFile(uri, data);
     return { kind, link, text: kind === 'image' ? name.replace(/\.[^.]*$/, '') : attachmentLinkText(name, data.byteLength, vscode.env.language) };
+  }
+}
+
+type Fields = Partial<Record<AttachmentKey, unknown>>;
+
+/** Grava nas configurações do usuário (undefined tira). */
+async function saveForMe(fields: Fields) {
+  const config = vscode.workspace.getConfiguration('techdocsEditor');
+  for (const [key, value] of Object.entries(fields)) await config.update(SETTING_OF[key as AttachmentKey], value, vscode.ConfigurationTarget.Global);
+}
+
+/**
+ * A parte Imagens e anexos da janela Configurações: grava para o time (`attachments` no `.techdocs-editor.yaml`, com o
+ * diff antes) ou só para a pessoa (nas configurações), e leva os campos de um lugar para o outro.
+ */
+export class AttachmentOptions {
+  constructor(private readonly repoCheck: Pick<RepoCheck, 'proposeChange'>) {}
+
+  async save(scope: vscode.Uri | undefined, where: 'team' | 'me', fields: Fields, quiet = false): Promise<boolean> {
+    if (where === 'me') {
+      await saveForMe(fields);
+      return true;
+    }
+    const folder = repositoryFolder(scope);
+    return Boolean(folder) && this.saveForTeam(folder!, fields, quiet);
+  }
+
+  /** Os campos que estão no outro lugar passam para `to` (e saem de onde estavam). */
+  async move(scope: vscode.Uri | undefined, to: 'team' | 'me', quiet = false): Promise<boolean> {
+    const { values, from, folder } = await attachmentSettings(scope);
+    const moving = (Object.keys(from) as AttachmentKey[]).filter(key => from[key] === (to === 'team' ? 'settings' : 'repository'));
+    if (!moving.length) return true;
+    const fields = Object.fromEntries(moving.map(key => [key, values[key]]));
+    const cleared = Object.fromEntries(moving.map(key => [key, undefined]));
+    if (!folder) return false;
+    if (to === 'team') {
+      if (!(await this.saveForTeam(folder, fields, quiet))) return false;
+      await saveForMe(cleared);
+      return true;
+    }
+    await saveForMe(fields);
+    return this.saveForTeam(folder, cleared, quiet);
+  }
+
+  private async saveForTeam(folder: vscode.Uri, fields: Fields, quiet: boolean): Promise<boolean> {
+    const decision = await this.repoCheck.proposeChange(
+      vscode.Uri.joinPath(folder, REPO_CONFIG_FILE),
+      current => setAttachments(current, fields as Partial<AttachmentsConfig>),
+      vscode.l10n.t('Images and attachments in {0}, for the whole team', REPO_CONFIG_FILE),
+      quiet ? () => 'apply' : undefined,
+    );
+    return decision === 'apply' || decision === 'unchanged';
   }
 }

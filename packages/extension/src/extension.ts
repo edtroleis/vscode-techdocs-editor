@@ -16,6 +16,7 @@ import { SettingsView } from './settingsView';
 import { SendService } from './send/sendService';
 import { SendView } from './send/sendView';
 import { RepoCheck } from './repoCheck';
+import { AttachmentOptions } from './attachments';
 import { PASTE_KIND, PasteAsMarkdown } from './pasteMarkdown';
 import { CentralTemplates } from './templates/centralTemplates';
 import { NewPageCommand } from './templates/newPage';
@@ -203,7 +204,12 @@ export function activate(context: vscode.ExtensionContext) {
   // O envio do repositório inteiro (spec 09): Enviar (N) na árvore, no editor e na barra de status; painel Envio
   const send = new SendService(context.extensionUri, sites, repoCheck, provider, count => docs.setSendBadge(count));
   const sendView = new SendView(context.extensionUri, send);
-  const settingsView = new SettingsView(context.extensionUri, { templateOptions, catalogOptions, site: () => docs.localSite?.mkdocs });
+  const settingsView = new SettingsView(context.extensionUri, {
+    templateOptions,
+    catalogOptions,
+    attachmentOptions: new AttachmentOptions(repoCheck),
+    site: () => docs.localSite?.mkdocs,
+  });
   provider.onStripAction(({ uri, action }) => void send.action(uri, action));
   context.subscriptions.push(
     send,

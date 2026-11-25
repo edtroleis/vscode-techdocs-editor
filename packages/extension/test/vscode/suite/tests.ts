@@ -1808,12 +1808,29 @@ export function defineTests() {
         await settingsView.receive({ type: 'catalogScope', value: 'me' }, true);
         equal(config().inspect('catalog')?.globalValue, 'required', 'catálogo da pessoa');
         equal(await read('.techdocs-editor.yaml'), '', 'nada mais para o time');
+        // Imagens e anexos: só para mim, nas configurações; o recusado fica de fora, com o aviso
+        await settingsView.receive({ type: 'attachment', key: 'fileTypes', value: '.PDF, exe, mp4' }, true);
+        equal(JSON.stringify(config().inspect('attachments.fileTypes')?.globalValue), '["pdf","mp4"]', 'tipos da pessoa');
+        equal((await settingsView.state()).attachments?.error?.key, 'fileTypes', 'o recusado aparece');
+        await settingsView.receive({ type: 'attachment', key: 'imagesMaxSizeMB', value: '8' }, true);
+        equal(config().inspect('images.maxSizeMB')?.globalValue, 8, 'limite das imagens');
+        await settingsView.receive({ type: 'attachment', key: 'files', value: '../fora' }, true);
+        equal(config().inspect('attachments.files')?.globalValue, undefined, 'diretório fora do docs não grava');
+        // Para o time: os campos da pessoa vão para o arquivo e saem das configurações
+        await settingsView.receive({ type: 'attachmentsScope', value: 'team' }, true);
+        equal(await read('.techdocs-editor.yaml'), 'attachments:\n  imagesMaxSizeMB: 8\n  fileTypes: [ pdf, mp4 ]\n', 'anexos para o time');
+        equal(config().inspect('attachments.fileTypes')?.globalValue, undefined, 'tipos saem da pessoa');
+        await settingsView.receive({ type: 'attachment', key: 'files', value: 'anexos' }, true);
+        equal((await settingsView.state()).attachments?.values.files, 'anexos', 'diretório do time');
+        // Voltar ao padrão tira tudo do arquivo
+        await settingsView.receive({ type: 'attachmentsReset' }, true);
+        equal(await read('.techdocs-editor.yaml'), '', 'padrão de novo');
         state = await settingsView.state();
         equal(`${state.catalog?.scope}:${state.templates?.scope}`, 'me:me', 'a janela mostra os da pessoa');
         ok(await has('.techdocs-editor.yaml'), 'o arquivo do time continua (vazio)');
       } finally {
         await vscode.commands.executeCommand('techdocsEditor.settings.close');
-        for (const key of ['send.target', 'syncExplorer', 'templates.builtIn', 'templates.repository', 'catalog']) {
+        for (const key of ['send.target', 'syncExplorer', 'templates.builtIn', 'templates.repository', 'catalog', 'attachments.fileTypes', 'attachments.files', 'images.maxSizeMB']) {
           await config().update(key, undefined, vscode.ConfigurationTarget.Global);
         }
         for (const path of ['.techdocs-editor.yaml', '.git']) await remove(path);

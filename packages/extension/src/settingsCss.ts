@@ -17,6 +17,13 @@ input[type=text]:focus { outline: 1px solid var(--vscode-focusBorder); outline-o
 .scope button { padding: 1px 8px; border: 0; border-radius: 0; font-size: 11px; font-weight: 400;
   color: var(--vscode-descriptionForeground); background: transparent; }
 .scope button[aria-pressed=true] { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
+h4 { font-size: 12px; font-weight: 600; margin: 10px 0 6px; }
+.row { display: grid; grid-template-columns: minmax(90px, auto) 1fr auto; gap: 8px; align-items: center; margin: 0 0 6px; font-size: 13px; }
+.row .line input { flex: 1; }
+.row input.size { flex: none; width: 70px; }
+input[type=number] { padding: 4px 8px; border: 1px solid var(--vscode-input-border, transparent); border-radius: 2px;
+  background: var(--vscode-input-background); color: var(--vscode-input-foreground); font-size: 12px; }
+.origin { color: var(--vscode-descriptionForeground); font-size: 0.92em; min-width: 3em; }
 .ok { color: var(--vscode-testing-iconPassed, #89d185); }
 .error { color: var(--vscode-errorForeground); }
 `;

@@ -16,6 +16,12 @@ const STATE: SettingsState = {
   cloneDirectory: '~/Documents/TechDocs',
   templates: { repository: 'acme/techdocs-templates', scope: 'team', teamPossible: true, builtIn: true },
   catalog: { mode: 'auto', scope: 'me', teamPossible: true },
+  attachments: {
+    values: { images: 'images', imagesMaxSizeMB: '5', imageTypes: 'png, jpg, jpeg, gif, webp, svg', files: 'anexos', filesMaxSizeMB: '20', fileTypes: 'pdf, docx, zip' },
+    from: { images: 'default', imagesMaxSizeMB: 'default', imageTypes: 'default', files: 'repository', filesMaxSizeMB: 'default', fileTypes: 'repository' },
+    scope: 'team',
+    teamPossible: true,
+  },
   openVisual: true,
   syncExplorer: false,
 };
@@ -99,4 +105,35 @@ test('sem site aberto: só as opções da pessoa', async ({ page }) => {
   await expect(page.getByRole('radio', { name: /^For review/ })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Templates repository' })).toHaveCount(0);
   await expect(page.getByRole('group', { name: 'catalog-info.yaml' })).toHaveCount(0);
+});
+
+test('Imagens e anexos: diretório, tamanho e tipos de cada um; mudar um campo grava; de onde vem o valor', async ({ page }) => {
+  const section = page.getByRole('group', { name: 'Images and attachments' });
+  await expect(section.getByRole('button', { name: 'For the team' })).toHaveAttribute('aria-pressed', 'true');
+  const types = section.getByRole('textbox', { name: 'Other attachments: Types' });
+  await expect(types).toHaveValue('pdf, docx, zip');
+  await expect(section.getByRole('textbox', { name: 'Images: Directory' })).toHaveValue('images');
+  await expect(section.getByRole('spinbutton', { name: 'Other attachments: Maximum size' })).toHaveValue('20');
+  // O que veio do time está marcado
+  await expect(section.locator('[data-origin="files"]')).toHaveText('team');
+  await expect(section.locator('[data-origin="images"]')).toHaveText('');
+  // Grava ao sair do campo ou com Enter
+  await types.fill('pdf, docx, zip, mp4');
+  await types.press('Enter');
+  expect(await last(page)).toEqual({ type: 'attachment', key: 'fileTypes', value: 'pdf, docx, zip, mp4' });
+  await section.getByRole('textbox', { name: 'Images: Directory' }).fill('img');
+  await types.focus();
+  expect(await last(page)).toEqual({ type: 'attachment', key: 'images', value: 'img' });
+  await section.getByRole('button', { name: 'Just for me' }).click();
+  expect(await last(page)).toEqual({ type: 'attachmentsScope', value: 'me' });
+  await section.getByRole('link', { name: 'Back to default' }).click();
+  expect(await last(page)).toEqual({ type: 'attachmentsReset' });
+});
+
+test('Imagens e anexos: o tipo recusado aparece embaixo do campo; tudo no padrão, sem Voltar ao padrão', async ({ page }) => {
+  const defaults = { images: 'default', imagesMaxSizeMB: 'default', imageTypes: 'default', files: 'default', filesMaxSizeMB: 'default', fileTypes: 'default' } as const;
+  await show(page, { ...STATE, attachments: { ...STATE.attachments!, from: defaults, scope: 'me', error: { key: 'fileTypes', text: 'exe, sh: not accepted' } } });
+  const section = page.getByRole('group', { name: 'Images and attachments' });
+  await expect(section.getByText('exe, sh: not accepted')).toBeVisible();
+  await expect(section.getByRole('link', { name: 'Back to default' })).toHaveCount(0);
 });
