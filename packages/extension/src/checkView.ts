@@ -29,6 +29,7 @@ const CODE_ORDER: SiteFindingCode[] = [
   'page-not-in-nav',
   'catalog-ref-missing',
   'lint-problems',
+  'attachment-unused',
   'catalog-missing',
   'lint-config-missing',
 ];
@@ -183,6 +184,8 @@ function groupTitle(code: SiteFindingCode): string {
       return vscode.l10n.t('TechDocs annotation missing in catalog-info.yaml');
     case 'lint-problems':
       return vscode.l10n.t('Pages with formatting problems');
+    case 'attachment-unused':
+      return vscode.l10n.t('Attachments no page uses');
     case 'catalog-missing':
       return vscode.l10n.t('No catalog-info.yaml');
     case 'lint-config-missing':

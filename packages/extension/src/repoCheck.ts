@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { checkSite, LINT_CONFIG_FILES, localPortalPath, SiteFinding, SiteSnapshot } from '@edtroleis/techdocs-editor-core';
 import { backstageNear, catalogModeFor, siteRepository } from './catalogOptions';
+import { attachmentSettings } from './attachments';
 import type { DocsSite } from './docsSite';
 import { configDirs } from './lintProblems';
 import type { LintService } from './lintService';
@@ -108,7 +109,8 @@ export class RepoCheck implements vscode.Disposable {
 
   /** O "Corrigir" da tela de envio: aplica sem perguntar (as correções não mudam o que aparece na página). */
   async applyQuietly(findings: SiteFinding[], base: vscode.Uri): Promise<void> {
-    for (const finding of findings) if (finding.fix) await this.applyFix(finding, base, () => 'apply');
+    // Apagar anexo sem uso só com a pessoa olhando (na Verificação), nunca no Corrigir do envio
+    for (const finding of findings) if (finding.fix && !finding.fix.delete) await this.applyFix(finding, base, () => 'apply');
   }
 
   /** Confere um site e junta o resultado ao dos outros já conferidos. */
@@ -169,9 +171,18 @@ export class RepoCheck implements vscode.Disposable {
   /** Aplica todas as correções sem perguntar uma por uma; o aviso no fim tem Desfazer (volta os arquivos como estavam). */
   private async fixAll(site: Site, base: vscode.Uri, fixes: SiteFinding[], ask: Ask): Promise<CheckOutcome> {
     const before = new Map<string, { uri: vscode.Uri; text: string | undefined }>();
+    const deleted: { uri: vscode.Uri; bytes: Uint8Array }[] = [];
     let applied = 0;
     for (const finding of fixes) {
       const uri = vscode.Uri.joinPath(base, finding.fix!.file);
+      if (finding.fix!.delete) {
+        const bytes = await deleteFile(uri);
+        if (bytes) {
+          deleted.push({ uri, bytes });
+          applied++;
+        }
+        continue;
+      }
       // O texto do momento: várias correções no mesmo arquivo (o mkdocs.yml) vão uma sobre a outra
       const current = await this.currentText(uri);
       const next = finding.fix!.apply(current);
@@ -182,7 +193,7 @@ export class RepoCheck implements vscode.Disposable {
     }
     const left = needsYou((await this.checkOne(site)).findings).length;
     const undo = vscode.l10n.t('Undo');
-    const files = before.size;
+    const files = before.size + deleted.length;
     const message = left
       ? vscode.l10n.t('{0} adjustments made in {1} files. {2} left that need you: they are in the Problems panel.', applied, files, left)
       : vscode.l10n.t('{0} adjustments made in {1} files.', applied, files);
@@ -195,6 +206,7 @@ export class RepoCheck implements vscode.Disposable {
         if (text === undefined) await vscode.workspace.fs.delete(uri).then(undefined, () => undefined);
         else await this.write(uri, await this.currentText(uri), text);
       }
+      for (const { uri, bytes } of deleted) await vscode.workspace.fs.writeFile(uri, bytes);
       await this.checkOne(site);
       outcome.undone = true;
     }
@@ -214,7 +226,7 @@ export class RepoCheck implements vscode.Disposable {
       return 0;
     }
     const { snapshot, base } = await this.snapshot(site);
-    const fixable = checkSite(snapshot).filter(f => f.fix);
+    const fixable = checkSite(snapshot).filter(f => f.fix && !f.fix.delete);
     let applied = 0;
     for (const finding of fixable) {
       const decision = await this.applyFix(finding, base, answers ? () => (answers.apply(finding) ? 'apply' : 'skip') : undefined);
@@ -247,7 +259,26 @@ export class RepoCheck implements vscode.Disposable {
    */
   private async applyFix(finding: SiteFinding, base: vscode.Uri, decide?: () => 'apply' | 'skip') {
     const fix = finding.fix!;
+    if (fix.delete) return this.deleteAttachment(vscode.Uri.joinPath(base, fix.file), findingMessage(finding), decide);
     return this.proposeChange(vscode.Uri.joinPath(base, fix.file), fix.apply, findingMessage(finding), decide);
+  }
+
+  /** Apaga o anexo sem uso (a pergunta antes, sem diff: pode ser binário) e oferece Desfazer, que devolve os bytes. */
+  private async deleteAttachment(uri: vscode.Uri, title: string, decide?: () => 'apply' | 'skip'): Promise<'apply' | 'skip' | 'unchanged'> {
+    const remove = vscode.l10n.t('Delete');
+    const answer = decide ? decide() : (await vscode.window.showWarningMessage(title, { modal: true }, remove)) === remove ? 'apply' : 'skip';
+    if (answer !== 'apply') return 'skip';
+    const bytes = await deleteFile(uri);
+    if (!bytes) return 'unchanged';
+    if (!decide) {
+      const undo = vscode.l10n.t('Undo');
+      void vscode.window.showInformationMessage(vscode.l10n.t('{0} deleted.', uri.path.split('/').pop()!), undo).then(async choice => {
+        if (choice !== undo) return;
+        await vscode.workspace.fs.writeFile(uri, bytes);
+        await this.check(true);
+      });
+    }
+    return 'apply';
   }
 
   /**
@@ -322,6 +353,7 @@ export class RepoCheck implements vscode.Disposable {
         root: rel(root),
         mkdocsFile: rel(site.mkdocs),
         mkdocsYml: (await this.currentText(site.mkdocs)) ?? '',
+        attachmentDirs: await attachmentDirs(site.mkdocs),
         docsDir: rel(docsDir),
         docsDirExists,
         files,
@@ -444,7 +476,25 @@ export function findingMessage(finding: SiteFinding): string {
       return vscode.l10n.t('Link to a file that does not exist: {0}', target);
     case 'missing-image':
       return vscode.l10n.t('Image that does not exist: {0}', target);
+    case 'attachment-unused':
+      return vscode.l10n.t('No page uses {0}: delete it?', target);
     case 'local-portal-link':
       return vscode.l10n.t('Link with the address of the Backstage on your machine ({0}): people reading in the portal cannot open it. Use only the path, {1}, which opens in any Backstage.', target, localPortalPath(target) ?? '');
   }
+}
+
+/** Apaga e devolve os bytes, para o Desfazer; undefined se o arquivo já não existe. */
+async function deleteFile(uri: vscode.Uri): Promise<Uint8Array | undefined> {
+  const bytes = await Promise.resolve(vscode.workspace.fs.readFile(uri)).then(
+    b => b,
+    () => undefined,
+  );
+  if (bytes) await vscode.workspace.fs.delete(uri);
+  return bytes;
+}
+
+/** Os diretórios das imagens e dos anexos do repositório do site (spec 07, AX8). */
+async function attachmentDirs(mkdocs: vscode.Uri): Promise<string[]> {
+  const { values } = await attachmentSettings(mkdocs);
+  return [values.images, values.files];
 }

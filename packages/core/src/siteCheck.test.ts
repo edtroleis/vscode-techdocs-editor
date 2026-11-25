@@ -294,3 +294,23 @@ describe('catalogDocs', () => {
     expect(catalogDocs('kind: [\nmetadata')).toEqual([]);
   });
 });
+
+describe('anexo que nenhuma página usa (spec 07, AX8)', () => {
+  const files = ['index.md', 'guias/deploy.md', 'fora.md', 'assets/logo.png', 'assets/contrato-antigo.pdf', 'images/print.png', 'images/favicon.png', 'assets/extra.css', 'assets/manual.pdf', 'outros/solto.pdf'];
+  const mkdocsYml = `${MKDOCS}theme:\n  favicon: images/favicon.png\nextra_css:\n  - assets/extra.css\n`;
+  const pages = {
+    'index.md': '# Pagamentos\n\n![Logo](assets/logo.png)\n',
+    'guias/deploy.md': '# Deploy\n',
+    'fora.md': '# Fora\n\n<a href="assets/manual.pdf">manual</a>\n',
+  };
+
+  it('aviso no arquivo, com o ajuste que apaga; citado numa página (Markdown ou HTML) ou no mkdocs.yml fica', () => {
+    const unused = checkSite(site({ attachmentDirs: ['images', 'assets'], files, mkdocsYml, pages })).filter(f => f.code === 'attachment-unused');
+    expect(unused.map(f => f.target)).toEqual(['assets/contrato-antigo.pdf', 'images/print.png']);
+    expect(unused[0]).toMatchObject({ severity: 'warning', file: 'svc/docs/assets/contrato-antigo.pdf', fix: { file: 'svc/docs/assets/contrato-antigo.pdf', delete: true } });
+  });
+
+  it('sem os diretórios dos anexos, não confere', () => {
+    expect(codes(checkSite(site({ files, mkdocsYml, pages })))).not.toContain('attachment-unused:assets/contrato-antigo.pdf');
+  });
+});

@@ -1693,6 +1693,38 @@ export function defineTests() {
       }
     });
 
+    test('anexo sem uso (spec 07, AX8): achado na Verificação; Ajustar apaga, Desfazer devolve os bytes', async () => {
+      const { repoCheck, sites } = await api();
+      await sites.ready;
+      const bytes = (...b: number[]) => new Uint8Array(b);
+      const put = (path: string, data: Uint8Array) => vscode.workspace.fs.writeFile(file(path), data);
+      const text = (t: string) => new TextEncoder().encode(t);
+      const has = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
+      await put('check-att/mkdocs.yml', text('site_name: Anexos\nnav:\n  - index.md\nplugins:\n  - techdocs-core\n'));
+      await put('check-att/docs/index.md', text('# Anexos\n\n[Manual](assets/manual.pdf)\n'));
+      await put('check-att/docs/assets/manual.pdf', bytes(1));
+      await put('check-att/docs/assets/velho.pdf', bytes(1, 2, 3));
+      await put('check-att/docs/images/print.png', bytes(4, 5));
+      try {
+        await until(() => sites.list().some(s => s.mkdocs.path.endsWith('/check-att/mkdocs.yml')), Boolean, 'site não reconhecido', 20_000);
+        const result = (await repoCheck.check(true)).find(r => r.mkdocs.path.endsWith('/check-att/mkdocs.yml'));
+        const unused = result!.findings.filter(f => f.code === 'attachment-unused').map(f => f.target).sort();
+        equal(unused.join(), 'assets/velho.pdf,images/print.png', 'anexos sem uso');
+        let during: boolean[] = [];
+        const outcome = await repoCheck.checkShown(file('check-att/mkdocs.yml'), async (_kind, _message, ...items) => {
+          if (items.includes('Fix all automatically')) return 'Fix all automatically';
+          during = [await has('check-att/docs/assets/velho.pdf'), await has('check-att/docs/images/print.png'), await has('check-att/docs/assets/manual.pdf')];
+          return 'Undo';
+        });
+        equal(during.join(), 'false,false,true', 'apagou só os sem uso');
+        ok(outcome?.undone, `resultado: ${JSON.stringify(outcome)}`);
+        equal(Array.from(await vscode.workspace.fs.readFile(file('check-att/docs/assets/velho.pdf'))).join(), '1,2,3', 'Desfazer devolve os bytes');
+        ok(await has('check-att/docs/images/print.png'), 'print de volta');
+      } finally {
+        await remove('check-att');
+      }
+    });
+
     test('conferir: achados no painel Problemas; preparar: aplica as correções e sobra o que precisa de uma pessoa', async () => {
       const { repoCheck, sites, checkView } = await api();
       const write = (path: string, text: string) => vscode.workspace.fs.writeFile(file(path), new TextEncoder().encode(text));

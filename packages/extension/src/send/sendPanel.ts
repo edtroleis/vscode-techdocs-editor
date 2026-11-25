@@ -109,9 +109,10 @@ export type SendPanelDeps = {
   key: string;
 };
 
+// O anexo sem uso (apagar) fica na Verificação: o envio não é lugar de faxina
 const checksOf = (findings: SiteFinding[]): SendCheck[] =>
   findings
-    .filter(f => f.fix || f.severity === 'error')
+    .filter(f => (f.fix && !f.fix.delete) || f.severity === 'error')
     .map(f => ({ kind: f.fix ? 'fixable' : 'blocking', text: findingMessage(f), path: f.file, line: f.line }));
 
 export class SendPanel implements vscode.Disposable {
@@ -232,7 +233,7 @@ export class SendPanel implements vscode.Disposable {
         return undefined;
       }
       case 'fix':
-        await this.deps.conference.fixAll(this.findings.filter(f => f.fix));
+        await this.deps.conference.fixAll(this.findings.filter(f => f.fix && !f.fix.delete));
         await sender.refresh();
         return this.update();
       case 'showOutside': {

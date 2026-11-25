@@ -28,7 +28,8 @@ export type SiteFindingCode =
   | 'missing-image'
   | 'local-portal-link'
   | 'mermaid-config-missing'
-  | 'mermaid-too-big';
+  | 'mermaid-too-big'
+  | 'attachment-unused';
 
 /** `hint`: só uma dica (ex.: sem `catalog-info.yaml` no modo `auto`); não conta como item a revisar. */
 export type SiteFindingSeverity = 'error' | 'warning' | 'info' | 'hint';
@@ -37,7 +38,12 @@ export type SiteFindingSeverity = 'error' | 'warning' | 'info' | 'hint';
  * Correção de um achado: o arquivo (relativo à raiz do repositório) e o texto novo a partir do atual (undefined:
  * o arquivo não existe). Devolver o mesmo texto é "nada a fazer" (outra correção já resolveu).
  */
-export type SiteFix = { file: string; apply: (current: string | undefined) => string };
+export type SiteFix = {
+  file: string;
+  apply: (current: string | undefined) => string;
+  /** Apaga o arquivo (um anexo sem uso, que pode ser binário); `apply` não muda nada. */
+  delete?: true;
+};
 
 export type SiteFinding = {
   code: SiteFindingCode;
@@ -77,6 +83,8 @@ export type SiteSnapshot = {
    * fala do arquivo que falta; undefined conta como sinal.
    */
   backstageSignal?: boolean;
+  /** Diretórios das imagens e dos anexos, relativos ao `docs_dir` (spec 07); undefined: não confere anexo sem uso. */
+  attachmentDirs?: string[];
   /** Nome da pasta do repositório e o dono, para o `catalog-info.yaml` novo no modo `required`. */
   repository?: { name: string; owner?: string };
 };
@@ -169,6 +177,8 @@ function checkPages(site: SiteSnapshot, title: string, createIndex: SiteFix, add
       ...(canAdd && { fix: { file: site.mkdocsFile, apply: (yml: string | undefined) => addToNav(yml ?? '', node.path)?.yml ?? yml ?? '' } }),
     });
   }
+
+  checkUnusedAttachments(site, add);
 
   const files = new Set(site.files);
   for (const path of pages) {
@@ -446,4 +456,29 @@ export function catalogDocs(catalog: string): CatalogDoc[] {
     });
   }
   return out;
+}
+
+/**
+ * Anexo sem uso (spec 07, AX8): arquivo nos diretórios das imagens e dos anexos que nenhuma página cita nem o
+ * `mkdocs.yml` (logo, favicon, CSS extra). Na dúvida fica: o nome do arquivo escrito em qualquer página (num HTML, numa
+ * referência) já conta como uso.
+ */
+function checkUnusedAttachments(site: SiteSnapshot, add: (finding: SiteFinding) => void) {
+  const dirs = site.attachmentDirs?.map(dir => dir.split('/').filter(Boolean).join('/')).filter(Boolean);
+  if (!dirs?.length) return;
+  const used = new Set<string>();
+  for (const [page, text] of Object.entries(site.pages)) {
+    for (const ref of pageRefs(text)) {
+      const target = resolveRef(page, ref.target);
+      if (target) used.add(target);
+    }
+  }
+  const texts = [site.mkdocsYml, ...Object.values(site.pages)];
+  for (const path of site.files) {
+    if (/\.md$/i.test(path) || !dirs.some(dir => path.startsWith(`${dir}/`)) || used.has(path)) continue;
+    const name = path.split('/').pop()!;
+    if (texts.some(text => text.includes(name) || text.includes(encodeURI(name)))) continue;
+    const file = join(site.docsDir, path);
+    add({ code: 'attachment-unused', severity: 'warning', file, target: path, fix: { file, apply: text => text ?? '', delete: true } });
+  }
 }
