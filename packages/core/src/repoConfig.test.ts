@@ -1,4 +1,4 @@
-import { EMPTY_REPO_CONFIG, parseRepoConfig, setCatalogMode, setTemplatesRepository } from './repoConfig';
+import { EMPTY_REPO_CONFIG, parseRepoConfig, setAttachments, setCatalogMode, setTemplatesRepository } from './repoConfig';
 
 describe('.techdocs-editor.yaml', () => {
   it('lê o modo, o tempo para começar e as mensagens dos checks', () => {
@@ -84,5 +84,23 @@ describe('templates.repository no .techdocs-editor.yaml (spec 08, TR6)', () => {
     expect(setTemplatesRepository('catalog: [\n', 'acme/t')).toBe('catalog: [\ntemplates:\n  repository: acme/t\n');
     const broken = 'catalog: [\ntemplates:\n  repository: velho/t\n';
     expect(setTemplatesRepository(broken, 'acme/t')).toBe(broken);
+  });
+});
+
+describe('attachments no .techdocs-editor.yaml (spec 07, AX1)', () => {
+  it('lê cada campo; inválido é ignorado', () => {
+    const text = 'attachments:\n  images: imgs/\n  imagesMaxSizeMB: 8\n  imageTypes: [PNG, .jpg]\n  files: ""\n  filesMaxSizeMB: -1\n  fileTypes: pdf, exe, zip\n';
+    expect(parseRepoConfig(text).attachments).toEqual({ images: 'imgs', imagesMaxSizeMB: 8, imageTypes: ['png', 'jpg'], fileTypes: ['pdf', 'zip'] });
+    expect(parseRepoConfig('catalog: off\n').attachments).toBeUndefined();
+    expect(parseRepoConfig('attachments: [1]\n').attachments).toBeUndefined();
+  });
+
+  it('grava os campos dados (na ordem fixa: imagens, depois anexos), tira os undefined e o attachments vazio; o resto do arquivo fica', () => {
+    const text = '# do time\ncatalog: off\n';
+    const set = setAttachments(text, { files: 'anexos', fileTypes: ['pdf', 'zip'], imagesMaxSizeMB: 8 });
+    expect(set).toBe('# do time\ncatalog: off\nattachments:\n  imagesMaxSizeMB: 8\n  files: anexos\n  fileTypes: [ pdf, zip ]\n');
+    expect(parseRepoConfig(set).attachments).toEqual({ files: 'anexos', fileTypes: ['pdf', 'zip'], imagesMaxSizeMB: 8 });
+    expect(setAttachments(set, { files: undefined, fileTypes: undefined, imagesMaxSizeMB: undefined })).toBe(text);
+    expect(setAttachments(undefined, { images: 'imgs' })).toBe('attachments:\n  images: imgs\n');
   });
 });

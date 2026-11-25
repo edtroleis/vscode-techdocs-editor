@@ -66,6 +66,20 @@ Nas configurações do VS Code: `techdocsEditor.attachments.images`, `techdocsEd
 `techdocsEditor.attachments.files`, `techdocsEditor.attachments.filesMaxSizeMB` e
 `techdocsEditor.attachments.fileTypes`; o limite das imagens continua em `techdocsEditor.images.maxSizeMB`.
 
+## Revisão (2026-11-25, 0.22)
+
+- **Sem arrastar nem colar arquivos** (AX5 sai): anexar é só pelo **+ Inserir › Anexo…** e pelo menu `/` (acha por
+  "file", "anexo", "arquivo" e "attachment"), que abrem o seletor de arquivos do sistema. Um caminho só, igual no
+  desktop e no vscode.dev; o drop de arquivos em webviews varia entre versões e sistemas.
+- **Na janela Configurações do TechDocs** (0.21), parte **Imagens e anexos**, em vez de uma engrenagem própria com
+  listas no topo (AX7): diretório, tamanho máximo e tipos das imagens e dos anexos, com **Para o time / Só para mim**
+  e **Voltar ao padrão**.
+- **Tipos num campo de texto**, separados por vírgula: a pessoa acrescenta ou apaga o que quiser. O que é digitado é
+  limpo (`.PDF` → `pdf`; espaço ou `;` também separam; repetidos saem). Vazio volta ao padrão; `*` libera todas as
+  extensões. Executáveis, scripts e `md` continuam recusados mesmo com `*` ou escritos no campo: o resto grava e a
+  janela diz o que ficou de fora.
+- Sem a imagem colada sem nome (não há colar): a regra `imagem-AAAAMMDD-HHMM.png` fica só para o arquivo sem nome.
+
 ## Itens
 
 | Id | Parte | O que faz | Estado |
@@ -74,7 +88,7 @@ Nas configurações do VS Code: `techdocsEditor.attachments.images`, `techdocsEd
 | AX2 | Configuração | Valores resolvidos por campo: repositório, depois configurações do VS Code, depois o padrão; com a origem de cada um (para a engrenagem). Os cinco campos novos em `package.json` com descrição em inglês e pt-BR | ⬜ |
 | AX3 | Imagens | Imagens novas vão para o diretório de imagens com o nome original (decisões acima), reaproveitando a que tiver o mesmo conteúdo. Limite das imagens resolvido pela configuração (AX2) | ⬜ |
 | AX4 | Anexar | Botão "Anexar arquivo" na barra do editor visual (ao lado do de imagem) e "Anexo" no menu `/`: abre o seletor de arquivos do sistema; o arquivo passa por tipo e tamanho, é gravado (ou reaproveitado) no diretório dos anexos e o link entra no cursor. Recusa com a razão e o que fazer ("Arquivos .exe não são aceitos", "O arquivo tem 34 MB; o limite é 20 MB: mude na engrenagem da seção TechDocs") | ⬜ |
-| AX5 | Arrastar e colar | Soltar arquivos do computador ou do Explorer do VS Code na página, ou colar arquivos copiados (Ctrl+V): imagens viram imagens (AX3), o resto vira anexo (AX4), na ordem e no lugar onde caíram. Arquivo que já está no `docs_dir` (arrastado do Explorer) só ganha o link, sem cópia | ⬜ |
+| AX5 | ~~Arrastar e colar~~ (fora, ver Revisão) | Soltar arquivos do computador ou do Explorer do VS Code na página, ou colar arquivos copiados (Ctrl+V): imagens viram imagens (AX3), o resto vira anexo (AX4), na ordem e no lugar onde caíram. Arquivo que já está no `docs_dir` (arrastado do Explorer) só ganha o link, sem cópia | ⬜ |
 | AX6 | GitHub | No modo GitHub (página aberta do repositório, sem clone), anexos vão para a branch do rascunho como as imagens (spec 02, M6), com o mesmo nome e reaproveitamento; o link funciona no editor lendo da branch | ⬜ |
 | AX7 | Engrenagem | "Opções dos anexos" na barra de título da seção TechDocs: lista diretório, tamanho máximo e extensões das imagens, e diretório, tamanho máximo e extensões dos anexos, cada um com o valor e a origem (repositório, configurações, padrão); trocar um abre a pergunta certa (caixa de texto validada, ou a lista de extensões com marcação, já com as de fábrica marcadas, mais uma caixa para acrescentar outra; executáveis e `md` não aparecem e são recusados se digitados); "Voltar ao padrão" em cada um; no fim, "Para o time" (diff do `.techdocs-editor.yaml`, depois grava) ou "Só para mim" (configurações do usuário) | ⬜ |
 | AX8 | Conferir | Achado `attachment-unused` (aviso): arquivo nos diretórios de imagens e de anexos que nenhum `.md` do site nem o `mkdocs.yml` cita (protege logo, favicon e CSS extra). Ajuste automático apaga os arquivos, com Desfazer | ⬜ |

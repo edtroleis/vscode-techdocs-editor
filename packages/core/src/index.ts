@@ -10,6 +10,7 @@ export * from './pageDates';
 export * from './publish';
 export * from './remoteLink';
 export * from './repoConfig';
+export * from './attachments';
 export * from './setup';
 export * from './siteCheck';
 export * from './sitePlan';

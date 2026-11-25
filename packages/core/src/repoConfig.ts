@@ -1,4 +1,5 @@
 import { isMap, parse as parseYaml, parseDocument, type Scalar, type YAMLMap } from 'yaml';
+import { parseTypes } from './attachments';
 import type { GitHubClient } from './github';
 
 /**
@@ -39,7 +40,51 @@ export type RepoConfig = {
   catalog?: CatalogMode;
   /** O repositório de templates do time (spec 08, TR6): vence a configuração do usuário. */
   templates?: { repository: string };
+  /** Imagens e anexos (spec 07): cada campo vale sozinho sobre a configuração do usuário. */
+  attachments?: AttachmentsConfig;
 };
+
+/** Diretórios relativos ao `docs_dir`, limites em MB e as extensões aceitas. */
+export type AttachmentsConfig = {
+  images?: string;
+  imagesMaxSizeMB?: number;
+  imageTypes?: string[];
+  files?: string;
+  filesMaxSizeMB?: number;
+  fileTypes?: string[];
+};
+
+const ATTACHMENT_KEYS = ['images', 'imagesMaxSizeMB', 'imageTypes', 'files', 'filesMaxSizeMB', 'fileTypes'] as const;
+
+/** Diretório relativo, sem `/` nas pontas e sem subir (`..`); inválido: undefined. */
+export function cleanDir(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const parts = value.replace(/\\/g, '/').split('/').filter(Boolean);
+  return parts.length && !parts.some(p => p === '..' || p === '.') ? parts.join('/') : undefined;
+}
+
+/** Limite em MB: número maior que zero; inválido: undefined. */
+export const cleanMaxMB = (value: unknown) => (typeof value === 'number' && value > 0 && Number.isFinite(value) ? value : undefined);
+
+/** Extensões em lista YAML ou num texto separado por vírgula; recusadas e inválidas saem. */
+export function cleanTypes(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) return parseTypes(value.filter(v => typeof v === 'string').join(',')).types;
+  return typeof value === 'string' ? parseTypes(value).types : undefined;
+}
+
+function parseAttachments(value: unknown): AttachmentsConfig | undefined {
+  if (!isRecord(value)) return undefined;
+  const out: AttachmentsConfig = {
+    images: cleanDir(value.images),
+    imagesMaxSizeMB: cleanMaxMB(value.imagesMaxSizeMB),
+    imageTypes: cleanTypes(value.imageTypes),
+    files: cleanDir(value.files),
+    filesMaxSizeMB: cleanMaxMB(value.filesMaxSizeMB),
+    fileTypes: cleanTypes(value.fileTypes),
+  };
+  const set = Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined)) as AttachmentsConfig;
+  return Object.keys(set).length ? set : undefined;
+}
 
 export const EMPTY_REPO_CONFIG: RepoConfig = { verification: { checkHelp: {} } };
 
@@ -63,7 +108,9 @@ export function parseRepoConfig(text: string): RepoConfig {
   const { mode, startTimeoutSeconds, checkHelp } = verification;
   const catalog = isRecord(data) ? data.catalog : undefined;
   const repository = isRecord(data) && isRecord(data.templates) ? data.templates.repository : undefined;
+  const attachments = isRecord(data) ? parseAttachments(data.attachments) : undefined;
   return {
+    ...(attachments && { attachments }),
     ...(CATALOG_MODES.includes(catalog as CatalogMode) && { catalog: catalog as CatalogMode }),
     ...(typeof repository === 'string' && repository.trim() && { templates: { repository: repository.trim() } }),
     verification: {
@@ -121,6 +168,25 @@ export function setTemplatesRepository(text: string | undefined, repository: str
     const rest = doc.get('templates', true);
     if (rest == null || (isMap(rest) && !rest.items.length)) doc.delete('templates');
   }
+  const out = doc.toString({ lineWidth: 0 });
+  return out === '{}\n' ? '' : out;
+}
+
+/**
+ * O `.techdocs-editor.yaml` com os campos de `attachments` dados (undefined no valor: tira o campo; o `attachments:`
+ * vazio sai junto). O resto do arquivo, comentários incluídos, fica como estava.
+ */
+export function setAttachments(text: string | undefined, fields: Partial<AttachmentsConfig>): string {
+  const doc = parseDocument(text?.trim() ? text : '');
+  if (doc.errors.length || (text?.trim() && !isRecord(doc.toJS()))) return text ?? '';
+  for (const key of ATTACHMENT_KEYS) {
+    if (!(key in fields)) continue;
+    const value = fields[key];
+    if (value === undefined) doc.deleteIn(['attachments', key]);
+    else doc.setIn(['attachments', key], Array.isArray(value) ? doc.createNode(value, { flow: true }) : value);
+  }
+  const rest = doc.get('attachments', true);
+  if (rest != null && isMap(rest) && !rest.items.length) doc.delete('attachments');
   const out = doc.toString({ lineWidth: 0 });
   return out === '{}\n' ? '' : out;
 }
