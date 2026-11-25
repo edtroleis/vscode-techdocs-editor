@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-25
+
 ### Added
 
 - **Send:** the whole repository goes to GitHub in one step. **Send (N)** in the Documentation tree, at the top of
