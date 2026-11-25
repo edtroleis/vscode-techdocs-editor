@@ -118,6 +118,8 @@ test('diagramas mermaid: desenhar o fluxo do pedido', async ({ vscode: { page },
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
     await click(page, topBar(editor, 'mermaid'));
+    // O botão abre a galeria de diagramas (desde a 0.15.0): escolhe o fluxograma
+    await click(page, editor.locator('[data-key="flow"]'));
     await expect(diagrams(editor)).toHaveCount(2);
     await save(page);
     await page.waitForTimeout(1_000);
