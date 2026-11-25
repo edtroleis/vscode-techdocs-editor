@@ -228,6 +228,10 @@
   border-top: 1px solid var(--crepe-color-outline);
   padding-top: 8px;
 }
+.td-top-menu {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .td-top-menu button small {
   opacity: 0.7;
   margin-left: 2px;

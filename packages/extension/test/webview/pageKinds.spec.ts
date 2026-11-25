@@ -44,3 +44,17 @@ test('sem tipos de página, o botão TechDocs mostra só os componentes', async 
   await expect(menu.getByRole('menuitem').first()).toBeVisible();
   await expect(menu.getByText('Kinds of page')).toHaveCount(0);
 });
+
+test('janela baixa: o menu do botão TechDocs cabe na tela e rola até o último item', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 400 });
+  await openWebview(page, '# Configuração\n', 'en', undefined, { pageKinds: PAGE_KINDS });
+  await page.locator('.top-bar-item[title="TechDocs"]').click();
+  const menu = page.getByRole('menu', { name: 'TechDocs' });
+  await expect(menu).toBeVisible();
+  const box = (await menu.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(400);
+  // O último item: rola até ele e ele fica visível dentro do menu
+  const last = menu.getByRole('menuitem').last();
+  await last.scrollIntoViewIfNeeded();
+  await expect(last).toBeInViewport();
+});

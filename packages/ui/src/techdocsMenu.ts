@@ -138,6 +138,8 @@ export function openTechdocsMenu(ctx: Ctx) {
   const { width } = menu.getBoundingClientRect();
   menu.style.left = `${Math.max(8, Math.min(box.left, window.innerWidth - width - 8))}px`;
   menu.style.top = `${box.bottom + 4}px`;
+  // Muitos itens (os tipos de página da empresa): o menu vai até o fim da janela e rola por dentro
+  menu.style.maxHeight = `${Math.max(120, window.innerHeight - box.bottom - 12)}px`;
   document.addEventListener('pointerdown', outside, true);
   document.addEventListener('keydown', key, true);
   closeOpen = close;
