@@ -153,9 +153,15 @@ test('organizar o menu de um manual com links entre páginas', async ({ vscode: 
 
   await story.step('Ctrl+Z na árvore desfaz a última mudança do menu', async () => {
     const before = read('mkdocs.yml');
-    // O desfazer da árvore é o Ctrl+Z com o foco nela (fica fora da paleta)
-    await click(page, treeRow(page, 'Início'));
-    await page.locator('.part.sidebar .monaco-list').first().focus();
+    // O desfazer da árvore é o Ctrl+Z com o foco nela (fica fora da paleta). O clique abre a página no editor visual,
+    // que pega o foco quando termina de abrir: espera abrir e confere que o foco voltou à árvore antes do Ctrl+Z
+    await openFromTree(page, 'Início', 'Manual da Loja');
+    const tree = page.locator('.part.sidebar .monaco-list').first();
+    await expect(async () => {
+      await tree.focus();
+      await page.waitForTimeout(300);
+      expect(await tree.evaluate(list => list.contains(document.activeElement)), 'foco na árvore').toBe(true);
+    }).toPass({ timeout: 10_000 });
     await page.keyboard.press('Control+Z');
     await story.check('o menu volta ao que era antes da última mudança', () => expect.poll(() => read('mkdocs.yml')).not.toBe(before));
     await pause(page);
