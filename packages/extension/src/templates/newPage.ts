@@ -169,7 +169,6 @@ export class NewPageCommand {
     if (!choices.length) return undefined;
     return {
       group: vscode.l10n.t('Kinds of page'),
-      components: vscode.l10n.t('TechDocs components'),
       kinds: choices.map(c => ({ id: c.template.id, label: c.template.name, description: c.template.description })),
     };
   }

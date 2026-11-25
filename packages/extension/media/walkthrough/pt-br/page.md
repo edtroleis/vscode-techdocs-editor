@@ -1,6 +1,6 @@
 # Tipos de página
 
-**Nova página** cria uma página em branco. Digite / nela, ou use o botão TechDocs da barra, para trazer as seções de um tipo de página:
+**Nova página** cria uma página em branco. Digite / nela, ou use o botão Tipos de página da barra (o ícone de página), para trazer as seções de um tipo de página:
 
 | Para… | Templates |
 |-------|-----------|

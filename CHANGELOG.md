@@ -8,6 +8,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ### Changed
 
+- **Kinds of page have their own button** in the toolbar of the visual editor (the page icon, next to **TechDocs**);
+  the **TechDocs** button keeps only the components.
 - **Rename, Duplicate and New Section without the box at the top:** the page opens with its title selected; type
   over it and save. Renaming a page or a section changes the menu (the file and the directory stay, so links do
   not break). The copy and the new section are created right after the selected item, as **New section** and

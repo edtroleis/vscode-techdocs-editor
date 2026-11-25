@@ -1,6 +1,6 @@
 # Kinds of page
 
-**New page** creates a blank page. Type / in it, or use the TechDocs button of the toolbar, to bring the sections of a kind of page:
+**New page** creates a blank page. Type / in it, or use the Kinds of page button of the toolbar (the page icon), to bring the sections of a kind of page:
 
 | To… | Templates |
 |-----|-----------|

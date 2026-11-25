@@ -7,7 +7,8 @@ import { icon } from './icons';
 import { ICON_PAGE_KIND, pageKindsCtx } from './pageKinds';
 
 /**
- * O grupo TechDocs (spec 01, M1): os mesmos itens no menu "/" e no botão TechDocs da barra de cima. Cada `run`
+ * O grupo TechDocs (spec 01, M1): os mesmos itens no menu "/" e no botão TechDocs da barra de cima (os tipos de
+ * página têm o botão deles). Cada `run`
  * espera o cursor num parágrafo vazio (no "/", o "/" já saiu); pela barra, `openTechdocsMenu` cria esse parágrafo.
  */
 
@@ -55,18 +56,18 @@ function emptyParagraphAtCursor(ctx: Ctx) {
 
 let closeOpen: (() => void) | undefined;
 
-/** O botão TechDocs da barra de cima: o menu com o grupo, embaixo do botão. */
-export function openTechdocsMenu(ctx: Ctx) {
+type MenuEntry = { icon: string; label: string; detail?: string; run: () => void };
+
+/** Um menu embaixo do botão da barra de cima de nome `label`, com `entries`. */
+function openBarMenu(ctx: Ctx, label: string, entries: (close: () => void) => MenuEntry[]) {
   closeOpen?.();
   const view = ctx.get(editorViewCtx);
-  const text = ctx.get(componentsCtx);
   const host = view.dom.closest<HTMLElement>('.milkdown') ?? document.body;
-  const anchor = host.querySelector<HTMLElement>(`.top-bar-item[title="${text.group}"]`) ?? host;
-  const { from, to } = view.state.selection;
+  const anchor = host.querySelector<HTMLElement>(`.top-bar-item[title="${label}"]`) ?? host;
   const menu = document.createElement('div');
   menu.className = 'mermaid-bar-menu td-top-menu';
   menu.setAttribute('role', 'menu');
-  menu.setAttribute('aria-label', text.group);
+  menu.setAttribute('aria-label', label);
   menu.addEventListener('pointerdown', event => event.preventDefault());
   const items = document.createElement('div');
   items.className = 'mermaid-bar-menu-items';
@@ -86,50 +87,22 @@ export function openTechdocsMenu(ctx: Ctx) {
       view.focus();
     }
   };
-  const heading = (label: string) => {
-    const title = document.createElement('div');
-    title.className = 'td-menu-heading';
-    title.textContent = label;
-    items.append(title);
-  };
-  // Os tipos de página primeiro (Runbook, Tutorial…): o texto vem da extensão e entra num parágrafo novo
-  const pageKinds = ctx.get(pageKindsCtx);
-  if (pageKinds.kinds.length) {
-    heading(pageKinds.group);
-    for (const kind of pageKinds.kinds) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.setAttribute('role', 'menuitem');
-      button.innerHTML = ICON_PAGE_KIND;
-      const name = document.createElement('span');
-      name.textContent = kind.label;
-      const detail = document.createElement('small');
-      detail.textContent = kind.description;
-      button.append(name, detail);
-      button.addEventListener('click', () => {
-        close();
-        emptyParagraphAtCursor(ctx);
-        pageKinds.pick(kind.id);
-      });
-      items.append(button);
-    }
-    heading(pageKinds.components);
-  }
-  for (const item of techdocsItems(text)) {
+  for (const entry of entries(close)) {
     const button = document.createElement('button');
     button.type = 'button';
     button.setAttribute('role', 'menuitem');
-    button.innerHTML = item.icon;
-    button.append(item.label);
+    button.innerHTML = entry.icon;
+    const name = document.createElement('span');
+    name.textContent = entry.label;
+    button.append(name);
+    if (entry.detail) {
+      const detail = document.createElement('small');
+      detail.textContent = entry.detail;
+      button.append(detail);
+    }
     button.addEventListener('click', () => {
       close();
-      // O link para outra doc vale no texto selecionado; os outros entram num parágrafo novo
-      if (item.id === 'doc-link' && from !== to) {
-        view.focus();
-        return insertDocLink(ctx);
-      }
-      emptyParagraphAtCursor(ctx);
-      item.run(ctx);
+      entry.run();
     });
     items.append(button);
   }
@@ -144,4 +117,42 @@ export function openTechdocsMenu(ctx: Ctx) {
   document.addEventListener('keydown', key, true);
   closeOpen = close;
   menu.querySelector<HTMLButtonElement>('button')?.focus();
+}
+
+/** O botão TechDocs da barra de cima: os componentes, embaixo do botão. */
+export function openTechdocsMenu(ctx: Ctx) {
+  const text = ctx.get(componentsCtx);
+  const view = ctx.get(editorViewCtx);
+  const { from, to } = view.state.selection;
+  openBarMenu(ctx, text.group, () =>
+    techdocsItems(text).map(item => ({
+      icon: item.icon,
+      label: item.label,
+      run: () => {
+        // O link para outra doc vale no texto selecionado; os outros entram num parágrafo novo
+        if (item.id === 'doc-link' && from !== to) {
+          view.focus();
+          return insertDocLink(ctx);
+        }
+        emptyParagraphAtCursor(ctx);
+        item.run(ctx);
+      },
+    })),
+  );
+}
+
+/** O botão dos tipos de página (Runbook, Tutorial…): o texto vem da extensão e entra num parágrafo novo. */
+export function openPageKindsMenu(ctx: Ctx) {
+  const pageKinds = ctx.get(pageKindsCtx);
+  openBarMenu(ctx, pageKinds.group, () =>
+    pageKinds.kinds.map(kind => ({
+      icon: ICON_PAGE_KIND,
+      label: kind.label,
+      detail: kind.description,
+      run: () => {
+        emptyParagraphAtCursor(ctx);
+        pageKinds.pick(kind.id);
+      },
+    })),
+  );
 }

@@ -56,13 +56,13 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     await pause(page, 1_500);
   });
 
-  await story.step('Tipo de página pelo botão TechDocs da barra: as seções do runbook entram', async () => {
+  await story.step('Tipo de página pelo botão Kinds of page da barra: as seções do runbook entram', async () => {
     const editor = await editorOf(page);
     await editor.locator('.ProseMirror h1').click();
     await page.keyboard.press('End');
-    await click(page, editor.locator('.top-bar-item[title="TechDocs"]'));
-    const menu = editor.getByRole('menu', { name: 'TechDocs' });
-    await story.check('os tipos de página vêm primeiro no botão TechDocs', () => expect(menu.getByText('Kinds of page')).toBeVisible());
+    // Os tipos de página têm o botão deles na barra (o TechDocs fica só com os componentes)
+    await click(page, editor.locator('.top-bar-item[title="Kinds of page"]'));
+    const menu = editor.getByRole('menu', { name: 'Kinds of page' });
     await click(page, menu.getByRole('menuitem', { name: /^Runbook/ }));
     await expect(editor.locator('.ProseMirror h2').first()).toBeVisible({ timeout: 15_000 });
     await pause(page, 1_500);

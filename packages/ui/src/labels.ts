@@ -362,7 +362,7 @@ export const selectionToolbar = (text: EditorText): ToolbarFeatureConfig => ({
  * aceita nome nesses botões: sem isto eram só ícones, sem dica ao passar o mouse nem nome para
  * leitor de tela.
  */
-const topBarLabels = (text: EditorText) => [
+const topBarLabels = (text: EditorText, pageKinds?: PageKinds) => [
   text.topBar.bold,
   text.topBar.italic,
   text.strikethrough,
@@ -375,6 +375,7 @@ const topBarLabels = (text: EditorText) => [
   text.topBar.table,
   text.codeBlock,
   text.diagram.label,
+  ...(pageKinds?.kinds.length ? [pageKinds.group] : []),
   text.components.group,
   text.quote,
   text.topBar.divider,
@@ -383,8 +384,8 @@ const topBarLabels = (text: EditorText) => [
 ];
 
 /** Põe nome (title e aria-label) nos botões da barra fixa dentro de `root`. */
-export function labelTopBar(root: HTMLElement, text: EditorText) {
-  const labels = topBarLabels(text);
+export function labelTopBar(root: HTMLElement, text: EditorText, pageKinds?: PageKinds) {
+  const labels = topBarLabels(text, pageKinds);
   root.querySelectorAll<HTMLElement>('.top-bar-item').forEach((button, i) => {
     const label = labels[i];
     if (label && button.title !== label) {

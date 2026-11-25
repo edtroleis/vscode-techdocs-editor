@@ -207,7 +207,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           previewLabel: labels.code.preview,
           copyText: labels.code.copy,
         },
-        [Crepe.Feature.TopBar]: { buildTopBar, headingOptions: headingOptions(labels) },
+        [Crepe.Feature.TopBar]: { buildTopBar: builder => buildTopBar(builder, pageKinds), headingOptions: headingOptions(labels) },
         // Textos no idioma da pessoa (labels.ts)
         [Crepe.Feature.BlockEdit]: slashMenu(labels, pageKinds),
         [Crepe.Feature.Toolbar]: selectionToolbar(labels),
@@ -273,7 +273,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
     updateMarks.current = () => {
       if (!ready) return;
       // A barra é redesenhada pelo Crepe; os nomes dos botões são postos de novo a cada mudança
-      if (root.current) labelTopBar(root.current, textRef.current);
+      if (root.current) labelTopBar(root.current, textRef.current, pageKinds);
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const view = crepe.editor.ctx.get(editorViewCtx);

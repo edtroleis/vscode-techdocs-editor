@@ -19,7 +19,7 @@ export type WebviewLabels = {
 export type LinkPageView = { title: string; href: string; detail: string; section?: string; outside?: boolean; doc?: boolean };
 
 /** Tipos de página (Runbook, Tutorial…) do site da página, para o botão TechDocs e o "/" do editor visual. */
-export type PageKindsView = { group: string; components: string; kinds: { id: string; label: string; description: string }[] };
+export type PageKindsView = { group: string; kinds: { id: string; label: string; description: string }[] };
 
 export type HostMessage =
   /** Conteúdo do arquivo ao abrir (formato do repositório, com `\n`). */

@@ -193,7 +193,7 @@ page goes into the menu, in the section you clicked.
 **TechDocs: New Page** (the **+** of the **Documentation** tree, right-click on a page or section, or the command
 palette) creates a blank page right after the selected one, in the site menu, and opens it with the title selected:
 type over it, and the first time you save the file takes the title's name (`Configuração` → `configuracao.md`);
-after that the file stays, so links do not break. To start from a kind of page, type **/** in the page or use the **TechDocs** button of the
+after that the file stays, so links do not break. To start from a kind of page, type **/** in the page or use the **Kinds of page** button of the
 toolbar: the sections that kind of page needs come in where the cursor is, filled with the date and the owner from
 `catalog-info.yaml`.
 

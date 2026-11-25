@@ -1,13 +1,13 @@
 import { createSlice } from '@milkdown/kit/ctx';
 
 /**
- * Tipos de página (Runbook, Tutorial…) no editor visual: o grupo no botão TechDocs da barra e no menu "/". A lista e
+ * Tipos de página (Runbook, Tutorial…) no editor visual: o botão deles na barra e o grupo no menu "/". A lista e
  * o texto de cada tipo vêm da extensão (os templates de página do site); `pick` pede o texto, que entra no cursor.
  */
 export type PageKind = { id: string; label: string; description: string };
-export type PageKinds = { group: string; components: string; kinds: PageKind[]; pick(id: string): void };
+export type PageKinds = { group: string; kinds: PageKind[]; pick(id: string): void };
 
-export const pageKindsCtx = createSlice<PageKinds>({ group: '', components: '', kinds: [], pick: () => undefined }, 'docsEditorPageKinds');
+export const pageKindsCtx = createSlice<PageKinds>({ group: '', kinds: [], pick: () => undefined }, 'docsEditorPageKinds');
 
 const svg = (inner: string) =>
   `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">${inner}</svg>`;

@@ -11,7 +11,8 @@ import { externalHistoryCtx } from './externalHistory';
 import { DIAGRAM_ICON, icon } from './icons';
 import { openDiagramGallery } from './diagramGallery';
 import { inlineCodeTyping, toggleInlineCodeTyping } from './inlineCodeTyping';
-import { openTechdocsMenu, TECHDOCS_ICON } from './techdocsMenu';
+import { ICON_PAGE_KIND, type PageKinds } from './pageKinds';
+import { openPageKindsMenu, openTechdocsMenu, TECHDOCS_ICON } from './techdocsMenu';
 
 
 const UNDO_ICON = icon(
@@ -85,7 +86,7 @@ type TopBarItem = TopBarBuilder extends { getGroup: (key: string) => { group: { 
  * Também Desfazer/Refazer (antes só por Ctrl+Z / Ctrl+Y) e código no texto sem seleção valendo
  * para tudo o que for digitado (ver inlineCodeTyping.ts).
  */
-export function buildTopBar(builder: TopBarBuilder) {
+export function buildTopBar(builder: TopBarBuilder, pageKinds?: PageKinds) {
   const formatting = builder.getGroup('formatting');
   const inlineCode = (formatting.group.items as Array<TopBarItem & { key: string }>).find(i => i.key === 'code');
   if (inlineCode) {
@@ -150,6 +151,8 @@ export function buildTopBar(builder: TopBarBuilder) {
   // Diagrama Mermaid (spec 06, M4), ao lado do bloco de código
   block.addItem('mermaid', { icon: DIAGRAM_ICON, active: () => false, onRun: openDiagramGallery });
   // Componentes do TechDocs (spec 01, M1): o mesmo grupo do menu "/"
+  // Tipos de página (Runbook, Tutorial…), quando o site tem: um botão só deles, antes dos componentes
+  if (pageKinds?.kinds.length) block.addItem('page-kinds', { icon: ICON_PAGE_KIND, active: () => false, onRun: openPageKindsMenu });
   block.addItem('techdocs', { icon: TECHDOCS_ICON, active: () => false, onRun: openTechdocsMenu });
 
   const more = builder.getGroup('more');

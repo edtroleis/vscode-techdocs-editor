@@ -197,7 +197,7 @@ no menu, na seção clicada.
 **TechDocs: Nova página** (o **+** da árvore **Documentação**, o clique direito numa página ou seção, ou a paleta de
 comandos) cria uma página em branco logo depois da selecionada, no menu do site, e abre com o título selecionado:
 digite por cima e, no primeiro salvamento, o arquivo ganha o nome do título (`Configuração` → `configuracao.md`);
-depois o arquivo fica, para os links não quebrarem. Para começar de um tipo de página, digite **/** na página ou use o botão **TechDocs** da barra: as
+depois o arquivo fica, para os links não quebrarem. Para começar de um tipo de página, digite **/** na página ou use o botão **Tipos de página** da barra: as
 seções que aquele tipo de página precisa entram onde está o cursor, com a data e o dono do `catalog-info.yaml`.
 
 | Para… | Templates |
