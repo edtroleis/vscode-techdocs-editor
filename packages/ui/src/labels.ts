@@ -9,6 +9,7 @@ import type { MermaidCompleteText } from './mermaidComplete';
 import { insertDiagram } from './insertDiagram';
 import { type ComponentsText, MENU_KINDS } from './techdocsComponents';
 import { techdocsItems } from './techdocsMenu';
+import { ICON_PAGE_KIND, pageKindsCtx, type PageKinds } from './pageKinds';
 import type { BlockEditFeatureConfig } from '@milkdown/crepe/feature/block-edit';
 import type { ToolbarFeatureConfig } from '@milkdown/crepe/feature/toolbar';
 
@@ -277,7 +278,7 @@ export const headingOptions = (text: EditorText) => [
 ];
 
 /** Menu "/" (o filtro do menu usa estes nomes: "/tab" acha "Tabela"). */
-export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
+export const slashMenu = (text: EditorText, pageKinds?: PageKinds): BlockEditFeatureConfig => ({
   textGroup: {
     label: text.text,
     text: { label: text.text },
@@ -305,6 +306,20 @@ export const slashMenu = (text: EditorText): BlockEditFeatureConfig => ({
   // Os modelos de diagrama Mermaid (spec 06, M4, M11 e M21), um grupo do menu para cada tipo de assunto. O menu do
   // Crepe só filtra pelo nome: "Diagrama: …" faz "/diagrama" achar todos
   buildMenu: builder => {
+    // Os tipos de página (Runbook, Tutorial…): o texto vem da extensão e entra no cursor
+    if (pageKinds?.kinds.length) {
+      const kinds = builder.addGroup('page-kinds', pageKinds.group);
+      for (const kind of pageKinds.kinds) {
+        kinds.addItem(`page-kind-${kind.id}`, {
+          label: kind.label,
+          icon: ICON_PAGE_KIND,
+          onRun: ctx => {
+            ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
+            ctx.get(pageKindsCtx).pick(kind.id);
+          },
+        });
+      }
+    }
     // Os componentes do TechDocs (spec 01, M1): "/techdocs", "/aviso", "/abas" (o mesmo grupo do botão da barra)
     const techdocs = builder.addGroup('techdocs', text.components.group);
     for (const item of techdocsItems(text.components)) {

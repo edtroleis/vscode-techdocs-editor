@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
 import { DEFAULT_MAX_IMAGE_MB, downloadImage, imageProblem, imageTarget } from './imageUpload';
-import type { HostMessage, LinkPageView, WebviewLabels, WebviewMessage } from './protocol';
+import type { HostMessage, LinkPageView, PageKindsView, WebviewLabels, WebviewMessage } from './protocol';
 import type { Strip, StripAction } from './publish/strip';
 import { hasConflictMarkers } from './docsSite';
 import { rebase } from './rebase';
@@ -45,6 +45,9 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   /** Páginas do site de uma página, para a caixa de link (a árvore da Documentação, que já as conhece). */
   linkPages: (uri: vscode.Uri) => Promise<LinkPageView[]> = async () => [];
+  /** Tipos de página do site da página (o botão TechDocs e o "/"), e o texto de um deles para entrar na página. */
+  pageKinds: (uri: vscode.Uri) => Promise<PageKindsView | undefined> = async () => undefined;
+  pageKindText: (uri: vscode.Uri, id: string, title: string) => Promise<{ markdown: string; select?: string } | undefined> = async () => undefined;
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
@@ -52,6 +55,8 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
       strip: () => this.strips.get(key),
       action: action => this.onStripActionEmitter.fire({ uri: document.uri, action }),
       linkPages: () => this.linkPages(document.uri),
+      pageKinds: () => this.pageKinds(document.uri),
+      pageKindText: (id, title) => this.pageKindText(document.uri, id, title),
       diagramInserted: () => void configureMermaid(document.uri, this.sites, this.diagramAsk),
     }, this.diagrams);
     this.sessions.set(key, session);
@@ -111,6 +116,8 @@ export class EditorSession {
       strip(): Strip | undefined;
       action(action: StripAction): void;
       linkPages?(): Promise<LinkPageView[]>;
+      pageKinds?(): Promise<PageKindsView | undefined>;
+      pageKindText?(id: string, title: string): Promise<{ markdown: string; select?: string } | undefined>;
       /** Diagrama Mermaid inserido no editor visual (spec 06, M7). */
       diagramInserted?(): void;
     },
@@ -142,7 +149,7 @@ export class EditorSession {
         if (conflicted !== this.conflicted) {
           // Conflito apareceu (git merge com a página aberta) ou foi resolvido: troca o editor pelo aviso
           // ou o aviso pelo editor, com o texto de agora
-          this.sendContent();
+          void this.sendContent();
           return;
         }
         if (conflicted) return;
@@ -230,8 +237,13 @@ export class EditorSession {
   private receive(message: WebviewMessage) {
     switch (message.type) {
       case 'loaded':
-        this.sendContent();
+        void this.sendContent();
         return;
+      case 'pageKind': {
+        const title = /^#\s+(.+)$/m.exec(this.document.getText())?.[1]?.trim() ?? '';
+        void this.status?.pageKindText?.(message.id, title).then(text => text && this.post({ type: 'pageKind', ...text }));
+        return;
+      }
       case 'openText':
         // Troca este editor pelo texto, no mesmo lugar
         void vscode.commands
@@ -358,7 +370,9 @@ export class EditorSession {
   }
 
   /** Conteúdo do documento para o webview: o editor, ou o aviso se o arquivo tem marcadores de conflito. */
-  private sendContent() {
+  private async sendContent() {
+    // Os tipos de página antes do texto: o texto é lido depois, já o de agora
+    const pageKinds = await this.status?.pageKinds?.().catch(() => undefined);
     const text = toLf(this.document.getText());
     this.conflicted = hasConflictMarkers(text);
     if (this.conflicted) {
@@ -377,6 +391,7 @@ export class EditorSession {
       language: vscode.env.language,
       baseUri: this.panel.webview.asWebviewUri(this.pageDir).toString(),
       labels: webviewLabels(),
+      pageKinds,
     });
   }
 

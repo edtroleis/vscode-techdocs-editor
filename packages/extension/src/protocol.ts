@@ -18,9 +18,14 @@ export type WebviewLabels = {
 /** Página do site para a caixa de link do editor visual (ver ui/src/linkPages.ts). */
 export type LinkPageView = { title: string; href: string; detail: string; section?: string; outside?: boolean; doc?: boolean };
 
+/** Tipos de página (Runbook, Tutorial…) do site da página, para o botão TechDocs e o "/" do editor visual. */
+export type PageKindsView = { group: string; components: string; kinds: { id: string; label: string; description: string }[] };
+
 export type HostMessage =
   /** Conteúdo do arquivo ao abrir (formato do repositório, com `\n`). */
-  | { type: 'init'; text: string; language: string; baseUri: string; labels: WebviewLabels; readOnly?: boolean }
+  | { type: 'init'; text: string; language: string; baseUri: string; labels: WebviewLabels; readOnly?: boolean; pageKinds?: PageKindsView }
+  /** Resposta a `pageKind`: o texto do tipo de página (sem o título) e o primeiro trecho a preencher. */
+  | { type: 'pageKind'; markdown: string; select?: string }
   /** O documento mudou fora do editor visual (editor de texto, desfazer do VS Code, git). */
   | { type: 'update'; text: string }
   /**
@@ -54,6 +59,8 @@ export type HostMessage =
 export type WebviewMessage =
   /** O script do webview está ouvindo: só agora o host manda o `init` (antes, a mensagem se perdia). */
   | { type: 'loaded' }
+  /** Tipo de página escolhido no botão TechDocs ou no "/": o host responde com `pageKind` (o texto). */
+  | { type: 'pageKind'; id: string }
   /** Editor (ou o aviso de conflito) na tela. */
   | { type: 'ready' }
   /** "Abrir como texto" no aviso de conflito. */

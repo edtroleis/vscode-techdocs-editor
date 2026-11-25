@@ -162,8 +162,20 @@ export class ExplorerSync implements vscode.Disposable {
    * Volta o que o Explorer moveu: primeiro o menu e os links (edição de texto, sem pergunta), depois os arquivos sem
    * nada junto. Mover com edições junto faz o VS Code pedir confirmação de novo ("wants to make refactoring changes").
    */
+  /**
+   * Renomeia pela extensão (a página nova que ganha o nome do título): o menu e os links acertados antes, sem aviso
+   * e sem a pergunta do VS Code sobre mudanças junto com o renomear.
+   */
+  renameQuietly(oldUri: vscode.Uri, newUri: vscode.Uri) {
+    return this.moveQuietly([{ oldUri, newUri }]);
+  }
+
   private async undo(renames: readonly { oldUri: vscode.Uri; newUri: vscode.Uri }[]) {
     const back = [...renames].reverse().map(({ oldUri, newUri }) => ({ oldUri: newUri, newUri: oldUri }));
+    return this.moveQuietly(back);
+  }
+
+  private async moveQuietly(back: readonly { oldUri: vscode.Uri; newUri: vscode.Uri }[]) {
     this.quiet = true;
     try {
       const texts = await this.renameEdit(back);

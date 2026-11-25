@@ -9,6 +9,7 @@ import { mermaidBlockClassPlugin } from './mermaidBlockClass';
 import { componentsCtx, techdocsComponents } from './techdocsComponents';
 import { techdocsInlinePlugin } from './techdocsInline';
 import { diagramInsertCtx } from './insertDiagram';
+import { pageKindsCtx, type PageKinds } from './pageKinds';
 import { type KeyboardEvent as ReactKeyboardEvent, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crepe } from '@milkdown/crepe';
 import { editorViewCtx, parserCtx, remarkCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core';
@@ -110,6 +111,8 @@ type Props = {
   linkPages?: () => Promise<LinkPage[]>;
   /** Diagrama Mermaid inserido pelo menu "/" ou pela barra (spec 06, M7). */
   onDiagramInserted?: () => void;
+  /** Tipos de página (Runbook, Tutorial…) no botão TechDocs e no "/"; sem isto, só os componentes. */
+  pageKinds?: PageKinds;
 };
 
 /**
@@ -134,6 +137,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       readOnly = false,
       linkPages,
       onDiagramInserted,
+      pageKinds,
     },
     ref,
   ) => {
@@ -205,7 +209,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         },
         [Crepe.Feature.TopBar]: { buildTopBar, headingOptions: headingOptions(labels) },
         // Textos no idioma da pessoa (labels.ts)
-        [Crepe.Feature.BlockEdit]: slashMenu(labels),
+        [Crepe.Feature.BlockEdit]: slashMenu(labels, pageKinds),
         [Crepe.Feature.Toolbar]: selectionToolbar(labels),
         [Crepe.Feature.LinkTooltip]: { inputPlaceholder: labels.linkPlaceholder },
         // Sem isto o editor grava "blob:..." (endereço temporário do navegador) e a imagem quebra
@@ -238,6 +242,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         });
         ctx.inject(diagramBarCtx, { bar: labels.diagram.bar, words: labels.diagram.words, hint: labels.diagram.flowHint });
         ctx.inject(componentsCtx, labels.components);
+        if (pageKinds) ctx.inject(pageKindsCtx, pageKinds);
+        else ctx.inject(pageKindsCtx);
       })
       .use(techdocsComponents)
       .use(techdocsInlinePlugin)

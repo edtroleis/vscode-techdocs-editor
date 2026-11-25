@@ -17,6 +17,7 @@ import {
 import type { DocsSite } from '../docsSite';
 import { DocsItem } from '../docsTreeView';
 import type { LocalSites } from '../localSites';
+import type { PageKindsView } from '../protocol';
 import { VisualEditorProvider } from '../visualEditorProvider';
 import { centralPageChoices, type CentralTemplates } from './centralTemplates';
 import { hasExample, openTemplateExample } from './templateExamples';
@@ -160,9 +161,44 @@ export class NewPageCommand {
     return uri;
   }
 
+  /** Os tipos de página do site da página `uri` (spec: o botão TechDocs e o "/" do editor visual). */
+  async kinds(uri: vscode.Uri): Promise<PageKindsView | undefined> {
+    const destination = await this.localDestination(uri, true);
+    if (!destination) return undefined;
+    const choices = (await this.templates(destination)).filter(c => isTemplateSupported(c.template));
+    if (!choices.length) return undefined;
+    return {
+      group: vscode.l10n.t('Kinds of page'),
+      components: vscode.l10n.t('TechDocs components'),
+      kinds: choices.map(c => ({ id: c.template.id, label: c.template.name, description: c.template.description })),
+    };
+  }
+
+  /**
+   * O texto de um tipo de página para entrar na página aberta: sem o front matter e sem o título (a página já tem
+   * o dela), com os campos preenchidos sem perguntar (o dono do catalog-info.yaml ou o nome do Git; os outros com o
+   * exemplo do template). `select`: o primeiro trecho a preencher (TP7).
+   */
+  async kindText(uri: vscode.Uri, id: string, title: string): Promise<{ markdown: string; select?: string } | undefined> {
+    const destination = await this.localDestination(uri, true);
+    if (!destination) return undefined;
+    const choice = (await this.templates(destination)).find(c => c.template.id === id);
+    if (!choice) return undefined;
+    const { template } = choice;
+    const used = usedFields(template.body);
+    const values: Record<string, string> = { title, date: today() };
+    if (used.includes('site_name')) values.site_name = (await destination.siteName()) ?? '';
+    if (used.includes('owner')) values.owner = (await destination.owner()) ?? (await destination.defaultOwner());
+    for (const field of template.fields) if (values[field.name] === undefined) values[field.name] = field.default ?? '';
+    const content = fillTemplate(template.body, values)
+      .replace(/^---\n[\s\S]*?\n---\n+/, '')
+      .replace(/^#\s+.*\n+/, '');
+    return { markdown: content, select: firstToFill(content) };
+  }
+
   /** Site do workspace e pasta (relativa ao `docs_dir`) de onde a página vai: o item clicado, a página ativa ou a escolha. */
-  private async localDestination(target?: vscode.Uri | DocsItem): Promise<Destination | undefined> {
-    const where = await this.resolveTarget(target);
+  private async localDestination(target?: vscode.Uri | DocsItem, quiet = false): Promise<Destination | undefined> {
+    const where = await this.resolveTarget(target, quiet);
     if (!where) return undefined;
     const { site } = where;
     const docsDir = site.mkdocs.with({ path: site.site.docsDir });
@@ -197,11 +233,12 @@ export class NewPageCommand {
     };
   }
 
-  private async resolveTarget(target?: vscode.Uri | DocsItem): Promise<{ site: Site; folder: string; section?: string[] } | undefined> {
+  private async resolveTarget(target?: vscode.Uri | DocsItem, quiet = false): Promise<{ site: Site; folder: string; section?: string[] } | undefined> {
     // Logo depois da ativação, a busca pelos mkdocs.yml ainda pode estar em andamento
     await this.sites.ready;
     const sites = this.sites.list();
     if (!sites.length) {
+      if (quiet) return undefined;
       void vscode.window.showWarningMessage(vscode.l10n.t('There is no mkdocs.yml in the workspace. Create a documentation site first.'));
       return undefined;
     }
@@ -231,6 +268,7 @@ export class NewPageCommand {
       return { site: inSite, folder, section: target instanceof DocsItem ? navSection(target) : undefined };
     }
     if (sites.length === 1) return { site: sites[0], folder: '' };
+    if (quiet) return undefined;
     const picked = await vscode.window.showQuickPick(
       sites.map(s => ({ label: vscode.workspace.asRelativePath(s.mkdocs), site: s })),
       { title: vscode.l10n.t('Which documentation site?') },

@@ -187,9 +187,12 @@ page goes into the menu, in the section you clicked.
 
 ![New page from a template in a section of the tree: choose Runbook, answer its questions, and it opens with the first part to fill selected](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-page.gif)
 
-**TechDocs: New page from template…** (command palette, the **+** on a site or section of the
-**Documentation** tree, or right-click on a docs folder) creates a page with the sections that kind of page needs, already filled with the title, the date and
-the owner from `catalog-info.yaml`, and opens it in the visual editor.
+**TechDocs: New Page** (the **+** of the **Documentation** tree, right-click on a page or section, or the command
+palette) creates a blank page right after the selected one, in the site menu, and opens it with the title selected:
+type over it, and the first time you save the file takes the title's name (`Configuração` → `configuracao.md`);
+after that the file stays, so links do not break. To start from a kind of page, type **/** in the page or use the **TechDocs** button of the
+toolbar: the sections that kind of page needs come in where the cursor is, filled with the date and the owner from
+`catalog-info.yaml`.
 
 | To… | Templates |
 |-----|-----------|
@@ -433,7 +436,7 @@ Fix formatting on save:
 |---------|--------------|
 | **TechDocs: Open in visual editor** | Opens the current `.md` file in the visual editor |
 | **TechDocs: Open as Markdown text** | Opens the text of the page side by side with the visual editor |
-| **TechDocs: New page from template…** | Creates a documentation page from a template and opens it in the visual editor |
+| **TechDocs: New Page** | Creates a blank page right after the selected one and opens it with the title selected |
 | **TechDocs: New documentation site…** | Creates `mkdocs.yml` and the pages of a documentation site from a template |
 | **TechDocs: Check the documentation of the repository** | Lists what is missing or wrong for TechDocs in the Maintenance view and the Problems panel |
 | **TechDocs: Prepare the documentation in this repository** | Creates a site, or applies the fixes of the check one by one with the diff first |

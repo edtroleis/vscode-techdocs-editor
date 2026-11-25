@@ -1,6 +1,6 @@
 /** Textos do editor visual em inglês (padrão; copiados do plugin, translation.ts). */
 export const en: Record<string, string> = {
-  'editorText.placeholder': 'Write here, or type / to insert a block',
+  'editorText.placeholder': 'Write here, or type / to insert a block or a kind of page',
   'editorText.paragraph': 'Paragraph',
   'editorText.heading': 'Heading {{level}}',
   'editorText.text': 'Text',

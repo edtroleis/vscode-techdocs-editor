@@ -17,7 +17,7 @@ import {
   setMermaidTheme,
   useVisualSearch,
 } from '@edtroleis/techdocs-editor-ui';
-import type { HostMessage, LinkPageView, ProblemView, WebviewLabels, WebviewMessage } from '../src/protocol';
+import type { HostMessage, LinkPageView, PageKindsView, ProblemView, WebviewLabels, WebviewMessage } from '../src/protocol';
 import type { Strip } from '../src/publish/strip';
 import { rebase } from '../src/rebase';
 import './webview.css';
@@ -33,7 +33,7 @@ window.addEventListener('focus', () => (windowFocused = true));
 window.addEventListener('blur', () => (windowFocused = false));
 const post = (message: WebviewMessage) => vscode.postMessage(message);
 
-type Content = { text: string; language: string; baseUri: string; labels: WebviewLabels; readOnly?: boolean };
+type Content = { text: string; language: string; baseUri: string; labels: WebviewLabels; readOnly?: boolean; pageKinds?: PageKindsView };
 
 /** Texto com `{0}` trocado pelo valor. */
 const format = (template: string, value: number) => template.replace('{0}', String(value));
@@ -146,6 +146,11 @@ function App({ content }: { content: Content }) {
         }
         case 'select':
           editor.current?.selectText(message.text);
+          return;
+        case 'pageKind':
+          // O texto do tipo de página escolhido no botão TechDocs ou no "/": entra no cursor, com o trecho a preencher selecionado
+          editor.current?.insertMarkdown(message.markdown);
+          if (message.select) editor.current?.selectText(message.select);
           return;
         case 'test:chooseImage':
           void chooseImage(message.name, message.mime, message.data);
@@ -273,6 +278,7 @@ function App({ content }: { content: Content }) {
       lineTitle={lineTitle}
       readOnly={content.readOnly}
       linkPages={linkPages}
+      pageKinds={content.pageKinds && { ...content.pageKinds, pick: id => post({ type: 'pageKind', id }) }}
       onDiagramInserted={() => post({ type: 'diagramInserted' })}
     />
     <Problems problems={problems} labels={content.labels} />

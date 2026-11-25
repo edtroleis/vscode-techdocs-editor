@@ -42,9 +42,14 @@ export function activate(context: vscode.ExtensionContext) {
   void clone.openPending();
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
   const treeActions = new TreeActions();
+  const explorerSync = new ExplorerSync(sites);
+  treeActions.renameFile = (from, to) => explorerSync.renameQuietly(from, to);
+  treeActions.selectTitle = async (uri, title) => (await provider.session(uri))?.select(title);
   const docs = new DocsTreeView(sites, context.workspaceState, treeActions, lint);
   treeActions.use(docs);
   provider.linkPages = async uri => [...docs.linkTargets(uri), ...(await docs.docLinks(uri).catch(() => []))];
+  provider.pageKinds = uri => newPage.kinds(uri);
+  provider.pageKindText = (uri, id, title) => newPage.kindText(uri, id, title);
   const central = new CentralTemplates(context);
   const newPage = new NewPageCommand(sites, provider, central);
   const proposals = new ProposedChanges();
@@ -72,7 +77,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.hideSite', (item?: DocsItem) => hideSite(sites, item?.siteRoot)),
     vscode.commands.registerCommand('techdocsEditor.chooseSite', () => docs.chooseSite()),
     // Mexer nos arquivos das docs pelo Explorer do VS Code: o menu do site e os links acompanham
-    new ExplorerSync(sites),
+    explorerSync,
     // Parado sem rodar nada: registrado no canal, para separar lentidão da extensão de processo ocupado
     watchLag(),
     // Clique direito num diretório do Explorer: a árvore passa ao site dele (ou à tela de criar a documentação)
@@ -138,9 +143,9 @@ export function activate(context: vscode.ExtensionContext) {
       const uri = (target instanceof DocsItem ? target.uri : target) ?? vscode.window.activeTextEditor?.document.uri;
       if (uri) return vscode.commands.executeCommand('vscode.openWith', uri, VisualEditorProvider.viewType);
     }),
-    vscode.commands.registerCommand('techdocsEditor.newPage', (target?: vscode.Uri | DocsItem) =>
-      newPage.run(target instanceof vscode.Uri || target instanceof DocsItem ? target : undefined),
-    ),
+    // + New page: em branco, sem perguntar (os modelos ficam no / e no botão TechDocs do editor visual)
+    vscode.commands.registerCommand('techdocsEditor.newPage', (target?: unknown) => treeActions.newPage(target)),
+    vscode.workspace.onDidSaveTextDocument(document => void treeActions.followTitle(document)),
     vscode.commands.registerCommand('techdocsEditor.newSite', (target?: vscode.Uri) =>
       newSite.run(target instanceof vscode.Uri ? target : undefined),
     ),

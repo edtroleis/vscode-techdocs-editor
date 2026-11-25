@@ -216,6 +216,22 @@
   display: grid;
   gap: 2px;
 }
+.td-menu-heading {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.td-menu-heading:not(:first-child) {
+  margin-top: 4px;
+  border-top: 1px solid var(--crepe-color-outline);
+  padding-top: 8px;
+}
+.td-top-menu button small {
+  opacity: 0.7;
+  margin-left: 2px;
+}
 .mermaid-shape-menu .mermaid-bar-menu-items {
   grid-template-columns: repeat(2, 200px);
 }

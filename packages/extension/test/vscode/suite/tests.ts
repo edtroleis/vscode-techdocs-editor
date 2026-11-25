@@ -864,6 +864,43 @@ export function defineTests() {
         await run('techdocsEditor.duplicatePage', 'Página C', 'Página C2');
         ok((await read('acoes/docs/pagina-c2.md')).startsWith('# Página C2\n'), 'cópia sem o título novo');
         equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, pagina-c2.md, solta.md, Referência[referencia/index.md]', 'cópia logo depois da original');
+        // + New page: em branco, sem perguntar nada, logo depois da página selecionada
+        await run('techdocsEditor.newPage', 'Página C');
+        const novo = t('New page', 'Nova página');
+        const novoArquivo = t('new-page.md', 'nova-pagina.md');
+        equal(await read(`acoes/docs/${novoArquivo}`), `# ${novo}\n`, 'página nova');
+        equal(await menu('acoes'), `index.md, guias/b.md, guias/a.md, c.md, ${novoArquivo}, pagina-c2.md, solta.md, Referência[referencia/index.md]`, 'página nova logo depois da selecionada');
+        // A segunda não pisa na primeira
+        await run('techdocsEditor.newPage', 'Página C');
+        ok(await exists(`acoes/docs/${novoArquivo.replace('.md', '-2.md')}`), 'a segunda página nova pisou na primeira');
+        // O título digitado na página nova dá o nome do arquivo ao salvar (e o menu acompanha)
+        const doc = await vscode.workspace.openTextDocument(file(`acoes/docs/${novoArquivo}`));
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(doc.uri, new vscode.Range(0, 0, 0, doc.lineAt(0).text.length), '# Configuração');
+        await vscode.workspace.applyEdit(edit);
+        await doc.save();
+        await until(async () => await exists('acoes/docs/configuracao.md'), Boolean, 'o arquivo não acompanhou o título');
+        ok(!(await exists(`acoes/docs/${novoArquivo}`)), 'o arquivo antigo ficou');
+        ok((await menu('acoes')).includes(', configuracao.md, pagina-c2.md') && !(await menu('acoes')).includes(`, ${novoArquivo}`), `o menu não acompanhou: ${await menu('acoes')}`);
+        // Só na primeira vez: depois, o título muda e o arquivo fica (como no Renomear)
+        const renomeada = await vscode.workspace.openTextDocument(file('acoes/docs/configuracao.md'));
+        const edit3 = new vscode.WorkspaceEdit();
+        edit3.replace(renomeada.uri, new vscode.Range(0, 0, 0, renomeada.lineAt(0).text.length), '# Ajustes');
+        await vscode.workspace.applyEdit(edit3);
+        await renomeada.save();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        ok(await exists('acoes/docs/configuracao.md'), 'o arquivo mudou de nome na segunda vez');
+        // Uma página que já existia não muda de arquivo com o título
+        const velha = await vscode.workspace.openTextDocument(file('acoes/docs/c.md'));
+        const edit2 = new vscode.WorkspaceEdit();
+        edit2.replace(velha.uri, new vscode.Range(0, 0, 0, velha.lineAt(0).text.length), '# Página C nova');
+        await vscode.workspace.applyEdit(edit2);
+        await velha.save();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        ok(await exists('acoes/docs/c.md'), 'a página antiga mudou de arquivo');
+        await run('techdocsEditor.deleteItem', 'Ajustes', t('Delete', 'Excluir'));
+        await run('techdocsEditor.deleteItem', novo, t('Delete', 'Excluir'));
+        await write('acoes/docs/c.md', '# Página C\n');
         await run('techdocsEditor.deleteItem', 'Referência', t('Section and pages', 'Seção e páginas'));
         ok(!(await exists('acoes/docs/referencia')), 'a pasta da seção ficou');
 
@@ -1262,6 +1299,20 @@ export function defineTests() {
       } finally {
         await remove('wiki/docs/guias/latencia-alta-no-checkout.md');
       }
+    });
+
+    test('tipos de página no editor visual: a lista do site e o texto de um tipo, sem o título e sem perguntar', async () => {
+      const { newPage } = await api();
+      const page = file('wiki/docs/index.md');
+      const kinds = await newPage.kinds(page);
+      ok(kinds?.kinds.some(k => k.id === 'runbook'), `sem o runbook: ${kinds?.kinds.map(k => k.id).join(', ')}`);
+      ok(!kinds?.kinds.some(k => k.id === 'blank'), 'a página em branco não é um tipo');
+      const text = await newPage.kindText(page, 'runbook', 'Latência alta');
+      ok(text && !/^#\s/.test(text.markdown), `o texto começa com o título: ${text?.markdown.slice(0, 60)}`);
+      ok(text && !text.markdown.startsWith('---'), 'o texto trouxe o front matter');
+      ok(text?.markdown.includes('## '), 'o texto não trouxe as seções');
+      ok(!text?.markdown.includes('{{'), 'campo sem preencher');
+      ok(text?.select && text.markdown.includes(text.select), 'sem o trecho a preencher');
     });
 
     test('Ver exemplo: a prévia do exemplo da cópia do pacote, sem rede (spec 08, TR4)', async () => {

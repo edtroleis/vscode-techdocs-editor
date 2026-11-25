@@ -12,6 +12,7 @@ import {
   navFromTree,
   pageTitle,
   pagesLinkingTo,
+  pagesOf,
   readNav,
   setPageTitle,
   writeNav,
@@ -19,6 +20,7 @@ import {
   type NavPlace,
 } from '@edtroleis/techdocs-editor-core';
 import { DocsItem, type DocsTreeView } from './docsTreeView';
+import { gitApi } from './publish/vscodeGit';
 import { bringFileIntoDocs, copyImages } from './repoLinks';
 
 const MIME = 'application/vnd.code.tree.techdocseditor.docs';
@@ -655,6 +657,92 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     await vscode.commands.executeCommand('techdocsEditor.openVisual', page);
     this.done(vscode.l10n.t('Section "{0}" created, with a page of the same name open for you to write.', title), undo);
   }
+
+  // ---------- página nova ----------
+
+  /**
+   * Páginas criadas pelo + New page que ainda têm o título de quando nasceram: no primeiro salvamento com outro título,
+   * o arquivo ganha o nome dele (uma vez só; depois vale o de sempre: o arquivo fica, para os links não quebrarem).
+   */
+  private readonly newPages = new Set<string>();
+  /** Seleciona o título na página aberta, para digitar por cima (o extension.ts liga ao editor visual). */
+  selectTitle?: (uri: vscode.Uri, title: string) => Promise<void>;
+
+  /**
+   * + New page: em branco, sem perguntar nada. Vai logo depois da página selecionada (na mesma pasta), no fim da
+   * seção selecionada ou no fim do menu, e abre com o título selecionado.
+   */
+  async newPage(target?: unknown) {
+    const item = this.itemOf(target);
+    const site = this.siteOf(item);
+    if (!site) {
+      if (!item) void vscode.window.showInformationMessage(vscode.l10n.t('Choose a documentation site of this workspace first.'));
+      return undefined;
+    }
+    const title = vscode.l10n.t('New page');
+    const yml = await this.readYml(site.mkdocs);
+    const nav = readNav(yml);
+    const place = nav && item ? this.placeOf(nav, item) : undefined;
+    const section = place && item?.kind === 'section' ? place.list[place.index] : undefined;
+    const sibling = item?.kind === 'page' ? item.path : section?.kind === 'section' ? section.children.flatMap(pagesOf)[0] : undefined;
+    const dir = sibling?.includes('/') ? sibling.slice(0, sibling.lastIndexOf('/') + 1) : '';
+    const base = fileNameFor(title).replace(/\.md$/, '');
+    let path = `${dir}${base}.md`;
+    for (let n = 2; await readBytes(vscode.Uri.joinPath(site.docsDir, path)); n++) path = `${dir}${base}-${n}.md`;
+    const uri = vscode.Uri.joinPath(site.docsDir, path);
+    await this.change(vscode.l10n.t('create the page "{0}"', title), [uri, site.mkdocs], async () => {
+      await writeText(uri, `# ${title}\n`);
+      if (!nav) return;
+      const entry: NavItem = { kind: 'page', path };
+      if (section?.kind === 'section') section.children.push(entry);
+      else if (place && item?.kind === 'page') place.list.splice(place.index + 1, 0, entry);
+      else nav.push(entry);
+      await writeText(site.mkdocs, writeNav(yml, nav));
+    });
+    this.newPages.add(uri.toString());
+    await vscode.commands.executeCommand('techdocsEditor.openVisual', uri);
+    await this.selectTitle?.(uri, title).catch(() => undefined);
+    return uri;
+  }
+
+  /**
+   * Ao salvar uma página criada pelo + New page que ainda não foi para o Git: o arquivo passa a ter o nome do título
+   * (Configuração → configuracao.md) e o menu acompanha. Páginas que já existiam não mudam de arquivo (os links).
+   */
+  async followTitle(document: vscode.TextDocument) {
+    const key = document.uri.toString();
+    if (!this.newPages.has(key)) return;
+    const site = this.docs.localSite;
+    const docsPath = site?.docsDir.path;
+    if (!site || !docsPath || !document.uri.path.startsWith(`${docsPath}/`)) return;
+    const title = pageTitle(document.getText());
+    // Ainda o título de quando nasceu: espera a pessoa escrever o dela
+    if (!title || title === vscode.l10n.t('New page')) return;
+    this.newPages.delete(key);
+    const name = fileNameFor(title);
+    const current = document.uri.path.split('/').pop()!;
+    if (name === current) return;
+    // Só enquanto o arquivo não está no Git (novo, ainda não enviado)
+    const repository = (await gitApi().catch(() => undefined))?.repositories.find(r => document.uri.path.startsWith(`${r.rootUri.path}/`));
+    if (repository) {
+      const changes = [...repository.state.indexChanges, ...repository.state.workingTreeChanges, ...(repository.state.untrackedChanges ?? [])];
+      const status = changes.find(c => c.uri.path === document.uri.path)?.status;
+      if (status !== undefined && status !== 1 && status !== 7) return;
+    }
+    const target = vscode.Uri.joinPath(document.uri, '..', name);
+    if (await readBytes(target)) return;
+    // O editor visual de antes (o renomear do VS Code reabre a aba como texto)
+    const visual = vscode.window.tabGroups.all.flatMap(g => g.tabs).some(t => t.input instanceof vscode.TabInputCustom && t.input.uri.toString() === key);
+    // O menu e os links acompanham (o mesmo do Explorer), sem a pergunta do VS Code
+    await this.renameFile?.(document.uri, target);
+    if (!visual) return;
+    const texts = vscode.window.tabGroups.all.flatMap(g => g.tabs).filter(t => t.input instanceof vscode.TabInputText && t.input.uri.toString() === target.toString());
+    await vscode.commands.executeCommand('techdocsEditor.openVisual', target);
+    if (texts.length) await vscode.window.tabGroups.close(texts);
+  }
+
+  /** Renomeia acertando o menu e os links (o extension.ts liga ao ExplorerSync). */
+  renameFile?: (from: vscode.Uri, to: vscode.Uri) => Promise<void>;
 
   // ---------- arrastar ----------
 

@@ -29,7 +29,7 @@ export const LABELS = {
 export const sent = (page: Page) => page.evaluate(() => (window as unknown as { sent: Sent[] }).sent);
 
 /** Abre o webview com o arquivo `text` (formato do repositório) e espera o editor ficar pronto. */
-export async function openWebview(page: Page, text: string, language = 'pt-br', beforeInit?: () => Promise<unknown>) {
+export async function openWebview(page: Page, text: string, language = 'pt-br', beforeInit?: () => Promise<unknown>, init: object = {}) {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await serveExtension(page);
@@ -38,7 +38,7 @@ export async function openWebview(page: Page, text: string, language = 'pt-br', 
   await beforeInit?.();
   await page.evaluate(
     message => window.postMessage(message, '*'),
-    { type: 'init', text, language, baseUri: 'file:///wiki/docs', labels: LABELS },
+    { type: 'init', text, language, baseUri: 'file:///wiki/docs', labels: LABELS, ...init },
   );
   await expect.poll(async () => (await sent(page)).some(m => m.type === 'ready'), { message: 'editor pronto' }).toBe(true);
   return { errors };

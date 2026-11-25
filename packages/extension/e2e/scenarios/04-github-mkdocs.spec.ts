@@ -43,25 +43,28 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     await pause(page);
   });
 
-  await story.step('Nova página de template: o runbook "Reprocessar eventos"', async () => {
-    await sidebarAction(page, 'New page from template');
-    const kinds = quickInput(page);
-    await expect(kinds).toContainText('New page from template');
-    await type(page, 'Runbook');
-    await click(page, kinds.locator('.monaco-list-row', { hasText: /^Runbook/ }));
-    await expect(quickInput(page)).toContainText('Title of the new page');
+  await story.step('Nova página "Reprocessar eventos": em branco, o título por cima e o arquivo com o nome do título', async () => {
+    await sidebarAction(page, 'New Page');
+    await expect(page.locator('.tab.active')).toContainText('new-page', { timeout: 30_000 });
+    const editor = await editorOf(page);
+    await expect(editor.locator('.ProseMirror')).toBeFocused();
     await type(page, 'Reprocessar eventos');
-    await page.keyboard.press('Enter');
-    await expect(quickInput(page).locator('input')).toHaveValue('runbooks/reprocessar-eventos.md');
-    await page.keyboard.press('Enter');
-    await expect(quickInput(page)).toContainText('Nome do alerta');
-    await type(page, 'Fila de clientes parada');
-    await page.keyboard.press('Enter');
-    await click(page, quickInput(page).locator('.monaco-list-row', { hasText: /^Add to the nav/ }));
+    await save(page);
     await expect(page.locator('.tab.active')).toContainText('reprocessar-eventos.md', { timeout: 30_000 });
     await expect(treeRow(page, 'Reprocessar eventos')).toBeVisible();
-    expect(read('mkdocs.yml')).toContain('runbooks/reprocessar-eventos.md');
-    expect(read('docs/runbooks/reprocessar-eventos.md')).toContain('Fila de clientes parada');
+    expect(read('mkdocs.yml')).toContain('reprocessar-eventos.md');
+    await pause(page, 1_500);
+  });
+
+  await story.step('Tipo de página pelo botão TechDocs da barra: as seções do runbook entram', async () => {
+    const editor = await editorOf(page);
+    await editor.locator('.ProseMirror h1').click();
+    await page.keyboard.press('End');
+    await click(page, editor.locator('.top-bar-item[title="TechDocs"]'));
+    const menu = editor.getByRole('menu', { name: 'TechDocs' });
+    await story.check('os tipos de página vêm primeiro no botão TechDocs', () => expect(menu.getByText('Kinds of page')).toBeVisible());
+    await click(page, menu.getByRole('menuitem', { name: /^Runbook/ }));
+    await expect(editor.locator('.ProseMirror h2').first()).toBeVisible({ timeout: 15_000 });
     await pause(page, 1_500);
   });
 
@@ -72,7 +75,7 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     await story.check('o primeiro texto a trocar vem selecionado', async () => expect(selected).not.toBe(''));
     await type(page, 'O consumidor da fila de clientes parou e os eventos estão acumulando.');
     await save(page);
-    expect(read('docs/runbooks/reprocessar-eventos.md')).toContain('O consumidor da fila de clientes parou e os eventos estão acumulando.');
+    expect(read('docs/reprocessar-eventos.md')).toContain('O consumidor da fila de clientes parou e os eventos estão acumulando.');
     await pause(page);
   });
 
@@ -86,7 +89,7 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     const prs = openPrs(repo);
     expect(prs).toHaveLength(1);
     await story.check('o PR do runbook leva a página e o mkdocs.yml', async () =>
-      expect(prFiles(prs[0].number)).toEqual(['docs/runbooks/reprocessar-eventos.md', 'mkdocs.yml']),
+      expect(prFiles(prs[0].number)).toEqual(['docs/reprocessar-eventos.md', 'mkdocs.yml']),
     );
     await pause(page, 1_500);
   });
@@ -133,7 +136,7 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     await click(page, option);
     await type(page, '.');
     await save(page);
-    expect(read('docs/arquitetura.md')).toContain('Se a fila parar, veja [Reprocessar eventos](runbooks/reprocessar-eventos.md).');
+    expect(read('docs/arquitetura.md')).toContain('Se a fila parar, veja [Reprocessar eventos](reprocessar-eventos.md).');
     await pause(page);
   });
 
@@ -144,7 +147,7 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     const prs = openPrs(repo);
     await story.check('um só pull request, com as duas páginas e o menu', async () => {
       expect(prs).toHaveLength(1);
-      await expect.poll(() => prFiles(prs[0].number), { timeout: 30_000 }).toEqual(['docs/arquitetura.md', 'docs/runbooks/reprocessar-eventos.md', 'mkdocs.yml']);
+      await expect.poll(() => prFiles(prs[0].number), { timeout: 30_000 }).toEqual(['docs/arquitetura.md', 'docs/reprocessar-eventos.md', 'mkdocs.yml']);
     });
     await pause(page, 1_500);
   });
@@ -153,7 +156,7 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     const [pr] = openPrs(repo);
     mergePr(repo, pr.number);
     story.outside('O merge foi feito no GitHub (pelo gh, como quem cuida do repositório faria no site): a extensão não faz merge.');
-    expect(mainFile(repo, 'mkdocs.yml')).toContain('runbooks/reprocessar-eventos.md');
+    expect(mainFile(repo, 'mkdocs.yml')).toContain('reprocessar-eventos.md');
     expect(mainFile(repo, 'docs/arquitetura.md')).toContain('Reprocessar eventos');
     await story.check('a faixa da Arquitetura mostra que está na documentação', async () => {
       await expect(publishStrip(await editorOf(page))).toContainText('In the documentation', { timeout: 90_000 });

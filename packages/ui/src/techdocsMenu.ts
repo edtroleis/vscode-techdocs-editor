@@ -4,6 +4,7 @@ import { TextSelection } from '@milkdown/kit/prose/state';
 import { componentsCtx, type ComponentsText, insertComponent } from './techdocsComponents';
 import { insertButton, insertDocLink, insertGlossary } from './techdocsInline';
 import { icon } from './icons';
+import { ICON_PAGE_KIND, pageKindsCtx } from './pageKinds';
 
 /**
  * O grupo TechDocs (spec 01, M1): os mesmos itens no menu "/" e no botão TechDocs da barra de cima. Cada `run`
@@ -85,6 +86,35 @@ export function openTechdocsMenu(ctx: Ctx) {
       view.focus();
     }
   };
+  const heading = (label: string) => {
+    const title = document.createElement('div');
+    title.className = 'td-menu-heading';
+    title.textContent = label;
+    items.append(title);
+  };
+  // Os tipos de página primeiro (Runbook, Tutorial…): o texto vem da extensão e entra num parágrafo novo
+  const pageKinds = ctx.get(pageKindsCtx);
+  if (pageKinds.kinds.length) {
+    heading(pageKinds.group);
+    for (const kind of pageKinds.kinds) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.setAttribute('role', 'menuitem');
+      button.innerHTML = ICON_PAGE_KIND;
+      const name = document.createElement('span');
+      name.textContent = kind.label;
+      const detail = document.createElement('small');
+      detail.textContent = kind.description;
+      button.append(name, detail);
+      button.addEventListener('click', () => {
+        close();
+        emptyParagraphAtCursor(ctx);
+        pageKinds.pick(kind.id);
+      });
+      items.append(button);
+    }
+    heading(pageKinds.components);
+  }
   for (const item of techdocsItems(text)) {
     const button = document.createElement('button');
     button.type = 'button';

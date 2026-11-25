@@ -42,7 +42,7 @@ test.describe('images', () => {
     await openVisualCommand(page);
     await prose(page).waitFor({ timeout: 30_000 });
     markStart('images', startedAt);
-    await caption(page, 'Type / to insert a block');
+    await caption(page, 'Type / to insert a block or a kind of page');
     await clickLike(page, prose(page).locator('> p').first());
     // No fim do parágrafo (o End iria só ao fim da linha na tela, e o parágrafo quebra em duas)
     await cursorToEnd(page, prose(page).locator('> p').first());

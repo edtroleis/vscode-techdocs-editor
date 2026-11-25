@@ -547,5 +547,9 @@
   "What will be created": "O que vai ser criado",
   "More options": "Mais opções",
   "company": "empresa",
-  "repository": "repositório"
+  "repository": "repositório",
+  "New page": "Nova página",
+  "create the page \"{0}\"": "criar a página \"{0}\"",
+  "Kinds of page": "Tipos de página",
+  "TechDocs components": "Componentes do TechDocs"
 }

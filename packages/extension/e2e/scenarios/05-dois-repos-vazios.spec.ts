@@ -99,15 +99,17 @@ async function confirm(page: Page, button: RegExp) {
   await expect(choice).toHaveCount(0);
 }
 
-/** Nova página em branco pelo botão direito no item da árvore (o site ou uma seção). */
+/**
+ * Nova página pelo botão direito no item da árvore (o site ou uma seção): nasce em branco, sem perguntas, e abre com o
+ * título selecionado; digitar troca o título e, ao salvar, o arquivo ganha o nome do título.
+ */
 async function newPage(page: Page, on: Locator, title: string) {
-  await contextMenu(page, on, /^New page from template/);
-  await pick(page, 'Blank page');
-  await answer(page, title);
-  // O arquivo sugerido pelo título
-  await answer(page, undefined, /File of the new page/);
-  await pick(page, 'Add to the nav');
-  await expect(page.locator('.tab.active')).toContainText('.md', { timeout: 30_000 });
+  await contextMenu(page, on, /^New Page$/);
+  await expect(page.locator('.tab.active')).toContainText('new-page', { timeout: 30_000 });
+  const editor = await editorOf(page);
+  await expect(editor.locator('.ProseMirror')).toBeFocused();
+  await type(page, title);
+  await save(page);
 }
 
 test.use({

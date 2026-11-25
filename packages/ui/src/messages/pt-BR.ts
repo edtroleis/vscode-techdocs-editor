@@ -1,6 +1,6 @@
 /** Textos do editor visual em português do Brasil (copiados do plugin, translations/pt-BR.ts). */
 export const ptBR: Record<string, string> = {
-  'editorText.placeholder': 'Escreva aqui, ou digite / para inserir um bloco',
+  'editorText.placeholder': 'Escreva aqui, ou digite / para inserir um bloco ou um tipo de página',
   'editorText.paragraph': 'Parágrafo',
   'editorText.heading': 'Título {{level}}',
   'editorText.text': 'Texto',

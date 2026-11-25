@@ -31,6 +31,11 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ### Changed
 
+- **New Page** creates a blank page right away, without questions: right after the selected page (or at the end of
+  the selected section), in the site menu, open in the visual editor with the title selected. Type over it and, the first
+  time you save, the file takes the title's name (and the menu follows); after that the file stays, as with Rename. The **New page
+  from template…** list is gone: the kinds of page (Runbook, Tutorial, How-to, ADR…) are now in the **/** menu and at
+  the top of the **TechDocs** button of the toolbar, and their sections come in where the cursor is.
 - **Create the documentation** opens the panel in the TechDocs section right away, without the menu at the top of
   the window: the kind of documentation is a card (Blank, API, Library, Service docs, Runbooks, Team wiki…, and the
   company's and the repository's templates) with what it brings, then the site name and the list of what will be

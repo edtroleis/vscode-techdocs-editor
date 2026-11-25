@@ -191,9 +191,11 @@ no menu, na seção clicada.
 
 ![Página de template numa seção da árvore: escolha Runbook, responda às perguntas e ela abre com a primeira parte a preencher selecionada](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/new-page.gif)
 
-**TechDocs: Nova página a partir de template…** (paleta de comandos, o **+** num site ou seção da árvore
-**Documentação** ou clique direito num diretório das docs) cria uma página com as seções que aquele tipo de página precisa, já com o título, a data
-e o dono do `catalog-info.yaml`, e abre no editor visual.
+**TechDocs: Nova página** (o **+** da árvore **Documentação**, o clique direito numa página ou seção, ou a paleta de
+comandos) cria uma página em branco logo depois da selecionada, no menu do site, e abre com o título selecionado:
+digite por cima e, no primeiro salvamento, o arquivo ganha o nome do título (`Configuração` → `configuracao.md`);
+depois o arquivo fica, para os links não quebrarem. Para começar de um tipo de página, digite **/** na página ou use o botão **TechDocs** da barra: as
+seções que aquele tipo de página precisa entram onde está o cursor, com a data e o dono do `catalog-info.yaml`.
 
 | Para… | Templates |
 |-------|-----------|
@@ -438,7 +440,7 @@ Corrigir a formatação ao salvar:
 |---------|-----------|
 | **TechDocs: Abrir no editor visual** | Abre o arquivo `.md` atual no editor visual |
 | **TechDocs: Abrir como texto Markdown** | Abre o texto da página ao lado do editor visual |
-| **TechDocs: Nova página a partir de template…** | Cria uma página de documentação a partir de um template e abre no editor visual |
+| **TechDocs: Nova página** | Cria uma página em branco logo depois da selecionada e abre com o título selecionado |
 | **TechDocs: Novo site de documentação…** | Cria o `mkdocs.yml` e as páginas de um site de documentação a partir de um template |
 | **TechDocs: Conferir a documentação do repositório** | Lista na seção Verificação e no painel Problemas o que falta ou está errado para o TechDocs |
 | **TechDocs: Preparar a documentação neste repositório** | Cria um site, ou aplica as correções da conferência uma por uma, com o diff antes |

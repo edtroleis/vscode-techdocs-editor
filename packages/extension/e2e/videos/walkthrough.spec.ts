@@ -114,36 +114,35 @@ test.describe('blank-page', () => {
 
 test.describe('new-page', () => {
   test.use(scene('new-page'));
-  test('página a partir de um template', async ({ vscode: { page, startedAt } }) => {
+  test('página nova em branco e um tipo de página pelo /', async ({ vscode: { page, startedAt } }) => {
     await overlay(page);
     await openSidebar(page);
     markStart('new-page', startedAt);
     await expandRow(page, treeRow(page, 'Guides'));
-    await caption(page, 'Or start from a template, with the sections each kind of page needs');
-    await contextMenu(page, treeRow(page, 'Guides'), 'New page from template');
-    await expect(quickInput(page)).toBeVisible();
-    await pause(page, 2_000);
-    await pick(page, 'Runbook', 'runbook');
-    await caption(page, 'Title, and the questions of the template');
-    await answer(page, 'Card provider down', /Title/);
-    // O arquivo como vem; o alerta (pergunta do template); o resto como vem
-    await pause(page, 600);
-    await answer(page, undefined, /File of the new page/);
-    await pause(page, 600);
-    await answer(page, 'PaymentProviderTimeouts', /Alert/);
-    // O lugar no menu: a seção clicada já vem escolhida
-    for (let i = 0; i < 5 && (await quickInput(page).isVisible()); i++) {
-      await pause(page, 1_200);
-      await page.keyboard.press('Enter');
-    }
+    await caption(page, 'New page: blank, right after the one you selected');
+    await contextMenu(page, treeRow(page, 'Guides'), 'New Page');
+    await expect(page.locator('.tab.active')).toContainText('new-page', { timeout: 30_000 });
+    const editor = await editorOf(page);
+    await caption(page, 'Type the title over it');
+    await pause(page, 1_200);
+    await typeSlowly(page, 'Card provider down');
+    await page.keyboard.press('Control+S');
     await expect(page.locator('.tab.active')).toContainText('card-provider-down.md', { timeout: 30_000 });
-    await editorOf(page);
-    await caption(page, 'It opens with the first part to fill selected: just type');
+    await caption(page, 'The file takes the name of the title');
+    await pause(page, 1_500);
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await caption(page, 'Type / for a kind of page: Runbook');
+    await typeSlowly(page, '/runbook');
+    await pause(page, 1_200);
+    await page.keyboard.press('Enter');
+    await expect(editor.locator('.ProseMirror h2').first()).toBeVisible({ timeout: 15_000 });
+    await caption(page, 'Its sections come in, with the first part to fill selected');
     await pause(page, 1_500);
     await typeSlowly(page, 'Checkout payments fail with a timeout from the card provider.');
     await pause(page, 1_200);
     await page.keyboard.press('Control+S');
-    await caption(page, 'Saved in docs/guides, and in the menu');
+    await caption(page, 'Saved, and in the menu');
     await pause(page, 2_500);
   });
 });
