@@ -2,10 +2,8 @@ import { DiagramProblems } from './diagramProblems';
 import { configureMermaid } from './mermaidSetup';
 import type { Ask } from './repoCheck';
 import * as vscode from 'vscode';
-import { parseRemoteUri, REMOTE_SCHEME, remoteUriPath } from '@edtroleis/techdocs-editor-core';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
-import type { RemoteFileSystem } from './remote/remoteFs';
 import { DEFAULT_MAX_IMAGE_MB, downloadImage, imageProblem, imageTarget } from './imageUpload';
 import type { HostMessage, LinkPageView, WebviewLabels, WebviewMessage } from './protocol';
 import type { Strip, StripAction } from './publish/strip';
@@ -36,7 +34,6 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
     private readonly extensionUri: vscode.Uri,
     private readonly lint: LintService,
     private readonly sites: LocalSites,
-    private readonly remoteFs?: RemoteFileSystem,
   ) {}
 
   dispose() {
@@ -51,7 +48,7 @@ export class VisualEditorProvider implements vscode.CustomTextEditorProvider {
 
   async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel): Promise<void> {
     const key = document.uri.toString();
-    const session = new EditorSession(document, panel, this.extensionUri, this.lint, this.sites, this.remoteFs, {
+    const session = new EditorSession(document, panel, this.extensionUri, this.lint, this.sites, {
       strip: () => this.strips.get(key),
       action: action => this.onStripActionEmitter.fire({ uri: document.uri, action }),
       linkPages: () => this.linkPages(document.uri),
@@ -110,7 +107,6 @@ export class EditorSession {
     extensionUri: vscode.Uri,
     private readonly lint: LintService,
     private readonly sites: LocalSites,
-    private readonly remoteFs?: RemoteFileSystem,
     private readonly status?: {
       strip(): Strip | undefined;
       action(action: StripAction): void;
@@ -123,14 +119,12 @@ export class EditorSession {
     this.ready = new Promise(resolve => (this.markReady = resolve));
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
     const pageDir = vscode.Uri.joinPath(document.uri, '..');
-    const remote = document.uri.scheme === REMOTE_SCHEME ? parseRemoteUri(document.uri.authority, document.uri.path) : undefined;
     panel.webview.options = {
       enableScripts: true,
-      // Imagens da página: a pasta do workspace, o repositório do GitHub (lidas pelo esquema `techdocs:`) ou
-      // só a pasta da página, para arquivo solto
+      // Imagens da página: o diretório do workspace ou, para arquivo solto, só o diretório da página
       localResourceRoots: [
         vscode.Uri.joinPath(extensionUri, 'dist', 'webview'),
-        remote ? document.uri.with({ path: remoteUriPath(remote.slug, '') }) : (folder?.uri ?? pageDir),
+        folder?.uri ?? pageDir,
       ],
     };
     panel.webview.html = webviewHtml(panel.webview, extensionUri);
@@ -322,14 +316,7 @@ export class EditorSession {
       throw new Error(vscode.l10n.t('"{0}" is larger than {1} MB. Use a smaller image.', name, maxMB));
     }
     const uri = this.document.uri;
-    const remote = uri.scheme === REMOTE_SCHEME ? parseRemoteUri(uri.authority, uri.path) : undefined;
     try {
-      if (remote) {
-        // Do GitHub: commit no rascunho da página, com o caminho relativo ao repositório (M6)
-        const { path, link } = imageTarget(remote.path, this.remoteFs?.session(uri)?.docsDir, name, Date.now());
-        await this.remoteFs!.saveImage(uri, path, data);
-        return link;
-      }
       const { path, link } = imageTarget(uri.path, this.sites.siteOf(uri)?.docsDir, name, Date.now());
       await vscode.workspace.fs.writeFile(uri.with({ path }), data);
       return link;
@@ -390,8 +377,6 @@ export class EditorSession {
       language: vscode.env.language,
       baseUri: this.panel.webview.asWebviewUri(this.pageDir).toString(),
       labels: webviewLabels(),
-      // Do GitHub: só leitura sem login ou sem permissão de escrita (salvar grava o rascunho, 4c)
-      readOnly: this.document.uri.scheme === REMOTE_SCHEME && !this.remoteFs?.canSave(this.document.uri),
     });
   }
 

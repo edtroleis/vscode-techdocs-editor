@@ -1,11 +1,9 @@
 import { parseGitHubRemote } from './publish';
 
 /**
- * Endereços do modo remoto (spec 02, M2, B1 e B3; fase 4b): a URI `techdocs://<host>/<dono>/<repo>/<caminho>`,
- * o que a pessoa digita em "Abrir documentação do GitHub…" e o link `vscode://edtroleis.techdocs-editor/open?…`.
+ * Endereços de "Abrir documentação do GitHub" (spec 09, telas A e B; B1 e B3): o que a pessoa digita e o link
+ * `vscode://edtroleis.techdocs-editor/open?…` do Backstage.
  */
-
-export const REMOTE_SCHEME = 'techdocs';
 
 export type RemoteRepoRef = { host: string; slug: string };
 /** Um repositório e, se houver, um arquivo ou pasta dentro dele. */
@@ -25,19 +23,6 @@ const isSlug = (slug: string) => {
 export function safeRepoPath(path: string): string | undefined {
   if (!path || path.startsWith('/') || path.includes('\\') || /[\u0000-\u001f\u007f]/.test(path)) return undefined;
   return path.split('/').every(part => part && part !== '.' && part !== '..') ? path : undefined;
-}
-
-/** Path da URI `techdocs:` (o host vai na autoridade). */
-export const remoteUriPath = (slug: string, path: string) => (path ? `/${slug}/${path}` : `/${slug}`);
-
-/** Repositório e caminho de uma URI `techdocs:` (autoridade e path); undefined se ela é inválida. */
-export function parseRemoteUri(authority: string, uriPath: string): (RemoteRepoRef & { path: string }) | undefined {
-  const [owner, repo, ...rest] = uriPath.replace(/^\/+/, '').split('/');
-  const slug = `${owner}/${repo ?? ''}`;
-  if (!authority || !isSlug(slug)) return undefined;
-  const path = rest.join('/');
-  if (path && !safeRepoPath(path)) return undefined;
-  return { host: authority.toLowerCase(), slug, path };
 }
 
 /**

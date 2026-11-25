@@ -1,7 +1,6 @@
-import { allowedHosts, parseRemoteInput, type RemoteTarget, validateOpenLink } from '@edtroleis/techdocs-editor-core';
+import { allowedHosts, parseGitHubRemote, parseRemoteInput, type RemoteTarget, validateOpenLink } from '@edtroleis/techdocs-editor-core';
 import * as vscode from 'vscode';
 import { cloneRepository, gitApi } from '../publish/vscodeGit';
-import { localClone } from '../remote/openRemote';
 import { KnownClones, suggestedFolder } from './knownClones';
 
 /**
@@ -116,7 +115,7 @@ export class CloneFlow {
   /** Tela A: o diretório sugerido, que a pessoa pode trocar. */
   private async askFolder(name: string): Promise<string | undefined> {
     const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
-    const suggested = suggestedFolder(config().get<string>('clone.folder') ?? '', name, home);
+    const suggested = suggestedFolder(config().get<string>('clone.directory') ?? '', name, home);
     const change = vscode.l10n.t('Choose another directory');
     const answer = await vscode.window.showInformationMessage(
       vscode.l10n.t('The documentation comes to this computer, in {0}. You edit it here and send it to GitHub when you want.', suggested),
@@ -163,4 +162,16 @@ async function openPage(root: vscode.Uri, page: string | undefined): Promise<vsc
   const uri = vscode.Uri.joinPath(root, page);
   await vscode.commands.executeCommand('vscode.open', uri);
   return uri;
+}
+
+/** Diretório do workspace que é um clone do repositório (pelo remote do Git), se houver. */
+export async function localClone(host: string, slug: string): Promise<vscode.Uri | undefined> {
+  const api = await gitApi().catch(() => undefined);
+  const same = (url?: string) => {
+    const remote = url ? parseGitHubRemote(url) : undefined;
+    return remote?.host === host && remote.slug.toLowerCase() === slug.toLowerCase();
+  };
+  // Recém-aberto pelo Git do VS Code, o repositório ainda não leu os remotes: lê antes de comparar
+  for (const repo of api?.repositories ?? []) if (!repo.state.remotes.length) await repo.status().catch(() => undefined);
+  return api?.repositories.find(repo => repo.state.remotes.some(r => same(r.fetchUrl) || same(r.pushUrl)))?.rootUri;
 }

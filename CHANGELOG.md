@@ -6,6 +6,37 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Send:** the whole repository goes to GitHub in one step. **Send (N)** in the Documentation tree, at the top of
+  the page in the visual editor and in the status bar counts the changes not sent yet; the files show **M** (changed)
+  and **N** (new). The send screen lists what goes, page by page, with **Undo** per item, a summary you can edit and
+  the check (links, images, menu, formatting) with **Fix**. Files outside the documentation are never sent.
+- **Send panel:** after sending, where the review stands in plain words (sent, checking, waiting for review,
+  approved, in the documentation), **Send again** for new changes, and **Give up this send**. Conflicts, no
+  internet and read-only access each say what to do.
+- `techdocsEditor.send.target`: `pullRequest` (default, a pull request followed until it is approved) or `main`
+  (straight to the main branch, for repositories that allow it).
+- **Create the repository on GitHub:** sending a directory that is not on GitHub yet creates the repository
+  (private by default) and links it. The first send goes to the main branch with only the documentation files.
+- **Your name and email:** the first send asks for them when Git does not have them, with GitHub's private email
+  as an option.
+- **Open documentation from GitHub** clones the repository into a suggested directory
+  (`techdocsEditor.clone.directory`, `~/Documents/TechDocs`) and opens it. The Backstage link opens the copy you
+  already have instead of cloning again.
+
+### Changed
+
+- **Ctrl+S only saves on this computer.** Nothing goes to GitHub until you use **Send**.
+- `techdocsEditor.branchPattern` is now `docs/{login}/{date}`: one branch per send, not per page. `{path}` is
+  ignored, with a note in the TechDocs Editor output.
+
+### Removed
+
+- Editing on GitHub without cloning (remote mode), with **Page History…** and **My changes**.
+- The per-page **Publishing** panel and its strip actions (Save draft, Save and check, Discard).
+- The settings `techdocsEditor.mode`, `techdocsEditor.local.publishPanel` and `techdocsEditor.drafts.skipCi`.
+
 ## [0.18.0] - 2026-11-24
 
 ### Added

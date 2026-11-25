@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { useE2eToken } from './publish/githubAuth';
 import { chooseSites, hideSite, useTestSiteChoice } from './chooseSites';
-import { REMOTE_SCHEME } from '@edtroleis/techdocs-editor-core';
 import { CatalogOptions, repositoryFolder } from './catalogOptions';
 import { timing, watchLag } from './timing';
 import { CheckItem, CheckView } from './checkView';
@@ -9,19 +8,12 @@ import { DOCS_EXPLORER_VIEW, DocsItem, DocsTreeView, useTestSitePick } from './d
 import { LintActions } from './lintActions';
 import { LintService } from './lintService';
 import { LocalSites } from './localSites';
-import { MineItem, MineView } from './mineView';
 import { openVisualByDefault } from './openByDefault';
 import { ProposedChanges } from './proposedChange';
 import { PrepareContext } from './prepareContext';
-import { PublishPanel } from './publish/publishPanel';
 import { CloneFlow } from './clone/cloneFlow';
 import { SendService } from './send/sendService';
 import { SendView } from './send/sendView';
-import { RemoteOpener } from './remote/openRemote';
-import { ConflictPanel, resolveSaveConflicts } from './remote/conflictPanel';
-import { showPageHistory, useTestHistoryPick } from './remote/pageHistory';
-import { RemoteFileSystem } from './remote/remoteFs';
-import { RemoteRepos } from './remote/remoteRepos';
 import { RepoCheck } from './repoCheck';
 import { PASTE_KIND, PasteAsMarkdown } from './pasteMarkdown';
 import { CentralTemplates } from './templates/centralTemplates';
@@ -43,33 +35,17 @@ export function activate(context: vscode.ExtensionContext) {
     useE2eToken(env?.TECHDOCS_EDITOR_E2E_GITHUB_TOKEN);
   }
   const sites = new LocalSites();
-  const remotes = new RemoteRepos(context.globalState);
-  const remoteFs = new RemoteFileSystem(remotes);
-  const opener = new RemoteOpener(remotes);
   const lint = new LintService(sites);
   // Abrir documentação do GitHub: clona e abre (spec 09); a página do link abre quando o diretório abrir
   const clone = new CloneFlow({ state: context.globalState });
   void clone.openPending();
-  const provider = new VisualEditorProvider(context.extensionUri, lint, sites, remoteFs);
+  const provider = new VisualEditorProvider(context.extensionUri, lint, sites);
   const treeActions = new TreeActions();
-  const docs = new DocsTreeView(sites, remotes, context.workspaceState, treeActions, lint);
+  const docs = new DocsTreeView(sites, context.workspaceState, treeActions, lint);
   treeActions.use(docs);
   provider.linkPages = async uri => [...docs.linkTargets(uri), ...(await docs.docLinks(uri).catch(() => []))];
-  const conflicts = new ConflictPanel(context.extensionUri);
-  const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs, conflicts);
-  // A faixa de estado da página (rascunho, em revisão…) no editor visual, e os botões dela
-  publish.onDidChangeStrip(({ uri, strip }) => provider.setStrip(uri, strip));
-  const mine = new MineView(sites, remotes, opener);
-  docs.useDrafts(() => mine.draftRefs());
-  // "Minhas alterações" acompanha quando a página muda de estado (salvou, enviou, publicou)
-  let lastState = '';
-  publish.onDidChangeStrip(({ strip }) => {
-    const state = strip ? `${strip.tone}:${strip.state}` : '';
-    if (state !== lastState && strip?.tone !== undefined) mine.refreshLater();
-    lastState = state;
-  });
   const central = new CentralTemplates(context);
-  const newPage = new NewPageCommand(sites, provider, central, remotes);
+  const newPage = new NewPageCommand(sites, provider, central);
   const proposals = new ProposedChanges();
   const newSite = new NewSiteCommand(central, proposals);
   newSite.useSites(sites);
@@ -85,18 +61,12 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('techdocsEditor.templateOptions', (scope?: unknown) =>
       templateOptions.choose(scope instanceof vscode.Uri ? scope : undefined),
     ),
-    remotes,
-    vscode.workspace.registerFileSystemProvider(REMOTE_SCHEME, remoteFs, { isCaseSensitive: true }),
-    resolveSaveConflicts(remoteFs, conflicts),
     vscode.window.registerUriHandler({
       handleUri: async uri => {
         await clone.fromLink(uri);
       },
     }),
     vscode.commands.registerCommand('techdocsEditor.openRemote', (input?: string) => clone.fromInput(typeof input === 'string' ? input : undefined)),
-    vscode.commands.registerCommand('techdocsEditor.pageHistory', (uri?: vscode.Uri | DocsItem) =>
-      showPageHistory(remotes, remoteFs, uri instanceof vscode.Uri ? uri : uri?.uri),
-    ),
     vscode.commands.registerCommand('techdocsEditor.chooseSites', () => chooseSites(sites)),
     vscode.commands.registerCommand('techdocsEditor.hideSite', (item?: DocsItem) => hideSite(sites, item?.siteRoot)),
     vscode.commands.registerCommand('techdocsEditor.chooseSite', () => docs.chooseSite()),
@@ -138,22 +108,11 @@ export function activate(context: vscode.ExtensionContext) {
         }
       });
     }),
-    vscode.commands.registerCommand('techdocsEditor.closeRemote', (item?: DocsItem) => item?.remote && remotes.remove(item.remote)),
-    vscode.commands.registerCommand('techdocsEditor.refreshRemote', (item?: DocsItem) =>
-      item?.remote ? remotes.refresh(item.remote.host, item.remote.slug) : remotes.refresh(),
-    ),
     proposals,
-    publish,
-    mine,
-    vscode.commands.registerCommand('techdocsEditor.openMine', (item?: MineItem) => item && mine.open(item)),
-    vscode.commands.registerCommand('techdocsEditor.openMinePr', (item?: MineItem) => item && mine.openPr(item)),
-    vscode.commands.registerCommand('techdocsEditor.refreshMine', () => mine.refresh()),
-    vscode.commands.registerCommand('techdocsEditor.signIn', () => mine.signIn()),
     repoCheck,
     checkView,
     prepare,
     docsPageContext(sites),
-    vscode.window.registerWebviewViewProvider(PublishPanel.viewId, publish),
     preview,
     vscode.window.registerWebviewViewProvider(SitePreview.viewId, preview),
     sites,
@@ -241,10 +200,7 @@ export function activate(context: vscode.ExtensionContext) {
   // O envio do repositório inteiro (spec 09): Enviar (N) na árvore, no editor e na barra de status; painel Envio
   const send = new SendService(context.extensionUri, sites, repoCheck, provider, count => docs.setSendBadge(count));
   const sendView = new SendView(context.extensionUri, send);
-  provider.onStripAction(({ uri, action }) => {
-    if (action === 'send' || send.repoOf(uri)?.state) void send.action(uri, action);
-    else void publish.runStripAction(uri, action);
-  });
+  provider.onStripAction(({ uri, action }) => void send.action(uri, action));
   context.subscriptions.push(
     send,
     sendView,
@@ -254,19 +210,18 @@ export function activate(context: vscode.ExtensionContext) {
     ),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { send, clone, provider, treeActions, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick, useTestAnswers };
+  return { send, clone, provider, treeActions, sites, lint, docs, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, useTestSiteChoice, useTestSitePick, useTestAnswers };
 }
 
 /**
- * `techdocsEditor.activeIsDocs`: o editor ativo é uma página de um `docs_dir` ou do GitHub. Os botões e comandos do editor
+ * `techdocsEditor.activeIsDocs`: o editor ativo é uma página de um `docs_dir` Os botões e comandos do editor
  * visual aparecem só nessas páginas, e não em qualquer Markdown (um README, por exemplo).
  */
 function docsPageContext(sites: LocalSites): vscode.Disposable {
   const update = () => {
     const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
     const uri = input instanceof vscode.TabInputText || input instanceof vscode.TabInputCustom ? input.uri : undefined;
-    // Páginas do GitHub (`techdocs:`) também são de docs
-    const isDocs = Boolean(uri && (uri.scheme === REMOTE_SCHEME ? /\.md$/i.test(uri.path) : sites.siteOf(uri)));
+    const isDocs = Boolean(uri && sites.siteOf(uri));
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.activeIsDocs', isDocs);
   };
   update();

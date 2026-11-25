@@ -88,15 +88,6 @@ const builds = [
     define: { 'process.env.NODE_ENV': production ? '"production"' : '"development"' },
     loader: { '.woff': 'file', '.woff2': 'file', '.ttf': 'file' },
   },
-  // Webview do painel "Publicação": HTML simples, sem React
-  {
-    ...common,
-    entryPoints: { panel: 'webview/panel.ts' },
-    outdir: 'dist/webview',
-    platform: 'browser',
-    format: 'iife',
-    target: 'es2022',
-  },
   // Webviews do envio (spec 09): a tela de envio e o painel Envio, HTML simples
   {
     ...common,
@@ -110,15 +101,6 @@ const builds = [
   {
     ...common,
     entryPoints: { preview: 'webview/preview.ts' },
-    outdir: 'dist/webview',
-    platform: 'browser',
-    format: 'iife',
-    target: 'es2022',
-  },
-  // Webview da resolução de conflito (modo remoto)
-  {
-    ...common,
-    entryPoints: { conflict: 'webview/conflict.ts' },
     outdir: 'dist/webview',
     platform: 'browser',
     format: 'iife',

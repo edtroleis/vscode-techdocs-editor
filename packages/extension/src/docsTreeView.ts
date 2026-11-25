@@ -1,15 +1,13 @@
 import * as vscode from 'vscode';
 import { logLine } from './timing';
 import { filesUnder } from './docsFiles';
-import { catalogDocs, dirOf, DocsNode, DocsTree, docsTree, loadRemoteSiteTree, pageTitle, parseRemoteUri, relativePath, REMOTE_SCHEME, siteName } from '@edtroleis/techdocs-editor-core';
+import { catalogDocs, dirOf, DocsNode, DocsTree, docsTree, pageTitle, relativePath, siteName } from '@edtroleis/techdocs-editor-core';
 import { repoDirOf, repoOf } from './chooseSites';
 import type { DocsSite } from './docsSite';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
 import type { LinkPageView } from './protocol';
 import { invalidatePages, pickSite, RECENT_COUNT } from './sitePicker';
-import { remoteUri } from './remote/remoteFs';
-import { type RemoteEntry, type RemoteRepos, SignInRequiredError } from './remote/remoteRepos';
 
 export const DOCS_VIEW = 'techdocsEditor.docs';
 /** A mesma árvore como seção do Explorer do VS Code (embaixo dos arquivos). */
@@ -23,20 +21,19 @@ const RECENT_KEY = 'techdocsEditor.recentSites';
 /** Um rascunho de "Minhas alterações", para marcar o site dele na lista. */
 export type DraftRef = { state: 'draft' | 'review'; uris: vscode.Uri[] };
 
-/** Um site que o seletor oferece: do workspace (`local`) ou aberto do GitHub (`remote`). */
+/** Um site do workspace que o seletor oferece. */
 export type SiteCandidate = {
-  /** O `mkdocs.yml` do site local, ou `remote:host/dono/repo/pasta`. */
+  /** O `mkdocs.yml` do site. */
   key: string;
   label: string;
-  /** A pasta do site no workspace, ou `dono/repo/pasta` no GitHub. */
+  /** O diretório do site no workspace. */
   description: string;
-  /** Agrupa a lista: o repositório Git da pasta, ou `host/dono/repo`. */
+  /** Agrupa a lista: o repositório Git do diretório. */
   repo: string;
-  /** A linha da pasta no topo da árvore: o repositório (`repo-x`, `dono/repo`) e, num site de subpasta, `› pasta`. */
+  /** A linha do diretório no topo da árvore: o repositório (`repo-x`) e, num site de subdiretório, `› diretório`. */
   place: string;
   /** `repoDir`: a raiz do repositório Git do site (senão o diretório do site). */
   local?: { mkdocs: vscode.Uri; site: DocsSite; yml: string | undefined; repoDir: vscode.Uri };
-  remote?: RemoteEntry;
 };
 
 /** Testes de integração: o site escolhido na lista (a chave; undefined = cancelar). */
@@ -46,14 +43,11 @@ export function useTestSitePick(pick: typeof testSitePick) {
 }
 
 /**
- * Item da árvore: o site mostrado (`site`, ou `remote` do GitHub: a linha da pasta, no topo, e o clique troca),
- * uma seção, uma pasta do `docs_dir` (`dir`, na visão dos arquivos), uma página, um link do `nav` ou o aviso de
- * que o site do GitHub não pôde ser lido (`remoteError`).
+ * Item da árvore: o site mostrado (`site`: a linha do diretório, no topo, e o clique troca), uma seção, um
+ * diretório do `docs_dir` (`dir`, na visão dos arquivos), uma página ou um link do `nav`.
  */
 export class DocsItem {
   readonly children: DocsItem[] = [];
-  /** O site do GitHub do item `remote` (para fechar e ler de novo). */
-  remote?: RemoteEntry;
   /** Pasta do `mkdocs.yml` do item `site` (para esconder). */
   siteRoot?: vscode.Uri;
   /** Página: o caminho no `docs_dir`. */
@@ -71,7 +65,7 @@ export class DocsItem {
   /** Página com o título escrito no `nav`: mudar o título 1 da página não muda o menu. */
   fixedTitle?: boolean;
   constructor(
-    readonly kind: 'site' | 'remote' | 'remoteError' | 'section' | 'page' | 'missing' | 'link' | 'notInNav',
+    readonly kind: 'site' | 'section' | 'page' | 'missing' | 'link' | 'notInNav',
     readonly label: string,
     /** Muda só na pasta do `docs_dir`, montada antes da pasta do site em volta dela. */
     public parent: DocsItem | undefined,
@@ -120,7 +114,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
 
   constructor(
     private readonly sites: LocalSites,
-    private readonly remotes: RemoteRepos,
     private readonly state?: vscode.Memento,
     dragAndDropController?: vscode.TreeDragAndDropController<DocsItem>,
     /** Problemas de formatação das páginas (abertas ou não): o ⚠ e a dica dele, que diz se há ajuste automático. */
@@ -162,7 +155,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       deletions,
       deletions.onDidDelete(uri => later(uri)),
       sites.onDidChange(() => later()),
-      remotes.onDidChange(() => later()),
       vscode.window.tabGroups.onDidChangeTabs(() => {
         this.followActive();
         this.revealActive();
@@ -208,7 +200,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
 
   getTreeItem(item: DocsItem): vscode.TreeItem {
     const collapsible = item.children.length
-      ? (item.kind === 'site' || item.kind === 'remote') && !item.parent
+      ? item.kind === 'site' && !item.parent
         ? vscode.TreeItemCollapsibleState.Expanded
         : vscode.TreeItemCollapsibleState.Collapsed
       : vscode.TreeItemCollapsibleState.None;
@@ -223,7 +215,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         // Sem o número de problemas do VS Code ao lado: um ⚠ com a explicação na dica
         const problems = this.problemCount(item.uri!);
         tree.iconPath = problems ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground')) : new vscode.ThemeIcon('markdown');
-        const where = item.uri!.scheme === REMOTE_SCHEME ? item.path : vscode.workspace.asRelativePath(item.uri!);
+        const where = vscode.workspace.asRelativePath(item.uri!);
         const fix = problems ? problemsTooltip(problems, this.lint?.problems(item.uri!).filter(p => p.fixable).length ?? 0) : undefined;
         tree.tooltip = fix ?? where;
         // Clicar abre no editor visual
@@ -271,19 +263,14 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
         tree.tooltip = vscode.l10n.t('Pages of the site that do not appear in its menu. Add them to the menu or delete them.');
         break;
       // O site é a linha da pasta: onde se está trabalhando; o clique troca (o nome do site fica na dica)
-      case 'site':
-      case 'remote': {
-        tree.iconPath = new vscode.ThemeIcon(item.kind === 'remote' ? 'github' : 'folder-opened');
+      case 'site': {
+        tree.iconPath = new vscode.ThemeIcon('folder-opened');
         tree.description = undefined;
-        const where = item.kind === 'remote' ? vscode.l10n.t('Read from GitHub: {0}', item.description!) : item.siteRoot?.fsPath;
+        const where = item.siteRoot?.fsPath;
         tree.tooltip = [item.label, where, vscode.l10n.t('Click to switch the documentation.')].filter(Boolean).join('\n');
         tree.command = { command: 'techdocsEditor.chooseSite', title: vscode.l10n.t('Switch directory or repo') };
         break;
       }
-      case 'remoteError':
-        tree.iconPath = new vscode.ThemeIcon('warning');
-        tree.tooltip = item.label;
-        break;
     }
     return tree;
   }
@@ -377,7 +364,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       select: key => this.select(key),
       drafts: () => this.draftsBySite(),
       sites: this.sites,
-      remotes: this.remotes,
     });
   }
 
@@ -441,7 +427,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     let top = this.pageItem(uri);
     while (top?.parent) top = top.parent;
     if (!top) return [];
-    const site = top.kind === 'site' || top.kind === 'remote' ? top.children : this.roots;
+    const site = top.kind === 'site' ? top.children : this.roots;
     const from = dirOf(uri.path);
     const found: LinkPageView[] = [];
     const walk = (items: DocsItem[]) =>
@@ -564,8 +550,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
 
   private async buildTree(run: number): Promise<void> {
     void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasDocs', this.sites.all().length > 0);
-    const remotes = this.remotes.list();
-    void vscode.commands.executeCommand('setContext', 'techdocsEditor.hasRemote', remotes.length > 0);
     const started = performance.now();
     const candidates = await this.loadCandidates();
     this.buildSteps = `sites ${Math.round(performance.now() - started)} ms`;
@@ -593,10 +577,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       shown = { mkdocs, docsDir, tree };
       parent.children.push(...items);
       roots.push(parent);
-    } else if (current?.remote) {
-      const item = await this.remoteItem(current.remote, pages);
-      item.place = current.place;
-      roots.push(item);
     }
     if (run !== this.runs) return this.latest;
     this.candidates = candidates;
@@ -663,16 +643,8 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
       }),
     );
     const local = found.filter((c): c is SiteCandidate => c !== undefined);
-    const remote = this.remotes.list().map((entry): SiteCandidate => {
-      const where = entry.root ? `${entry.slug}/${entry.root}` : entry.slug;
-      const place = entry.root ? `${entry.slug} › ${entry.root}` : entry.slug;
-      return { key: remoteKey(entry), label: this.remoteNames.get(remoteKey(entry)) ?? where, description: where, repo: `${entry.host}/${entry.slug}`, place, remote: entry };
-    });
-    return [...local, ...remote];
+    return local;
   }
-
-  /** Nomes dos sites do GitHub, lidos ao montar a árvore deles. */
-  private readonly remoteNames = new Map<string, string>();
 
   private setCurrent(key: string) {
     this.currentKey = key;
@@ -684,7 +656,7 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
   /** Página de outro site no editor: o seletor troca para ele (na próxima montagem, que já conhece o site). */
   private followActive() {
     const uri = activeUri();
-    if (!uri || (uri.scheme !== REMOTE_SCHEME && !this.sites.siteOf(uri))) return;
+    if (!uri || !this.sites.siteOf(uri)) return;
     const key = keyOf(this.candidates, this.sites, uri);
     if (key && key === this.currentKey) return;
     this.follow = uri;
@@ -701,35 +673,6 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     await Promise.all(own.filter(isPage).map(async uri => titles.set(relative(uri), pageTitle((await readText(uri)) ?? ''))));
     const tree = docsTree(yml, [...titles.keys()], path => titles.get(path));
     return { tree, items: treeItems(tree, docsDir, parent, pages, true) };
-  }
-
-  /** Um site do GitHub: o nó com o nome do site e as páginas da branch principal, ou o aviso se não deu para ler. */
-  private async remoteItem(entry: RemoteEntry, pages: Map<string, DocsItem>): Promise<DocsItem> {
-    const where = entry.root ? `${entry.slug}/${entry.root}` : entry.slug;
-    const item = new DocsItem('remote', where, undefined, remoteUri(entry.host, entry.slug, entry.root), `${where} · ${entry.host}`);
-    item.remote = entry;
-    try {
-      const access = await this.remotes.access(entry.host, entry.slug);
-      const site = access.sites.find(s => s.root === entry.root);
-      if (!site) {
-        item.children.push(new DocsItem('remoteError', vscode.l10n.t('There is no mkdocs.yml in {0} any more', entry.root || '/'), item));
-        return item;
-      }
-      const remote = await loadRemoteSiteTree(access.client, site, access.repo.defaultBranch);
-      this.remoteNames.set(remoteKey(entry), site.name);
-      const named = new DocsItem('remote', site.name, undefined, item.uri, item.description);
-      named.remote = entry;
-      const docsDir = remoteUri(entry.host, entry.slug, site.docsDir);
-      named.children.push(...treeItems(remote.tree, docsDir, named, pages, false));
-      return named;
-    } catch (error) {
-      const message =
-        error instanceof SignInRequiredError
-          ? vscode.l10n.t('Sign in to GitHub to read it (open it again from the GitHub command)')
-          : vscode.l10n.t('Could not read it: {0}', error instanceof Error ? error.message : String(error));
-      item.children.push(new DocsItem('remoteError', message, item));
-      return item;
-    }
   }
 
   /** Seleciona na árvore a página do editor ativo (texto ou visual), como o Explorer faz com o arquivo. */
@@ -760,14 +703,6 @@ const CHECK_SHOWN_MS = 3000;
 const folderLabel = (folder: vscode.Uri) => folder.path.replace(/\/+$/, '').split('/').pop() || folder.path;
 
 function keyOf(candidates: SiteCandidate[], sites: LocalSites, uri: vscode.Uri): string | undefined {
-  if (uri.scheme === REMOTE_SCHEME) {
-    const ref = parseRemoteUri(uri.authority, uri.path);
-    if (!ref) return undefined;
-    // O site de pasta mais funda que contém a página
-    return candidates
-      .filter(c => c.remote && c.remote.host === ref.host && c.remote.slug === ref.slug && (!c.remote.root || ref.path.startsWith(`${c.remote.root}/`)))
-      .sort((a, b) => b.remote!.root.length - a.remote!.root.length)[0]?.key;
-  }
   const site = sites.siteOf(uri);
   return site && candidates.find(c => c.local?.site.root === site.root)?.key;
 }
@@ -777,9 +712,6 @@ function usableName(name: string | undefined): string | undefined {
   return name && !/^(change[-_ ]?me|todo|tbd|xxx+|site[-_ ]?name|my[-_ ]?docs)$/i.test(name.trim()) ? name : undefined;
 }
 
-function remoteKey(entry: RemoteEntry) {
-  return `remote:${entry.host}/${entry.slug}/${entry.root}`;
-}
 
 /** Itens da árvore de um site (o `nav`, ou as pastas, e as páginas fora do `nav`), com as páginas em `pages`. */
 function treeItems(tree: DocsTree, docsDir: vscode.Uri, parent: DocsItem | undefined, pages: Map<string, DocsItem>, local: boolean): DocsItem[] {

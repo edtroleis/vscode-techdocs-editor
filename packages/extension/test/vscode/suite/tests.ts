@@ -7,12 +7,12 @@
  */
 import { firstToFill, readNav, type NavItem } from '@edtroleis/techdocs-editor-core';
 import * as vscode from 'vscode';
+import { useTestTransport } from '../../../src/publish/githubAuth';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
 import type { NewPageCommand } from '../../../src/templates/newPage';
 import type { PrepareContext } from '../../../src/prepareContext';
-import type { PublishPanel } from '../../../src/publish/publishPanel';
 import type { CatalogOptions } from '../../../src/catalogOptions';
 import type { useTestSiteChoice } from '../../../src/chooseSites';
 import type { useTestSitePick } from '../../../src/docsTreeView';
@@ -64,7 +64,6 @@ type Api = {
   newSite: NewSiteCommand;
   repoCheck: RepoCheck;
   checkView: CheckView;
-  publish: PublishPanel;
   central: CentralTemplates;
   catalogOptions: CatalogOptions;
   templateOptions: import('../../../src/templates/templateOptions').TemplateOptions;
@@ -1672,7 +1671,7 @@ export function defineTests() {
     });
 
     test('templates da empresa (TA3): lidos do GitHub com login, guardados por uma hora e usados sem rede', async () => {
-      const { newPage, newSite, publish, central } = await api();
+      const { newPage, newSite, central } = await api();
       const config = vscode.workspace.getConfiguration('techdocsEditor.templates');
       const page = '---\ntemplate:\n  name: Runbook da empresa\n  category: guide\n---\n\n# {{title}}\n\nDa empresa.\n';
       const site = 'name: Site da empresa\nfiles:\n  - path: index.md\n    title: Início\n    source: inicio.md\n  - path: rb.md\n    title: Runbook\n    page: runbook\n';
@@ -1705,7 +1704,7 @@ export function defineTests() {
         if (blob) return reply(200, { content: btoa(unescape(encodeURIComponent(Object.values(files)[Number(blob[1])]))), encoding: 'base64' });
         return reply(404, { message: 'Not Found' });
       };
-      publish.useTestGitHub(() => ({ baseUrl: 'https://api.github.com', headers: { Authorization: 'Bearer token' }, fetch: fetchFake }));
+      useTestTransport(() => ({ baseUrl: 'https://api.github.com', headers: { Authorization: 'Bearer token' }, fetch: fetchFake }));
       await config.update('repository', `${repo}/templates`, vscode.ConfigurationTarget.Workspace);
       try {
         ok(await central.get(undefined, true), 'templates da empresa não lidos');
@@ -1728,7 +1727,7 @@ export function defineTests() {
         const copy = await central.get(undefined, true);
         equal(copy?.pages.map(p => p.id).join(), 'runbook', 'sem rede, a cópia sumiu');
       } finally {
-        publish.useTestGitHub(undefined);
+        useTestTransport(undefined);
         await config.update('repository', undefined, vscode.ConfigurationTarget.Workspace);
         for (const path of ['wiki/docs/disco.md', 'site-empresa']) await remove(path);
       }

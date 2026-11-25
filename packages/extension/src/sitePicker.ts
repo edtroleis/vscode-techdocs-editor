@@ -3,7 +3,6 @@ import { pageTitle } from '@edtroleis/techdocs-editor-core';
 import { hideSite } from './chooseSites';
 import type { SiteCandidate } from './docsTreeView';
 import type { LocalSites } from './localSites';
-import type { RemoteRepos } from './remote/remoteRepos';
 
 /** Quantos sites recentes a árvore guarda. */
 export const RECENT_COUNT = 5;
@@ -26,12 +25,11 @@ export type PickerHost = {
   /** Rascunhos da pessoa por site (de "Minhas alterações"). */
   drafts(): Map<string, { draft: number; review: number }>;
   sites: LocalSites;
-  remotes: RemoteRepos;
 };
 
 type Item = vscode.QuickPickItem & {
   site?: SiteCandidate;
-  page?: { uri: vscode.Uri; remote: boolean };
+  page?: { uri: vscode.Uri };
   /** Pasta sem documentação achada na busca: criar nela. */
   folder?: vscode.Uri;
   /** Entrar na pasta (`to` undefined: a lista das pastas do workspace). */
@@ -99,9 +97,9 @@ export async function pickSite(host: PickerHost) {
       showing ? vscode.l10n.t('showing now') : '',
     ];
     return {
-      label: `$(${showing ? 'check' : folder ? 'folder' : site.remote ? 'github' : 'book'}) ${folder ?? site.label}`,
+      label: `$(${showing ? 'check' : folder ? 'folder' : 'book'}) ${folder ?? site.label}`,
       description: parts.filter(Boolean).join(' · '),
-      buttons: [folderButton(site.remote ? `${site.remote.host}/${site.description}` : `~/${site.description}`), ...(showing ? [] : [hideButton])],
+      buttons: [folderButton(`~/${site.description}`), ...(showing ? [] : [hideButton])],
       site,
     };
   };
@@ -170,9 +168,6 @@ export async function pickSite(host: PickerHost) {
     if (here && !self && !sitesIn(here.path).length) {
       items.push({ label: `$(check) ${vscode.l10n.t('Use this folder')}`, description: `${shortPath(here)} · ${vscode.l10n.t('to create its documentation')}`, action: 'useHere', alwaysShow: true });
     }
-    // Os sites abertos do GitHub ficam na pasta de cima
-    const remote = candidates.filter(c => c.remote);
-    if (here?.path === top?.path && remote.length) items.push(separator('GitHub'), ...sorted(remote).map(site => siteItem(site)));
     if (entries && !items.length) items.push({ label: vscode.l10n.t('This folder is empty.'), alwaysShow: true });
     return items;
   };
@@ -195,7 +190,7 @@ export async function pickSite(host: PickerHost) {
       items.push(separator(vscode.l10n.t('sites')), ...sorted(candidates).map(site => siteItem(site)));
       if (pages.length) {
         items.push(separator(vscode.l10n.t('pages')));
-        items.push(...pages.map(p => ({ label: `$(file) ${p.title}`, description: p.site.label, page: { uri: p.uri, remote: Boolean(p.site.remote) } })));
+        items.push(...pages.map(p => ({ label: `$(file) ${p.title}`, description: p.site.label, page: { uri: p.uri } })));
       }
       if (empty?.length) items.push(separator(vscode.l10n.t('without documentation yet')), ...empty.map(folderItem));
       items.push(createItem());
@@ -252,11 +247,7 @@ export async function pickSite(host: PickerHost) {
     const site = item.site;
     if (button === hideButton && site) {
       candidates = candidates.filter(c => c.key !== site.key);
-      if (site.remote) {
-        const entry = site.remote;
-        await host.remotes.remove(entry);
-        undo = { site, run: () => host.remotes.add(entry) };
-      } else if (site.local) {
+      if (site.local) {
         const config = vscode.workspace.getConfiguration('techdocsEditor');
         const before = config.inspect<string[] | null>('sites')?.workspaceValue;
         await hideSite(host.sites, site.local.mkdocs.with({ path: site.local.site.root }));
@@ -264,10 +255,9 @@ export async function pickSite(host: PickerHost) {
       }
       return render();
     }
-    // Botão da pasta: o site no Explorer (do GitHub: a pasta no GitHub)
+    // Botão do diretório: o site no Explorer
     quickPick.hide();
-    if (site?.remote) await vscode.env.openExternal(vscode.Uri.parse(`https://${site.remote.host}/${site.remote.slug}/tree/HEAD/${site.remote.root}`));
-    else if (site?.local) await vscode.commands.executeCommand('revealInExplorer', site.local.mkdocs);
+    if (site?.local) await vscode.commands.executeCommand('revealInExplorer', site.local.mkdocs);
     else if (item.folder) await vscode.commands.executeCommand('revealInExplorer', item.folder);
   });
   quickPick.onDidAccept(async () => {
@@ -304,7 +294,7 @@ export async function pickSite(host: PickerHost) {
     quickPick.hide();
     if (item.site) await host.select(item.site.key);
     else if (item.page) {
-      await vscode.commands.executeCommand(item.page.remote ? 'techdocsEditor.openVisual' : 'vscode.open', item.page.uri);
+      await vscode.commands.executeCommand('vscode.open', item.page.uri);
     } else if (item.folder) await host.selectFolder(item.folder);
     else if (item.action === 'useHere' && here) await host.selectFolder(here);
     else if (item.action === 'create') await newSiteInFolder();

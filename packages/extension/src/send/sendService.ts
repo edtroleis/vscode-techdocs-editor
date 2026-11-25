@@ -20,6 +20,7 @@ import { Sender, type SendState, type SendTarget } from './sender';
 import { SendPanel } from './sendPanel';
 import { preflight } from './preflight';
 import { sendStrip } from './sendStrip';
+import { logLine } from '../timing';
 
 /**
  * O envio no VS Code (spec 09): um envio por repositório Git do workspace. Sem login, só conta o que mudou (o Git
@@ -357,9 +358,10 @@ export class SendService implements vscode.Disposable, vscode.FileDecorationProv
   }
 }
 
-/** `{path}` era do envio por página (antes da 0.19): ignorado, com aviso no canal. */
+/** `{path}` era do envio por página (antes da 0.19): ignorado, com aviso no canal "TechDocs Editor". */
 export function branchPattern(setting: string | undefined): string {
   const fallback = 'docs/{login}/{date}';
+  if (setting?.includes('{path}')) logLine(`techdocsEditor.branchPattern com {path} (do envio por página) ignorado: usado ${fallback}`);
   if (!setting || setting.includes('{path}') || !setting.includes('{login}')) return fallback;
   return setting;
 }

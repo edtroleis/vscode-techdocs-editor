@@ -24,10 +24,12 @@ restrito, só leitura e visual; sem lint com config do repositório até confiar
 | LC2 | Ctrl+S salva o arquivo (nada de commit); Git pelo controle de versão do VS Code |
 | LC3 | Imagens gravadas em `<docs>/assets/<timestamp>-<nome>` com `workspace.fs`, link relativo à página (E4) |
 | LC4 | Conflitos: os do Git, no editor de merge do VS Code. O editor visual não abre arquivo com marcadores de conflito: oferece abrir no texto |
-| LC5 | Painel de publicação **opcional** (`techdocsEditor.local.publishPanel`): para quem quer o fluxo do plugin sem sair do VS Code. Usa a extensão Git do VS Code (`vscode.git`, API 1) para branch, commit e push, e a API do GitHub para PR e checks (mesmo fluxo da seção Publicação) |
+| LC5 | *(Substituído pela spec 09: Enviar.)* Painel de publicação **opcional** (`techdocsEditor.local.publishPanel`): para quem quer o fluxo do plugin sem sair do VS Code. Usa a extensão Git do VS Code (`vscode.git`, API 1) para branch, commit e push, e a API do GitHub para PR e checks (mesmo fluxo da seção Publicação) |
 | LC6 | Árvore "Documentação" na barra lateral: páginas do `docs_dir` pelo `nav` do `mkdocs.yml` (ou pastas, sem `nav`) |
 
 ## Modo remoto
+
+> **Substituído na 0.19.0 pela [spec 09](09-enviar.md):** o modo remoto (M1–M9) saiu. A documentação sempre vive no computador: Abrir documentação do GitHub clona (telas A e B).
 
 | # | Requisito | Origem |
 |---|-----------|--------|
@@ -42,6 +44,8 @@ restrito, só leitura e visual; sem lint com config do repositório até confiar
 | M9 | PR aberto de outra pessoa na mesma página: aviso com autor e link; PR da própria pessoa feito fora do editor: aviso próprio | F16, F26 |
 
 ## Publicação (modo remoto e painel opcional do local)
+
+> **Substituído na 0.19.0 pela [spec 09](09-enviar.md):** o painel por página e o envio página a página saíram; Enviar manda o repositório inteiro num pull request (ou direto na principal, `send.target`).
 
 Mesmo fluxo e mesmos estados do plugin (spec 02 da demo), num painel (`WebviewView`) ao lado do
 editor:

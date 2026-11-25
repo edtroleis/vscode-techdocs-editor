@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedHosts, parseRemoteInput, parseRemoteUri, remoteUriPath, safeRepoPath, validateOpenLink } from './remoteLink';
+import { allowedHosts, parseRemoteInput, safeRepoPath, validateOpenLink } from './remoteLink';
 
 describe('safeRepoPath', () => {
   it('aceita caminho relativo dentro do repositório', () => {
@@ -11,21 +11,6 @@ describe('safeRepoPath', () => {
     for (const path of ['../segredo.md', 'docs/../../x.md', '/etc/passwd', 'docs\\x.md', '', 'docs//x.md', 'docs/./x.md', 'docs/x\n.md']) {
       expect(safeRepoPath(path), path).toBeUndefined();
     }
-  });
-});
-
-describe('URI techdocs:', () => {
-  it('ida e volta: host na autoridade, dono/repo e o caminho no path', () => {
-    expect(remoteUriPath('acme/wiki', 'docs/index.md')).toBe('/acme/wiki/docs/index.md');
-    expect(remoteUriPath('acme/wiki', '')).toBe('/acme/wiki');
-    expect(parseRemoteUri('github.com', '/acme/wiki/docs/index.md')).toEqual({ host: 'github.com', slug: 'acme/wiki', path: 'docs/index.md' });
-    expect(parseRemoteUri('GHE.Empresa', '/acme/wiki')).toEqual({ host: 'ghe.empresa', slug: 'acme/wiki', path: '' });
-  });
-
-  it('recusa URI sem dono/repo ou com caminho inseguro', () => {
-    expect(parseRemoteUri('github.com', '/acme')).toBeUndefined();
-    expect(parseRemoteUri('github.com', '/acme/wiki/../x.md')).toBeUndefined();
-    expect(parseRemoteUri('', '/acme/wiki/x.md')).toBeUndefined();
   });
 });
 

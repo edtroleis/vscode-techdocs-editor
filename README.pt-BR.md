@@ -42,7 +42,7 @@ um diagrama Mermaid e o ajuste da formatação ([vídeo, MP4](https://github.com
 | **Mermaid** | Diagramas desenhados no lugar, e o site configurado para desenhá-los |
 | **Imagens e colagem** | Imagens gravadas em `docs/assets`; colar do Confluence, do Outline e da web como Markdown |
 | **Verificação** | O que o TechDocs precisa para montar o site, com as correções mostradas antes de aplicar |
-| **GitHub** | Editar docs no GitHub sem clonar, com rascunho, revisão e publicação |
+| **GitHub** | Clonar, editar no computador e enviar o repositório inteiro para revisão de uma vez |
 | **Teclado** | Tudo sem o mouse: Enter na árvore abre a página, com o cursor no texto |
 
 ## Recursos
@@ -154,7 +154,7 @@ Code), sem rede (também no VS Code para a Web).
 
 - **TechDocs na barra de atividades:** um ícone próprio, que só aparece em workspaces com `mkdocs.yml`, para o
   resto do seu Markdown não atrapalhar. Ele tem três seções: **Documentação**, **Verificação** e o painel
-  opcional **Publicação**. Num repositório ainda sem `mkdocs.yml`, mas com `README.md`, um diretório `docs/` com
+  **Envio**, depois que você envia. Num repositório ainda sem `mkdocs.yml`, mas com `README.md`, um diretório `docs/` com
   páginas ou um `catalog-info.yaml`, o ícone abre uma tela de boas-vindas que diz o que achou, com **Preparar a
   documentação**.
 - **Árvore Documentação:** as páginas na ordem do `nav` do `mkdocs.yml` (ou dos diretórios, sem `nav`), com o
@@ -358,56 +358,25 @@ uma dica, que não conta no ícone), **Exigir** (a falta é um problema, com uma
 `catalog-info.yaml` (sinal de que o Backstage os lê). Grave **Para o time** no `.techdocs-editor.yaml` (`catalog:`) ou **Só para mim** na configuração
 `techdocsEditor.catalog`; o arquivo do repositório vale sobre ela.
 
-### Editar a documentação no GitHub sem clonar
+### Clonar e enviar para o GitHub
 
-**TechDocs: Abrir documentação do GitHub…** aceita uma URL ou `dono/repo` (GitHub Enterprise Server também, com
-`techdocsEditor.github.host`) e abre o site na árvore Documentação e a página inicial no editor visual, lidos
-pela API do GitHub. Repositório público abre sem login; links como
-`vscode://edtroleis.techdocs-editor/open?host=github.com&repo=acme/wiki&path=docs/index.md` são conferidos antes
-de abrir qualquer coisa.
+A documentação sempre vive no seu computador: você edita aqui e envia ao GitHub quando quiser.
 
-- **Ctrl+S salva o seu rascunho:** um commit na sua branch da página (`docs/<login>/<página>`), criada no
-  primeiro salvar a partir da versão que você abriu, com `[skip ci]` onde há pipeline. Quem publicar antes de
-  você nunca é sobrescrito. As imagens que você põe vão para `<docs>/assets/` nessa branch e aparecem no editor.
-- **O painel Publicação** aparece nas páginas do GitHub, com os mesmos botões do modo local: **Salvar e
-  verificar** roda a pipeline e abre um pull request em rascunho, **Enviar** marca como pronto, **Descartar**
-  apaga o rascunho. Quando o merge é feito no GitHub, o painel diz que a página foi publicada.
-- **Histórico da Página…** (o relógio no título do editor) lista as versões publicadas da página. **Restaurar** põe
-  o texto de uma versão no editor, sem salvar; ao salvar, ele passa pelo seu rascunho e pelo pull request como
-  qualquer outra alteração.
-- **Nova página a partir de template…** funciona também nos sites do GitHub: a página (e a entrada no `nav`, se
-  você escolher) vai num commit na branch de rascunho da página nova, com os templates do próprio repositório lidos
-  do GitHub.
-- **Outros pull requests na página:** o painel Publicação mostra os pull requests abertos de outras pessoas que
-  mudam a mesma página (com o autor) e os seus abertos fora do editor.
-- **Conflitos:** se o seu rascunho mudou em outra janela, o salvar junta as duas versões quando elas mudaram
-  trechos diferentes. Quando mudaram o mesmo trecho, uma tela mostra as duas lado a lado e você escolhe, trecho
-  por trecho, qual fica (ou as duas). O que foi publicado depois que o rascunho começou entra nele sozinho; se
-  mudou o mesmo trecho, o painel segura o pull request até você **Resolver conflito**.
-- Sem login, ou sem permissão de escrita, as páginas ficam só leitura; **Entrar no GitHub** no painel reabre a
-  página do seu rascunho, pronta para editar.
-
-### Publicar sem sair do VS Code (opcional)
-
-Para quem prefere não lidar com branches e pull requests: ligue `techdocsEditor.local.publishPanel` e um
-painel **Publicação** aparece na barra lateral TechDocs, com o mesmo fluxo do plugin do Backstage.
-
-| Botão | O que acontece no GitHub |
-|-------|--------------------------|
-| **Salvar rascunho** | Commit e push na branch do rascunho, com `[skip ci]`: sem verificações e sem pull request |
-| **Salvar e verificar** | Ajusta o que a verificação de formatação sabe ajustar, faz commit e push e abre um pull request **em rascunho** na primeira vez, o que dispara as verificações |
-| **Enviar para publicação** / **Enviar para revisão** | Marca o pull request como pronto. Quem publica é quem faz o merge no GitHub: o painel nunca faz merge |
-| **Descartar** | Fecha o pull request e, numa branch criada pelo painel, apaga a branch aqui e no GitHub |
-
-- Na branch principal, salvar cria `docs/<seu-login>/<página>` e troca para ela. Numa branch sua, o painel usa
-  essa branch.
-- Os commits levam só a página e as imagens novas de `assets/` que ela usa, nunca outras alterações do
-  workspace.
-- As verificações de qualquer CI (check runs do GitHub Actions e commit statuses), com as falhas em
-  linguagem simples e link para a linha. Sem pipeline, a verificação é a de formatação do editor.
-- Quem administra o repositório vê **Configurar verificações**: um workflow com as verificações padrão, as
-  regras de formatação e a proteção da branch, com os arquivos num pull request para o time revisar.
-- O login é a conta do GitHub do VS Code (GitHub Enterprise Server também). O token fica com o VS Code.
+- **TechDocs: Abrir documentação do GitHub…** aceita uma URL ou `dono/repo` (GitHub Enterprise Server também, com
+  `techdocsEditor.github.host`), clona em `techdocsEditor.clone.directory` (`~/Documents/TechDocs` por padrão) e
+  abre. Links como `vscode://edtroleis.techdocs-editor/open?host=github.com&repo=acme/wiki&path=docs/index.md` são
+  conferidos antes de abrir qualquer coisa, e abrem a cópia que você já tem em vez de clonar de novo.
+- **Ctrl+S só salva neste computador.** **Enviar (N)** na árvore Documentação, no topo da página e na barra de status
+  conta o que mudou; os arquivos mostram **M** (alterado) e **N** (novo).
+- **Enviar** abre uma tela com o que vai, página por página, **Desfazer** em cada item, um resumo que você pode
+  editar e a conferência (links, imagens, menu, formatação) com **Corrigir**. Arquivos fora da documentação nunca vão.
+- Por padrão o envio inteiro vira um pull request, acompanhado no painel **Envio** até a aprovação: enviado,
+  verificando, esperando revisão, na documentação. Mudanças novas vão com **Enviar de novo**; **Desistir deste
+  envio** traz as mudanças de volta sem perder nada. Com `techdocsEditor.send.target` em `main`, vai direto para a
+  branch principal.
+- Diretório que ainda não está no GitHub: o primeiro envio cria o repositório (privado por padrão) e liga. Quando o
+  Git não sabe seu nome e e-mail, pergunta uma vez, com o e-mail privado do GitHub como opção.
+- Entra com a conta do GitHub do VS Code. O token fica com o VS Code; o Git é o da extensão Git do VS Code.
 
 ## Como começar
 
@@ -442,14 +411,13 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 | `techdocsEditor.templates.repository` | `""` | Templates da empresa num repositório do GitHub: `dono/repo[/diretório][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Oferece os templates que vêm com a extensão |
 | `techdocsEditor.catalog` | `auto` | Como a verificação trata o `catalog-info.yaml`: `auto` (confere só se existir), `required` ou `off`. Também pela engrenagem da seção Verificação; o `catalog:` do `.techdocs-editor.yaml` vale sobre esta |
-| `techdocsEditor.local.publishPanel` | `false` | Mostra o painel **Publicação** |
-| `techdocsEditor.branchPattern` | `docs/{login}/{path}` | Branch criada para o rascunho quando você está na branch principal |
-| `techdocsEditor.drafts.skipCi` | `true` | **Salvar rascunho** põe `[skip ci]`, para a pipeline rodar só em **Salvar e verificar** |
+| `techdocsEditor.send.target` | `pullRequest` | **Enviar**: um pull request acompanhado até a aprovação, ou `main` (direto na branch principal) |
+| `techdocsEditor.branchPattern` | `docs/{login}/{date}` | Branch de cada envio para revisão, criada quando você está na branch principal |
+| `techdocsEditor.clone.directory` | `~/Documents/TechDocs` | Onde **Abrir documentação do GitHub** clona os repositórios |
 | `techdocsEditor.verification.mode` | `auto` | `auto` (a pipeline, quando há uma), `pipeline` ou `editor` |
 | `techdocsEditor.verification.startTimeoutSeconds` | `120` | Espera pela primeira verificação antes de avisar que nada começou |
 | `techdocsEditor.verification.checkHelp` | `{}` | Mensagem em linguagem simples por nome de check, mostrada quando ele falha |
 | `techdocsEditor.polling.intervalSeconds` / `idleIntervalSeconds` | `8` / `60` | Consultas às verificações com algo rodando / parado. Nada é consultado com a janela em segundo plano |
-| `techdocsEditor.mode` | `auto` | Onde abre a documentação de um repositório do GitHub: `auto` (você escolhe quando ele também está no workspace), `local` ou `remote` |
 | `techdocsEditor.github.host` | `""` | O GitHub Enterprise Server da empresa, ex.: `github.example.com`, além do `github.com` |
 | `techdocsEditor.github.scopes` | `["repo"]` | Escopos pedidos no login do GitHub (`public_repo` para repositórios públicos) |
 
@@ -474,7 +442,8 @@ Corrigir a formatação ao salvar:
 | **TechDocs: Novo site de documentação…** | Cria o `mkdocs.yml` e as páginas de um site de documentação a partir de um template |
 | **TechDocs: Conferir a documentação do repositório** | Lista na seção Verificação e no painel Problemas o que falta ou está errado para o TechDocs |
 | **TechDocs: Preparar a documentação neste repositório** | Cria um site, ou aplica as correções da conferência uma por uma, com o diff antes |
-| **TechDocs: Abrir documentação do GitHub…** | Abre um site de um repositório do GitHub sem clonar (URL ou `dono/repo`) |
+| **TechDocs: Abrir documentação do GitHub…** | Clona um repositório do GitHub num diretório sugerido e abre (URL ou `dono/repo`) |
+| **TechDocs: Enviar as mudanças para o repositório** | Abre a tela de envio com o que vai para o GitHub |
 | **TechDocs: Atualizar os templates da empresa** | Confere o repositório de templates da empresa na hora, sem esperar a conferência de cada hora |
 | **TechDocs: Opções dos templates** | O repositório de templates em uso e de onde ele vem: trocar para o time ou só para você, testar o acesso, ligar ou desligar os templates da extensão, voltar ao padrão |
 
@@ -493,13 +462,12 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 ## Privacidade e segurança
 
 - **Sem telemetria.** A extensão não coleta nada.
-- **Sem rede no modo local**, a não ser que você ligue o painel de publicação. As páginas são lidas e
-  gravadas pelo VS Code; os únicos acessos são às imagens que as suas páginas já apontam com `https://`. O
-  painel só fala com o GitHub do remote do seu repositório, a partir do host da extensão: o token nunca chega
+- **Sem rede até você enviar.** As páginas são lidas e gravadas pelo VS Code; os únicos acessos são às imagens
+  que as suas páginas já apontam com `https://`. **Enviar** e **Abrir documentação do GitHub** só falam com o
+  GitHub do repositório, a partir do host da extensão: o token nunca chega
   ao webview. Com `techdocsEditor.templates.repository` configurado, a extensão também lê esse repositório, no
   máximo uma vez por hora; em workspace não confiável, só vale a sua configuração de usuário, nunca a do diretório.
-- **O modo remoto** fala só com o GitHub do repositório que você abriu. A lista de sites abertos guarda só o
-  host, `dono/repo` e o diretório do `mkdocs.yml`, nunca token.
+- A lista de repositórios clonados guarda só `dono/repo` e o diretório, nunca um token.
 - O editor visual roda num webview com política de segurança de conteúdo restrita: só os scripts da
   própria extensão rodam.
 
@@ -507,8 +475,7 @@ markdownlint). Só as páginas de um `docs_dir` são verificadas.
 
 - VS Code 1.100 ou mais novo.
 - Funciona em diretórios locais e clones (modo local). O Git continua com o controle de versão do VS Code.
-- No modo local, o painel de publicação precisa de um clone com remote do GitHub e da extensão Git do VS Code.
-- Modo remoto, ainda não: o VS Code para a Web. Veja o [plano](specs/00-visao-geral.md#fases).
+- **Enviar** e **Abrir documentação do GitHub** precisam do Git e da extensão Git do VS Code (não no VS Code para a Web).
 - Fórmulas (LaTeX) ficam desligadas, como na configuração padrão do MkDocs do TechDocs.
 - Blocos HTML com `markdown` (fora os cards) e outras construções avançadas do Material for MkDocs ainda
   estão sendo reforçados. Confira o diff antes de commitar páginas que as usam.
