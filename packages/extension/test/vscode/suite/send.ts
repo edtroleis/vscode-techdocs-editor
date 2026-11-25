@@ -219,6 +219,7 @@ export function defineSendTests() {
       const data = new Map<string, unknown>();
       return { keys: () => [...data.keys()], get: (key: string) => data.get(key), update: async (key: string, value: unknown) => void data.set(key, value) } as unknown as vscode.Memento;
     };
+    suiteSetup(() => vscode.commands.executeCommand('git.openRepository', join(vscode.workspace.workspaceFolders![0].uri.fsPath, 'publicado')));
     teardown(() => vscode.commands.executeCommand('workbench.action.closeAllEditors'));
 
     test('link com o repositório já no computador abre a página sem clonar', async () => {
