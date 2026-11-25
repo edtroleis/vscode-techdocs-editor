@@ -618,7 +618,6 @@
   "New page, not sent yet": "Página nova, ainda não enviada",
   "Changed, not sent yet": "Alterada, ainda não enviada",
   "Open a page of the documentation to send its changes.": "Abra uma página da documentação para enviar as mudanças.",
-  "This directory is not on GitHub yet.": "Este diretório ainda não está no GitHub.",
   "Send details": "Detalhes do envio",
   "Send ({0})": "Enviar ({0})",
   "Send again ({0})": "Enviar de novo ({0})",
@@ -665,5 +664,19 @@
   "You cannot send to this repository": "Você não pode enviar para este repositório",
   "Your GitHub account can only read it. Your changes stay saved on this computer.": "Sua conta do GitHub só pode ler. Suas mudanças ficam salvas neste computador.",
   "Copy the repository link": "Copiar o link do repositório",
-  "Link copied.": "Link copiado."
+  "Link copied.": "Link copiado.",
+  "Keeps your email private: GitHub still links the changes to your account.": "Mantém seu e-mail privado: o GitHub continua ligando as mudanças à sua conta.",
+  "Your name and email on the changes": "Seu nome e e-mail nas mudanças",
+  "Who sends the changes: shown on GitHub. It is set once for this computer.": "Quem envia as mudanças: aparece no GitHub. Fica gravado uma vez neste computador.",
+  "Create the repository on GitHub": "Criar o repositório no GitHub",
+  "organization": "organização",
+  "your account": "sua conta",
+  "Where the documentation lives on GitHub": "Onde a documentação fica no GitHub",
+  "Repository name": "Nome do repositório",
+  "Use letters, numbers, dots, dashes and underscores.": "Use letras, números, pontos, hífens e sublinhados.",
+  "Private": "Privado",
+  "Only who you invite sees it.": "Só quem você convidar vê.",
+  "Public": "Público",
+  "Anyone on the internet sees it.": "Qualquer pessoa na internet vê.",
+  "Who can see it": "Quem pode ver"
 }

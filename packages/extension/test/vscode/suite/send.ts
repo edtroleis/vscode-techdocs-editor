@@ -9,6 +9,9 @@ import { join } from 'node:path';
 import * as vscode from 'vscode';
 import type { RepoGit } from '../../../src/publish/types';
 import type { SendService } from '../../../src/send/sendService';
+import { preflight } from '../../../src/send/preflight';
+import { FakeGitHub } from '../../../../core/test/fakeGitHub';
+import { useTestTransport } from '../../../src/publish/githubAuth';
 import { gitApi, VscodeGit } from '../../../src/publish/vscodeGit';
 
 function equal<T>(actual: T, expected: T, message: string) {
@@ -147,6 +150,65 @@ export function defineSendTests() {
       equal(send.provideFileDecoration(vscode.Uri.joinPath(root(), 'docs', 'novo.md'))?.badge, 'N', 'nova');
       equal(send.provideFileDecoration(vscode.Uri.joinPath(root(), 'fora.txt')), undefined, 'fora da documentação');
       git(root().fsPath, 'clean', '-qf', 'fora.txt');
+    });
+  });
+
+  suite('Primeiro envio: criar o repositório e a identidade', function () {
+    this.timeout(60_000);
+    let github: FakeGitHub;
+    setup(() => {
+      github = new FakeGitHub({});
+      github.login = 'pessoa';
+      github.userName = 'Pessoa Teste';
+      github.emails = [{ email: 'pessoa@empresa.com', primary: true }];
+      useTestTransport(() => ({ baseUrl: 'https://api.github.com', headers: { Authorization: `Bearer ${github.token}` }, fetch: github.fetch.bind(github) }));
+    });
+    teardown(() => useTestTransport(undefined));
+
+    test('criar o repositório: diretório sem Git vira repositório privado ligado ao GitHub', async () => {
+      const folder = join(mkdtempSync(join(tmpdir(), 'techdocs-novo-')), 'manual-da-equipe');
+      mkdirSync(join(folder, 'docs'), { recursive: true });
+      mkdirSync(join(folder, 'src'));
+      writeFileSync(join(folder, 'mkdocs.yml'), 'site_name: Manual\n');
+      writeFileSync(join(folder, 'docs', 'index.md'), '# Manual\n');
+      writeFileSync(join(folder, 'src', 'a.ts'), 'export {};\n');
+      git(folder, 'config', '--global', 'user.name', 'Pessoa Teste');
+      git(folder, 'config', '--global', 'user.email', 'pessoa@empresa.com');
+      const result = await preflight(undefined, vscode.Uri.file(folder), {
+        pickOwner: async (owners, name) => ({ owner: owners[0].login, name, private: true }),
+        pickIdentity: async () => undefined,
+      });
+      equal(result?.firstSend, true, 'primeiro envio');
+      equal(github.createdRepos, [{ path: '/user/repos', name: 'manual-da-equipe', private: true, auto_init: false }], 'repositório criado');
+      equal(git(folder, 'remote', 'get-url', 'origin'), 'https://github.com/pessoa/manual-da-equipe.git', 'origin');
+      equal(result?.git.currentBranch(), 'main', 'na main');
+    });
+
+    test('identidade: sem nome e e-mail do Git, grava o escolhido para todo o computador', async () => {
+      const { repo, bare } = makeRepo();
+      git(repo, 'config', `url.${bare}.insteadOf`, 'https://github.com/pessoa/guia.git');
+      git(repo, 'remote', 'set-url', 'origin', 'https://github.com/pessoa/guia.git');
+      git(repo, 'config', '--unset', 'user.name');
+      git(repo, 'config', '--unset', 'user.email');
+      for (const key of ['user.name', 'user.email']) {
+        try {
+          git(repo, 'config', '--global', '--unset-all', key);
+        } catch {
+          // não estava gravado
+        }
+      }
+      const shown: string[] = [];
+      const result = await preflight(await open(repo), vscode.Uri.file(repo), {
+        pickOwner: async () => undefined,
+        pickIdentity: async choices => {
+          shown.push(...choices.map(c => c.email));
+          return choices[0];
+        },
+      });
+      equal(result?.firstSend, false, 'repositório que já existia');
+      equal(shown.at(-1), `${github.userId}+pessoa@users.noreply.github.com`, 'o e-mail privado por último');
+      equal(git(repo, 'config', '--global', 'user.name'), 'Pessoa Teste', 'nome');
+      equal(git(repo, 'config', '--global', 'user.email'), 'pessoa@empresa.com', 'e-mail');
     });
   });
 }

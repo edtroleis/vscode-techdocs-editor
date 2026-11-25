@@ -18,6 +18,7 @@ import type { RepoCheck } from '../repoCheck';
 import type { VisualEditorProvider } from '../visualEditorProvider';
 import { Sender, type SendState, type SendTarget } from './sender';
 import { SendPanel } from './sendPanel';
+import { preflight } from './preflight';
 import { sendStrip } from './sendStrip';
 
 /**
@@ -291,17 +292,22 @@ export class SendService implements vscode.Disposable, vscode.FileDecorationProv
   /** "Enviar": abre a tela de envio do repositório (spec 09, tela 2). */
   async open(uri?: vscode.Uri): Promise<SendPanel | undefined> {
     await this.refresh();
-    const repo = this.repoOf(uri);
-    if (!repo) {
+    let repo = this.repoOf(uri);
+    // Diretório sem Git ou repositório sem GitHub: cria o repositório (tela 12); sem nome e e-mail: tela 13
+    const site = repo ? undefined : this.sites.list().find(s => (uri ?? vscode.window.activeTextEditor?.document.uri)?.path.startsWith(`${s.site.root}/`)) ?? (this.sites.list().length === 1 ? this.sites.list()[0] : undefined);
+    if (!repo && !site) {
       void vscode.window.showInformationMessage(vscode.l10n.t('Open a page of the documentation to send its changes.'));
       return undefined;
     }
-    if (!repo.host || !repo.slug) {
-      void vscode.window.showWarningMessage(vscode.l10n.t('This directory is not on GitHub yet.'));
-      return undefined;
-    }
     try {
-      const sender = await this.connect(repo);
+      const ready = await preflight(repo?.git, repo?.root ?? vscode.Uri.file(vscode.Uri.parse(site!.site.root).fsPath));
+      if (!ready) return undefined;
+      if (!repo || !repo.host) {
+        await this.refresh();
+        repo = this.list().find(r => r.git.root === ready.git.root) ?? this.repoOf(uri);
+        if (!repo) return undefined;
+      }
+      const sender = await this.connect(repo, ready.firstSend ? 'main' : undefined);
       await sender.refresh();
     } catch (error) {
       void vscode.window.showErrorMessage(gitHubErrorText(error, vscode.l10n));

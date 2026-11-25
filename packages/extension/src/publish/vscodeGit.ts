@@ -219,7 +219,8 @@ export class VscodeGit implements RepoGit {
   }
 
   async identity() {
-    const read = (key: string) => this.repository.getConfig(key).then(v => v.trim() || undefined, () => undefined);
+    // `getConfig` do Git do VS Code lê só o do repositório; o nome e e-mail costumam estar no global
+    const read = (key: string) => this.git(['config', '--get', key]).then(v => v.trim() || undefined, () => undefined);
     return { name: await read('user.name'), email: await read('user.email') };
   }
 
@@ -303,7 +304,10 @@ export class VscodeGit implements RepoGit {
 /** Repositório novo no diretório (`git init` com a branch `main`). */
 export async function initRepository(folder: vscode.Uri): Promise<RepoGit> {
   const api = await gitApi();
-  const repository = api && (await api.init(folder, { defaultBranch: 'main' }));
+  if (!api) throw new Error(vscode.l10n.t('Git is not available in this VS Code.'));
+  // `api.init` não abre diretório fora do workspace: o Git cria, o VS Code abre
+  await run(api.git.path, ['init', '-q', '-b', 'main'], { cwd: folder.fsPath });
+  const repository = await api.openRepository(folder);
   if (!repository) throw new Error(vscode.l10n.t('Git is not available in this VS Code.'));
   return new VscodeGit(repository);
 }
