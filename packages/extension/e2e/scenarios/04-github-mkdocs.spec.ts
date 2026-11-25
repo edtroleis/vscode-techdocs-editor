@@ -1,14 +1,14 @@
 /**
  * Cenário 4: o Cadastro de Clientes, um repositório do GitHub que já tem a documentação (mkdocs.yml, catalog-info.yaml,
- * duas páginas). A pessoa clona, acrescenta um runbook de template, põe uma tabela e um link na Arquitetura, envia
- * as duas páginas e quem publica faz o merge no GitHub.
+ * duas páginas). A pessoa clona, acrescenta um runbook de template, põe uma tabela e um link na Arquitetura, envia o runbook
+ * para revisão, manda a Arquitetura no mesmo pull request (Enviar de novo) e quem cuida do repositório faz o merge.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cloneRepo, freshRepo, mainFile, mergePr, openPrs, type ScenarioRepo } from './github';
 import { click, expect, pause, test, type } from './story';
-import { buildSite, editorOf, openFromTree, publishStrip, quickInput, save, sidebarAction, techdocsIcon, topBar, treeRow, turnOnSetting } from './ui';
+import { buildSite, editorOf, openFromTree, publishStrip, quickInput, save, sendScreen, sidebarAction, techdocsIcon, topBar, treeRow } from './ui';
 
 const NAME = 'techdocs-cenario-mkdocs';
 let repo: ScenarioRepo;
@@ -28,7 +28,7 @@ test.use({
     id: '04-github-mkdocs',
     title: 'Repositório do GitHub com mkdocs: acrescentar à doc e publicar',
     summary:
-      'O Cadastro de Clientes, um repositório do GitHub que já tem a documentação. A pessoa clona, acrescenta um runbook de template, põe uma tabela e um link na página de Arquitetura, envia as duas páginas para publicação e quem publica faz o merge no GitHub.',
+      'O Cadastro de Clientes, um repositório do GitHub que já tem a documentação. A pessoa clona, acrescenta um runbook de template, põe uma tabela e um link na página de Arquitetura, envia para revisão (um só pull request, com Enviar de novo) e quem cuida do repositório faz o merge no GitHub.',
   },
 });
 
@@ -40,11 +40,6 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     await click(page, techdocsIcon(page));
     await expect(treeRow(page, 'Início')).toBeVisible();
     await expect(treeRow(page, 'Arquitetura')).toBeVisible();
-    await pause(page);
-  });
-
-  await story.step('Ligar a publicação no GitHub (Configurações)', async () => {
-    await turnOnSetting(page, 'techdocsEditor.local.publishPanel', 'Publish Panel');
     await pause(page);
   });
 
@@ -81,10 +76,13 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     await pause(page);
   });
 
-  await story.step('Enviar o runbook para publicação: o pull request leva a página e o menu', async () => {
+  await story.step('Enviar o runbook para revisão: o pull request leva a página e o menu', async () => {
     const editor = await editorOf(page);
-    await click(page, publishStrip(editor).getByRole('button', { name: 'Send for publication' }));
-    await expect(publishStrip(editor)).toContainText('In review', { timeout: 120_000 });
+    await click(page, publishStrip(editor).getByRole('button', { name: /^Send \(\d+\)$/ }));
+    const screen = await sendScreen(page);
+    await expect(screen.locator('li.item', { hasText: 'Reprocessar eventos' })).toBeVisible({ timeout: 30_000 });
+    await click(page, screen.getByRole('button', { name: 'Send for review' }));
+    await expect(publishStrip(await editorOf(page))).toContainText('In review', { timeout: 120_000 });
     const prs = openPrs(repo);
     expect(prs).toHaveLength(1);
     await story.check('o PR do runbook leva a página e o mkdocs.yml', async () =>
@@ -139,33 +137,35 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     await pause(page);
   });
 
-  await story.step('Enviar a Arquitetura para publicação', async () => {
+  await story.step('Enviar de novo: a Arquitetura entra no mesmo pull request', async () => {
     const editor = await editorOf(page);
-    await click(page, publishStrip(editor).getByRole('button', { name: /Send for publication|Send again/ }));
-    await expect(publishStrip(editor)).toContainText('In review', { timeout: 120_000 });
+    await click(page, publishStrip(editor).getByRole('button', { name: /^Send again \(\d+\)$/ }));
+    await expect(publishStrip(editor)).not.toContainText('Send again', { timeout: 120_000 });
     const prs = openPrs(repo);
-    await story.check('dois pull requests, um por página', async () => expect(prs).toHaveLength(2));
-    const arquitetura = prs.find(pr => prFiles(pr.number).includes('docs/arquitetura.md'));
-    await story.check('o PR da Arquitetura leva só a Arquitetura', async () => expect(arquitetura && prFiles(arquitetura.number)).toEqual(['docs/arquitetura.md']));
+    await story.check('um só pull request, com as duas páginas e o menu', async () => {
+      expect(prs).toHaveLength(1);
+      await expect.poll(() => prFiles(prs[0].number), { timeout: 30_000 }).toEqual(['docs/arquitetura.md', 'docs/runbooks/reprocessar-eventos.md', 'mkdocs.yml']);
+    });
     await pause(page, 1_500);
   });
 
-  await story.step('Quem publica faz o merge dos dois no GitHub; as páginas aparecem como publicadas', async () => {
-    const prs = openPrs(repo).sort((a, b) => a.number - b.number);
-    for (const pr of prs) mergePr(repo, pr.number);
-    story.outside('Os merges foram feitos no GitHub (pelo gh, como quem publica faria no site): a extensão não faz merge.');
+  await story.step('Quem cuida do repositório faz o merge no GitHub; a página diz que está na documentação', async () => {
+    const [pr] = openPrs(repo);
+    mergePr(repo, pr.number);
+    story.outside('O merge foi feito no GitHub (pelo gh, como quem cuida do repositório faria no site): a extensão não faz merge.');
     expect(mainFile(repo, 'mkdocs.yml')).toContain('runbooks/reprocessar-eventos.md');
     expect(mainFile(repo, 'docs/arquitetura.md')).toContain('Reprocessar eventos');
-    await story.check('a faixa da Arquitetura mostra publicada', async () => {
-      await expect(publishStrip(await editorOf(page))).toContainText('Published', { timeout: 60_000 });
+    await story.check('a faixa da Arquitetura mostra que está na documentação', async () => {
+      await expect(publishStrip(await editorOf(page))).toContainText('In the documentation', { timeout: 90_000 });
     });
     await pause(page, 2_000);
   });
 
   await story.step('O site gera com o MkDocs (o que está publicado, na main)', async () => {
-    execFileSync('git', ['checkout', '-q', 'main'], { cwd: workspace });
-    execFileSync('git', ['pull', '-q'], { cwd: workspace });
-    story.outside('Para conferir o site publicado, a pessoa voltou para a main e trouxe os merges pelo terminal (git checkout main, git pull).');
+    await story.check('a cópia voltou sozinha para a main, com o merge', async () => {
+      expect(execFileSync('git', ['branch', '--show-current'], { cwd: workspace, encoding: 'utf8' }).trim()).toBe('main');
+      expect(read('docs/arquitetura.md')).toContain('Reprocessar eventos');
+    });
     const result = buildSite(workspace);
     if (result === undefined) return story.suggest('MkDocs não encontrado: defina MKDOCS com o caminho do mkdocs com o techdocs-core.');
     await story.check('mkdocs build --strict sem erros', async () => expect(result.ok, result.output).toBe(true));
