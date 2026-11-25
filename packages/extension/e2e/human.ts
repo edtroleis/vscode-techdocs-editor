@@ -42,8 +42,18 @@ export const caption = (page: Page, text: string, place: 'bottom' | 'top' = 'bot
 
 /** Leva o cursor desenhado até o elemento, devagar como uma pessoa, e clica. */
 export async function clickLike(page: Page, target: Locator, options: { dblclick?: boolean } = {}) {
-  await target.scrollIntoViewIfNeeded();
-  const box = (await target.boundingBox())!;
+  // Painel que se redesenha (a cada letra digitada, a cada resposta da extensão): o elemento pode trocar entre achar e
+  // rolar até ele; procura de novo em vez de falhar
+  let box: { x: number; y: number; width: number; height: number } | null = null;
+  for (let attempt = 0; !box; attempt++) {
+    try {
+      await target.scrollIntoViewIfNeeded();
+      box = await target.boundingBox();
+    } catch (error) {
+      if (attempt >= 5 || !/not attached|detached/i.test(String(error))) throw error;
+    }
+    if (!box) await page.waitForTimeout(200);
+  }
   await page.evaluate(({ x, y }) => {
     const cursor = document.getElementById('demo-cursor')!;
     cursor.style.left = `${x}px`;

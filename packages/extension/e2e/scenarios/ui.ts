@@ -40,6 +40,9 @@ export async function contextMenu(page: Page, row: Locator, item: string | RegEx
       await page.keyboard.press('Escape');
       await expect(menu).toHaveCount(0, { timeout: 1_000 });
     }
+    // A dica de passar o mouse de uma linha vizinha (do passo anterior) pode ficar por cima desta: tira o mouse dali
+    await page.mouse.move(2, 2);
+    await expect(page.locator('.monaco-hover, .workbench-hover-container')).toHaveCount(0, { timeout: 2_000 }).catch(() => undefined);
     const before = await row.boundingBox({ timeout: 2_000 });
     await page.waitForTimeout(150);
     expect(await row.boundingBox({ timeout: 2_000 }), 'linha parada').toEqual(before);
