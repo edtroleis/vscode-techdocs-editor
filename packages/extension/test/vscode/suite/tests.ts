@@ -558,14 +558,18 @@ export function defineTests() {
     const assetNames = async () =>
       (await Promise.resolve(vscode.workspace.fs.readDirectory(images)).then(undefined, () => [] as [string, vscode.FileType][])).map(([name]) => name).sort();
     let before: string[] = [];
+    let existed = false;
 
     setup(async () => {
       before = await assetNames();
+      existed = await Promise.resolve(vscode.workspace.fs.stat(images)).then(() => true, () => false);
     });
     teardown(async () => {
       for (const name of await assetNames()) {
         if (!before.includes(name)) await vscode.workspace.fs.delete(vscode.Uri.joinPath(images, name));
       }
+      // O diretório criado pela imagem sai junto: outros testes contam os diretórios do site
+      if (!existed) await Promise.resolve(vscode.workspace.fs.delete(images, { recursive: true })).then(undefined, () => undefined);
       await vscode.commands.executeCommand('workbench.action.files.revert');
       await closeAll();
     });

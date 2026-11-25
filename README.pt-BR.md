@@ -40,7 +40,7 @@ um diagrama Mermaid e o ajuste da formatação ([vídeo, MP4](https://github.com
 | **Sites novos** | Uma prévia do `mkdocs.yml`, do menu e das páginas antes de gravar, a partir do README ou das páginas que você já tem |
 | **Formatação** | As regras do markdownlint da pipeline, em linguagem simples, com **Ajustar agora** |
 | **Mermaid** | Diagramas desenhados no lugar, e o site configurado para desenhá-los |
-| **Imagens e colagem** | Imagens gravadas em `docs/assets`; colar do Confluence, do Outline e da web como Markdown |
+| **Imagens, anexos e colagem** | Imagens gravadas em `docs/images`, PDFs e outros arquivos em `docs/assets`; colar do Confluence, do Outline e da web como Markdown |
 | **Verificação** | O que o TechDocs precisa para montar o site, com as correções mostradas antes de aplicar |
 | **GitHub** | Clonar, editar no computador e enviar o repositório inteiro para revisão de uma vez |
 | **Teclado** | Tudo sem o mouse: Enter na árvore abre a página, com o cursor no texto |
@@ -85,9 +85,22 @@ um diagrama Mermaid e o ajuste da formatação ([vídeo, MP4](https://github.com
 
 ![Inserir uma imagem do computador: ela é gravada em docs/assets e o link é relativo à página](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/images.gif)
 
-Escolha uma imagem do computador e ela é gravada em `docs/assets/<horário>-<nome>`, com o link relativo à
-página. Nunca um endereço temporário `blob:`, e nunca maior do que você permitir
-(`techdocsEditor.images.maxSizeMB`).
+Escolha uma imagem do computador e ela é gravada em `docs/images/<nome>`, com o nome limpo
+(`Captura de Tela (1).PNG` → `captura-de-tela-1.png`), com o link relativo à página. Nunca um endereço temporário
+`blob:`, e nunca maior do que você permitir (`techdocsEditor.images.maxSizeMB`).
+
+### Anexar PDFs, planilhas e outros arquivos
+
+**+ Inserir** › **Arquivo…** (ou `/arquivo` ou `/anexo` na página) abre o seletor de arquivos. Cada arquivo é copiado
+para `docs/assets/` com o nome limpo e entra na página onde está o cursor, como um link com nome, tipo e tamanho:
+`[Manual do cliente (PDF, 2,3 MB)](assets/manual-do-cliente.pdf)`. Uma imagem escolhida ali entra como imagem. O
+mesmo arquivo de novo é reaproveitado; outro arquivo com o mesmo nome ganha `-2`. No editor visual o link mostra um 📎.
+
+Executáveis, scripts e `.md` nunca entram. O que estiver fora dos tipos aceitos ou passar do limite é recusado com o
+motivo e **Abrir Configurações**. Em **Configurações do TechDocs** › **Imagens e anexos** você define o diretório, o
+tamanho máximo e os tipos das imagens e dos outros anexos (tipos em texto, separados por vírgula; `*` aceita
+qualquer um), **Para o time** ou **Só para mim**. A **Verificação** aponta os anexos que nenhuma página (nem o
+`mkdocs.yml`) usa, com o ajuste que apaga e **Desfazer**.
 
 ### Colar do Confluence, do Outline e da web
 
@@ -95,7 +108,7 @@ Copie uma página do Confluence, do Outline ou de um site e cole no editor visua
 MkDocs monta como está.
 
 - **Blocos de código** ficam inteiros, com as linhas e a linguagem (não viram código numa linha só).
-- **Imagens** são baixadas e gravadas em `docs/assets`, como uma imagem do computador. Quando a imagem não abre
+- **Imagens** são baixadas e gravadas em `docs/images`, como uma imagem do computador. Quando a imagem não abre
   (pede login ou o endereço expirou), aparece um aviso e o endereço fica.
 - **Painéis de informação, nota, aviso e dica** viram avisos do MkDocs (`!!! info`, `!!! warning`…), com o título do painel.
 - **Tabelas** com células mescladas entram inteiras; tabelas largas são salvas compactas (`| a | b |`), aceitas pelo lint.
@@ -405,8 +418,8 @@ Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ve
 
 **…** › **Configurações…** na seção TechDocs abre a janela **Configurações do TechDocs** na própria seção, uma opção
 embaixo da outra, cada escolha gravada na hora: como o **Enviar** funciona (para revisão ou direto na documentação),
-onde ficam as **cópias do GitHub**, o repositório de **Templates**, o **catalog-info.yaml** na verificação e duas
-opções do editor. Templates e `catalog-info.yaml` valem **Para o time** (no `.techdocs-editor.yaml`, com o diff antes)
+onde ficam as **cópias do GitHub**, o repositório de **Templates**, o **catalog-info.yaml** na verificação,
+**Imagens e anexos** e duas opções do editor. Templates, `catalog-info.yaml` e imagens e anexos valem **Para o time** (no `.techdocs-editor.yaml`, com o diff antes)
 ou **Só para mim**; trocar leva o valor em uso. **Todas as configurações no VS Code**, no fim, abre o resto.
 
 ## Configurações
@@ -417,7 +430,12 @@ ou **Só para mim**; trocar leva o valor em uso. **Todas as configurações no V
 | `techdocsEditor.siteDepth` | `2` | Até quantos diretórios abaixo do diretório do workspace vai a busca pelos sites (`mkdocs.yml`). Os mais fundos aparecem ao abrir uma página deles ou ao entrar no diretório deles pelo **Trocar Diretório ou Repo…** |
 | `techdocsEditor.syncExplorer` | `true` | Mover, renomear ou excluir páginas e diretórios das docs no Explorer do VS Code atualiza também o menu do site (`nav`) e os links das páginas; o **Ctrl+Z** do Explorer desfaz tudo junto. Clique direito num diretório do Explorer › **Abrir no TechDocs** para mostrá-lo na view TechDocs |
 | `techdocsEditor.sites` | todos | Sites de documentação mostrados na view TechDocs e conferidos: diretórios de um `mkdocs.yml` (ou um diretório acima deles). Escolha com **Filtrar Sites da Árvore…** no menu `…` da view |
-| `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava em `assets`. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
+| `techdocsEditor.images.maxSizeMB` | `5` | Maior imagem que o editor visual grava. As imagens vão para o repositório: arquivos grandes pesam em todo clone |
+| `techdocsEditor.attachments.images` | `images` | Diretório das imagens, dentro do `docs_dir` |
+| `techdocsEditor.attachments.imageTypes` | `png, jpg, jpeg, gif, webp, svg` | Tipos de imagem aceitos |
+| `techdocsEditor.attachments.files` | `assets` | Diretório dos outros anexos, dentro do `docs_dir` |
+| `techdocsEditor.attachments.filesMaxSizeMB` | `20` | Maior anexo |
+| `techdocsEditor.attachments.fileTypes` | `pdf, docx, xlsx, pptx, csv, zip…` | Tipos de anexo aceitos (`*`: qualquer um, menos executáveis, scripts e `.md`). `attachments:` no `.techdocs-editor.yaml` vence, campo a campo |
 | `techdocsEditor.templates.paths` | `[]` | Mais diretórios com templates de página e de site, relativos ao diretório do workspace (o `.techdocs/templates/` é sempre lido) |
 | `techdocsEditor.templates.repository` | `""` | Templates da empresa num repositório do GitHub: `dono/repo[/diretório][@ref]` |
 | `techdocsEditor.templates.builtIn` | `true` | Oferece os templates que vêm com a extensão |
