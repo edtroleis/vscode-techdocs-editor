@@ -45,6 +45,8 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
     await click(page, page.getByRole('button', { name: 'Prepare the documentation' }));
     const panel = await previewPanel(page);
     await expect(panel.locator('#f-siteName')).toHaveValue('Tarefas API');
+    // O dono, a descrição e o README ficam em Mais opções
+    await click(page, panel.getByRole('button', { name: /More options/ }));
     await expect(panel.locator('#f-description')).toHaveValue(/^API simples de tarefas/);
     // Sem Backstage: o catalog-info.yaml fica desmarcado e o painel diz o que isso significa
     await expect(panel.getByLabel('Include catalog-info.yaml')).not.toBeChecked();
@@ -58,8 +60,8 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
 
   await story.step('Escolher o template "Docs de serviço" (em português, como o README)', async () => {
     const panel = await previewPanel(page);
-    await story.check('os templates seguem a língua do README', () => expect(panel.locator('#f-template option')).toContainText(['Docs de serviço']));
-    await panel.locator('#f-template').selectOption({ label: 'Docs de serviço' });
+    await story.check('os tipos de documentação seguem a língua do README', () => expect(panel.getByRole('radio', { name: /Docs de serviço/ })).toBeVisible());
+    await click(page, panel.getByRole('radio', { name: /Docs de serviço/ }));
     await expect(previewRow(panel, 'arquitetura.md')).toBeVisible();
     await pause(page, 1_500);
   });

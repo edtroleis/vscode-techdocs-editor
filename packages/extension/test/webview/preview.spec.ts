@@ -15,8 +15,8 @@ const page = (path: string, title: string, origin: 'template' | 'added' | 'exist
 const VIEW: PreviewView = {
   folder: 'pagamentos',
   templates: [
-    { id: 'golden-path', name: 'Golden path', origin: 'builtIn' },
-    { id: 'service-docs', name: 'Service docs', origin: 'builtIn' },
+    { id: 'golden-path', name: 'Golden path', description: 'The recommended path for a kind of service', origin: 'builtIn' },
+    { id: 'service-docs', name: 'Service docs', description: 'Overview, architecture and runbooks', origin: 'builtIn' },
   ],
   template: 'service-docs',
   allowNone: false,
@@ -53,6 +53,9 @@ async function show(p: Page, view: Partial<PreviewView> = {}) {
   await p.evaluate(message => window.postMessage(message, '*'), { type: 'state', state: { status: 'ready', view: { ...VIEW, ...view } }, labels: LABELS });
 }
 
+/** Mais opções: o dono, a descrição, o README, o Menu e + Página. */
+const more = (p: Page) => p.getByRole('button', { name: /More options/ }).click();
+
 test.beforeEach(async ({ page: p }) => {
   await serveExtension(p);
   await p.goto('http://webview.test/test/webview/preview-harness.html');
@@ -61,6 +64,7 @@ test.beforeEach(async ({ page: p }) => {
 
 test('campos com a origem da sugestão; desmarcar um arquivo e abrir outro', async ({ page: p }) => {
   await show(p);
+  await more(p);
   await expect(p.getByLabel('Site name')).toHaveValue('Pagamentos');
   await expect(p.getByText('Suggested from CODEOWNERS')).toBeVisible();
   await expect(p.getByText('copied from README.md')).toBeVisible();
@@ -69,8 +73,34 @@ test('campos com a origem da sugestão; desmarcar um arquivo e abrir outro', asy
   expect(await last(p)).toEqual({ type: 'toggle', path: 'catalog-info.yaml', on: false });
   await p.getByText('architecture.md').click();
   expect(await last(p)).toEqual({ type: 'open', path: 'docs/architecture.md' });
-  await p.getByLabel('Template').selectOption('golden-path');
+  await p.getByRole('radio', { name: /Golden path/ }).click();
   expect(await last(p)).toEqual({ type: 'set', field: 'template', value: 'golden-path' });
+});
+
+test('o tipo de documentação em cartões, com a descrição de cada um; o escolhido fica marcado', async ({ page: p }) => {
+  await show(p);
+  await expect(p.getByText('What kind of documentation?')).toBeVisible();
+  const cards = p.getByRole('radiogroup').getByRole('radio');
+  await expect(cards).toHaveCount(2);
+  await expect(p.getByRole('radio', { name: /Service docs/ })).toHaveAttribute('aria-checked', 'true');
+  await expect(p.getByRole('radio', { name: /Golden path/ })).toContainText('The recommended path for a kind of service');
+  await expect(p.locator('select#f-template')).toHaveCount(0);
+});
+
+test('Mais opções: o dono, o Menu e + Página ficam guardados; a lista do que vai ser criado fica à vista', async ({ page: p }) => {
+  await show(p, { ownerRequired: false, missing: [] });
+  await expect(p.getByText('What will be created')).toBeVisible();
+  await expect(p.getByLabel('Include catalog-info.yaml')).toBeVisible();
+  await expect(p.getByLabel(/^Owner/)).toBeHidden();
+  await expect(p.getByRole('button', { name: 'Menu' })).toBeHidden();
+  await p.getByRole('button', { name: /More options/ }).click();
+  await expect(p.getByLabel(/^Owner/)).toBeVisible();
+  await expect(p.getByRole('button', { name: 'Menu' })).toBeVisible();
+});
+
+test('o dono que falta abre Mais opções sozinho', async ({ page: p }) => {
+  await show(p, { owner: '', ownerFrom: undefined, missing: ['owner'] });
+  await expect(p.getByLabel(/^Owner/)).toBeVisible();
 });
 
 test('digitando no nome: a resposta atrasada da extensão não apaga as letras novas', async ({ page: p }) => {
@@ -102,6 +132,7 @@ test('catalog-info.yaml: diz para que serve, sugere os donos do workspace e a de
     { owner: 'squad-checkout', count: 1 },
   ];
   await show(p, { owner: '', ownerFrom: undefined, owners, description: 'Uma API de pagamentos.', descriptionFrom: 'README.md' });
+  await more(p);
   await expect(p.getByText('Registers the site in the Backstage catalog. Without it, the site does not appear there.')).toBeVisible();
   await expect(p.getByText('Used in other catalog-info.yaml files: platform-team, squad-checkout')).toBeVisible();
   expect(await p.locator('#owners option').evaluateAll(options => options.map(o => (o as HTMLOptionElement).value))).toEqual(['platform-team', 'squad-checkout']);
@@ -122,6 +153,7 @@ test('catalog-info.yaml: diz para que serve, sugere os donos do workspace e a de
 
 test('menu: subir, renomear com dois cliques e acrescentar página na seção com o tipo', async ({ page: p }) => {
   await show(p);
+  await more(p);
   await p.getByRole('button', { name: 'Menu' }).click();
   await p.getByText('Architecture', { exact: true }).hover();
   await p.getByRole('button', { name: 'Move up' }).nth(1).click();
@@ -142,6 +174,7 @@ test('arquivos: "+ Página" pede o nome (com pasta, se quiser); página que já 
   await show(p, {
     files: [...VIEW.files, { path: 'docs/faq.md', status: 'unchanged', origin: 'existing', optional: false, included: true, conflict: { replace: false } }],
   });
+  await more(p);
   await p.getByRole('button', { name: 'Use the template one' }).click();
   expect(await last(p)).toEqual({ type: 'replace', path: 'faq.md', replace: true });
   await p.getByRole('button', { name: '+ Page' }).click();

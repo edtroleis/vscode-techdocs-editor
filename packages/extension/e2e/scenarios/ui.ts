@@ -178,6 +178,11 @@ export const hasWarning = async (page: Page, label: string) => (await treeRow(pa
 
 /** "+ Página" no painel Nova documentação: o nome, o tipo de página e Enter. */
 export async function addPage(page: Page, panel: FrameLocator, name: string, kind: RegExp) {
+  // + Page fica em Mais opções
+  // (o painel redesenha a cada resposta da extensão: o seletor é procurado de novo a cada passo)
+  const more = panel.locator('#more');
+  if ((await more.getAttribute('aria-expanded')) === 'false') await click(page, more);
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
   await click(page, panel.getByRole('button', { name: '+ Page' }));
   const input = panel.locator('#add');
   await expect(input).toBeFocused();

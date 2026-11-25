@@ -31,6 +31,11 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ### Changed
 
+- **Create the documentation** opens the panel in the TechDocs section right away, without the menu at the top of
+  the window: the kind of documentation is a card (Blank, API, Library, Service docs, Runbooks, Team wiki…, and the
+  company's and the repository's templates) with what it brings, then the site name and the list of what will be
+  created, which changes as soon as another card is picked. The owner, the description, the README, the **Menu** tab
+  and **+ Page** are under **More options** (it opens by itself when the owner is missing).
 - **Ctrl+S only saves on this computer.** Nothing goes to GitHub until you use **Send**.
 - `techdocsEditor.branchPattern` is now `docs/{login}/{date}`: one branch per send, not per page. `{path}` is
   ignored, with a note in the TechDocs Editor output.

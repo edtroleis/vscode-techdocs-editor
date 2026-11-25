@@ -37,7 +37,7 @@ export type PreviewState = { status: 'idle' } | { status: 'ready'; view: Preview
 
 export type PreviewView = {
   folder: string;
-  templates: { id: string; name: string; origin: SiteChoice['origin'] }[];
+  templates: { id: string; name: string; description: string; origin: SiteChoice['origin'] }[];
   /** '' = nenhum template (só as páginas que já existem em `docs/`). */
   template: string;
   allowNone: boolean;
@@ -462,7 +462,7 @@ export class SitePreview implements vscode.WebviewViewProvider, vscode.TextDocum
       status: 'ready',
       view: {
         folder: relative(context.root),
-        templates: context.choices.map(c => ({ id: c.template.id, name: c.template.name, origin: c.origin })),
+        templates: context.choices.map(c => ({ id: c.template.id, name: c.template.name, description: c.template.description, origin: c.origin })),
         template: this.template,
         allowNone: context.existing.length > 0,
         siteName: this.siteName,
@@ -519,6 +519,12 @@ export function previewLabels() {
   return {
     idle: vscode.l10n.t('Nothing to preview.'),
     template: vscode.l10n.t('Template'),
+    kind: vscode.l10n.t('What kind of documentation?'),
+    noTemplateDetail: vscode.l10n.t('Keeps the pages already in docs/, without adding any.'),
+    willCreate: vscode.l10n.t('What will be created'),
+    moreOptions: vscode.l10n.t('More options'),
+    company: vscode.l10n.t('company'),
+    repository: vscode.l10n.t('repository'),
     noTemplate: vscode.l10n.t('None (only the pages in docs/)'),
     siteName: vscode.l10n.t('Site name'),
     owner: vscode.l10n.t('Owner'),
@@ -584,6 +590,18 @@ export function previewLabels() {
 export type PreviewLabels = ReturnType<typeof previewLabels>;
 
 const PREVIEW_CSS = `
+.cards { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.card { display: flex; gap: 10px; align-items: flex-start; text-align: left; width: 100%; font: inherit; color: var(--vscode-foreground); background: none; border: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border)); border-radius: 4px; padding: 8px 10px; cursor: pointer; }
+.card:hover { background: var(--vscode-list-hoverBackground); }
+.card[aria-checked="true"] { border-color: var(--vscode-focusBorder); background: var(--vscode-list-inactiveSelectionBackground); }
+.card .cic { font-size: 16px; width: 20px; text-align: center; flex: none; }
+.card b { display: block; font-weight: 600; }
+.card small { color: var(--vscode-descriptionForeground); }
+.card .tag { font-size: 10px; margin-left: 6px; padding: 0 5px; border-radius: 3px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); font-weight: 400; }
+.kind { font-weight: 600; margin: 8px 0 2px; }
+.created { color: var(--vscode-descriptionForeground); font-size: 12px; margin: 12px 0 2px; }
+.more { margin: 6px 0 4px; }
+
 body { padding: 0 0 8px; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
 .fields { padding: 4px 12px 10px 20px; display: grid; gap: 8px; border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-panel-border)); }
 .field { display: grid; gap: 2px; }

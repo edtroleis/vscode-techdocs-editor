@@ -13,7 +13,7 @@ const escape = (text: string) =>
 const format = (text: string, ...args: Array<string | number>) => text.replace(/\{(\d+)\}/g, (_, i) => escape(String(args[Number(i)])));
 
 type Adding = { kind: 'page' | 'section'; section?: string; type: string };
-const ui: { mode: 'files' | 'menu'; adding?: Adding; renaming?: string; dragging?: string; hint: string } = { mode: 'files', hint: '' };
+const ui: { mode: 'files' | 'menu'; adding?: Adding; renaming?: string; dragging?: string; hint: string; more: boolean } = { mode: 'files', hint: '', more: false };
 let state: PreviewState = { status: 'idle' };
 let l: PreviewLabels;
 
@@ -30,7 +30,18 @@ function render() {
   // O valor digitado fica: a resposta da extensão pode chegar com o texto de algumas letras atrás
   const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
   const focus = focused?.id ? { id: focused.id, start: focused.selectionStart, end: focused.selectionEnd, value: typing ? focused.value : undefined } : undefined;
-  root.innerHTML = fields(v) + viewbar() + `<div class="tree" role="tree">${ui.mode === 'menu' ? menu(v) : files(v)}</div>` + foot(v);
+  // Mais opções (o dono, a descrição, o README, o Menu e + Página) guardadas até a pessoa abrir ou faltar o dono
+  const more = moreOpen(v);
+  if (!more) ui.mode = 'files';
+  root.innerHTML =
+    cards(v) +
+    siteNameField(v) +
+    `<p class="created">${escape(l.willCreate)}</p>` +
+    (more ? viewbar() : '') +
+    `<div class="tree" role="tree">${ui.mode === 'menu' ? menu(v) : files(v)}</div>` +
+    `<div class="more"><button class="link" id="more" aria-expanded="${more}">${more ? '▾' : '▸'} ${escape(l.moreOptions)}</button></div>` +
+    (more ? fields(v) : '') +
+    foot(v);
   // O recuo de cada linha pelo script: o CSP do painel bloqueia o atributo style (só vale o CSS com nonce)
   root.querySelectorAll<HTMLElement>('[data-pad]').forEach(element => (element.style.paddingLeft = `${element.dataset.pad}px`));
   if (focus) {
@@ -48,11 +59,41 @@ function render() {
   if (adding && !focus) adding.focus();
 }
 
+const field = (id: string, label: string, value: string, help: string, missing: boolean, optional = false, extra = '', helpClass = '') =>
+  `<div class="field"><label for="${id}">${escape(label)}${optional ? ` <span class="from">(${escape(l.optional)})</span>` : ''}</label>
+    <input id="${id}" type="text" value="${escape(value)}" class="${missing ? 'missing' : ''}"${extra}><span class="from${helpClass}">${help}</span></div>`;
+
+const moreOpen = (v: PreviewView) => ui.more || v.missing.includes('owner');
+
+/** Um ícone por tipo de documentação (os da empresa e do repositório levam o de pasta). */
+const ICONS: Record<string, string> = {
+  '': '🗂️',
+  blank: '📄',
+  api: '🔌',
+  library: '📚',
+  'service-docs': '⚙️',
+  'golden-path': '🧭',
+  platform: '🏗️',
+  project: '📋',
+  runbooks: '🚨',
+  'team-wiki': '👥',
+};
+
+/** O tipo de documentação: um cartão por template, com a descrição (o que ele traz). */
+function cards(v: PreviewView) {
+  const all = [...(v.allowNone ? [{ id: '', name: l.noTemplate, description: l.noTemplateDetail, origin: 'builtIn' as const }] : []), ...v.templates];
+  return `<p class="kind" id="kind">${escape(l.kind)}</p><div class="cards" role="radiogroup" aria-labelledby="kind">${all
+    .map(t => {
+      const tag = t.origin === 'central' ? l.company : t.origin === 'repository' ? l.repository : '';
+      return `<button class="card" role="radio" data-template="${escape(t.id)}" aria-checked="${t.id === v.template}"><span class="cic" aria-hidden="true">${ICONS[t.origin === 'builtIn' ? t.id : ''] ?? '📁'}</span><span><b>${escape(t.name)}${tag ? `<span class="tag">${escape(tag)}</span>` : ''}</b><small>${escape(t.description)}</small></span></button>`;
+    })
+    .join('')}</div>`;
+}
+
+const siteNameField = (v: PreviewView) =>
+  `<div class="fields">${field('f-siteName', l.siteName, v.siteName, v.siteName.trim() ? format(l.siteNameFrom, v.siteNameFrom) : '', v.missing.includes('siteName'))}</div>`;
+
 function fields(v: PreviewView) {
-  const templates = [...(v.allowNone ? [{ id: '', name: l.noTemplate }] : []), ...v.templates];
-  const field = (id: string, label: string, value: string, help: string, missing: boolean, optional = false, extra = '', helpClass = '') =>
-    `<div class="field"><label for="${id}">${escape(label)}${optional ? ` <span class="from">(${escape(l.optional)})</span>` : ''}</label>
-      <input id="${id}" type="text" value="${escape(value)}" class="${missing ? 'missing' : ''}"${extra}><span class="from${helpClass}">${help}</span></div>`;
   // Os donos dos outros catalog-info.yaml (os do repositório primeiro): sugestões no campo e na dica
   const owner = v.owner.trim();
   const known = v.owners.some(o => o.owner === owner);
@@ -79,10 +120,6 @@ function fields(v: PreviewView) {
       : `<div class="field"><label for="f-description">${escape(l.description)} <span class="from">(${escape(l.optional)})</span></label>
       <textarea id="f-description" rows="2">${escape(v.description)}</textarea><span class="from">${v.descriptionFrom ? format(l.descriptionFrom, v.descriptionFrom) : ''}</span></div>`;
   return `<div class="fields">
-    <div class="field"><label for="f-template">${escape(l.template)}</label><select id="f-template">${templates
-      .map(t => `<option value="${escape(t.id)}"${t.id === v.template ? ' selected' : ''}>${escape(t.name)}</option>`)
-      .join('')}</select></div>
-    ${field('f-siteName', l.siteName, v.siteName, v.siteName.trim() ? format(l.siteNameFrom, v.siteNameFrom) : '', v.missing.includes('siteName'))}
     ${field('f-owner', l.owner, v.owner, ownerHelp, v.missing.includes('owner'), !v.ownerRequired, v.owners.length ? ' list="owners" autocomplete="off"' : '', owner && !known && v.owners.length && !v.ownerFrom ? ' warn' : '')}${ownerList}
     ${description}
     ${
@@ -225,6 +262,7 @@ function addInput(depth: number, v: PreviewView) {
 }
 
 function addArea(v: PreviewView) {
+  if (!moreOpen(v)) return '';
   if (ui.adding && ui.adding.section === undefined) return addInput(0, v);
   return `<div class="addrow"><button class="link" data-add="page">${escape(l.addPage)}</button>${ui.mode === 'menu' ? `<button class="link" data-add="section">${escape(l.addSection)}</button>` : ''}</div>`;
 }
@@ -285,7 +323,6 @@ root.addEventListener('input', e => {
 
 root.addEventListener('change', e => {
   const target = e.target as HTMLInputElement & HTMLSelectElement;
-  if (target.id === 'f-template') send({ type: 'set', field: 'template', value: target.value });
   if (target.id === 'f-readme') send({ type: 'set', field: 'readme', value: target.value });
   if (target.dataset.toggle) send({ type: 'toggle', path: target.dataset.toggle, on: target.checked });
   if (target.id === 'add-type' && ui.adding) {
@@ -301,6 +338,11 @@ root.addEventListener('click', e => {
   const button = target.closest('button');
   if (button) {
     const d = button.dataset;
+    if (d.template !== undefined) return send({ type: 'set', field: 'template', value: d.template });
+    if (button.id === 'more') {
+      ui.more = !ui.more;
+      return render();
+    }
     if (d.mode) {
       ui.mode = d.mode as 'files' | 'menu';
       ui.adding = undefined;
@@ -321,6 +363,10 @@ root.addEventListener('click', e => {
     if (button.id === 'cancel') return send({ type: 'cancel' });
     if (button.id === 'goto') {
       const v = state.status === 'ready' ? state.view : undefined;
+      if (v?.missing[0] === 'owner') {
+        ui.more = true;
+        render();
+      }
       return document.getElementById(v?.missing[0] === 'owner' ? 'f-owner' : 'f-siteName')?.focus();
     }
     return;

@@ -138,17 +138,24 @@ test('dois repos vazios: documentação pelo Explorer e pela seção TechDocs', 
   });
 
   let home = '';
-  await story.step('Create the documentation › Blank: cria o mkdocs.yml e a página inicial', async () => {
+  await story.step('Create the documentation: a janela na seção com o tipo em cartões; Blank e Create', async () => {
     const started = Date.now();
     await click(page, techdocs(page).getByRole('button', { name: 'Create the documentation' }));
-    await pick(page, 'Blank');
+    const panel = await previewPanel(page);
+    await story.check('Blank vem escolhido e a lista mostra o que vai ser criado', async () => {
+      await expect(panel.getByRole('radio', { name: /Blank/ })).toHaveAttribute('aria-checked', 'true');
+      await expect(panel.getByText('What will be created')).toBeVisible();
+    });
+    await click(page, panel.getByRole('button', { name: 'Create' }));
     await written('mkdocs-empty-local/mkdocs.yml').toContain('site_name:');
     await written('mkdocs-empty-local/docs/index.md').toMatch(/^# /);
     home = read('mkdocs-empty-local/docs/index.md').split('\n')[0].replace(/^# /, '');
+    // A janela abriu na barra TechDocs: de volta ao Explorer (pela paleta: o foco ficou no editor visual)
+    await palette(page, 'View: Show Explorer');
     await expect(docRow(page, 'mkdocs-empty-local')).toBeVisible({ timeout: 30_000 });
     await expect(docRow(page, home)).toBeVisible();
     const seconds = (Date.now() - started) / 1000;
-    if (seconds > 5) story.suggest(`Criar a documentação num clique levou ${seconds.toFixed(1)} s até a árvore mostrar o site.`);
+    if (seconds > 8) story.suggest(`Criar a documentação levou ${seconds.toFixed(1)} s até a árvore mostrar o site.`);
     await story.check('sem catalog-info.yaml (o repo não usa Backstage)', async () => expect(existsSync(join(LOCAL, 'catalog-info.yaml'))).toBe(false));
     await pause(page);
   });
@@ -310,10 +317,11 @@ test('dois repos vazios: documentação pelo Explorer e pela seção TechDocs', 
     await pause(page);
   });
 
-  await story.step('Create the documentation › Choose a template…: o painel Nova documentação, e Criar', async () => {
+  await story.step('Create the documentation › cartão Runbooks: a lista muda, e Criar', async () => {
     await click(page, techdocs(page).getByRole('button', { name: 'Create the documentation' }));
-    await pick(page, 'Choose a template');
     const panel = await previewPanel(page);
+    await click(page, panel.getByRole('radio', { name: /Runbooks/ }));
+    await expect(panel.getByRole('radio', { name: /Runbooks/ })).toHaveAttribute('aria-checked', 'true');
     await expect(panel.locator('#f-siteName')).toHaveValue(/mkdocs empty remote/i);
     await story.check('o catalog-info.yaml vem desmarcado', () => expect(panel.getByLabel('Include catalog-info.yaml')).not.toBeChecked());
     await click(page, panel.getByRole('button', { name: 'Create' }));

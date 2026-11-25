@@ -88,12 +88,12 @@ export function activate(context: vscode.ExtensionContext) {
       if (inside.length) return docs.chooseSite(uri);
       return docs.selectFolder(uri);
     }),
-    // A tela da pasta sem documentação: um botão só, que pergunta se é em branco (num clique) ou por template.
-    // `how` pula a pergunta (os testes)
+    // A tela da pasta sem documentação: um botão só, que abre na seção a janela com o tipo de documentação em cartões
+    // (Em branco, API, Docs de serviço…) e o que vai ser criado. `how` 'blank' cria direto (os testes)
     vscode.commands.registerCommand('techdocsEditor.createHere', async (how?: 'blank' | 'template') => {
       const folder = docs.folderWithoutDocs;
       if (!folder) return undefined;
-      const choice = typeof how === 'string' ? how : await askHowToCreate();
+      const choice = typeof how === 'string' ? how : 'template';
       if (choice === 'template') return newSite.run(folder);
       if (choice !== 'blank') return undefined;
       // A barra de progresso na seção desde o clique; os tempos no canal "TechDocs Editor"
@@ -266,22 +266,3 @@ function activeCustomEditorUri(): vscode.Uri | undefined {
 
 export function deactivate() {}
 
-/** "Criar a documentação": em branco (o de antes, num clique) ou escolhendo o template. Esc: nada. */
-async function askHowToCreate(): Promise<'blank' | 'template' | undefined> {
-  const picked = await vscode.window.showQuickPick(
-    [
-      {
-        how: 'blank' as const,
-        label: `$(file) ${vscode.l10n.t('Blank')}`,
-        detail: vscode.l10n.t('mkdocs.yml and the home page, with the folder name as the site name. Uses the pages already in docs/ and the README.'),
-      },
-      {
-        how: 'template' as const,
-        label: `$(library) ${vscode.l10n.t('Choose a template…')}`,
-        detail: vscode.l10n.t('API, library, platform, runbooks, project, service docs, team wiki…'),
-      },
-    ],
-    { title: vscode.l10n.t('Create the documentation'), placeHolder: vscode.l10n.t('How do you want to start?') },
-  );
-  return picked?.how;
-}

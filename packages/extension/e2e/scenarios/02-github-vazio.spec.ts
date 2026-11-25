@@ -40,7 +40,7 @@ test('repositório do GitHub vazio: criar a doc e publicar', async ({ vscode: { 
   await story.step('Preparar: dar um nome ao site e acrescentar uma página', async () => {
     await click(page, page.getByRole('button', { name: 'Prepare the documentation' }));
     const panel = await previewPanel(page);
-    await story.check('os templates seguem a língua do README', () => expect(panel.locator('#f-template option').first()).toHaveText('Em branco'));
+    await story.check('os templates seguem a língua do README', () => expect(panel.getByRole('radio').first()).toContainText('Em branco'));
     if ((await panel.locator('#f-siteName').inputValue()) === NAME) {
       story.suggest(`O nome sugerido para o site é o título do README, "${NAME}" (o nome do repositório). Um nome de pessoa ("Cenário vazio") viria de um título com espaços; vale avisar que é o nome que aparece no portal.`);
     }

@@ -408,12 +408,6 @@
   "Use owner/repo, optionally with /folder and @ref": "Use dono/repo, se quiser com /diretório e @ref",
   "Back to the default where?": "Voltar ao padrão onde?",
   "The workspace settings still set techdocsEditor.templates.{0} to {1}, and they win over your settings.": "As configurações da workspace ainda põem techdocsEditor.templates.{0} em {1}, e elas vencem as suas.",
-  "Blank": "Em branco",
-  "mkdocs.yml and the home page, with the folder name as the site name. Uses the pages already in docs/ and the README.": "mkdocs.yml e a página inicial, com o nome do diretório como nome do site. Usa as páginas que já estão em docs/ e o README.",
-  "Choose a template…": "Escolher um template…",
-  "API, library, platform, runbooks, project, service docs, team wiki…": "API, biblioteca, plataforma, runbooks, projeto, docs de serviço, wiki do time…",
-  "Create the documentation": "Criar a documentação",
-  "How do you want to start?": "Como quer começar?",
   "Mermaid diagram too big: Mermaid draws up to 500 links and 50,000 characters, and the site shows a notice instead. Split it into smaller diagrams.": "Diagrama Mermaid grande demais: o Mermaid desenha até 500 ligações e 50 mil caracteres, e o site mostra um aviso no lugar. Divida em diagramas menores.",
   "Mermaid diagrams too big": "Diagramas Mermaid grandes demais",
   "Links to the Backstage on your machine": "Links para o Backstage da sua máquina",
@@ -547,5 +541,11 @@
   "Where Send puts your changes": "Para onde o Enviar leva as suas mudanças",
   "Choose a directory…": "Escolher um diretório…",
   "The documentation from GitHub comes to {0}.": "A documentação do GitHub vem para {0}.",
-  "Use this directory": "Usar este diretório"
+  "Use this directory": "Usar este diretório",
+  "What kind of documentation?": "Que tipo de documentação?",
+  "Keeps the pages already in docs/, without adding any.": "Fica com as páginas que já estão em docs/, sem acrescentar nenhuma.",
+  "What will be created": "O que vai ser criado",
+  "More options": "Mais opções",
+  "company": "empresa",
+  "repository": "repositório"
 }
