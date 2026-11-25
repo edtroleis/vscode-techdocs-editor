@@ -1312,6 +1312,8 @@ export function defineTests() {
       ok(text && !text.markdown.startsWith('---'), 'o texto trouxe o front matter');
       ok(text?.markdown.includes('## '), 'o texto não trouxe as seções');
       ok(!text?.markdown.includes('{{'), 'campo sem preencher');
+      // O campo que antes era perguntado (o alerta do runbook) vem com o texto de exemplo, para trocar
+      ok(text && !/^Alert[a-z]*:\s*$/im.test(text.markdown) && !/ (por|by) \.$/m.test(text.markdown), `campo vazio: ${text?.markdown.split('\n').slice(0, 3).join(' | ')}`);
       ok(text?.select && text.markdown.includes(text.select), 'sem o trecho a preencher');
     });
 

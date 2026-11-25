@@ -177,7 +177,7 @@ export class NewPageCommand {
   /**
    * O texto de um tipo de página para entrar na página aberta: sem o front matter e sem o título (a página já tem
    * o dela), com os campos preenchidos sem perguntar (o dono do catalog-info.yaml ou o nome do Git; os outros com o
-   * exemplo do template). `select`: o primeiro trecho a preencher (TP7).
+   * valor padrão do template ou, sem ele, o texto da pergunta, como exemplo para trocar). `select`: o primeiro trecho a preencher (TP7).
    */
   async kindText(uri: vscode.Uri, id: string, title: string): Promise<{ markdown: string; select?: string } | undefined> {
     const destination = await this.localDestination(uri, true);
@@ -188,8 +188,9 @@ export class NewPageCommand {
     const used = usedFields(template.body);
     const values: Record<string, string> = { title, date: today() };
     if (used.includes('site_name')) values.site_name = (await destination.siteName()) ?? '';
-    if (used.includes('owner')) values.owner = (await destination.owner()) ?? (await destination.defaultOwner());
-    for (const field of template.fields) if (values[field.name] === undefined) values[field.name] = field.default ?? '';
+    // Sem perguntar: o que não se sabe vem com o texto da pergunta, como exemplo para trocar
+    if (used.includes('owner')) values.owner = (await destination.owner()) || (await destination.defaultOwner()) || vscode.l10n.t('Team or person who owns this page');
+    for (const field of template.fields) if (values[field.name] === undefined) values[field.name] = field.default || field.prompt;
     const content = fillTemplate(template.body, values)
       .replace(/^---\n[\s\S]*?\n---\n+/, '')
       .replace(/^#\s+.*\n+/, '');
