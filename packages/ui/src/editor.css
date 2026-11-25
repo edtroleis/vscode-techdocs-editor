@@ -228,6 +228,26 @@
   border-top: 1px solid var(--crepe-color-outline);
   padding-top: 8px;
 }
+.top-bar-item:has(.td-insert-label) {
+  width: auto;
+  gap: 4px;
+  padding: 0 8px;
+}
+.td-insert-label {
+  font-size: 13px;
+}
+.milkdown .milkdown-top-bar .top-bar-item:has(.td-insert-label) svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+}
+/* Mais botões na mesma linha (protótipo da barra, opção 3): menos espaço entre eles */
+.milkdown .milkdown-top-bar .top-bar-item {
+  margin: 6px 2px;
+}
+.milkdown .milkdown-top-bar .top-bar-divider {
+  margin: 10px 6px;
+}
 .td-top-menu {
   overflow-y: auto;
   overscroll-behavior: contain;

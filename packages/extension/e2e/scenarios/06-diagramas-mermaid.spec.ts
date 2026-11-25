@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { FrameLocator, Page } from '@playwright/test';
 import { click, expect, folderFrom, pause, test, type } from './story';
-import { buildSite, openFromTree, palette, save, sidebarAction, techdocsIcon, toast, topBar } from './ui';
+import { buildSite, openFromTree, palette, save, sidebarAction, techdocsIcon, insertBlock, toast } from './ui';
 
 const folder = folderFrom('site-diagramas', 'checkout');
 const read = (path: string) => readFileSync(join(folder, path), 'utf8');
@@ -117,7 +117,7 @@ test('diagramas mermaid: desenhar o fluxo do pedido', async ({ vscode: { page },
     await editor.locator('.ProseMirror h2').first().click();
     await page.keyboard.press('End');
     await page.keyboard.press('Enter');
-    await click(page, topBar(editor, 'mermaid'));
+    await insertBlock(page, editor, 'mermaid');
     // O botão abre a galeria de diagramas (desde a 0.15.0): escolhe o fluxograma
     await click(page, editor.locator('[data-key="flow"]'));
     await expect(diagrams(editor)).toHaveCount(2);

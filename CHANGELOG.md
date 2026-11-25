@@ -8,6 +8,10 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ### Changed
 
+- **Toolbar of the visual editor reorganized**, in one line: Undo and Redo first, then the heading, the text
+  buttons (bold, italic, strikethrough, inline code, link), the lists, **+ Insert** and the TechDocs buttons.
+  **+ Insert** opens a menu with names for what goes into the page: image, table, code block, diagram, quote and
+  horizontal line (checked when the cursor is in one; choosing it again removes it).
 - **Kinds of page have their own button** in the toolbar of the visual editor (the page icon, next to **TechDocs**);
   the **TechDocs** button keeps only the components.
 - **Rename, Duplicate and New Section without the box at the top:** the page opens with its title selected; type

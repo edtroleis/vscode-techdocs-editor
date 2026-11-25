@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 import { click, expect, folderFrom, pause, test, type } from './story';
-import { buildSite, contextMenu, editorOf, palette, previewPanel, quickInput, save, typeTitle } from './ui';
+import { buildSite, contextMenu, editorOf, palette, previewPanel, quickInput, save, topBar, typeTitle } from './ui';
 
 const code = folderFrom(undefined, 'code');
 for (const repo of ['mkdocs-empty-local', 'mkdocs-empty-remote']) mkdirSync(join(code, repo), { recursive: true });
@@ -240,7 +240,7 @@ test('dois repos vazios: documentação pelo Explorer e pela seção TechDocs', 
     await editor.locator('.ProseMirror p').last().click();
     await page.keyboard.press('End');
     await type(page, ' Veja ');
-    await editor.locator('.top-bar-item').nth(7).click();
+    await topBar(editor, 'link').click();
     const option = editor.locator('.docs-link-pages [role=option]', { hasText: 'Comece aqui' });
     await expect(option).toBeVisible();
     await click(page, option);

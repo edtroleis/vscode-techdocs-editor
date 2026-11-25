@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cloneRepo, freshRepo, mainFile, mergePr, openPrs, type ScenarioRepo } from './github';
 import { click, expect, pause, test, type } from './story';
-import { buildSite, editorOf, openFromTree, publishStrip, quickInput, save, sendScreen, sidebarAction, techdocsIcon, topBar, treeRow } from './ui';
+import { buildSite, editorOf, insertBlock, openFromTree, publishStrip, quickInput, save, sendScreen, sidebarAction, techdocsIcon, topBar, treeRow } from './ui';
 
 const NAME = 'techdocs-cenario-mkdocs';
 let repo: ScenarioRepo;
@@ -103,7 +103,7 @@ test('repositório do GitHub com mkdocs: acrescentar à doc e publicar', async (
     await page.keyboard.press('Enter');
     await type(page, 'Os componentes:');
     await page.keyboard.press('Enter');
-    await click(page, topBar(editor, 'table'));
+    await insertBlock(page, editor, 'table');
     const rows = [
       ['Componente', 'Tecnologia', 'Para que serve'],
       ['API', 'Python (FastAPI)', 'Recebe os pedidos'],

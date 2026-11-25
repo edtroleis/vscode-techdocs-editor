@@ -6,7 +6,7 @@ import type { FrameLocator, Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { click, expect, folderFrom, pause, test, toEnd, type } from './story';
-import { addPage, buildSite, editorOf, hasWarning, openFromTree, previewPanel, previewRow, quickInput, save, techdocsIcon, topBar, treeRow } from './ui';
+import { addPage, buildSite, editorOf, hasWarning, openFromTree, previewPanel, previewRow, quickInput, insertBlock, save, techdocsIcon, topBar, treeRow } from './ui';
 
 const folder = folderFrom('tarefas-api', 'tarefas-api');
 const read = (path: string) => readFileSync(join(folder, path), 'utf8');
@@ -115,7 +115,7 @@ test('pasta local sem docs: documentação de serviço do zero', async ({ vscode
     await selectAll(page, editor);
     await type(page, '# Referência da API\n');
     await type(page, 'Os endpoints da Tarefas API:\n');
-    await click(page, topBar(editor, 'table'));
+    await insertBlock(page, editor, 'table');
     const rows = [
       ['Método', 'Caminho', 'O que faz'],
       ['GET', '/health', 'Diz se a API está de pé'],

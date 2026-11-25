@@ -2,25 +2,23 @@ import { expect, Locator, Page } from '@playwright/test';
 
 /** Botões da barra fixa, na ordem em que aparecem (Crepe + ajustes de topBar.ts). */
 export const TOP_BAR = [
+  'undo',
+  'redo',
   'bold',
   'italic',
   'strikethrough',
   'inlineCode',
+  'link',
   'bulletList',
   'orderedList',
   'taskList',
-  'link',
-  'image',
-  'table',
-  'codeBlock',
-  'diagram',
+  'insert',
   'techdocs',
-  'quote',
-  'hr',
-  'undo',
-  'redo',
 ] as const;
+/** O que entra na página fica no menu do botão "+ Inserir", nesta ordem. */
+export const INSERT_MENU = ['image', 'table', 'codeBlock', 'diagram', 'quote', 'hr'] as const;
 export type TopBarButton = (typeof TOP_BAR)[number];
+export type InsertItem = (typeof INSERT_MENU)[number];
 
 /** Documento padrão dos testes: começa com título, como pede o lint (MD041). */
 export const ORIGINAL = '# Página\n\nTexto inicial.\n';
@@ -62,8 +60,15 @@ export async function expectSavedNotMatch(page: Page, pattern: RegExp) {
 export const topBarButton = (page: Page, name: TopBarButton) =>
   page.locator('.top-bar-item').nth(TOP_BAR.indexOf(name));
 
-export async function clickTopBar(page: Page, name: TopBarButton) {
-  await topBarButton(page, name).click();
+/** Um botão da barra ou, para o que entra na página, o item do menu "+ Inserir". */
+export async function clickTopBar(page: Page, name: TopBarButton | InsertItem) {
+  if ((INSERT_MENU as readonly string[]).includes(name)) {
+    await topBarButton(page, 'insert').click();
+    // Marcado (o cursor está nele) o item é menuitemcheckbox: conta os dois
+    await page.getByRole('menu').locator('[role="menuitem"], [role="menuitemcheckbox"]').nth(INSERT_MENU.indexOf(name as InsertItem)).click();
+    return;
+  }
+  await topBarButton(page, name as TopBarButton).click();
 }
 
 /** Escolhe uma opção do seletor de título da barra (ex.: "Título 2", "Parágrafo"). */

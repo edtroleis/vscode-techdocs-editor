@@ -114,7 +114,7 @@ de código `mermaid`: o editor visual desenha no lugar, nos temas coloridos do M
 Code), sem rede (também no VS Code para a Web).
 
 - **Inserir** um diagrama pelo menu `/`, a partir de um de 29 exemplos em cinco grupos (fluxos, estrutura,
-  planejamento, gráficos e ideias), ou pela galeria do botão da barra (**Diagrama (Mermaid)**), que mostra cada um
+  planejamento, gráficos e ideias), ou pela galeria de **+ Inserir › Diagrama (Mermaid)** na barra, que mostra cada um
   desenhado. **Editar** no bloco mostra o código, com o diagrama redesenhado embaixo enquanto você digita.
 - **Tipos novos do Mermaid** (treemap, Ishikawa, Venn, árvore de arquivos, Wardley, modelagem de eventos, raias,
   Cynefin) têm a etiqueta "Backstage 11.x+" e um aviso embaixo do desenho: o Backstage só os desenha com essa versão

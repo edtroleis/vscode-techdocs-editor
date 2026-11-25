@@ -110,7 +110,6 @@ const cards = (page: Page) => gallery(page).locator('.diagram-gallery-card:visib
 
 test('barra: o botão "Diagrama (Mermaid)" abre a galeria; o cartão escolhido insere o exemplo', async ({ page }) => {
   await openEditor(page);
-  await expect(topBarButton(page, 'diagram')).toHaveAttribute('title', 'Diagrama (Mermaid)');
   await newLineAtEnd(page);
   await clickTopBar(page, 'diagram');
   await expect(gallery(page)).toBeVisible();

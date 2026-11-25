@@ -114,7 +114,7 @@ block: the visual editor draws them in place, in the colorful Mermaid themes (li
 no network (also in VS Code for the Web).
 
 - **Insert** a diagram from the `/` menu, starting from one of 29 examples in five groups (flows, structure,
-  planning, charts and ideas), or from the gallery of the toolbar button (**Diagram (Mermaid)**), which shows each
+  planning, charts and ideas), or from the gallery of **+ Insert › Diagram (Mermaid)** in the toolbar, which shows each
   one drawn. **Edit** on the block shows the code, with the diagram redrawn below as you type.
 - **Newer diagram types** (treemap, Ishikawa, Venn, file tree, Wardley, event modeling, swimlanes, Cynefin) carry a
   "Backstage 11.x+" tag and a note under the drawing: Backstage draws them only with that Mermaid version or newer.

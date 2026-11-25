@@ -27,6 +27,22 @@ test('todos os botões têm nome (dica ao passar o mouse e leitor de tela)', asy
   await expect(topBarButton(page, 'redo')).toHaveAttribute('title', /Refazer/);
 });
 
+test('+ Inserir: o que entra na página, com nomes, num menu; a barra cabe numa linha na janela de 770 px', async ({ page }) => {
+  await page.setViewportSize({ width: 770, height: 700 });
+  await openEditor(page);
+  await expect(topBarButton(page, 'insert')).toContainText('Inserir');
+  // Desfazer e Refazer no começo, antes do título
+  const undo = (await topBarButton(page, 'undo').boundingBox())!;
+  const heading = (await page.locator('.top-bar-heading-button').boundingBox())!;
+  expect(undo.x).toBeLessThan(heading.x);
+  const tops = await page.locator('.top-bar-item').evaluateAll(els => [...new Set(els.map(e => Math.round(e.getBoundingClientRect().top)))]);
+  expect(tops, 'a barra quebrou em mais de uma linha').toHaveLength(1);
+  await topBarButton(page, 'insert').click();
+  await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText(['Imagem', 'Tabela', 'Bloco de código', 'Diagrama (Mermaid)', 'Citação', 'Linha horizontal']);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+});
+
 test.describe('barra: título', () => {
   for (const level of [1, 2, 3, 4, 5, 6]) {
     test(`Título ${level} e volta a Parágrafo`, async ({ page }) => {
@@ -221,7 +237,8 @@ test.describe('barra: blocos', () => {
     await paragraph(page).click();
     await clickTopBar(page, 'quote');
     await expectSaved(page, withParagraph('> Texto inicial.'));
-    await expect(topBarButton(page, 'quote')).toHaveClass(/active/);
+    // Dentro da citação, o + Inserir fica marcado (o item Citação também)
+    await expect(topBarButton(page, 'insert')).toHaveClass(/active/);
     await clickTopBar(page, 'quote');
     await expectSaved(page, ORIGINAL);
   });
@@ -235,7 +252,7 @@ test.describe('barra: blocos', () => {
     await expectLintClean(page);
 
     await editor(page).locator('hr').click();
-    await expect(topBarButton(page, 'hr')).toHaveClass(/active/);
+    await expect(topBarButton(page, 'insert')).toHaveClass(/active/);
     await clickTopBar(page, 'hr');
     await expect(editor(page).locator('hr')).toHaveCount(0);
     await expectSaved(page, ORIGINAL);

@@ -261,6 +261,7 @@ export const en: Record<string, string> = {
   'editorText.topBar.divider': 'Horizontal line (select the line and click again to remove it)',
   'editorText.topBar.undo': 'Undo (Ctrl+Z)',
   'editorText.topBar.redo': 'Redo (Ctrl+Y)',
+  'editorText.topBar.insert': 'Insert',
   'editorText.uploadImage': 'Choose an image from your computer',
   'editorText.uploadImageInline': 'Choose image',
   'editorText.imageUrlPlaceholder': 'or paste the address (https://…) of an image',

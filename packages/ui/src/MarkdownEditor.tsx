@@ -207,7 +207,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           previewLabel: labels.code.preview,
           copyText: labels.code.copy,
         },
-        [Crepe.Feature.TopBar]: { buildTopBar: builder => buildTopBar(builder, pageKinds), headingOptions: headingOptions(labels) },
+        [Crepe.Feature.TopBar]: { buildTopBar: builder => buildTopBar(builder, labels, pageKinds), headingOptions: headingOptions(labels) },
         // Textos no idioma da pessoa (labels.ts)
         [Crepe.Feature.BlockEdit]: slashMenu(labels, pageKinds),
         [Crepe.Feature.Toolbar]: selectionToolbar(labels),

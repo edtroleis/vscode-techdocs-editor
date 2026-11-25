@@ -104,8 +104,15 @@ export const previewRow = (panel: FrameLocator, text: string | RegExp): Locator 
 export const editorOf = (page: Page) => webviewWith(page, '.milkdown .ProseMirror');
 
 /** Botões da barra fixa do editor visual, na ordem (ui/src/topBar.ts). */
-const TOP_BAR = ['bold', 'italic', 'strikethrough', 'inlineCode', 'bulletList', 'orderedList', 'taskList', 'link', 'image', 'table', 'codeBlock', 'mermaid', 'quote', 'hr', 'undo', 'redo'] as const;
+const TOP_BAR = ['undo', 'redo', 'bold', 'italic', 'strikethrough', 'inlineCode', 'link', 'bulletList', 'orderedList', 'taskList', 'insert'] as const;
 export const topBar = (editor: FrameLocator, name: (typeof TOP_BAR)[number]) => editor.locator('.top-bar-item').nth(TOP_BAR.indexOf(name));
+/** O que entra na página fica no menu "+ Insert" da barra, nesta ordem. */
+const INSERT_MENU = ['image', 'table', 'codeBlock', 'mermaid', 'quote', 'hr'] as const;
+/** "+ Insert" na barra e o item `name` do menu. */
+export async function insertBlock(page: Page, editor: FrameLocator, name: (typeof INSERT_MENU)[number]) {
+  await click(page, topBar(editor, 'insert'));
+  await click(page, editor.getByRole('menu').locator('[role="menuitem"], [role="menuitemcheckbox"]').nth(INSERT_MENU.indexOf(name)));
+}
 
 /** Clica na página da árvore e espera ela abrir no editor visual (com o título 1 `heading`; por padrão, o da árvore). */
 export async function openFromTree(page: Page, label: string, heading = label) {

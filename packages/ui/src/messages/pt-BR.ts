@@ -261,6 +261,7 @@ export const ptBR: Record<string, string> = {
   'editorText.topBar.divider': 'Linha horizontal (selecione a linha e clique de novo para remover)',
   'editorText.topBar.undo': 'Desfazer (Ctrl+Z)',
   'editorText.topBar.redo': 'Refazer (Ctrl+Y)',
+  'editorText.topBar.insert': 'Inserir',
   'editorText.uploadImage': 'Escolher imagem do computador',
   'editorText.uploadImageInline': 'Escolher imagem',
   'editorText.imageUrlPlaceholder': 'ou cole o endereço (https://…) de uma imagem',

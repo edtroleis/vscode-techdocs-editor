@@ -207,7 +207,7 @@ test.describe('menu /: inserir e remover', () => {
     await expectLintClean(page);
 
     // Remover: com o cursor na tabela, o botão de tabela da barra a remove
-    await expect(topBarButton(page, 'table')).toHaveClass(/active/);
+    await expect(topBarButton(page, 'insert')).toHaveClass(/active/);
     await clickTopBar(page, 'table');
     await expectSaved(page, ORIGINAL);
     await expect(page.locator('.milkdown-table-block')).toHaveCount(0);

@@ -12,12 +12,18 @@ import { DIAGRAM_ICON, icon } from './icons';
 import { openDiagramGallery } from './diagramGallery';
 import { inlineCodeTyping, toggleInlineCodeTyping } from './inlineCodeTyping';
 import { ICON_PAGE_KIND, type PageKinds } from './pageKinds';
-import { openPageKindsMenu, openTechdocsMenu, TECHDOCS_ICON } from './techdocsMenu';
+import { openBarMenu, openPageKindsMenu, openTechdocsMenu, TECHDOCS_ICON } from './techdocsMenu';
+import type { EditorText } from './labels';
 
 
 const UNDO_ICON = icon(
   'M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z',
 );
+const PLUS_ICON =
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+const CHEVRON_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>';
+const escapeHtml = (value: string) => value.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const REDO_ICON = icon(
   'M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z',
 );
@@ -70,9 +76,11 @@ const stateOf = (ctx: Ctx) => ctx.get(editorViewCtx).state;
 type TopBarBuilder = Parameters<
   NonNullable<NonNullable<NonNullable<CrepeConfig['featureConfigs']>[CrepeFeature.TopBar]>['buildTopBar']>
 >[0];
-type TopBarItem = TopBarBuilder extends { getGroup: (key: string) => { group: { items: Array<infer I> } } }
+type TopBarEntry = TopBarBuilder extends { getGroup: (key: string) => { group: { items: Array<infer I> } } }
   ? I
   : never;
+/** Um botão da barra, sem a chave (a chave vai no addItem). */
+type TopBarItem = Omit<TopBarEntry, 'key'>;
 
 /**
  * Ajustes na barra fixa do editor. O padrão do Crepe só adiciona: não havia como desfazer uma
@@ -86,9 +94,9 @@ type TopBarItem = TopBarBuilder extends { getGroup: (key: string) => { group: { 
  * Também Desfazer/Refazer (antes só por Ctrl+Z / Ctrl+Y) e código no texto sem seleção valendo
  * para tudo o que for digitado (ver inlineCodeTyping.ts).
  */
-export function buildTopBar(builder: TopBarBuilder, pageKinds?: PageKinds) {
+export function buildTopBar(builder: TopBarBuilder, text: EditorText, pageKinds?: PageKinds) {
   const formatting = builder.getGroup('formatting');
-  const inlineCode = (formatting.group.items as Array<TopBarItem & { key: string }>).find(i => i.key === 'code');
+  const inlineCode = (formatting.group.items as Array<TopBarEntry>).find(i => i.key === 'code');
   if (inlineCode) {
     const isActive = inlineCode.active;
     const toggle = inlineCode.onRun;
@@ -125,7 +133,9 @@ export function buildTopBar(builder: TopBarBuilder, pageKinds?: PageKinds) {
     .addItem('task-list', listButton('task', task));
 
   const insert = builder.getGroup('insert');
-  const insertItems = insert.group.items as Array<TopBarItem & { key: string }>;
+  const insertItems = insert.group.items as Array<TopBarEntry>;
+  const link = insertItems.find(i => i.key === 'link');
+  const image = insertItems.find(i => i.key === 'image');
   const table = insertItems.find(i => i.key === 'table');
   if (table) {
     table.active = (ctx: Ctx) => inTable(stateOf(ctx));
@@ -137,7 +147,7 @@ export function buildTopBar(builder: TopBarBuilder, pageKinds?: PageKinds) {
   }
 
   const block = builder.getGroup('block');
-  const codeBlock = (block.group.items as Array<TopBarItem & { key: string }>).find(i => i.key === 'code-block');
+  const codeBlock = (block.group.items as Array<TopBarEntry>).find(i => i.key === 'code-block');
   if (codeBlock) {
     codeBlock.active = (ctx: Ctx) => inCodeBlock(stateOf(ctx));
     const addCode = codeBlock.onRun;
@@ -148,34 +158,55 @@ export function buildTopBar(builder: TopBarBuilder, pageKinds?: PageKinds) {
     };
   }
 
-  // Diagrama Mermaid (spec 06, M4), ao lado do bloco de código
-  block.addItem('mermaid', { icon: DIAGRAM_ICON, active: () => false, onRun: openDiagramGallery });
-  // Componentes do TechDocs (spec 01, M1): o mesmo grupo do menu "/"
-  // Tipos de página (Runbook, Tutorial…), quando o site tem: um botão só deles, antes dos componentes
-  if (pageKinds?.kinds.length) block.addItem('page-kinds', { icon: ICON_PAGE_KIND, active: () => false, onRun: openPageKindsMenu });
-  block.addItem('techdocs', { icon: TECHDOCS_ICON, active: () => false, onRun: openTechdocsMenu });
+  const [quote, hr] = builder.getGroup('more').group.items as TopBarItem[];
+  const quoteItem: TopBarItem = {
+    icon: quote.icon,
+    active: (ctx: Ctx) => inBlockquote(stateOf(ctx)),
+    onRun: (ctx: Ctx) => {
+      const state = stateOf(ctx);
+      run(ctx, inBlockquote(state) ? lift : wrapIn(state.schema.nodes.blockquote));
+    },
+  };
+  const hrItem: TopBarItem = {
+    icon: hr.icon,
+    active: (ctx: Ctx) => hrSelected(stateOf(ctx)),
+    onRun: (ctx: Ctx) => {
+      if (hrSelected(stateOf(ctx))) run(ctx, deleteSelection);
+      else hr.onRun?.(ctx);
+    },
+  };
+  const diagramItem: TopBarItem = { icon: DIAGRAM_ICON, active: () => false, onRun: openDiagramGallery };
 
-  const more = builder.getGroup('more');
-  const [quote, hr] = more.group.items as TopBarItem[];
-  more
-    .clear()
-    .addItem('quote', {
-      icon: quote.icon,
-      active: (ctx: Ctx) => inBlockquote(stateOf(ctx)),
-      onRun: (ctx: Ctx) => {
-        const state = stateOf(ctx);
-        run(ctx, inBlockquote(state) ? lift : wrapIn(state.schema.nodes.blockquote));
-      },
-    })
-    .addItem('hr', {
-      icon: hr.icon,
-      active: (ctx: Ctx) => hrSelected(stateOf(ctx)),
-      onRun: (ctx: Ctx) => {
-        if (hrSelected(stateOf(ctx))) run(ctx, deleteSelection);
-        else hr.onRun?.(ctx);
-      },
-    });
+  // "+ Inserir" (opção 3 do protótipo): o que entra na página, com nomes, num menu; marcado quando o cursor está
+  // num deles (tabela, citação, código, linha), e o mesmo item tira
+  const inserts = [
+    [text.image, image],
+    [text.table, table],
+    [text.codeBlock, codeBlock],
+    [text.diagram.label, diagramItem],
+    [text.quote, quoteItem],
+    [text.divider, hrItem],
+  ].filter((entry): entry is [string, TopBarItem] => Boolean(entry[1]));
+  const insertButton: TopBarItem = {
+    icon: `${PLUS_ICON}<span class="td-insert-label">${escapeHtml(text.topBar.insert)}</span>${CHEVRON_ICON}`,
+    active: (ctx: Ctx) => inserts.some(([, item]) => item.active(ctx)),
+    onRun: (ctx: Ctx) =>
+      openBarMenu(ctx, text.topBar.insert, () =>
+        inserts.map(([label, item]) => {
+          const on = item.active(ctx);
+          return { icon: item.icon, label, checked: on || undefined, run: () => item.onRun?.(ctx) };
+        }),
+      ),
+  };
 
+  // A barra, na ordem do protótipo: Desfazer/Refazer · título · texto · listas · + Inserir · tipos de página e TechDocs
+  const heading = builder.getGroup('heading').group.items as Array<TopBarEntry>;
+  const formattingItems = formatting.group.items as Array<TopBarEntry>;
+  const listItems = lists.group.items as Array<TopBarEntry>;
+  const add = (group: ReturnType<TopBarBuilder['addGroup']>, items: TopBarEntry[]) => {
+    for (const { key, ...item } of items) group.addItem(key, item);
+  };
+  builder.clear();
   builder
     .addGroup('history', 'Histórico')
     .addItem('undo', {
@@ -195,5 +226,15 @@ export function buildTopBar(builder: TopBarBuilder, pageKinds?: PageKinds) {
         if (external) external.redo();
         else run(ctx, redo);
       },
-    });
+    });;
+  add(builder.addGroup('heading', 'Heading'), heading);
+  const textGroup = builder.addGroup('formatting', 'Formatting');
+  add(textGroup, formattingItems);
+  if (link) textGroup.addItem('link', link);
+  add(builder.addGroup('list', 'List'), listItems);
+  builder.addGroup('insert', text.topBar.insert).addItem('insert', insertButton);
+  const techdocs = builder.addGroup('techdocs', text.components.group);
+  // Tipos de página (Runbook, Tutorial…), quando o site tem: um botão só deles, antes dos componentes
+  if (pageKinds?.kinds.length) techdocs.addItem('page-kinds', { icon: ICON_PAGE_KIND, active: () => false, onRun: openPageKindsMenu });
+  techdocs.addItem('techdocs', { icon: TECHDOCS_ICON, active: () => false, onRun: openTechdocsMenu });
 }

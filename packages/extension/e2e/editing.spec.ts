@@ -19,8 +19,8 @@ import {
 const PAGE = 'wiki/docs/index.md';
 
 /** Posição dos botões na barra fixa do editor (a mesma do plugin, TOP_BAR em ui/e2e). */
-const UNDO = 15;
-const REDO = 16;
+const UNDO = 0;
+const REDO = 1;
 
 test('abrir no editor visual não deixa a página alterada', async ({ vscode: { page, file } }) => {
   const original = file(PAGE);

@@ -56,14 +56,16 @@ function emptyParagraphAtCursor(ctx: Ctx) {
 
 let closeOpen: (() => void) | undefined;
 
-type MenuEntry = { icon: string; label: string; detail?: string; run: () => void };
+export type MenuEntry = { icon: string; label: string; detail?: string; checked?: boolean; run: () => void };
 
 /** Um menu embaixo do botão da barra de cima de nome `label`, com `entries`. */
-function openBarMenu(ctx: Ctx, label: string, entries: (close: () => void) => MenuEntry[]) {
+export function openBarMenu(ctx: Ctx, label: string, entries: (close: () => void) => MenuEntry[]) {
   closeOpen?.();
   const view = ctx.get(editorViewCtx);
   const host = view.dom.closest<HTMLElement>('.milkdown') ?? document.body;
   const anchor = host.querySelector<HTMLElement>(`.top-bar-item[title="${label}"]`) ?? host;
+  // O foco vai para o menu: o cursor de antes (na tabela, na citação…) volta antes de rodar o item
+  const cursor = view.state.selection.getBookmark();
   const menu = document.createElement('div');
   menu.className = 'mermaid-bar-menu td-top-menu';
   menu.setAttribute('role', 'menu');
@@ -90,7 +92,8 @@ function openBarMenu(ctx: Ctx, label: string, entries: (close: () => void) => Me
   for (const entry of entries(close)) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.setAttribute('role', 'menuitem');
+    button.setAttribute('role', entry.checked === undefined ? 'menuitem' : 'menuitemcheckbox');
+    if (entry.checked !== undefined) button.setAttribute('aria-checked', String(entry.checked));
     button.innerHTML = entry.icon;
     const name = document.createElement('span');
     name.textContent = entry.label;
@@ -102,6 +105,9 @@ function openBarMenu(ctx: Ctx, label: string, entries: (close: () => void) => Me
     }
     button.addEventListener('click', () => {
       close();
+      const selection = cursor.resolve(view.state.doc);
+      if (!selection.eq(view.state.selection)) view.dispatch(view.state.tr.setSelection(selection));
+      view.focus();
       entry.run();
     });
     items.append(button);

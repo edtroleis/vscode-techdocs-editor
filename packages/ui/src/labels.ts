@@ -103,7 +103,7 @@ export type EditorText = {
   linkOutsideMenu: string;
   /** Grupo das outras docs do Backstage na caixa de link. */
   linkDocs: string;
-  topBar: { bold: string; italic: string; table: string; divider: string; undo: string; redo: string };
+  topBar: { bold: string; italic: string; table: string; divider: string; undo: string; redo: string; insert: string };
   uploadImage: string;
   uploadImageInline: string;
   imageUrlPlaceholder: string;
@@ -261,6 +261,7 @@ export function editorTextFrom(t: TextLookup): EditorText {
       divider: k('topBar.divider'),
       undo: k('topBar.undo'),
       redo: k('topBar.redo'),
+      insert: k('topBar.insert'),
     },
     uploadImage: k('uploadImage'),
     uploadImageInline: k('uploadImageInline'),
@@ -363,24 +364,19 @@ export const selectionToolbar = (text: EditorText): ToolbarFeatureConfig => ({
  * leitor de tela.
  */
 const topBarLabels = (text: EditorText, pageKinds?: PageKinds) => [
+  text.topBar.undo,
+  text.topBar.redo,
   text.topBar.bold,
   text.topBar.italic,
   text.strikethrough,
   text.inlineCode,
+  text.link,
   text.bulletList,
   text.orderedList,
   text.taskList,
-  text.link,
-  text.image,
-  text.topBar.table,
-  text.codeBlock,
-  text.diagram.label,
+  text.topBar.insert,
   ...(pageKinds?.kinds.length ? [pageKinds.group] : []),
   text.components.group,
-  text.quote,
-  text.topBar.divider,
-  text.topBar.undo,
-  text.topBar.redo,
 ];
 
 /** Põe nome (title e aria-label) nos botões da barra fixa dentro de `root`. */

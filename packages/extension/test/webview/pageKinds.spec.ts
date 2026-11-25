@@ -48,7 +48,7 @@ test('sem tipos de página, não há o botão deles e os outros botões têm o n
   await openWebview(page, '# Configuração\n', 'en');
   await expect(page.locator('.top-bar-item[title="TechDocs"]')).toHaveCount(1);
   await expect(page.locator('.top-bar-item[title="Kinds of page"]')).toHaveCount(0);
-  await expect(page.locator('.top-bar-item[title="Quote"]')).toHaveCount(1);
+  await expect(page.locator('.top-bar-item[title="Insert"]')).toHaveCount(1);
 });
 
 test('janela baixa: o menu cabe na tela e rola até o último item', async ({ page }) => {
