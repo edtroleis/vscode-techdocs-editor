@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { useE2eToken } from './publish/githubAuth';
+import { useE2eToken, useTestTransport } from './publish/githubAuth';
 import { chooseSites, hideSite, useTestSiteChoice } from './chooseSites';
 import { CatalogOptions, repositoryFolder } from './catalogOptions';
 import { timing, watchLag } from './timing';
@@ -221,7 +221,7 @@ export function activate(context: vscode.ExtensionContext) {
     ),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { send, clone, provider, treeActions, sites, lint, docs, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, useTestSiteChoice, useTestSitePick, useTestAnswers };
+  return { useTestTransport, send, clone, provider, treeActions, sites, lint, docs, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, useTestSiteChoice, useTestSitePick, useTestAnswers };
 }
 
 /**

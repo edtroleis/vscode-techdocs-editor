@@ -7,7 +7,6 @@
  */
 import { firstToFill, readNav, type NavItem } from '@edtroleis/techdocs-editor-core';
 import * as vscode from 'vscode';
-import { useTestTransport } from '../../../src/publish/githubAuth';
 import type { DocsItem, DocsTreeView } from '../../../src/docsTreeView';
 import type { LintService } from '../../../src/lintService';
 import type { LocalSites } from '../../../src/localSites';
@@ -55,6 +54,8 @@ function siteItem(docs: DocsTreeView, folder: string) {
 }
 
 type Api = {
+  /** O transporte de teste do GitHub da extensão (não o desta cópia do módulo). */
+  useTestTransport: typeof import('../../../src/publish/githubAuth').useTestTransport;
   provider: VisualEditorProvider;
   treeActions: TreeActions;
   sites: LocalSites;
@@ -1724,7 +1725,8 @@ export function defineTests() {
     });
 
     test('templates da empresa (TA3): lidos do GitHub com login, guardados por uma hora e usados sem rede', async () => {
-      const { newPage, newSite, central } = await api();
+      // O transporte de teste da extensão (o módulo do teste é outra cópia: ligar o dele não muda a extensão)
+      const { newPage, newSite, central, useTestTransport } = await api();
       const config = vscode.workspace.getConfiguration('techdocsEditor.templates');
       const page = '---\ntemplate:\n  name: Runbook da empresa\n  category: guide\n---\n\n# {{title}}\n\nDa empresa.\n';
       const site = 'name: Site da empresa\nfiles:\n  - path: index.md\n    title: Início\n    source: inicio.md\n  - path: rb.md\n    title: Runbook\n    page: runbook\n';
