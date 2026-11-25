@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-25
+
 ### Changed
 
 - **TechDocs Settings** window in the TechDocs section (**…** › **Settings…**), in place of the lists at the top of
