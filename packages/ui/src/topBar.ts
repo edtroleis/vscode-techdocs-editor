@@ -9,6 +9,7 @@ import { NodeSelection } from '@milkdown/kit/prose/state';
 import type { Command, EditorState } from '@milkdown/kit/prose/state';
 import { externalHistoryCtx } from './externalHistory';
 import { DIAGRAM_ICON, icon } from './icons';
+import { FILE_ICON, pickFile } from './attachFile';
 import { openDiagramGallery } from './diagramGallery';
 import { inlineCodeTyping, toggleInlineCodeTyping } from './inlineCodeTyping';
 import { ICON_PAGE_KIND, type PageKinds } from './pageKinds';
@@ -94,7 +95,7 @@ type TopBarItem = Omit<TopBarEntry, 'key'>;
  * Também Desfazer/Refazer (antes só por Ctrl+Z / Ctrl+Y) e código no texto sem seleção valendo
  * para tudo o que for digitado (ver inlineCodeTyping.ts).
  */
-export function buildTopBar(builder: TopBarBuilder, text: EditorText, pageKinds?: PageKinds) {
+export function buildTopBar(builder: TopBarBuilder, text: EditorText, pageKinds?: PageKinds, canAttach = false) {
   const formatting = builder.getGroup('formatting');
   const inlineCode = (formatting.group.items as Array<TopBarEntry>).find(i => i.key === 'code');
   if (inlineCode) {
@@ -179,8 +180,10 @@ export function buildTopBar(builder: TopBarBuilder, text: EditorText, pageKinds?
 
   // "+ Inserir" (opção 3 do protótipo): o que entra na página, com nomes, num menu; marcado quando o cursor está
   // num deles (tabela, citação, código, linha), e o mesmo item tira
+  const fileItem: TopBarItem | undefined = canAttach ? { icon: FILE_ICON, active: () => false, onRun: pickFile } : undefined;
   const inserts = [
     [text.image, image],
+    [text.file, fileItem],
     [text.table, table],
     [text.codeBlock, codeBlock],
     [text.diagram.label, diagramItem],

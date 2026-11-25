@@ -19,6 +19,7 @@ import { STRINGIFY_OPTIONS, repoLineNumbers } from '@edtroleis/techdocs-editor-c
 import { defaultCodeLanguagePlugin } from './defaultCodeLanguage';
 import { replaceChanged } from './externalContent';
 import { ExternalHistory, externalHistoryCtx } from './externalHistory';
+import { type AttachFile, attachFileCtx } from './attachFile';
 import { listCaretFixPlugin } from './listCaretFix';
 import { imageAltPlugin } from './imageAlt';
 import { EXTERNAL_CHANGE, headingLevelFixPlugin, singleTitlePlugin } from './headingLevelFix';
@@ -84,6 +85,8 @@ type Props = {
   onChange: (markdown: string, previous: string) => void;
   /** Envia a imagem e devolve o endereço que vai no Markdown. */
   onUploadImage: (file: File) => Promise<string>;
+  /** + Inserir › Arquivo… (spec 07): grava o arquivo escolhido e devolve o Markdown do cursor; sem ele, o item não aparece. */
+  onAttachFile?: AttachFile;
   /** Imagem colada de outra ferramenta (spec 05, C3): grava no repositório e devolve o link; sem ela, fica o endereço. */
   onImportImage?: ImportImage;
   /** Endereço do Markdown → endereço que o navegador consegue exibir. */
@@ -125,6 +128,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
       initialValue,
       onChange,
       onUploadImage,
+      onAttachFile,
       onImportImage,
       resolveImage,
       problemLines,
@@ -152,6 +156,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
   importRef.current = onImportImage;
   const uploadRef = useRef(onUploadImage);
   uploadRef.current = onUploadImage;
+  const attachRef = useRef(onAttachFile);
+  attachRef.current = onAttachFile;
   /** Nome (sem extensão) de cada imagem enviada, pelo link: o texto alternativo dela (ver imageAlt.ts). */
   const uploadedNames = useRef(new Map<string, string>());
   const resolveRef = useRef(resolveImage);
@@ -207,9 +213,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
           previewLabel: labels.code.preview,
           copyText: labels.code.copy,
         },
-        [Crepe.Feature.TopBar]: { buildTopBar: builder => buildTopBar(builder, labels, pageKinds), headingOptions: headingOptions(labels) },
+        [Crepe.Feature.TopBar]: { buildTopBar: builder => buildTopBar(builder, labels, pageKinds, Boolean(attachRef.current)), headingOptions: headingOptions(labels) },
         // Textos no idioma da pessoa (labels.ts)
-        [Crepe.Feature.BlockEdit]: slashMenu(labels, pageKinds),
+        [Crepe.Feature.BlockEdit]: slashMenu(labels, pageKinds, Boolean(attachRef.current)),
         [Crepe.Feature.Toolbar]: selectionToolbar(labels),
         [Crepe.Feature.LinkTooltip]: { inputPlaceholder: labels.linkPlaceholder },
         // Sem isto o editor grava "blob:..." (endereço temporário do navegador) e a imagem quebra
@@ -242,6 +248,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(
         });
         ctx.inject(diagramBarCtx, { bar: labels.diagram.bar, words: labels.diagram.words, hint: labels.diagram.flowHint });
         ctx.inject(componentsCtx, labels.components);
+        ctx.inject(
+          attachFileCtx,
+          attachRef.current
+            ? async file => {
+                const markdown = await attachRef.current!(file);
+                // Imagem escolhida em Arquivo…: o texto alternativo, como no botão de imagem (imageAlt.ts)
+                const image = markdown && /^!\[(.*)\]\((.+)\)$/.exec(markdown);
+                if (image) uploadedNames.current.set(image[2], image[1].replace(/\\([[\]\\])/g, '$1'));
+                return markdown;
+              }
+            : null,
+        );
         if (pageKinds) ctx.inject(pageKindsCtx, pageKinds);
         else ctx.inject(pageKindsCtx);
       })

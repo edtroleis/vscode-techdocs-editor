@@ -105,8 +105,8 @@ const TOP_BAR_INSERT = 10;
 /** "+ Inserir" › Diagrama abre a galeria (spec 06, M22): escolhe o fluxograma nela. */
 function insertFlowchart(session: { clickTopBar(index: number): void; click(selector: string): void }) {
   session.clickTopBar(TOP_BAR_INSERT);
-  // Imagem, Tabela, Bloco de código, Diagrama…
-  session.click('.td-top-menu .mermaid-bar-menu-items > button:nth-child(4)');
+  // Imagem, Arquivo, Tabela, Bloco de código, Diagrama…
+  session.click('.td-top-menu .mermaid-bar-menu-items > button:nth-child(5)');
   session.click('.diagram-gallery-card[data-key="flow"]');
 }
 
@@ -552,9 +552,11 @@ export function defineTests() {
   suite('Imagens', function () {
     this.timeout(60_000);
     const file = (path: string) => vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, path);
-    const assets = file('wiki/docs/assets');
+    // As imagens novas vão para <docs>/images/ (spec 07); o assets/ do site (diagrama.png) não muda
+    const images = file('wiki/docs/images');
     const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
-    const assetNames = async () => (await vscode.workspace.fs.readDirectory(assets)).map(([name]) => name).sort();
+    const assetNames = async () =>
+      (await Promise.resolve(vscode.workspace.fs.readDirectory(images)).then(undefined, () => [] as [string, vscode.FileType][])).map(([name]) => name).sort();
     let before: string[] = [];
 
     setup(async () => {
@@ -562,13 +564,13 @@ export function defineTests() {
     });
     teardown(async () => {
       for (const name of await assetNames()) {
-        if (!before.includes(name)) await vscode.workspace.fs.delete(vscode.Uri.joinPath(assets, name));
+        if (!before.includes(name)) await vscode.workspace.fs.delete(vscode.Uri.joinPath(images, name));
       }
       await vscode.commands.executeCommand('workbench.action.files.revert');
       await closeAll();
     });
 
-    test('colar HTML no editor de texto vira Markdown, com as imagens trazidas para assets (spec 05, C12)', async () => {
+    test('colar HTML no editor de texto vira Markdown, com as imagens trazidas para images (spec 05, C12; spec 07)', async () => {
       const { sites } = await api();
       await sites.ready;
       const document = await vscode.workspace.openTextDocument(file('wiki/docs/index.md'));
@@ -603,8 +605,8 @@ export function defineTests() {
       ok(text.includes('![foto](https://privado.example.org/foto.png)'), `imagem sem acesso fica com o endereço: ${text}`);
       if (document.uri.scheme === 'file') {
         equal(saved.length, 1, `imagens gravadas: ${saved}`);
-        ok(saved[0].endsWith('-diagrama.png'), saved[0]);
-        ok(text.includes(`![diagrama](assets/${saved[0]})`), `imagem trazida: ${text}`);
+        equal(saved[0], 'diagrama.png', 'o nome do arquivo, sem o horário');
+        ok(text.includes('![diagrama](images/diagrama.png)'), `imagem trazida: ${text}`);
         equal(fetched.length, 2, 'downloads');
       } else {
         // Fora de arquivos locais (no navegador, vscode-test-web://), as imagens ficam com o endereço de origem
@@ -633,11 +635,11 @@ export function defineTests() {
       return opened;
     }
 
-    test('grava em <docs>/assets/<horário>-<nome> e põe o link relativo à página', async () => {
+    test('grava em <docs>/images/<nome limpo> e põe o link relativo à página (spec 07)', async () => {
       const { session, document } = await pageWithImageBlock();
       session.chooseImage('Captura de Tela.png', 'image/png', PNG);
-      const text = await until(() => document.getText(), t => t.includes('](../assets/'), 'o link não chegou ao documento');
-      const [link] = /\.\.\/assets\/\d+-captura-de-tela\.png/.exec(text) ?? [];
+      const text = await until(() => document.getText(), t => t.includes('](../images/'), 'o link não chegou ao documento');
+      const [link] = /\.\.\/images\/captura-de-tela\.png/.exec(text) ?? [];
       ok(link, `link inesperado: ${text}`);
       ok(!text.includes('blob:'), 'link temporário (blob:) no documento');
       const saved = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(file('wiki/docs/guias'), link!));
@@ -1815,6 +1817,47 @@ export function defineTests() {
           await config().update(key, undefined, vscode.ConfigurationTarget.Global);
         }
         for (const path of ['.techdocs-editor.yaml', '.git']) await remove(path);
+      }
+    });
+
+    test('anexos (spec 07): diretório certo e nome limpo; o igual é reaproveitado, o diferente ganha -2; recusa com a razão; o do time vence', async () => {
+      const { saveAttachment, AttachmentRefused } = await import('../../../src/attachments');
+      const config = () => vscode.workspace.getConfiguration('techdocsEditor');
+      const page = file('wiki/docs/guias/primeiros-passos.md');
+      const docsDir = file('wiki/docs').path;
+      const bytes = (...b: number[]) => new Uint8Array(b);
+      const has = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
+      const refused = (run: Promise<unknown>) =>
+        run.then(
+          () => undefined,
+          (e: unknown) => (e instanceof AttachmentRefused ? `${e.fixable}:${e.message}` : `outro erro: ${String(e)}`),
+        );
+      try {
+        const pdf = await saveAttachment(page, docsDir, 'Manual do Cliente.pdf', bytes(1, 2, 3), 'any');
+        equal(`${pdf.kind} ${pdf.link} ${pdf.text}`, 'file ../assets/manual-do-cliente.pdf Manual do Cliente (PDF, 3 B)', 'anexo');
+        ok(await has('wiki/docs/assets/manual-do-cliente.pdf'), 'gravado em assets/');
+        equal((await saveAttachment(page, docsDir, 'manual do cliente.PDF', bytes(1, 2, 3), 'any')).link, '../assets/manual-do-cliente.pdf', 'o igual é reaproveitado');
+        equal((await saveAttachment(page, docsDir, 'Manual do Cliente.pdf', bytes(9), 'any')).link, '../assets/manual-do-cliente-2.pdf', 'outro conteúdo: -2');
+        // Imagem pelo Arquivo… e pelo botão de imagem: no diretório das imagens
+        const image = await saveAttachment(page, docsDir, 'Foto Équipe.PNG', bytes(4), 'any');
+        equal(`${image.kind} ${image.link} ${image.text}`, 'image ../images/foto-equipe.png Foto Équipe', 'imagem');
+        // Recusas: executável nunca (sem Configurações); fora da lista ou grande demais, com Configurações
+        equal(await refused(saveAttachment(page, docsDir, 'setup.exe', bytes(1), 'any')), 'false:.exe files are not accepted: setup.exe', 'executável');
+        ok((await refused(saveAttachment(page, docsDir, 'notas.pdf', bytes(1), 'image')))?.startsWith('true:"notas.pdf" is not one of the accepted images'), 'botão de imagem só aceita imagem');
+        ok((await refused(saveAttachment(page, docsDir, 'video.mp4', bytes(1), 'any')))?.startsWith('true:"video.mp4" is not one of the accepted types'), 'fora da lista');
+        await config().update('attachments.filesMaxSizeMB', 0.000001, vscode.ConfigurationTarget.Global);
+        ok((await refused(saveAttachment(page, docsDir, 'grande.zip', bytes(1, 2, 3), 'any')))?.includes('the limit for files is'), 'grande demais');
+        // * libera qualquer extensão (menos executáveis)
+        await config().update('attachments.filesMaxSizeMB', undefined, vscode.ConfigurationTarget.Global);
+        await config().update('attachments.fileTypes', ['*'], vscode.ConfigurationTarget.Global);
+        equal((await saveAttachment(page, docsDir, 'video.mp4', bytes(1), 'any')).link, '../assets/video.mp4', 'com *');
+        // O do time (.techdocs-editor.yaml) vence a configuração da pessoa, campo a campo
+        await config().update('attachments.files', 'meus', vscode.ConfigurationTarget.Global);
+        await vscode.workspace.fs.writeFile(file('.techdocs-editor.yaml'), new TextEncoder().encode('attachments:\n  files: anexos/\n'));
+        equal((await saveAttachment(page, docsDir, 'Contrato.pdf', bytes(5), 'any')).link, '../anexos/contrato.pdf', 'diretório do time');
+      } finally {
+        for (const key of ['attachments.filesMaxSizeMB', 'attachments.fileTypes', 'attachments.files']) await config().update(key, undefined, vscode.ConfigurationTarget.Global);
+        for (const path of ['wiki/docs/assets/manual-do-cliente.pdf', 'wiki/docs/assets/manual-do-cliente-2.pdf', 'wiki/docs/assets/video.mp4', 'wiki/docs/images', 'wiki/docs/anexos', '.techdocs-editor.yaml']) await remove(path);
       }
     });
 

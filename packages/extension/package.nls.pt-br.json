@@ -5,7 +5,7 @@
   "command.openVisual": "Abrir no editor visual",
   "command.openText": "Abrir como texto Markdown",
   "config.openVisualByDefault": "Abre as páginas do `docs_dir` de um MkDocs no editor visual em vez do texto Markdown. Para ver o texto, use **Reabrir Editor com…**.",
-  "config.images.maxSizeMB": "Maior imagem, em MB, que o editor visual grava no diretório `assets` das docs. As imagens vão para o repositório: arquivos grandes pesam em todo clone e na publicação.",
+  "config.images.maxSizeMB": "Maior imagem, em MB, que o editor visual grava no diretório de imagens das docs. As imagens vão para o repositório: arquivos grandes pesam em todo clone e na publicação. O `.techdocs-editor.yaml` (`attachments.imagesMaxSizeMB`) vence.",
   "view.docs": "Documentação",
   "view.docsExplorer": "TechDocs",
   "view.preview": "Nova documentação",
@@ -113,5 +113,10 @@
   "command.sendOptions": "Como enviar…",
   "command.settingsClose": "Fechar",
   "view.settings": "Configurações do TechDocs",
-  "command.cloneOptions": "Onde ficam as cópias do GitHub…"
+  "command.cloneOptions": "Onde ficam as cópias do GitHub…",
+  "config.attachments.images": "Diretório das imagens inseridas pelo editor visual, dentro do `docs_dir`. O `.techdocs-editor.yaml` (`attachments.images`) vence.",
+  "config.attachments.imageTypes": "Extensões aceitas como imagem. `*` aceita toda imagem. Executáveis, scripts e `md` nunca entram. O `.techdocs-editor.yaml` (`attachments.imageTypes`) vence.",
+  "config.attachments.files": "Diretório dos arquivos inseridos com **Inserir › Arquivo…**, dentro do `docs_dir`. O `.techdocs-editor.yaml` (`attachments.files`) vence.",
+  "config.attachments.filesMaxSizeMB": "Maior arquivo, em MB, que **Inserir › Arquivo…** grava. O `.techdocs-editor.yaml` (`attachments.filesMaxSizeMB`) vence.",
+  "config.attachments.fileTypes": "Extensões aceitas por **Inserir › Arquivo…**. `*` aceita qualquer extensão; executáveis, scripts e `md` nunca entram. O `.techdocs-editor.yaml` (`attachments.fileTypes`) vence."
 }

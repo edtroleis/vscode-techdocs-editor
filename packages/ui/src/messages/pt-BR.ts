@@ -10,6 +10,8 @@ export const ptBR: Record<string, string> = {
   'editorText.orderedList': 'Lista numerada',
   'editorText.taskList': 'Lista de tarefas',
   'editorText.image': 'Imagem',
+  'editorText.file': 'Arquivo…',
+  'editorText.fileSlash': 'Arquivo (anexo)',
   'editorText.codeBlock': 'Bloco de código',
   'editorText.codeCopy': 'Copiar',
   'editorText.codePreview': 'Prévia',

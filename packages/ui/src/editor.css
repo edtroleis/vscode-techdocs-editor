@@ -883,3 +883,8 @@
   letter-spacing: 0.05em;
   opacity: 0.7;
 }
+
+/* Anexo (spec 07): link relativo para um arquivo que não é página (PDF, planilha…) ganha o clipe na frente */
+.milkdown .ProseMirror a[href]:not([href$='.md']):not([href*='.md#']):not([href$='/']):not([href*='://']):not([href^='mailto:']):not([href^='#'])::before {
+  content: '📎 ';
+}

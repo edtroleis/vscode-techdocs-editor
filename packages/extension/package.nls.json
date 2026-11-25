@@ -5,7 +5,7 @@
   "command.openVisual": "Open in visual editor",
   "command.openText": "Open as Markdown text",
   "config.openVisualByDefault": "Open pages of a MkDocs `docs_dir` in the visual editor instead of the Markdown text. Use **Reopen Editor With…** to switch to the text.",
-  "config.images.maxSizeMB": "Largest image, in MB, that the visual editor saves to the `assets` folder of the docs. Images go into the repository: large files weigh on every clone and on publishing.",
+  "config.images.maxSizeMB": "Largest image, in MB, that the visual editor saves to the images directory of the docs. Images go into the repository: large files weigh on every clone and on publishing. `.techdocs-editor.yaml` (`attachments.imagesMaxSizeMB`) wins.",
   "view.docs": "Documentation",
   "view.docsExplorer": "TechDocs",
   "view.preview": "New documentation",
@@ -113,5 +113,10 @@
   "command.sendOptions": "How to Send…",
   "command.settingsClose": "Close",
   "view.settings": "TechDocs Settings",
-  "command.cloneOptions": "Where the GitHub Copies Go…"
+  "command.cloneOptions": "Where the GitHub Copies Go…",
+  "config.attachments.images": "Directory of the images inserted by the visual editor, inside the `docs_dir`. `.techdocs-editor.yaml` (`attachments.images`) wins.",
+  "config.attachments.imageTypes": "Extensions accepted as images. `*` accepts every image. Executables, scripts and `md` are never accepted. `.techdocs-editor.yaml` (`attachments.imageTypes`) wins.",
+  "config.attachments.files": "Directory of the files inserted with **Insert › File…**, inside the `docs_dir`. `.techdocs-editor.yaml` (`attachments.files`) wins.",
+  "config.attachments.filesMaxSizeMB": "Largest file, in MB, that **Insert › File…** saves. `.techdocs-editor.yaml` (`attachments.filesMaxSizeMB`) wins.",
+  "config.attachments.fileTypes": "Extensions accepted by **Insert › File…**. `*` accepts any extension; executables, scripts and `md` are never accepted. `.techdocs-editor.yaml` (`attachments.fileTypes`) wins."
 }

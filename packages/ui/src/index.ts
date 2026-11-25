@@ -1,4 +1,5 @@
 export { MarkdownEditor } from './MarkdownEditor';
+export type { AttachFile } from './attachFile';
 export type { MarkdownEditorHandle } from './MarkdownEditor';
 export { editorTextFrom } from './labels';
 export { SearchBar, searchTextFrom, useVisualSearch } from './SearchBar';

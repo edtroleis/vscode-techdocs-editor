@@ -10,6 +10,8 @@ export const en: Record<string, string> = {
   'editorText.orderedList': 'Numbered list',
   'editorText.taskList': 'Task list',
   'editorText.image': 'Image',
+  'editorText.file': 'File…',
+  'editorText.fileSlash': 'File (attachment)',
   'editorText.codeBlock': 'Code block',
   'editorText.codeCopy': 'Copy',
   'editorText.codePreview': 'Preview',

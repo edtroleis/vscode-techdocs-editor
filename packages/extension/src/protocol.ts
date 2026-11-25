@@ -41,6 +41,7 @@ export type HostMessage =
   | { type: 'lint'; problems: ProblemView[] }
   /** Resposta a `uploadImage`: o link para pôr no Markdown, ou o motivo da recusa (já mostrado ao usuário). */
   | { type: 'uploaded'; id: number; link?: string; error?: string }
+  | { type: 'attached'; id: number; kind?: 'image' | 'file'; link?: string; text?: string; error?: string }
   /** Resposta a `linkPages`: as outras páginas do site, com o link relativo a esta. */
   | { type: 'linkPages'; id: number; pages: LinkPageView[] }
   /** Diagramas Mermaid da página (spec 06, M5): o webview valida e responde com `diagramErrors`. */
@@ -71,6 +72,8 @@ export type WebviewMessage =
   | { type: 'showLine'; line: number }
   /** Imagem escolhida no editor visual: o host grava em `<docs>/assets/` e responde com `uploaded`. */
   | { type: 'uploadImage'; id: number; name: string; mime: string; data: Uint8Array }
+  /** + Inserir › Arquivo… (spec 07): o host grava no diretório das imagens ou dos anexos e responde com `attached`. */
+  | { type: 'attachFile'; id: number; name: string; data: Uint8Array }
   /** Imagem colada de outra ferramenta (spec 05, C3): o host baixa, grava em `<docs>/assets/` e responde com `uploaded`. */
   | { type: 'importImage'; id: number; url: string }
   /** A caixa de link abriu: o host responde com `linkPages`. */

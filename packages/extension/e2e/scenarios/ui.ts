@@ -110,7 +110,7 @@ export const editorOf = (page: Page) => webviewWith(page, '.milkdown .ProseMirro
 const TOP_BAR = ['undo', 'redo', 'bold', 'italic', 'strikethrough', 'inlineCode', 'link', 'bulletList', 'orderedList', 'taskList', 'insert'] as const;
 export const topBar = (editor: FrameLocator, name: (typeof TOP_BAR)[number]) => editor.locator('.top-bar-item').nth(TOP_BAR.indexOf(name));
 /** O que entra na página fica no menu "+ Insert" da barra, nesta ordem. */
-const INSERT_MENU = ['image', 'table', 'codeBlock', 'mermaid', 'quote', 'hr'] as const;
+const INSERT_MENU = ['image', 'file', 'table', 'codeBlock', 'mermaid', 'quote', 'hr'] as const;
 /** "+ Insert" na barra e o item `name` do menu. */
 export async function insertBlock(page: Page, editor: FrameLocator, name: (typeof INSERT_MENU)[number]) {
   await click(page, topBar(editor, 'insert'));

@@ -52,6 +52,25 @@ async function uploadImage(file: File): Promise<string> {
   });
 }
 
+/** Arquivos esperando o host gravar (+ Inserir › Arquivo…), por id. */
+const attachments = new Map<number, (markdown: string | undefined) => void>();
+
+/** Texto de link sem quebrar o Markdown: colchetes e barra invertida escapados. */
+const linkText = (text: string) => text.replace(/[\\[\]]/g, c => `\\${c}`);
+
+/**
+ * + Inserir › Arquivo… (spec 07): o host grava no diretório das imagens ou dos anexos e devolve o que entra no
+ * cursor: a imagem, ou o link com nome, tipo e tamanho. Recusado: o host avisa, e nada entra.
+ */
+async function attachFile(file: File): Promise<string | undefined> {
+  const data = new Uint8Array(await file.arrayBuffer());
+  const id = nextUpload++;
+  return new Promise(resolve => {
+    attachments.set(id, resolve);
+    post({ type: 'attachFile', id, name: file.name, data });
+  });
+}
+
 /** Imagem colada de outra ferramenta: o host baixa e grava; sem acesso, fica o endereço (undefined). */
 function importImage(url: string): Promise<string | undefined> {
   const id = nextUpload++;
@@ -143,6 +162,13 @@ function App({ content }: { content: Content }) {
           if (message.link !== undefined) pending?.resolve(message.link);
           else pending?.reject(new Error(message.error ?? 'no link'));
           return;
+        }
+        case 'attached': {
+          const done = attachments.get(message.id);
+          attachments.delete(message.id);
+          if (!message.link) return done?.(undefined);
+          const text = linkText(message.text ?? '');
+          return done?.(message.kind === 'image' ? `![${text}](${message.link})` : `[${text}](${message.link})`);
         }
         case 'select':
           editor.current?.selectText(message.text);
@@ -264,6 +290,7 @@ function App({ content }: { content: Content }) {
         search.refresh();
       }}
       onUploadImage={uploadImage}
+      onAttachFile={attachFile}
       onImportImage={importImage}
       resolveImage={resolveImage}
       problemLines={problemLines}

@@ -7,8 +7,6 @@
   "Fix automatically": "Ajustar agora",
   "Line {0}": "Linha {0}",
   "Show line {0} in the Markdown text": "Ver a linha {0} no texto Markdown",
-  "\"{0}\" is not an image": "\"{0}\" não é uma imagem",
-  "\"{0}\" is larger than {1} MB. Use a smaller image.": "\"{0}\" passa de {1} MB. Use uma imagem menor.",
   "Could not save the image \"{0}\": {1}": "Não foi possível gravar a imagem \"{0}\": {1}",
   "Open": "Abrir",
   "GitHub did not accept the saved sign-in. Sign in again to continue.": "O GitHub não aceitou o login salvo. Entre de novo para continuar.",
@@ -557,5 +555,13 @@
   "Move and rename in the Explorer fixes the menu and the links": "Mover e renomear no Explorer acerta o menu e os links",
   "All settings in VS Code": "Todas as configurações no VS Code",
   "{0} page templates and {1} site templates": "{0} templates de página e {1} de site",
-  "Could not read the repository": "Não deu para ler o repositório"
+  "Could not read the repository": "Não deu para ler o repositório",
+  ".{0} files are not accepted: {1}": "Arquivos .{0} não são aceitos: {1}",
+  "\"{0}\" is not one of the accepted images ({1}).": "\"{0}\" não é uma das imagens aceitas ({1}).",
+  "\"{0}\" is not one of the accepted types ({1}).": "\"{0}\" não é um dos tipos aceitos ({1}).",
+  "\"{0}\" has {1} MB; the limit for images is {2} MB.": "\"{0}\" tem {1} MB; o limite das imagens é {2} MB.",
+  "\"{0}\" has {1} MB; the limit for files is {2} MB.": "\"{0}\" tem {1} MB; o limite dos anexos é {2} MB.",
+  "Could not save the file \"{0}\": {1}": "Não foi possível gravar o arquivo \"{0}\": {1}",
+  "Open Settings": "Abrir Configurações",
+  "not an image": "não é uma imagem"
 }

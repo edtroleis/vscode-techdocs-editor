@@ -1,32 +1,6 @@
 /**
- * Imagens enviadas pelo editor visual (spec 01, W9; spec 02, LC3): vão para `<docs>/assets/` com o
- * horário na frente do nome, como no plugin, e o Markdown leva o caminho relativo à página.
+ * Imagens de fora (spec 05, C3): baixar a imagem colada de outra ferramenta. Gravar fica com attachments.ts.
  */
-import { relativePath } from '@edtroleis/techdocs-editor-core';
-
-/** Limite padrão de `techdocsEditor.images.maxSizeMB` (o mesmo `images.maxSizeMB` do plugin). */
-export const DEFAULT_MAX_IMAGE_MB = 5;
-
-/** Por que a imagem foi recusada, ou undefined se ela pode ser gravada. */
-export function imageProblem(mime: string, size: number, maxMB: number): 'notAnImage' | 'tooLarge' | undefined {
-  if (!mime.startsWith('image/')) return 'notAnImage';
-  // A imagem vai para o repositório: arquivos enormes pesam em todo clone e na publicação
-  if (size > maxMB * 1024 * 1024) return 'tooLarge';
-  return undefined;
-}
-
-/** Nome seguro para URL e para qualquer sistema de arquivos (como no plugin). */
-export const imageFileName = (name: string) => name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-');
-
-/**
- * Onde gravar a imagem e o link para a página. `docsDir` é o `docs_dir` do site da página; página fora
- * de um site grava em `assets/` ao lado dela. Caminhos absolutos, com `/`.
- */
-export function imageTarget(pagePath: string, docsDir: string | undefined, name: string, now: number) {
-  const pageDir = pagePath.split('/').slice(0, -1).join('/');
-  const path = `${docsDir ?? pageDir}/assets/${now}-${imageFileName(name)}`;
-  return { path, link: relativePath(pageDir, path) };
-}
 
 /** Só endereços da web: o painel abre fora do VS Code só o que é http(s) (nada de command:, file: e afins). */
 export function isWebUrl(url: string): boolean {
@@ -83,6 +57,8 @@ export async function downloadImage(url: string, maxMB: number, get: typeof fetc
   const response = await get(url, { redirect: 'follow', signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const mime = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+  // Endereço privado costuma responder a página de login (HTML) com 200: não é imagem, mesmo com .png no nome
+  if (!mime.startsWith('image/')) throw new Error('notAnImage');
   const length = Number(response.headers.get('content-length') ?? 0);
   if (length > maxMB * 1024 * 1024) throw new Error('tooLarge');
   const data = await readLimited(response, maxMB * 1024 * 1024);

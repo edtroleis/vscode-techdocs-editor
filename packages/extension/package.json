@@ -778,6 +778,34 @@
           "minimum": 0,
           "markdownDescription": "%config.images.maxSizeMB%"
         },
+        "techdocsEditor.attachments.images": {
+          "type": "string",
+          "default": "images",
+          "markdownDescription": "%config.attachments.images%"
+        },
+        "techdocsEditor.attachments.imageTypes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["png", "jpg", "jpeg", "gif", "webp", "svg"],
+          "markdownDescription": "%config.attachments.imageTypes%"
+        },
+        "techdocsEditor.attachments.files": {
+          "type": "string",
+          "default": "assets",
+          "markdownDescription": "%config.attachments.files%"
+        },
+        "techdocsEditor.attachments.filesMaxSizeMB": {
+          "type": "number",
+          "default": 20,
+          "minimum": 0,
+          "markdownDescription": "%config.attachments.filesMaxSizeMB%"
+        },
+        "techdocsEditor.attachments.fileTypes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp", "rtf", "csv", "tsv", "txt", "json", "yaml", "yml", "xml", "drawio", "zip", "gz", "tar"],
+          "markdownDescription": "%config.attachments.fileTypes%"
+        },
         "techdocsEditor.templates.paths": {
           "type": "array",
           "items": {

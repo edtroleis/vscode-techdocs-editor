@@ -7,6 +7,7 @@ import type { DiagramBarText } from './diagramNodeBar';
 import { type FlowchartWords, LINE_STYLES, SHAPES } from './flowchartEdit';
 import type { MermaidCompleteText } from './mermaidComplete';
 import { insertDiagram } from './insertDiagram';
+import { FILE_ICON, pickFile } from './attachFile';
 import { type ComponentsText, MENU_KINDS } from './techdocsComponents';
 import { techdocsItems } from './techdocsMenu';
 import { ICON_PAGE_KIND, pageKindsCtx, type PageKinds } from './pageKinds';
@@ -54,6 +55,9 @@ export type EditorText = {
   orderedList: string;
   taskList: string;
   image: string;
+  /** + Inserir › Arquivo… e o item do "/" (achado por "arquivo" e "anexo"; em inglês, "file" e "attachment"). */
+  file: string;
+  fileSlash: string;
   codeBlock: string;
   /** Botões do bloco de código e da prévia dos diagramas Mermaid (spec 06). */
   code: { copy: string; preview: string };
@@ -125,6 +129,8 @@ export function editorTextFrom(t: TextLookup): EditorText {
     orderedList: k('orderedList'),
     taskList: k('taskList'),
     image: k('image'),
+    file: k('file'),
+    fileSlash: k('fileSlash'),
     codeBlock: k('codeBlock'),
     code: { copy: k('codeCopy'), preview: k('codePreview') },
     diagram: {
@@ -279,7 +285,7 @@ export const headingOptions = (text: EditorText) => [
 ];
 
 /** Menu "/" (o filtro do menu usa estes nomes: "/tab" acha "Tabela"). */
-export const slashMenu = (text: EditorText, pageKinds?: PageKinds): BlockEditFeatureConfig => ({
+export const slashMenu = (text: EditorText, pageKinds?: PageKinds, canAttach = false): BlockEditFeatureConfig => ({
   textGroup: {
     label: text.text,
     text: { label: text.text },
@@ -307,6 +313,17 @@ export const slashMenu = (text: EditorText, pageKinds?: PageKinds): BlockEditFea
   // Os modelos de diagrama Mermaid (spec 06, M4, M11 e M21), um grupo do menu para cada tipo de assunto. O menu do
   // Crepe só filtra pelo nome: "Diagrama: …" faz "/diagrama" achar todos
   buildMenu: builder => {
+    // Arquivo (anexo), depois da imagem
+    if (canAttach) {
+      builder.getGroup('advanced').addItem('file', {
+        label: text.fileSlash,
+        icon: FILE_ICON,
+        onRun: ctx => {
+          ctx.get(commandsCtx).call(clearTextInCurrentBlockCommand.key);
+          pickFile(ctx);
+        },
+      });
+    }
     // Os tipos de página (Runbook, Tutorial…): o texto vem da extensão e entra no cursor
     if (pageKinds?.kinds.length) {
       const kinds = builder.addGroup('page-kinds', pageKinds.group);

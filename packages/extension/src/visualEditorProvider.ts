@@ -4,7 +4,8 @@ import type { Ask } from './repoCheck';
 import * as vscode from 'vscode';
 import type { LintService } from './lintService';
 import type { LocalSites } from './localSites';
-import { DEFAULT_MAX_IMAGE_MB, downloadImage, imageProblem, imageTarget } from './imageUpload';
+import { AttachmentRefused, attachmentSettings, saveAttachment } from './attachments';
+import { downloadImage } from './imageUpload';
 import type { HostMessage, LinkPageView, PageKindsView, WebviewLabels, WebviewMessage } from './protocol';
 import type { Strip, StripAction } from './publish/strip';
 import { hasConflictMarkers } from './docsSite';
@@ -282,12 +283,21 @@ export class EditorSession {
         void this.importImage(message.url).then(link => this.post({ type: 'uploaded', id: message.id, link }));
         return;
       case 'uploadImage':
-        void this.uploadImage(message.name, message.mime, message.data).then(
+        void this.uploadImage(message.name, message.data).then(
           link => this.post({ type: 'uploaded', id: message.id, link }),
           (e: Error) => {
             // O editor descarta o erro do envio em silêncio: o aviso fica com o VS Code
-            void vscode.window.showErrorMessage(e.message);
+            showRefusal(e);
             this.post({ type: 'uploaded', id: message.id, error: e.message });
+          },
+        );
+        return;
+      case 'attachFile':
+        void saveAttachment(this.document.uri, this.sites.siteOf(this.document.uri)?.docsDir, message.name, message.data, 'any').then(
+          saved => this.post({ type: 'attached', id: message.id, ...saved }),
+          (e: Error) => {
+            showRefusal(e, vscode.l10n.t('Could not save the file "{0}": {1}', message.name, e.message));
+            this.post({ type: 'attached', id: message.id, error: e.message });
           },
         );
         return;
@@ -318,21 +328,12 @@ export class EditorSession {
    * Grava a imagem em `<docs>/assets/` (spec 01, W9) e devolve o link relativo à página. Nunca `blob:`:
    * o endereço temporário do navegador não existe no repositório.
    */
-  private async uploadImage(name: string, mime: string, data: Uint8Array): Promise<string> {
-    const maxMB = vscode.workspace
-      .getConfiguration('techdocsEditor', this.document.uri)
-      .get<number>('images.maxSizeMB', DEFAULT_MAX_IMAGE_MB);
-    const problem = imageProblem(mime, data.byteLength, maxMB);
-    if (problem === 'notAnImage') throw new Error(vscode.l10n.t('"{0}" is not an image', name));
-    if (problem === 'tooLarge') {
-      throw new Error(vscode.l10n.t('"{0}" is larger than {1} MB. Use a smaller image.', name, maxMB));
-    }
-    const uri = this.document.uri;
+  /** Imagem do botão de imagem (ou baixada de outra ferramenta): no diretório das imagens, com o nome limpo. */
+  private async uploadImage(name: string, data: Uint8Array): Promise<string> {
     try {
-      const { path, link } = imageTarget(uri.path, this.sites.siteOf(uri)?.docsDir, name, Date.now());
-      await vscode.workspace.fs.writeFile(uri.with({ path }), data);
-      return link;
+      return (await saveAttachment(this.document.uri, this.sites.siteOf(this.document.uri)?.docsDir, name, data, 'image')).link;
     } catch (e) {
+      if (e instanceof AttachmentRefused) throw e;
       throw new Error(vscode.l10n.t('Could not save the image "{0}": {1}', name, e instanceof Error ? e.message : String(e)));
     }
   }
@@ -342,12 +343,19 @@ export class EditorSession {
    * não é imagem), avisa e fica o endereço de fora (undefined).
    */
   private async importImage(url: string): Promise<string | undefined> {
-    const maxMB = vscode.workspace.getConfiguration('techdocsEditor', this.document.uri).get<number>('images.maxSizeMB', DEFAULT_MAX_IMAGE_MB);
+    const maxMB = (await attachmentSettings(this.document.uri)).values.imagesMaxSizeMB;
     try {
-      const { name, mime, data } = await downloadImage(url, maxMB);
-      return await this.uploadImage(name, mime, data);
+      const { name, data } = await downloadImage(url, maxMB);
+      return await this.uploadImage(name, data);
     } catch (e) {
-      const reason = e instanceof Error && e.message === 'tooLarge' ? vscode.l10n.t('larger than {0} MB', maxMB) : e instanceof Error ? e.message : String(e);
+      const reason =
+        e instanceof Error && e.message === 'tooLarge'
+          ? vscode.l10n.t('larger than {0} MB', maxMB)
+          : e instanceof Error && e.message === 'notAnImage'
+            ? vscode.l10n.t('not an image')
+            : e instanceof Error
+              ? e.message
+              : String(e);
       void vscode.window.showWarningMessage(
         vscode.l10n.t('The pasted image could not be copied to the repository ({0}). It still points to {1}, which may not work on the site.', reason, new URL(url).host),
       );
@@ -490,4 +498,12 @@ function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri): string 
   <script type="module" nonce="${nonce}" src="${asset('main.js')}"></script>
 </body>
 </html>`;
+}
+
+/** O aviso da recusa; quando o limite ou a lista resolvem, com o botão que abre as Configurações. */
+function showRefusal(error: Error, other?: string) {
+  if (!(error instanceof AttachmentRefused)) return void vscode.window.showErrorMessage(other ?? error.message);
+  if (!error.fixable) return void vscode.window.showErrorMessage(error.message);
+  const open = vscode.l10n.t('Open Settings');
+  void vscode.window.showErrorMessage(error.message, open).then(answer => answer === open && vscode.commands.executeCommand('techdocsEditor.settings'));
 }
