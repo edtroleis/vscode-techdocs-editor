@@ -91,7 +91,7 @@ const builds = [
   // Webviews do envio (spec 09): a tela de envio e o painel Envio, HTML simples
   {
     ...common,
-    entryPoints: { send: 'webview/send.ts', sendView: 'webview/sendView.ts' },
+    entryPoints: { send: 'webview/send.ts', sendView: 'webview/sendView.ts', settingsView: 'webview/settingsView.ts' },
     outdir: 'dist/webview',
     platform: 'browser',
     format: 'iife',

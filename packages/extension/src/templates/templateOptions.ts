@@ -75,6 +75,37 @@ export class TemplateOptions {
     return picked?.action;
   }
 
+  /** Grava o repositório (undefined: volta ao padrão) para o time ou para a pessoa (janela Configurações). */
+  async setRepository(scope: vscode.Uri | undefined, repository: string | undefined, where: 'team' | 'me', quiet = false): Promise<boolean> {
+    const origin = await templatesOrigin(scope);
+    if (where === 'team' && origin.folder && vscode.workspace.isTrusted) return this.saveForTeam(origin.folder, repository, quiet);
+    return saveForMe(repository);
+  }
+
+  /**
+   * Leva o repositório em uso para o time (o `.techdocs-editor.yaml`, com o diff antes) ou para a pessoa (e tira do
+   * arquivo, com o diff antes: senão o do time continuaria valendo).
+   */
+  async moveRepository(scope: vscode.Uri | undefined, to: 'team' | 'me', quiet = false): Promise<boolean> {
+    const origin = await templatesOrigin(scope);
+    if (!origin.value) return true;
+    if (to === 'team') {
+      if (!origin.folder || !(await this.saveForTeam(origin.folder, origin.value, quiet))) return false;
+      if (origin.from === 'settings') await saveForMe(undefined);
+      return true;
+    }
+    await saveForMe(origin.value);
+    return origin.from !== 'repository' || !origin.folder || this.saveForTeam(origin.folder, undefined, quiet);
+  }
+
+  /** Testar acesso, sem aviso: o resultado em texto para a janela Configurações. */
+  async testAccess(scope: vscode.Uri | undefined): Promise<{ ok: boolean; text: string }> {
+    const result = await this.central.get(scope, true, templateLanguage(vscode.env.language));
+    return result
+      ? { ok: true, text: vscode.l10n.t('{0} page templates and {1} site templates', result.pages.length, result.sites.length) }
+      : { ok: false, text: vscode.l10n.t('Could not read the repository') };
+  }
+
   /** Lê o repositório agora. Sem acesso, o próprio CentralTemplates avisa (uma vez por sessão: aqui, sempre). */
   private async test(scope: vscode.Uri | undefined, quiet: boolean): Promise<boolean> {
     const result = await this.central.get(scope, true, templateLanguage(vscode.env.language));

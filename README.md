@@ -240,15 +240,15 @@ language of the site, and pages may sit in the Diátaxis folders (`tutorials/`, 
 `explanation/`), which give the category when the front matter has none. A template's `example:` points to its
 filled-in page in `examples/<language>/docs/`, and the eye opens it on GitHub.
 
-**Template options** (the gear on the **New page** list, or the **…** of the Documentation section) shows the
-templates repository in use and where it comes from, tests access, turns the built-in templates on or off and goes
-back to the default. Choosing a repository saves it **for the team** (in `.techdocs-editor.yaml`, with the diff
-first) or **just for you** (your VS Code settings). Three ways to make a repository the default:
+The **Templates** part of the **TechDocs Settings** window (the gear on the **New page** list, or **…** ›
+**Settings…** in the TechDocs section) shows the templates repository in use, tests access and turns the built-in
+templates on or off; empty goes back to the default. **For the team** saves it in `.techdocs-editor.yaml` (with the
+diff first); **Just for me**, in your VS Code settings. Three ways to make a repository the default:
 
 | For | How |
 |-----|-----|
 | Everyone who opens a docs repository | `templates.repository` in its `.techdocs-editor.yaml`; it wins over personal settings, and is ignored in an untrusted workspace |
-| One person | `techdocsEditor.templates.repository` in the user settings (or **Just for me** in the gear) |
+| One person | `techdocsEditor.templates.repository` in the user settings (or **Just for me** in the TechDocs Settings window) |
 | The whole company | Distribute the user setting with your device management tools; VS Code policies are not available to extensions |
 
 ```markdown
@@ -351,8 +351,8 @@ every page, pages left out of the menu, the plugin, missing pages of the menu), 
 `mkdocs.yml`. Otherwise it goes through the fixes one by one, showing the diff first, so you apply, skip or
 stop. Broken links and missing images have no fix: only a person knows the right target.
 
-Not every Backstage reads `catalog-info.yaml` from the repository. The gear of the **Check** section (**Check
-options**) sets how the check treats it: **Check only if it exists** (the default; a missing file is just a hint,
+Not every Backstage reads `catalog-info.yaml` from the repository. The gear of the **Check** section opens the
+**TechDocs Settings** window, where **catalog-info.yaml** sets how the check treats it: **Check only if it exists** (the default; a missing file is just a hint,
 not counted on the icon), **Require it** (a missing file is a problem, with a fix that creates a minimal one) or
 **Do not use it**. In the default mode, a missing file is mentioned only when another repository nearby has a
 `catalog-info.yaml` (a sign that Backstage reads them). Save it **For the team** in `.techdocs-editor.yaml` (`catalog:`) or **Just for me** in the
@@ -397,6 +397,12 @@ new page, the visual editor, the check, publishing and company templates.
 
 To always open documentation pages in the visual editor, turn on `techdocsEditor.openVisualByDefault`. Use
 **Reopen Editor With…** or **TechDocs: Open as Markdown text** to see the text.
+
+**…** › **Settings…** in the TechDocs section opens the **TechDocs Settings** window in the section itself, one
+option under the other, each choice saved right away: how **Send** works (for review or straight to the
+documentation), where the **GitHub copies** go, the **Templates** repository, **catalog-info.yaml** in the check and
+two editor options. Templates and `catalog-info.yaml` are **For the team** (in `.techdocs-editor.yaml`, with the diff
+first) or **Just for me**; switching moves the value in use. **All settings in VS Code** at the bottom opens the rest.
 
 ## Settings
 
@@ -446,7 +452,7 @@ Fix formatting on save:
 | **TechDocs: Open documentation from GitHub…** | Clones a GitHub repository into a suggested directory and opens it (URL or `owner/repo`) |
 | **TechDocs: Send changes to the repository** | Opens the send screen with what goes to GitHub |
 | **TechDocs: Refresh company templates** | Checks the company templates repository right away instead of waiting for the hourly check |
-| **TechDocs: Template options** | The templates repository in use and where it comes from: change it for the team or just for you, test access, built-in templates on or off, back to the default |
+| **TechDocs: Settings…** | Opens the TechDocs Settings window in the TechDocs section: send, GitHub copies, templates, `catalog-info.yaml` and the editor |
 
 ## How the lint finds its configuration
 

@@ -56,6 +56,13 @@ describe('catalog no .techdocs-editor.yaml', () => {
     expect(setCatalogMode(text, 'required')).toBe(`${text}catalog: required\n`);
     expect(setCatalogMode('catalog: off # antes\nverification:\n  mode: editor\n', 'auto')).toBe('catalog: auto # antes\nverification:\n  mode: editor\n');
   });
+
+  it('sem modo, tira o catalog (vale o da pessoa); o arquivo só com ele fica vazio', () => {
+    expect(setCatalogMode('# do time\ncatalog: off\nverification:\n  mode: editor\n', undefined)).toBe('# do time\nverification:\n  mode: editor\n');
+    expect(setCatalogMode('catalog: required\n', undefined)).toBe('');
+    expect(setCatalogMode(undefined, undefined)).toBe('');
+    expect(setCatalogMode('catalog: [\n', undefined)).toBe('catalog: [\n');
+  });
 });
 
 describe('templates.repository no .techdocs-editor.yaml (spec 08, TR6)', () => {

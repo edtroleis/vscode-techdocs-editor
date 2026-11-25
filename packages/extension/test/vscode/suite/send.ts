@@ -257,27 +257,18 @@ export function defineSendTests() {
       await config().update('clone.directory', undefined, vscode.ConfigurationTarget.Global);
     });
 
-    test('os três itens estão no menu "…" da seção Documentação', () => {
+    test('no "…" da seção, um item só: Configurações… (os antigos abrem a janela)', () => {
       const pkg = vscode.extensions.getExtension('edtroleis.techdocs-editor')!.packageJSON;
       const menu = (pkg.contributes.menus['view/title'] as Array<{ command: string; when: string; group: string }>).filter(m =>
         m.when.includes('techdocsEditor\\.docs'),
       );
-      for (const command of ['techdocsEditor.settings', 'techdocsEditor.sendOptions', 'techdocsEditor.cloneOptions']) {
-        const item = menu.find(m => m.command === command);
-        equal(Boolean(item) && !item!.group.startsWith('navigation'), true, `${command} no "…"`);
+      const item = menu.find(m => m.command === 'techdocsEditor.settings');
+      equal(Boolean(item) && !item!.group.startsWith('navigation'), true, 'Configurações… no "…"');
+      for (const old of ['techdocsEditor.sendOptions', 'techdocsEditor.cloneOptions', 'techdocsEditor.templateOptions']) {
+        equal(menu.some(m => m.command === old), false, `${old} fora do "…"`);
       }
-    });
-
-    test('Como enviar grava send.target para a pessoa', async () => {
-      await vscode.commands.executeCommand('techdocsEditor.sendOptions', 'main');
-      equal(config().inspect('send.target')?.globalValue, 'main', 'direto na principal');
-      await vscode.commands.executeCommand('techdocsEditor.sendOptions', 'pullRequest');
-      equal(config().inspect('send.target')?.globalValue, 'pullRequest', 'para revisão');
-    });
-
-    test('Onde ficam as cópias grava clone.directory', async () => {
-      await vscode.commands.executeCommand('techdocsEditor.cloneOptions', '/dados/docs');
-      equal(config().inspect('clone.directory')?.globalValue, '/dados/docs', 'diretório');
+      const view = (pkg.contributes.views.techdocs as Array<{ id: string; when?: string }>).find(v => v.id === 'techdocsEditor.settingsView');
+      equal(view?.when, 'techdocsEditor.settingsOpen', 'a janela só aparece quando aberta');
     });
   });
 }

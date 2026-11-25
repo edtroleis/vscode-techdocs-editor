@@ -1,4 +1,4 @@
-import { isMap, parse as parseYaml, parseDocument } from 'yaml';
+import { isMap, parse as parseYaml, parseDocument, type Scalar, type YAMLMap } from 'yaml';
 import type { GitHubClient } from './github';
 
 /**
@@ -80,15 +80,28 @@ export function parseRepoConfig(text: string): RepoConfig {
 }
 
 /**
- * O `.techdocs-editor.yaml` com `catalog: <mode>` (undefined: o arquivo ainda não existe). O resto do arquivo,
- * comentários incluídos, fica como estava.
+ * O `.techdocs-editor.yaml` com `catalog: <mode>` (text undefined: o arquivo ainda não existe; mode undefined: tira o
+ * `catalog`, e vale o da pessoa). O resto do arquivo, comentários incluídos, fica como estava.
  */
-export function setCatalogMode(text: string | undefined, mode: CatalogMode): string {
-  if (!text?.trim()) return `catalog: ${mode}\n`;
+export function setCatalogMode(text: string | undefined, mode: CatalogMode | undefined): string {
+  if (!text?.trim()) return mode ? `catalog: ${mode}\n` : (text ?? '');
   const doc = parseDocument(text);
-  if (doc.errors.length || !isRecord(doc.toJS())) return `${text.replace(/\n*$/, '\n')}catalog: ${mode}\n`;
-  doc.set('catalog', mode);
-  return doc.toString({ lineWidth: 0 });
+  if (doc.errors.length || !isRecord(doc.toJS())) return mode ? `${text.replace(/\n*$/, '\n')}catalog: ${mode}\n` : text;
+  if (mode) doc.set('catalog', mode);
+  else {
+    // O comentário de cima do arquivo fica preso na primeira chave: passa para a seguinte (ou o documento) antes
+    const map = doc.contents as YAMLMap<Scalar, unknown>;
+    const at = map.items.findIndex(pair => pair.key?.value === 'catalog');
+    const comment = at >= 0 ? map.items[at].key?.commentBefore : undefined;
+    if (comment) {
+      const next = map.items[at + 1]?.key;
+      if (next) next.commentBefore = next.commentBefore ? `${comment}\n${next.commentBefore}` : comment;
+      else doc.commentBefore = comment;
+    }
+    doc.delete('catalog');
+  }
+  const out = doc.toString({ lineWidth: 0 });
+  return out === '{}\n' ? '' : out;
 }
 
 /**

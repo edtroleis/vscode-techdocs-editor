@@ -68,6 +68,7 @@ type Api = {
   central: CentralTemplates;
   catalogOptions: CatalogOptions;
   templateOptions: import('../../../src/templates/templateOptions').TemplateOptions;
+  settingsView: import('../../../src/settingsView').SettingsView;
   prepare: PrepareContext;
   preview: SitePreview;
   useTestSiteChoice: typeof useTestSiteChoice;
@@ -1761,6 +1762,59 @@ export function defineTests() {
       } finally {
         await config().update('catalog', undefined, vscode.ConfigurationTarget.Global);
         for (const path of ['.techdocs-editor.yaml', 'catalog-info.yaml', 'outro-repo', '.git']) await remove(path);
+      }
+    });
+
+    test('janela Configurações: grava cada opção; Para o time / Só para mim levam o valor de um lugar para o outro', async () => {
+      const { settingsView } = await api();
+      const config = () => vscode.workspace.getConfiguration('techdocsEditor');
+      const has = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
+      await vscode.workspace.fs.createDirectory(file('.git'));
+      try {
+        // Abre na seção TechDocs pelo comando do "…"
+        await vscode.commands.executeCommand('techdocsEditor.settings');
+        let state = await settingsView.state();
+        equal(state.sendTarget, 'pullRequest', 'padrão: para revisão');
+        equal(state.catalog?.mode, 'auto', 'catálogo padrão');
+        // As opções da pessoa: nas configurações do usuário
+        await settingsView.receive({ type: 'sendTarget', value: 'main' });
+        equal(config().inspect('send.target')?.globalValue, 'main', 'Enviar');
+        await settingsView.receive({ type: 'flag', key: 'syncExplorer', value: false });
+        equal(config().inspect('syncExplorer')?.globalValue, false, 'Explorer');
+        await settingsView.receive({ type: 'templatesBuiltIn', value: false });
+        equal(config().inspect('templates.builtIn')?.globalValue, false, 'templates da extensão');
+        // catalog-info.yaml só para mim, depois levado para o time (e a configuração da pessoa sai)
+        await settingsView.receive({ type: 'catalogMode', value: 'off' }, true);
+        equal(config().inspect('catalog')?.globalValue, 'off', 'catálogo só para mim');
+        await settingsView.receive({ type: 'catalogScope', value: 'team' }, true);
+        equal(await read('.techdocs-editor.yaml'), 'catalog: off\n', 'catálogo para o time');
+        equal(config().inspect('catalog')?.globalValue, undefined, 'sai da configuração da pessoa');
+        state = await settingsView.state();
+        equal(`${state.catalog?.mode}:${state.catalog?.scope}`, 'off:team', 'a janela mostra o do time');
+        // Escolher com "Para o time" marcado grava no arquivo
+        await settingsView.receive({ type: 'catalogMode', value: 'required' }, true);
+        equal(await read('.techdocs-editor.yaml'), 'catalog: required\n', 'outro modo para o time');
+        // Templates para o time no mesmo arquivo; o repositório inválido não grava
+        await settingsView.receive({ type: 'templatesScope', value: 'team' }, true);
+        await settingsView.receive({ type: 'templatesRepository', value: 'acme/do-time' }, true);
+        equal(await read('.techdocs-editor.yaml'), 'catalog: required\ntemplates:\n  repository: acme/do-time\n', 'templates para o time');
+        await settingsView.receive({ type: 'templatesRepository', value: 'não é repo' }, true);
+        equal((await settingsView.state()).templates?.repository, 'acme/do-time', 'inválido não grava');
+        // De volta só para mim: os dois saem do arquivo, e o arquivo vazio fica vazio
+        await settingsView.receive({ type: 'templatesScope', value: 'me' }, true);
+        equal(config().inspect('templates.repository')?.globalValue, 'acme/do-time', 'templates da pessoa');
+        await settingsView.receive({ type: 'catalogScope', value: 'me' }, true);
+        equal(config().inspect('catalog')?.globalValue, 'required', 'catálogo da pessoa');
+        equal(await read('.techdocs-editor.yaml'), '', 'nada mais para o time');
+        state = await settingsView.state();
+        equal(`${state.catalog?.scope}:${state.templates?.scope}`, 'me:me', 'a janela mostra os da pessoa');
+        ok(await has('.techdocs-editor.yaml'), 'o arquivo do time continua (vazio)');
+      } finally {
+        await vscode.commands.executeCommand('techdocsEditor.settings.close');
+        for (const key of ['send.target', 'syncExplorer', 'templates.builtIn', 'templates.repository', 'catalog']) {
+          await config().update(key, undefined, vscode.ConfigurationTarget.Global);
+        }
+        for (const path of ['.techdocs-editor.yaml', '.git']) await remove(path);
       }
     });
 

@@ -6,6 +6,15 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **TechDocs Settings** window in the TechDocs section (**…** › **Settings…**), in place of the lists at the top of
+  the screen: how **Send** works, where the **GitHub copies** go, the **Templates** repository (with **Test access**),
+  **catalog-info.yaml** in the check and two editor options, one option under the other, each saved right away.
+  Templates and `catalog-info.yaml` are **For the team** (in `.techdocs-editor.yaml`, with the diff first) or **Just
+  for me**; switching moves the value in use. The four old settings items left the **…**; the gear of the Check
+  section and the one on the **New page** list open the window.
+
 ## [0.20.0] - 2026-11-25
 
 ### Changed

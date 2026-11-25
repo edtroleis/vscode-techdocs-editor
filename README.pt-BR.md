@@ -243,15 +243,15 @@ idioma do site, e as páginas podem ficar nos diretórios do Diátaxis (`tutoria
 `explanation/`), que dão a categoria quando o front matter não tem. O `example:` de um template aponta para a
 página preenchida em `examples/<idioma>/docs/`, e o olho a abre no GitHub.
 
-**Opções dos templates** (a engrenagem na lista do **Nova página**, ou o **…** da seção Documentação) mostra o
-repositório de templates em uso e de onde ele vem, testa o acesso, liga ou desliga os templates da extensão e volta
-ao padrão. Ao escolher um repositório, ele é gravado **para o time** (no `.techdocs-editor.yaml`, com o diff antes)
-ou **só para você** (nas suas configurações do VS Code). Três jeitos de deixar um repositório como padrão:
+A parte **Templates** da janela **Configurações do TechDocs** (a engrenagem na lista do **Nova página**, ou **…** ›
+**Configurações…** na seção TechDocs) mostra o repositório de templates em uso, testa o acesso e liga ou desliga os
+templates da extensão; vazio volta ao padrão. **Para o time** grava no `.techdocs-editor.yaml` (com o diff antes);
+**Só para mim**, nas suas configurações do VS Code. Três jeitos de deixar um repositório como padrão:
 
 | Para | Como |
 |------|------|
 | Todos que abrem um repositório de documentação | `templates.repository` no `.techdocs-editor.yaml` dele; vence a configuração pessoal e é ignorado em workspace não confiável |
-| Uma pessoa | `techdocsEditor.templates.repository` nas configurações do usuário (ou **Só para mim** na engrenagem) |
+| Uma pessoa | `techdocsEditor.templates.repository` nas configurações do usuário (ou **Só para mim** na janela Configurações do TechDocs) |
 | A empresa toda | Distribua a configuração do usuário pelas ferramentas de gestão de máquinas; as políticas do VS Code não estão disponíveis para extensões |
 
 ```markdown
@@ -356,8 +356,8 @@ que você salva, ele confere de novo só os sites já conferidos.
 Se há, passa pelas correções uma por uma, com o diff antes, para você aplicar, pular ou parar. Links quebrados
 e imagens que faltam não têm correção: só uma pessoa sabe o destino certo.
 
-Nem todo Backstage lê o `catalog-info.yaml` do repositório. A engrenagem da seção **Verificação** (**Opções da
-verificação**) define como a verificação o trata: **Conferir só se existir** (o padrão; a falta do arquivo é só
+Nem todo Backstage lê o `catalog-info.yaml` do repositório. A engrenagem da seção **Verificação** abre a janela
+**Configurações do TechDocs**, onde **catalog-info.yaml** define como a verificação o trata: **Conferir só se existir** (o padrão; a falta do arquivo é só
 uma dica, que não conta no ícone), **Exigir** (a falta é um problema, com uma correção que cria um mínimo) ou
 **Não usar**. No modo padrão, a falta do arquivo só é mencionada quando outro repositório por perto tem um
 `catalog-info.yaml` (sinal de que o Backstage os lê). Grave **Para o time** no `.techdocs-editor.yaml` (`catalog:`) ou **Só para mim** na configuração
@@ -402,6 +402,12 @@ página nova, o editor visual, a verificação, a publicação e os templates da
 
 Para abrir as páginas de documentação sempre no editor visual, ligue `techdocsEditor.openVisualByDefault`.
 Use **Reabrir Editor com…** ou **TechDocs: Abrir como texto Markdown** para ver o texto.
+
+**…** › **Configurações…** na seção TechDocs abre a janela **Configurações do TechDocs** na própria seção, uma opção
+embaixo da outra, cada escolha gravada na hora: como o **Enviar** funciona (para revisão ou direto na documentação),
+onde ficam as **cópias do GitHub**, o repositório de **Templates**, o **catalog-info.yaml** na verificação e duas
+opções do editor. Templates e `catalog-info.yaml` valem **Para o time** (no `.techdocs-editor.yaml`, com o diff antes)
+ou **Só para mim**; trocar leva o valor em uso. **Todas as configurações no VS Code**, no fim, abre o resto.
 
 ## Configurações
 
@@ -450,7 +456,7 @@ Corrigir a formatação ao salvar:
 | **TechDocs: Abrir documentação do GitHub…** | Clona um repositório do GitHub num diretório sugerido e abre (URL ou `dono/repo`) |
 | **TechDocs: Enviar as mudanças para o repositório** | Abre a tela de envio com o que vai para o GitHub |
 | **TechDocs: Atualizar os templates da empresa** | Confere o repositório de templates da empresa na hora, sem esperar a conferência de cada hora |
-| **TechDocs: Opções dos templates** | O repositório de templates em uso e de onde ele vem: trocar para o time ou só para você, testar o acesso, ligar ou desligar os templates da extensão, voltar ao padrão |
+| **TechDocs: Configurações…** | Abre a janela Configurações do TechDocs na seção TechDocs: envio, cópias do GitHub, templates, `catalog-info.yaml` e o editor |
 
 ## Onde o lint acha a configuração
 

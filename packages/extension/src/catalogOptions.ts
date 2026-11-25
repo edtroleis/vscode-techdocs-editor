@@ -79,10 +79,31 @@ export class CatalogOptions {
     if (!mode) return undefined;
     const scope = answers?.scope ?? (await pickScope());
     if (!scope) return undefined;
-    const saved = scope === 'team' ? await this.saveForTeam(folder, mode, Boolean(answers)) : await saveForMe(mode);
-    if (!saved) return undefined;
+    return (await this.save(folder, mode, scope, Boolean(answers))) ? mode : undefined;
+  }
+
+  /** Grava o modo para o time ou para a pessoa e confere de novo (janela Configurações). */
+  async save(folder: vscode.Uri, mode: CatalogMode, scope: CatalogModeScope, quiet = false): Promise<boolean> {
+    const saved = scope === 'team' ? await this.saveForTeam(folder, mode, quiet) : await saveForMe(mode);
+    if (saved) await this.repoCheck.check(true);
+    return saved;
+  }
+
+  /**
+   * Leva o modo em uso para o time (o `.techdocs-editor.yaml`, com o diff antes) ou para a pessoa (e tira do arquivo,
+   * com o diff antes: senão o do time continuaria valendo).
+   */
+  async move(folder: vscode.Uri, to: CatalogModeScope, quiet = false): Promise<boolean> {
+    const { mode, source } = await catalogModeFor(folder);
+    if (to === 'team') {
+      if (!(await this.saveForTeam(folder, mode, quiet))) return false;
+      if (source === 'settings') await saveForMe(undefined);
+    } else {
+      await saveForMe(mode);
+      if (source === 'repository' && !(await this.saveForTeam(folder, undefined, quiet))) return false;
+    }
     await this.repoCheck.check(true);
-    return mode;
+    return true;
   }
 
   private async pickMode(current: CatalogMode, source: CatalogModeSource): Promise<CatalogMode | undefined> {
@@ -110,12 +131,14 @@ export class CatalogOptions {
   }
 
   /** Grava `catalog` no `.techdocs-editor.yaml`, com o diff antes (sem ele nas respostas prontas). */
-  private async saveForTeam(folder: vscode.Uri, mode: CatalogMode, quiet: boolean): Promise<boolean> {
+  private async saveForTeam(folder: vscode.Uri, mode: CatalogMode | undefined, quiet: boolean): Promise<boolean> {
     const uri = vscode.Uri.joinPath(folder, REPO_CONFIG_FILE);
     const decision = await this.repoCheck.proposeChange(
       uri,
       current => setCatalogMode(current, mode),
-      vscode.l10n.t('catalog: {0} in {1}, for the whole team', mode, REPO_CONFIG_FILE),
+      mode
+        ? vscode.l10n.t('catalog: {0} in {1}, for the whole team', mode, REPO_CONFIG_FILE)
+        : vscode.l10n.t('No catalog in {0}: each person chooses', REPO_CONFIG_FILE),
       quiet ? () => 'apply' : undefined,
     );
     return decision === 'apply' || decision === 'unchanged';
@@ -133,7 +156,7 @@ async function pickScope(): Promise<CatalogModeScope | undefined> {
   return picked?.scope;
 }
 
-async function saveForMe(mode: CatalogMode): Promise<boolean> {
+async function saveForMe(mode: CatalogMode | undefined): Promise<boolean> {
   await vscode.workspace.getConfiguration('techdocsEditor').update('catalog', mode, vscode.ConfigurationTarget.Global);
   return true;
 }

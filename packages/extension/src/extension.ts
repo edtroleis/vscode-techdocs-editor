@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { useE2eToken, useTestTransport } from './publish/githubAuth';
 import { chooseSites, hideSite, useTestSiteChoice } from './chooseSites';
-import { CatalogOptions, repositoryFolder } from './catalogOptions';
+import { CatalogOptions } from './catalogOptions';
 import { timing, watchLag } from './timing';
-import { CheckItem, CheckView } from './checkView';
+import { CheckView } from './checkView';
 import { DOCS_EXPLORER_VIEW, DocsItem, DocsTreeView, useTestSitePick } from './docsTreeView';
 import { LintActions } from './lintActions';
 import { LintService } from './lintService';
@@ -12,7 +12,7 @@ import { openVisualByDefault } from './openByDefault';
 import { ProposedChanges } from './proposedChange';
 import { PrepareContext } from './prepareContext';
 import { CloneFlow } from './clone/cloneFlow';
-import { chooseCloneDirectory, chooseSendTarget, openSettings } from './settingsMenu';
+import { SettingsView } from './settingsView';
 import { SendService } from './send/sendService';
 import { SendView } from './send/sendView';
 import { RepoCheck } from './repoCheck';
@@ -64,9 +64,8 @@ export function activate(context: vscode.ExtensionContext) {
   const prepare = new PrepareContext(sites);
   context.subscriptions.push(
     registerTemplateExamples(),
-    vscode.commands.registerCommand('techdocsEditor.templateOptions', (scope?: unknown) =>
-      templateOptions.choose(scope instanceof vscode.Uri ? scope : undefined),
-    ),
+    // Os itens antigos (listas no topo da tela) agora abrem a janela Configurações do TechDocs
+    vscode.commands.registerCommand('techdocsEditor.templateOptions', () => vscode.commands.executeCommand('techdocsEditor.settings')),
     vscode.window.registerUriHandler({
       handleUri: async uri => {
         await clone.fromLink(uri);
@@ -159,9 +158,7 @@ export function activate(context: vscode.ExtensionContext) {
     // O botão da árvore: o site mostrado nela
     vscode.commands.registerCommand('techdocsEditor.checkShown', () => repoCheck.checkShown(docs.localSite?.mkdocs)),
     // A engrenagem da seção Verificação e o "Configurar…" do item sem catalog-info.yaml
-    vscode.commands.registerCommand('techdocsEditor.checkOptions', (item?: CheckItem) =>
-      catalogOptions.choose(repositoryFolder(item instanceof CheckItem ? item.base : undefined)),
-    ),
+    vscode.commands.registerCommand('techdocsEditor.checkOptions', () => vscode.commands.executeCommand('techdocsEditor.settings')),
     vscode.commands.registerCommand('techdocsEditor.prepareDocs', (target?: vscode.Uri) =>
       repoCheck.prepare(target instanceof vscode.Uri ? target : undefined),
     ),
@@ -206,22 +203,24 @@ export function activate(context: vscode.ExtensionContext) {
   // O envio do repositório inteiro (spec 09): Enviar (N) na árvore, no editor e na barra de status; painel Envio
   const send = new SendService(context.extensionUri, sites, repoCheck, provider, count => docs.setSendBadge(count));
   const sendView = new SendView(context.extensionUri, send);
+  const settingsView = new SettingsView(context.extensionUri, { templateOptions, catalogOptions, site: () => docs.localSite?.mkdocs });
   provider.onStripAction(({ uri, action }) => void send.action(uri, action));
   context.subscriptions.push(
     send,
     sendView,
     vscode.window.registerWebviewViewProvider(SendView.viewId, sendView),
-    vscode.commands.registerCommand('techdocsEditor.settings', () => openSettings()),
-    vscode.commands.registerCommand('techdocsEditor.sendOptions', (value?: unknown) =>
-      chooseSendTarget(value === 'main' || value === 'pullRequest' ? value : undefined),
-    ),
-    vscode.commands.registerCommand('techdocsEditor.cloneOptions', (value?: unknown) => chooseCloneDirectory(typeof value === 'string' ? value : undefined)),
+    settingsView,
+    vscode.window.registerWebviewViewProvider(SettingsView.viewId, settingsView),
+    vscode.commands.registerCommand('techdocsEditor.settings', () => settingsView.open()),
+    vscode.commands.registerCommand('techdocsEditor.settings.close', () => settingsView.close()),
+    vscode.commands.registerCommand('techdocsEditor.sendOptions', () => settingsView.open()),
+    vscode.commands.registerCommand('techdocsEditor.cloneOptions', () => settingsView.open()),
     vscode.commands.registerCommand('techdocsEditor.send', (target?: vscode.Uri | DocsItem) =>
       send.open(target instanceof DocsItem ? target.uri : target),
     ),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { useTestTransport, send, clone, provider, treeActions, sites, lint, docs, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, useTestSiteChoice, useTestSitePick, useTestAnswers };
+  return { useTestTransport, send, clone, provider, treeActions, sites, lint, docs, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, settingsView, prepare, preview, useTestSiteChoice, useTestSitePick, useTestAnswers };
 }
 
 /**
@@ -253,7 +252,7 @@ async function refreshCentralTemplates(central: CentralTemplates) {
       vscode.l10n.t('No company templates are set. Point techdocsEditor.templates.repository to the repository with them.'),
       open,
     );
-    if (answer === open) await vscode.commands.executeCommand('workbench.action.openSettings', 'techdocsEditor.templates.repository');
+    if (answer === open) await vscode.commands.executeCommand('techdocsEditor.settings');
     return;
   }
   const result = await central.get(vscode.workspace.workspaceFolders?.[0]?.uri, true, templateLanguage(vscode.env.language));

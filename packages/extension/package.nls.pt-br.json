@@ -109,7 +109,9 @@
   "config.send.target": "Para onde **Enviar** leva as mudanças.",
   "config.send.target.pullRequest": "Para revisão: um pull request no GitHub, acompanhado até a aprovação (padrão).",
   "config.send.target.main": "Direto na branch principal, sem revisão (para repositórios que permitem).",
-  "command.settings": "Configurações do TechDocs",
+  "command.settings": "Configurações…",
   "command.sendOptions": "Como enviar…",
+  "command.settingsClose": "Fechar",
+  "view.settings": "Configurações do TechDocs",
   "command.cloneOptions": "Onde ficam as cópias do GitHub…"
 }

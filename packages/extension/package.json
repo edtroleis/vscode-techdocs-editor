@@ -298,7 +298,14 @@
       {
         "command": "techdocsEditor.settings",
         "title": "%command.settings%",
-        "category": "TechDocs"
+        "category": "TechDocs",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "techdocsEditor.settings.close",
+        "title": "%command.settingsClose%",
+        "category": "TechDocs",
+        "icon": "$(close)"
       },
       {
         "command": "techdocsEditor.sendOptions",
@@ -325,6 +332,22 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "techdocsEditor.settings.close",
+          "when": "false"
+        },
+        {
+          "command": "techdocsEditor.sendOptions",
+          "when": "false"
+        },
+        {
+          "command": "techdocsEditor.cloneOptions",
+          "when": "false"
+        },
+        {
+          "command": "techdocsEditor.templateOptions",
+          "when": "false"
+        },
         {
           "command": "techdocsEditor.tree.openToSide",
           "when": "false"
@@ -621,11 +644,6 @@
           "group": "1_create@1"
         },
         {
-          "command": "techdocsEditor.templateOptions",
-          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
-          "group": "1_create@9"
-        },
-        {
           "command": "techdocsEditor.openRemote",
           "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
           "group": "1_create@3"
@@ -651,19 +669,14 @@
           "group": "navigation@3"
         },
         {
-          "command": "techdocsEditor.sendOptions",
+          "command": "techdocsEditor.settings",
           "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
           "group": "9_settings@1"
         },
         {
-          "command": "techdocsEditor.cloneOptions",
-          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
-          "group": "9_settings@2"
-        },
-        {
-          "command": "techdocsEditor.settings",
-          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/",
-          "group": "9_settings@3"
+          "command": "techdocsEditor.settings.close",
+          "when": "view == techdocsEditor.settingsView",
+          "group": "navigation@1"
         }
       ],
       "explorer/context": [
@@ -940,6 +953,13 @@
           "name": "%view.envio%",
           "when": "techdocsEditor.sendOpen",
           "icon": "$(cloud-upload)"
+        },
+        {
+          "type": "webview",
+          "id": "techdocsEditor.settingsView",
+          "name": "%view.settings%",
+          "when": "techdocsEditor.settingsOpen",
+          "icon": "$(settings-gear)"
         },
         {
           "id": "techdocsEditor.check",
