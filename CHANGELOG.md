@@ -6,6 +6,18 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Rename, Duplicate and New Section without the box at the top:** the page opens with its title selected; type
+  over it and save. Renaming a page or a section changes the menu (the file and the directory stay, so links do
+  not break). The copy and the new section are created right after the selected item, as **New section** and
+  **Page (copy)**, and take the name of the title for the file or directory on the first save.
+
+### Fixed
+
+- Tree actions read and write `mkdocs.yml` and pages from the disk when they are open without unsaved changes: a
+  menu change could be lost when the file had just changed outside the editor.
+
 ## [0.19.0] - 2026-11-25
 
 ### Added

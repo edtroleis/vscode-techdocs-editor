@@ -177,6 +177,13 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
 
   private async renamePage(item: DocsItem) {
     const uri = item.uri!;
+    // No site do workspace, sem caixa no topo: a página abre com o título selecionado; ao salvar com outro título, o
+    // menu acompanha (o arquivo fica, para os links não quebrarem)
+    const current = item.local && this.docs.localSite ? pageTitle((await readText(uri)) ?? '') : undefined;
+    if (current) {
+      this.pending.set(uri.toString(), { initial: current, navTitle: true });
+      return this.openWithTitle(uri, current);
+    }
     const title = await this.input({
       title: vscode.l10n.t('Rename page'),
       value: item.label,
@@ -221,6 +228,17 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     const nav = await this.navToEdit(yml, site);
     const place = nav && this.placeOf(nav, item);
     if (!nav || !place) return;
+    // A seção com página própria (dir/index.md): abre com o título selecionado; ao salvar, o nome no menu acompanha
+    const section = place.list[place.index] as Extract<NavItem, { kind: 'section' }>;
+    const own = section.children.find(child => child.kind === 'page' && /(^|\/)index\.md$/.test(child.path));
+    if (own?.kind === 'page') {
+      const uri = vscode.Uri.joinPath(site.docsDir, own.path);
+      const current = pageTitle((await readText(uri)) ?? '');
+      if (current) {
+        this.pending.set(uri.toString(), { initial: current, section: true });
+        return this.openWithTitle(uri, current);
+      }
+    }
     const siblings = place.list.filter((other, i) => i !== place.index && other.kind === 'section').map(other => (other as { title: string }).title.toLowerCase());
     const title = await this.input({
       title: vscode.l10n.t('Rename section'),
@@ -255,27 +273,19 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
 
   // ---------- duplicar ----------
 
+  /** Duplicar, sem perguntar: a cópia nasce logo depois da original e abre com o título selecionado. */
   async duplicate(target?: unknown) {
     const item = this.itemOf(target);
     if (item?.kind !== 'page') return;
     const site = this.siteOf(item);
     if (!site || !item.uri || !item.path) return;
-    const dir = vscode.Uri.joinPath(item.uri, '..');
-    const title = await this.input({
-      title: vscode.l10n.t('Duplicate page'),
-      value: vscode.l10n.t('{0} (copy)', item.label),
-      prompt: vscode.l10n.t('Title of the new page'),
-      validateInput: async value => {
-        if (!value.trim()) return vscode.l10n.t('Write a title.');
-        return (await readBytes(vscode.Uri.joinPath(dir, fileNameFor(value.trim())))) ? vscode.l10n.t('There is already a file {0} here. Choose another title.', fileNameFor(value.trim())) : undefined;
-      },
-    });
-    if (!title?.trim()) return;
-    const copy = vscode.Uri.joinPath(dir, fileNameFor(title.trim()));
-    const copyPath = item.path.slice(0, item.path.lastIndexOf('/') + 1) + fileNameFor(title.trim());
-    const undo = await this.change(vscode.l10n.t('duplicate "{0}"', item.label), [copy, site.mkdocs], async () => {
-      const text = (await readText(item.uri!)) ?? '';
-      await writeText(copy, setPageTitle(text, title.trim()));
+    const text = (await readText(item.uri)) ?? '';
+    const title = vscode.l10n.t('{0} (copy)', pageTitle(text) ?? item.label);
+    const dir = item.path.slice(0, item.path.lastIndexOf('/') + 1);
+    const copyPath = await this.freePath(site.docsDir, dir, fileNameFor(title).replace(/\.md$/, ''), '.md');
+    const copy = vscode.Uri.joinPath(site.docsDir, copyPath);
+    await this.change(vscode.l10n.t('duplicate "{0}"', item.label), [copy, site.mkdocs], async () => {
+      await writeText(copy, setPageTitle(text, title));
       // No menu, logo depois da original (se ela está nele)
       const yml = await this.readYml(site.mkdocs);
       const nav = readNav(yml);
@@ -285,8 +295,22 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
         await writeText(site.mkdocs, writeNav(yml, nav));
       }
     });
-    await vscode.commands.executeCommand('techdocsEditor.openVisual', copy);
-    this.done(vscode.l10n.t('Page "{0}" created.', title.trim()), undo);
+    this.pending.set(copy.toString(), { initial: title, file: true });
+    await this.openWithTitle(copy, title);
+    return copy;
+  }
+
+  /** O primeiro caminho livre em `dir` (nome, nome-2, nome-3…). */
+  private async freePath(docsDir: vscode.Uri, dir: string, base: string, suffix: string) {
+    let path = `${dir}${base}${suffix}`;
+    for (let n = 2; await readBytes(vscode.Uri.joinPath(docsDir, path)); n++) path = `${dir}${base}-${n}${suffix}`;
+    return path;
+  }
+
+  /** Abre no editor visual com o título selecionado, para digitar por cima. */
+  private async openWithTitle(uri: vscode.Uri, title: string) {
+    await vscode.commands.executeCommand('techdocsEditor.openVisual', uri);
+    await this.selectTitle?.(uri, title).catch(() => undefined);
   }
 
   // ---------- mover ----------
@@ -617,54 +641,46 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
 
   // ---------- nova seção ----------
 
-  /** "Nova seção": a pasta, a primeira página (com o nome da seção) e a entrada no menu. */
+  /**
+   * Nova seção, sem perguntar: o diretório, a página da seção (dir/index.md) e a entrada no menu, logo depois do item
+   * selecionado (ou no fim). A página abre com o título selecionado; no primeiro salvamento com outro título, a seção
+   * e o diretório ganham o nome dele.
+   */
   async newSection(target?: unknown) {
-    const item = target instanceof DocsItem ? target : undefined;
+    const item = target instanceof DocsItem ? target : this.docs.selected();
     const site = this.siteOf(item);
     if (!site) {
       if (!item) void vscode.window.showInformationMessage(vscode.l10n.t('Choose a documentation site of this workspace first.'));
-      return;
+      return undefined;
     }
-    const titles = new Set(site.tree.nodes.filter(n => n.kind === 'section').map(n => n.title.toLowerCase()));
-    const name = await this.input({
-      title: vscode.l10n.t('New section'),
-      placeHolder: vscode.l10n.t('Name of the section'),
-      prompt: vscode.l10n.t('It starts with a page of the same name.'),
-      validateInput: async value => {
-        const clean = value.trim();
-        if (!clean) return vscode.l10n.t('Write a name.');
-        if (titles.has(clean.toLowerCase())) return vscode.l10n.t('There is already a section "{0}" here.', clean);
-        const folder = fileNameFor(clean).replace(/\.md$/, '');
-        return (await readBytes(vscode.Uri.joinPath(site.docsDir, folder, 'index.md'))) ? vscode.l10n.t('There is already a folder {0} with a page.', folder) : undefined;
-      },
-    });
-    if (!name?.trim()) return;
-    const title = name.trim();
-    const folder = fileNameFor(title).replace(/\.md$/, '');
+    const title = vscode.l10n.t('New section');
+    const folder = (await this.freePath(site.docsDir, '', fileNameFor(title).replace(/\.md$/, ''), '/index.md')).replace(/\/index\.md$/, '');
     const page = vscode.Uri.joinPath(site.docsDir, folder, 'index.md');
-    const undo = await this.change(vscode.l10n.t('create the section "{0}"', title), [page, site.mkdocs], async () => {
+    await this.change(vscode.l10n.t('create the section "{0}"', title), [page, site.mkdocs], async () => {
       await writeText(page, `# ${title}\n`);
       const yml = await this.readYml(site.mkdocs);
       const nav = readNav(yml);
       if (!nav) return;
       const section: NavItem = { kind: 'section', title, children: [{ kind: 'page', path: `${folder}/index.md` }] };
-      // Logo depois da seção clicada; senão no fim
-      const after = item?.kind === 'section' ? this.placeOf(nav, item) : undefined;
+      const after = item && (item.kind === 'section' || item.kind === 'page') ? this.placeOf(nav, item) : undefined;
       if (after) after.list.splice(after.index + 1, 0, section);
       else nav.push(section);
       await writeText(site.mkdocs, writeNav(yml, nav));
     });
-    await vscode.commands.executeCommand('techdocsEditor.openVisual', page);
-    this.done(vscode.l10n.t('Section "{0}" created, with a page of the same name open for you to write.', title), undo);
+    this.pending.set(page.toString(), { initial: title, section: true, folder: true });
+    await this.openWithTitle(page, title);
+    return page;
   }
 
   // ---------- página nova ----------
 
   /**
-   * Páginas criadas pelo + New page que ainda têm o título de quando nasceram: no primeiro salvamento com outro título,
-   * o arquivo ganha o nome dele (uma vez só; depois vale o de sempre: o arquivo fica, para os links não quebrarem).
+   * Páginas abertas para digitar o nome (nova página, nova seção, duplicar, renomear) que ainda têm o título de quando
+   * abriram. No primeiro salvamento com outro título: `file`, o arquivo ganha o nome dele; `folder`, o diretório;
+   * `section`, o nome da seção no menu; `navTitle`, o título escrito no menu. Uma vez só; depois vale o de sempre (o
+   * arquivo fica, para os links não quebrarem).
    */
-  private readonly newPages = new Set<string>();
+  private readonly pending = new Map<string, { initial: string; file?: boolean; folder?: boolean; section?: boolean; navTitle?: boolean }>();
   /** Seleciona o título na página aberta, para digitar por cima (o extension.ts liga ao editor visual). */
   selectTitle?: (uri: vscode.Uri, title: string) => Promise<void>;
 
@@ -687,8 +703,7 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
     const sibling = item?.kind === 'page' ? item.path : section?.kind === 'section' ? section.children.flatMap(pagesOf)[0] : undefined;
     const dir = sibling?.includes('/') ? sibling.slice(0, sibling.lastIndexOf('/') + 1) : '';
     const base = fileNameFor(title).replace(/\.md$/, '');
-    let path = `${dir}${base}.md`;
-    for (let n = 2; await readBytes(vscode.Uri.joinPath(site.docsDir, path)); n++) path = `${dir}${base}-${n}.md`;
+    const path = await this.freePath(site.docsDir, dir, base, '.md');
     const uri = vscode.Uri.joinPath(site.docsDir, path);
     await this.change(vscode.l10n.t('create the page "{0}"', title), [uri, site.mkdocs], async () => {
       await writeText(uri, `# ${title}\n`);
@@ -699,46 +714,77 @@ export class TreeActions implements vscode.TreeDragAndDropController<DocsItem> {
       else nav.push(entry);
       await writeText(site.mkdocs, writeNav(yml, nav));
     });
-    this.newPages.add(uri.toString());
-    await vscode.commands.executeCommand('techdocsEditor.openVisual', uri);
-    await this.selectTitle?.(uri, title).catch(() => undefined);
+    this.pending.set(uri.toString(), { initial: title, file: true });
+    await this.openWithTitle(uri, title);
     return uri;
   }
 
   /**
-   * Ao salvar uma página criada pelo + New page que ainda não foi para o Git: o arquivo passa a ter o nome do título
-   * (Configuração → configuracao.md) e o menu acompanha. Páginas que já existiam não mudam de arquivo (os links).
+   * Ao salvar uma página aberta para digitar o nome (ver `pending`): o menu, o arquivo e o diretório acompanham o
+   * título. Arquivo e diretório só mudam enquanto não estão no Git (novos, ainda não enviados): os links de fora.
    */
   async followTitle(document: vscode.TextDocument) {
     const key = document.uri.toString();
-    if (!this.newPages.has(key)) return;
+    const pending = this.pending.get(key);
+    if (!pending) return;
     const site = this.docs.localSite;
     const docsPath = site?.docsDir.path;
     if (!site || !docsPath || !document.uri.path.startsWith(`${docsPath}/`)) return;
     const title = pageTitle(document.getText());
-    // Ainda o título de quando nasceu: espera a pessoa escrever o dela
-    if (!title || title === vscode.l10n.t('New page')) return;
-    this.newPages.delete(key);
-    const name = fileNameFor(title);
-    const current = document.uri.path.split('/').pop()!;
-    if (name === current) return;
-    // Só enquanto o arquivo não está no Git (novo, ainda não enviado)
-    const repository = (await gitApi().catch(() => undefined))?.repositories.find(r => document.uri.path.startsWith(`${r.rootUri.path}/`));
-    if (repository) {
-      const changes = [...repository.state.indexChanges, ...repository.state.workingTreeChanges, ...(repository.state.untrackedChanges ?? [])];
-      const status = changes.find(c => c.uri.path === document.uri.path)?.status;
-      if (status !== undefined && status !== 1 && status !== 7) return;
-    }
-    const target = vscode.Uri.joinPath(document.uri, '..', name);
-    if (await readBytes(target)) return;
+    // Ainda o título de quando abriu: espera a pessoa escrever o dela
+    if (!title || title === pending.initial) return;
+    this.pending.delete(key);
+    // Primeiro o arquivo ou o diretório (o menu e os links acompanham), depois o nome no menu, no caminho novo
+    const page = (pending.file || pending.folder) && (await this.notInGit(document.uri)) ? await this.renameToTitle(document.uri, title, Boolean(pending.folder)) : undefined;
+    const path = (page ?? document.uri).path.slice(docsPath.length + 1);
+    if (pending.section || pending.navTitle) await this.navFollows(site.mkdocs, path, title, pending.section ? 'section' : 'page');
+  }
+
+  /** O arquivo (ou o diretório da página) passa a ter o nome do título; devolve a página no lugar novo. */
+  private async renameToTitle(uri: vscode.Uri, title: string, folder: boolean): Promise<vscode.Uri | undefined> {
+    const key = uri.toString();
+    const from = folder ? vscode.Uri.joinPath(uri, '..') : uri;
+    const name = fileNameFor(title).replace(/\.md$/, '') + (folder ? '' : '.md');
+    const target = vscode.Uri.joinPath(from, '..', name);
+    if (target.path === from.path || (await readBytes(target)) || (await isFolder(target))) return undefined;
+    const page = folder ? vscode.Uri.joinPath(target, uri.path.split('/').pop()!) : target;
     // O editor visual de antes (o renomear do VS Code reabre a aba como texto)
     const visual = vscode.window.tabGroups.all.flatMap(g => g.tabs).some(t => t.input instanceof vscode.TabInputCustom && t.input.uri.toString() === key);
     // O menu e os links acompanham (o mesmo do Explorer), sem a pergunta do VS Code
-    await this.renameFile?.(document.uri, target);
-    if (!visual) return;
-    const texts = vscode.window.tabGroups.all.flatMap(g => g.tabs).filter(t => t.input instanceof vscode.TabInputText && t.input.uri.toString() === target.toString());
-    await vscode.commands.executeCommand('techdocsEditor.openVisual', target);
+    await this.renameFile?.(from, target);
+    if (!visual) return page;
+    const texts = vscode.window.tabGroups.all.flatMap(g => g.tabs).filter(t => t.input instanceof vscode.TabInputText && t.input.uri.toString() === page.toString());
+    await vscode.commands.executeCommand('techdocsEditor.openVisual', page);
     if (texts.length) await vscode.window.tabGroups.close(texts);
+    return page;
+  }
+
+  /** O nome da seção da página (`section`) ou o título escrito da página no menu (`page`) passa a ser `title`. */
+  private async navFollows(mkdocs: vscode.Uri, path: string, title: string, what: 'section' | 'page') {
+    const yml = await this.readYml(mkdocs);
+    const nav = readNav(yml);
+    const place = nav && findPage(nav, path);
+    if (!nav || !place) return;
+    if (what === 'page') {
+      const entry = place.list[place.index];
+      if (entry?.kind !== 'page' || entry.title === undefined) return;
+      entry.title = title;
+    } else {
+      const section = sectionHolding(nav, place.list);
+      if (!section) return;
+      section.title = title;
+    }
+    await writeText(mkdocs, writeNav(yml, nav));
+    await this.docs.refreshNow();
+  }
+
+  /** Arquivo novo, ainda não no Git (sem repositório também conta). */
+  private async notInGit(uri: vscode.Uri) {
+    const repository = (await gitApi().catch(() => undefined))?.repositories.find(r => uri.path.startsWith(`${r.rootUri.path}/`));
+    if (!repository) return true;
+    const changes = [...repository.state.indexChanges, ...repository.state.workingTreeChanges, ...(repository.state.untrackedChanges ?? [])];
+    const status = changes.find(c => c.uri.path === uri.path)?.status;
+    return status === undefined || status === 1 || status === 7;
   }
 
   /** Renomeia acertando o menu e os links (o extension.ts liga ao ExplorerSync). */
@@ -832,7 +878,8 @@ async function removeIfEmpty(dir: vscode.Uri): Promise<boolean> {
 
 
 async function readBytes(uri: vscode.Uri): Promise<Uint8Array | undefined> {
-  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
+  // Como no writeText: só o documento com mudança não salva vale mais que o disco
+  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString() && d.isDirty);
   if (open) return new TextEncoder().encode(open.getText());
   return vscode.workspace.fs.readFile(uri).then(
     data => data,
@@ -847,7 +894,9 @@ async function readText(uri: vscode.Uri): Promise<string | undefined> {
 
 /** Grava pelo documento aberto, se houver (o editor acompanha e não fica "alterado"); senão direto no disco. */
 async function writeText(uri: vscode.Uri, text: string) {
-  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString());
+  // Aberto com mudança não salva: pelo documento (a mudança da pessoa não se perde). Aberto sem mudança: no disco, e o
+  // VS Code recarrega; pelo documento, ele pode estar atrás do disco (gravado por fora há pouco) e o salvar falha calado
+  const open = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString() && d.isDirty);
   if (open) {
     const edit = new vscode.WorkspaceEdit();
     edit.replace(uri, new vscode.Range(0, 0, open.lineCount, 0), text);
@@ -860,3 +909,21 @@ async function writeText(uri: vscode.Uri, text: string) {
 
 
 const exists = (uri: vscode.Uri) => Promise.resolve(vscode.workspace.fs.stat(uri)).then(() => true, () => false);
+
+/** A seção cuja lista de filhos é `list`. */
+function sectionHolding(nav: NavItem[], list: NavItem[]): Extract<NavItem, { kind: 'section' }> | undefined {
+  for (const item of nav) {
+    if (item.kind !== 'section') continue;
+    if (item.children === list) return item;
+    const inner = sectionHolding(item.children, list);
+    if (inner) return inner;
+  }
+  return undefined;
+}
+
+async function isFolder(uri: vscode.Uri) {
+  return vscode.workspace.fs.stat(uri).then(
+    stat => (stat.type & vscode.FileType.Directory) !== 0,
+    () => false,
+  );
+}

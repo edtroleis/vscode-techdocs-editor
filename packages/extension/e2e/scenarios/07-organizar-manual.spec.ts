@@ -7,7 +7,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { click, expect, folderFrom, pause, test, toEnd, type } from './story';
 import {
-  answer,
   buildSite,
   confirm,
   contextMenu,
@@ -15,13 +14,13 @@ import {
   expandRow,
   openFromTree,
   pick,
-  quickInput,
   save,
   sidebarAction,
   techdocsIcon,
   toast,
   treeRow,
   treeRows,
+  typeTitle,
 } from './ui';
 
 const folder = folderFrom('manual-loja', 'manual-loja');
@@ -52,26 +51,18 @@ test('organizar o menu de um manual com links entre páginas', async ({ vscode: 
 
   await story.step('Nova seção "Operação" pelo botão da barra', async () => {
     await sidebarAction(page, 'New Section');
-    await answer(page, 'Operação');
-    await expect(quickInput(page)).toBeHidden();
-    // A seção nasce com uma página de mesmo nome, aberta para escrever
+    // A seção nasce com a página dela aberta e o título selecionado: digita o nome por cima e salva
     await story.check('a página da seção abre no editor', () => expect(page.locator('.tab.active')).toContainText('index.md', { timeout: 15_000 }));
+    await typeTitle(page, 'index.md', 'Operação');
     await expect(treeRow(page, 'Operação')).toBeVisible();
     await story.check('a seção vai para o mkdocs.yml', () => expect.poll(() => read('mkdocs.yml')).toContain('Operação'));
     await pause(page);
   });
 
   await story.step('Página nova "Backup" dentro de Operação (botão direito na seção)', async () => {
+    // Sem perguntas: a página nasce no fim da seção, aberta com o título selecionado; o arquivo ganha o nome do título
     await contextMenu(page, treeRow(page, 'Operação'), 'New Page in This Section');
-    await pick(page, 'Blank page');
-    await answer(page, 'Backup', /Title of the new page/);
-    await answer(page, undefined, /File of the new page/);
-    // Dentro de uma seção, a página já sabe onde entra no menu; senão vem a pergunta do menu
-    const nav = quickInput(page).locator('.monaco-list-row', { hasText: 'Add to the nav' });
-    if (await nav.first().waitFor({ timeout: 2_000 }).then(() => true, () => false)) {
-      story.suggest('Criada pelo botão direito numa seção, a página nova ainda pergunta se entra no menu.');
-      await click(page, nav.first());
-    }
+    await typeTitle(page, 'new-page', 'Backup');
     await expect(page.locator('.tab.active')).toContainText('backup.md', { timeout: 30_000 });
     const editor = await editorOf(page);
     await editor.locator('.ProseMirror').click();
@@ -103,13 +94,9 @@ test('organizar o menu de um manual com links entre páginas', async ({ vscode: 
   });
 
   await story.step('Duplicar "Configurar" e excluir a cópia; depois desfazer a exclusão', async () => {
+    // A cópia nasce logo depois, aberta com o título selecionado; o arquivo ganha o nome do título ao salvar
     await contextMenu(page, treeRow(page, 'Configurar'), 'Duplicate');
-    if (!(await quickInput(page).locator('input').waitFor({ timeout: 3_000 }).then(() => true, () => false))) {
-      story.bug('Botão direito › Duplicate em "Configurar" (com "API" ainda selecionada do passo anterior) não fez nada: nenhuma pergunta, nenhuma cópia.');
-      await click(page, treeRow(page, 'Configurar'));
-      await contextMenu(page, treeRow(page, 'Configurar'), 'Duplicate');
-    }
-    await answer(page, 'Configurar avançado');
+    await typeTitle(page, 'configurar-copy.md', 'Configurar avançado');
     await expect(treeRow(page, 'Configurar avançado')).toBeVisible();
     const copy = 'docs/guias/configurar-avancado.md';
     await story.check('a cópia é um arquivo novo ao lado', async () => expect(exists(copy)).toBe(true));

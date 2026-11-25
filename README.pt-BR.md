@@ -174,7 +174,10 @@ Code), sem rede (também no VS Code para a Web).
 - **Organize pela árvore:** o **⋯** de uma página ou seção abre um menu com *Renomear* (`F2`), *Duplicar*,
   *Mover para…*, *Mover para cima/baixo* (`Alt+↑`/`Alt+↓`), *Excluir* e *Nova seção*; páginas e seções também
   podem ser arrastadas. Excluir uma página diz quais páginas apontam para ela. Toda mudança mostra **Desfazer**
-  (também `Ctrl+Z` na árvore).
+  (também `Ctrl+Z` na árvore). *Renomear*, *Duplicar* e *Nova seção* não perguntam nada: a página abre com o
+  título selecionado, você digita por cima e salva. O menu acompanha o título; página, cópia ou seção nova também
+  ganha o nome do título no arquivo ou diretório no primeiro salvamento (uma página que já existia mantém o
+  arquivo, para os links não quebrarem).
 - **Só nas páginas das docs:** o botão e o comando **Abrir no editor visual** aparecem para páginas dentro de um
   `docs_dir`, não para todo arquivo Markdown (READMEs, changelogs).
 - **Busca** com Ctrl+F no editor visual, com "1 de 3" e Enter / Shift+Enter entre os resultados.

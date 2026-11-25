@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { click, expect, folderFrom, pause, test, toEnd, type } from './story';
-import { buildSite, checkPane, contextMenu, hasWarning, openFromTree, palette, quickInput, sidebarAction, techdocsIcon, toast, treeRow } from './ui';
+import { buildSite, checkPane, contextMenu, hasWarning, openFromTree, palette, sidebarAction, techdocsIcon, toast, treeRow, typeTitle } from './ui';
 
 const folder = folderFrom('site-legado', 'pagamentos');
 const read = (path: string) => readFileSync(join(folder, path), 'utf8');
@@ -149,15 +149,11 @@ test('pasta local com mkdocs: ajustar um site antigo', async ({ vscode: { page }
   });
 
   await story.step('Renomear "Primeiros passos" para "Como rodar na sua máquina"', async () => {
+    // Sem caixa no topo: a página abre com o título selecionado; digita por cima e salva (o arquivo fica)
     await contextMenu(page, treeRow(page, 'Primeiros passos'), /^Rename/);
-    const input = quickInput(page).locator('input');
-    await expect(input).toBeVisible();
-    await expect(quickInput(page)).toContainText('primeiros-passos.md');
-    await page.keyboard.press('Control+A');
-    await type(page, 'Como rodar na sua máquina');
-    await page.keyboard.press('Enter');
+    await typeTitle(page, 'primeiros-passos.md', 'Como rodar na sua máquina');
     await expect(treeRow(page, 'Como rodar na sua máquina')).toBeVisible();
-    expect(read('docs/guias/primeiros-passos.md')).toMatch(/^# Como rodar na sua máquina\n/);
+    await written('docs/guias/primeiros-passos.md').toMatch(/^# Como rodar na sua máquina\n/);
     await pause(page);
   });
 

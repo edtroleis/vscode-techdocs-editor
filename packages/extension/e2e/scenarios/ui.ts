@@ -163,6 +163,18 @@ export const publishStrip = (editor: FrameLocator) => editor.locator('.status-st
 /** A tela de envio (spec 09): o que vai, o resumo e Enviar para revisão. */
 export const sendScreen = (page: Page) => webviewWith(page, '#summary');
 
+/**
+ * A página que abriu com o título selecionado (nova página, nova seção, duplicar, renomear): digita o nome por cima e
+ * salva. `file`: o arquivo da aba que abriu.
+ */
+export async function typeTitle(page: Page, file: string | RegExp, title: string) {
+  await expect(page.locator('.tab.active')).toContainText(file, { timeout: 30_000 });
+  const editor = await editorOf(page);
+  await expect(editor.locator('.ProseMirror')).toBeFocused();
+  await type(page, title);
+  await save(page);
+}
+
 /** Ctrl+S e espera a aba ficar sem alteração pendente. */
 export async function save(page: Page) {
   const dirty = page.locator('.tab.active.dirty');

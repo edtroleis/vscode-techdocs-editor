@@ -834,9 +834,27 @@ export function defineTests() {
           20_000,
         );
 
-        // Renomear: muda o título 1; o arquivo e o menu (sem título escrito) ficam
-        await run('techdocsEditor.renameItem', 'Página A', 'Página A2');
-        ok((await read('acoes/docs/guias/a.md')).startsWith('# Página A2\n'), 'título não mudou no arquivo');
+        // Troca o título 1 da página aberta e salva (o que a pessoa faz no editor visual)
+        const retitle = async (path: string, title: string) => {
+          const document = await vscode.workspace.openTextDocument(file(path));
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(document.uri, new vscode.Range(0, 0, 0, document.lineAt(0).text.length), `# ${title}`);
+          await vscode.workspace.applyEdit(edit);
+          await document.save();
+        };
+        const visualOpen = (path: string) =>
+          until(
+            () => vscode.window.tabGroups.activeTabGroup.activeTab?.input,
+            input => input instanceof vscode.TabInputCustom && input.uri.path.endsWith(`/${path}`),
+            `${path} não abriu no editor visual`,
+          );
+
+        // Renomear, sem caixa no topo: abre a página (o título selecionado); o arquivo e o menu (sem título escrito) ficam
+        await run('techdocsEditor.renameItem', 'Página A');
+        await visualOpen('guias/a.md');
+        await retitle('acoes/docs/guias/a.md', 'Página A2');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        ok(await exists('acoes/docs/guias/a.md'), 'renomear a página mudou o arquivo');
         // Mover: um passo, para outra seção e pôr no menu a página de fora
         await run('techdocsEditor.moveDown', 'Página A2');
         await run('techdocsEditor.moveItem', 'Página C', 'Guias');
@@ -859,18 +877,38 @@ export function defineTests() {
         // Seções: excluir só a seção (as páginas ficam), nova seção com a primeira página, duplicar
         await run('techdocsEditor.deleteItem', 'Guias', t('Only the section', 'Só a seção'));
         equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, solta.md', 'menu depois de excluir a seção');
-        await run('techdocsEditor.newSection', 'Página C', 'Referência');
-        equal(await read('acoes/docs/referencia/index.md'), '# Referência\n', 'primeira página da seção');
-        equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, solta.md, Referência[referencia/index.md]', 'menu com a seção nova');
-        await run('techdocsEditor.duplicatePage', 'Página C', 'Página C2');
-        ok((await read('acoes/docs/pagina-c2.md')).startsWith('# Página C2\n'), 'cópia sem o título novo');
-        equal(await menu('acoes'), 'index.md, guias/b.md, guias/a.md, c.md, pagina-c2.md, solta.md, Referência[referencia/index.md]', 'cópia logo depois da original');
+        // Nova seção, sem perguntar: nasce logo depois da selecionada, com a página dela aberta; o nome digitado no
+        // primeiro salvamento dá o nome da seção e do diretório
+        await run('techdocsEditor.newSection', 'Página C');
+        const novaSecao = t('New section', 'Nova seção');
+        const novaPasta = t('new-section', 'nova-secao');
+        equal(await read(`acoes/docs/${novaPasta}/index.md`), `# ${novaSecao}\n`, 'primeira página da seção');
+        equal(await menu('acoes'), `index.md, guias/b.md, guias/a.md, c.md, ${novaSecao}[${novaPasta}/index.md], solta.md`, 'seção nova logo depois da selecionada');
+        await visualOpen(`${novaPasta}/index.md`);
+        await retitle(`acoes/docs/${novaPasta}/index.md`, 'Referência');
+        await until(() => menu('acoes'), m => m === 'index.md, guias/b.md, guias/a.md, c.md, Referência[referencia/index.md], solta.md', 'a seção e o diretório não acompanharam o nome');
+        ok(!(await exists(`acoes/docs/${novaPasta}`)), 'o diretório antigo da seção ficou');
+        // Renomear a seção: abre a página dela; o nome no menu acompanha o título, o diretório fica
+        await until(() => find('Referência')?.kind, kind => kind === 'section', 'a árvore não mostrou a seção com o nome novo');
+        await run('techdocsEditor.renameItem', 'Referência');
+        await visualOpen('referencia/index.md');
+        await retitle('acoes/docs/referencia/index.md', 'Manual');
+        await until(() => menu('acoes'), m => m.includes('Manual[referencia/index.md]'), 'o nome da seção não acompanhou o título');
+        // Duplicar, sem perguntar: a cópia nasce logo depois e o arquivo ganha o nome do título no primeiro salvamento
+        await run('techdocsEditor.duplicatePage', 'Página C');
+        const copia = t('Página C (copy)', 'Página C (cópia)');
+        const copiaArquivo = t('pagina-c-copy.md', 'pagina-c-copia.md');
+        ok((await read(`acoes/docs/${copiaArquivo}`)).startsWith(`# ${copia}\n`), 'cópia sem o título de cópia');
+        equal(await menu('acoes'), `index.md, guias/b.md, guias/a.md, c.md, ${copiaArquivo}, Manual[referencia/index.md], solta.md`, 'cópia logo depois da original');
+        await visualOpen(copiaArquivo);
+        await retitle(`acoes/docs/${copiaArquivo}`, 'Página C2');
+        await until(() => menu('acoes'), m => m.includes(', c.md, pagina-c2.md, Manual'), 'o arquivo da cópia não acompanhou o título');
         // + New page: em branco, sem perguntar nada, logo depois da página selecionada
         await run('techdocsEditor.newPage', 'Página C');
         const novo = t('New page', 'Nova página');
         const novoArquivo = t('new-page.md', 'nova-pagina.md');
         equal(await read(`acoes/docs/${novoArquivo}`), `# ${novo}\n`, 'página nova');
-        equal(await menu('acoes'), `index.md, guias/b.md, guias/a.md, c.md, ${novoArquivo}, pagina-c2.md, solta.md, Referência[referencia/index.md]`, 'página nova logo depois da selecionada');
+        equal(await menu('acoes'), `index.md, guias/b.md, guias/a.md, c.md, ${novoArquivo}, pagina-c2.md, Manual[referencia/index.md], solta.md`, 'página nova logo depois da selecionada');
         // A segunda não pisa na primeira
         await run('techdocsEditor.newPage', 'Página C');
         ok(await exists(`acoes/docs/${novoArquivo.replace('.md', '-2.md')}`), 'a segunda página nova pisou na primeira');
@@ -902,7 +940,7 @@ export function defineTests() {
         await run('techdocsEditor.deleteItem', 'Ajustes', t('Delete', 'Excluir'));
         await run('techdocsEditor.deleteItem', novo, t('Delete', 'Excluir'));
         await write('acoes/docs/c.md', '# Página C\n');
-        await run('techdocsEditor.deleteItem', 'Referência', t('Section and pages', 'Seção e páginas'));
+        await run('techdocsEditor.deleteItem', 'Manual', t('Section and pages', 'Seção e páginas'));
         ok(!(await exists('acoes/docs/referencia')), 'a pasta da seção ficou');
 
         // Página do menu que não existe: criar (com o título do menu) ou tirar do menu

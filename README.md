@@ -171,6 +171,9 @@ no network (also in VS Code for the Web).
 - **Organize from the tree:** the **⋯** on a page or section opens a menu with *Rename* (`F2`), *Duplicate*,
   *Move to…*, *Move up/down* (`Alt+↑`/`Alt+↓`), *Delete* and *New section*; pages and sections can also be
   dragged. Deleting a page says which pages link to it. Every change shows **Undo** (also `Ctrl+Z` in the tree).
+  *Rename*, *Duplicate* and *New section* ask nothing: the page opens with its title selected, you type over it
+  and save. The menu follows the title; a new page, copy or section also takes the name of the title for its file
+  or directory on the first save (a page that already existed keeps its file, so links do not break).
 - **Only on docs pages:** the **Open in visual editor** button and command show up for pages inside a
   `docs_dir`, not for every Markdown file (READMEs, changelogs).
 - **Search** with Ctrl+F in the visual editor, with "1 of 3" and Enter / Shift+Enter between matches.

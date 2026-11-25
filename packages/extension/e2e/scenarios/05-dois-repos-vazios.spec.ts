@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 import { click, expect, folderFrom, pause, test, type } from './story';
-import { buildSite, contextMenu, editorOf, palette, previewPanel, quickInput, save } from './ui';
+import { buildSite, contextMenu, editorOf, palette, previewPanel, quickInput, save, typeTitle } from './ui';
 
 const code = folderFrom(undefined, 'code');
 for (const repo of ['mkdocs-empty-local', 'mkdocs-empty-remote']) mkdirSync(join(code, repo), { recursive: true });
@@ -105,11 +105,7 @@ async function confirm(page: Page, button: RegExp) {
  */
 async function newPage(page: Page, on: Locator, title: string) {
   await contextMenu(page, on, /^New Page$/);
-  await expect(page.locator('.tab.active')).toContainText('new-page', { timeout: 30_000 });
-  const editor = await editorOf(page);
-  await expect(editor.locator('.ProseMirror')).toBeFocused();
-  await type(page, title);
-  await save(page);
+  await typeTitle(page, 'new-page', title);
 }
 
 test.use({
@@ -184,8 +180,9 @@ test('dois repos vazios: documentação pelo Explorer e pela seção TechDocs', 
   });
 
   await story.step('Nova seção "Guias": começa com uma página de mesmo nome', async () => {
+    // Sem caixa no topo: a seção nasce como "New section", com a página dela aberta e o título selecionado
     await contextMenu(page, docRow(page, 'mkdocs-empty-local'), 'New Section');
-    await answer(page, 'Guias');
+    await typeTitle(page, 'index.md', 'Guias');
     await written('mkdocs-empty-local/docs/guias/index.md').toMatch(/^# Guias/);
     await written('mkdocs-empty-local/mkdocs.yml').toContain('Guias:');
     await expect(docRow(page, 'Guias')).toBeVisible();
@@ -201,7 +198,7 @@ test('dois repos vazios: documentação pelo Explorer e pela seção TechDocs', 
 
   await story.step('Renomear "Primeiros passos" para "Comece aqui" (o título 1 muda junto)', async () => {
     await contextMenu(page, docRow(page, 'Primeiros passos'), /^Rename/);
-    await answer(page, 'Comece aqui');
+    await typeTitle(page, 'primeiros-passos.md', 'Comece aqui');
     await expect(docRow(page, 'Comece aqui')).toBeVisible();
     await written('mkdocs-empty-local/docs/primeiros-passos.md').toMatch(/^# Comece aqui/);
     await pause(page);
