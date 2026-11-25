@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as vscode from 'vscode';
 import type { RepoGit } from '../../../src/publish/types';
+import type { SendService } from '../../../src/send/sendService';
 import { gitApi, VscodeGit } from '../../../src/publish/vscodeGit';
 
 function equal<T>(actual: T, expected: T, message: string) {
@@ -120,6 +121,32 @@ export function defineSendTests() {
       equal(repoGit.currentBranch(), 'main', 'na principal');
       equal(readFileSync(join(repo, 'docs', 'b.md'), 'utf8'), '# B\n\nTexto meu.\n', 'b.md mantido');
       equal(repoGit.changedFiles().sort(), ['docs/b.md', 'docs/novo.md'], 'não commitadas');
+    });
+  });
+
+  suite('Enviar (N)', function () {
+    this.timeout(60_000);
+    const root = () => vscode.Uri.joinPath(vscode.workspace.workspaceFolders![0].uri, 'publicado');
+    const service = async () =>
+      (await vscode.extensions.getExtension<{ send: SendService }>('edtroleis.techdocs-editor')!.activate()).send;
+
+    teardown(() => {
+      git(root().fsPath, 'checkout', '-q', '--', '.');
+      git(root().fsPath, 'clean', '-qfd', 'docs');
+    });
+
+    test('conta as mudanças da documentação e marca os arquivos', async () => {
+      const send = await service();
+      writeFileSync(join(root().fsPath, 'docs', 'index.md'), '# Início\n\nTexto mudado.\n');
+      writeFileSync(join(root().fsPath, 'docs', 'novo.md'), '# Novo\n');
+      writeFileSync(join(root().fsPath, 'fora.txt'), 'fora da documentação\n');
+      await send.refresh();
+      const repo = send.list().find(r => r.root.path.endsWith('/publicado'));
+      equal(repo?.count, 2, 'mudanças para enviar');
+      equal(send.provideFileDecoration(vscode.Uri.joinPath(root(), 'docs', 'index.md'))?.badge, 'M', 'alterada');
+      equal(send.provideFileDecoration(vscode.Uri.joinPath(root(), 'docs', 'novo.md'))?.badge, 'N', 'nova');
+      equal(send.provideFileDecoration(vscode.Uri.joinPath(root(), 'fora.txt')), undefined, 'fora da documentação');
+      git(root().fsPath, 'clean', '-qf', 'fora.txt');
     });
   });
 }

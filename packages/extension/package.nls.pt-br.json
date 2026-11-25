@@ -117,5 +117,7 @@
   "command.treeOpenToSide": "Abrir ao lado",
   "command.copyToPage": "Copiar para uma página",
   "command.visualKeepKey": "Atalho do editor visual",
-  "command.templateOptions": "Opções dos templates"
+  "command.templateOptions": "Opções dos templates",
+  "command.send": "Enviar as mudanças para o repositório",
+  "view.envio": "Envio"
 }

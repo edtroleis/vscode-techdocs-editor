@@ -100,6 +100,17 @@ export class RepoCheck implements vscode.Disposable {
     for (const site of this.sites.list().filter(s => checked.has(s.mkdocs.toString()))) await this.checkOne(site);
   }
 
+  /** A conferência de um site para a tela de envio (spec 09): os achados e a raiz para as correções. */
+  async siteFindings(mkdocs: vscode.Uri): Promise<SiteCheck | undefined> {
+    const site = this.sites.list().find(s => s.mkdocs.toString() === mkdocs.toString());
+    return site ? this.checkOne(site) : undefined;
+  }
+
+  /** O "Corrigir" da tela de envio: aplica sem perguntar (as correções não mudam o que aparece na página). */
+  async applyQuietly(findings: SiteFinding[], base: vscode.Uri): Promise<void> {
+    for (const finding of findings) if (finding.fix) await this.applyFix(finding, base, () => 'apply');
+  }
+
   /** Confere um site e junta o resultado ao dos outros já conferidos. */
   private async checkOne(site: Site): Promise<SiteCheck> {
     const { snapshot, base } = await this.snapshot(site);

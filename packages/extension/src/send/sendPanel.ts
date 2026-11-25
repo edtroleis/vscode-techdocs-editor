@@ -122,6 +122,11 @@ export class SendPanel implements vscode.Disposable {
   private summary: string | undefined;
   private busy = false;
 
+  /** A tela de envio aberta do repositório, se houver. */
+  static current(key: string): SendPanel | undefined {
+    return SendPanel.open.get(key);
+  }
+
   /** Abre (ou traz para a frente) a tela de envio do repositório. */
   static show(extensionUri: vscode.Uri, deps: SendPanelDeps): SendPanel {
     const existing = SendPanel.open.get(deps.key);
@@ -139,7 +144,7 @@ export class SendPanel implements vscode.Disposable {
     private readonly extensionUri: vscode.Uri,
     private readonly deps: SendPanelDeps,
   ) {
-    this.panel = vscode.window.createWebviewPanel('techdocsEditor.send', vscode.l10n.t('Send to the repository'), vscode.ViewColumn.Active, {
+    this.panel = vscode.window.createWebviewPanel('techdocsEditor.sendPanel', vscode.l10n.t('Send to the repository'), vscode.ViewColumn.Active, {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist', 'webview')],
     });

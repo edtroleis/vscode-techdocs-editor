@@ -27,7 +27,7 @@ async function writeOrDelete(file: vscode.Uri, content: Buffer | undefined) {
 // Tipos completos: https://github.com/microsoft/vscode/blob/main/extensions/git/src/api/git.d.ts
 type Change = { readonly uri: vscode.Uri; readonly status?: number };
 type Branch = { readonly name?: string; readonly commit?: string; readonly type?: number };
-type Repository = {
+export type Repository = {
   readonly rootUri: vscode.Uri;
   readonly state: {
     readonly HEAD: Branch | undefined;
@@ -56,6 +56,7 @@ export type GitApi = {
   readonly git: { readonly path: string };
   readonly repositories: Repository[];
   openRepository(root: vscode.Uri): Promise<Repository | null>;
+  toGitUri(uri: vscode.Uri, ref: string): vscode.Uri;
   init(root: vscode.Uri, options?: { defaultBranch?: string }): Promise<Repository | null>;
   clone(uri: vscode.Uri, options?: { parentPath?: vscode.Uri; postCloneAction?: 'none' }): Promise<vscode.Uri | null>;
   getRepository(uri: vscode.Uri): Repository | null;
@@ -123,6 +124,13 @@ export class VscodeGit implements RepoGit {
   async refresh() {
     await this.repository.status();
     this.origin = (await this.git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']).catch(() => '')).trim().replace(/^origin\//, '') || undefined;
+    // Repositório ligado à mão (init + remote add + push) não tem `origin/HEAD`: vale o main ou o master do origin
+    for (const name of this.origin ? [] : ['main', 'master']) {
+      if (await this.git(['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${name}`]).then(() => true, () => false)) {
+        this.origin = name;
+        break;
+      }
+    }
   }
 
   defaultBranch() {

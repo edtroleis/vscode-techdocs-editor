@@ -329,6 +329,12 @@
       {
         "command": "techdocsEditor.visual.keepKey",
         "title": "%command.visualKeepKey%"
+      },
+      {
+        "command": "techdocsEditor.send",
+        "title": "%command.send%",
+        "category": "TechDocs",
+        "icon": "$(cloud-upload)"
       }
     ],
     "menus": {
@@ -665,6 +671,11 @@
         }
       ],
       "view/title": [
+        {
+          "command": "techdocsEditor.send",
+          "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && techdocsEditor.sendCount > 0",
+          "group": "navigation@-1"
+        },
         {
           "command": "techdocsEditor.checkShown",
           "when": "view =~ /^techdocsEditor\\.docs(Explorer)?$/ && techdocsEditor.hasDocs",
@@ -1016,6 +1027,13 @@
           "name": "%view.mine%",
           "when": "techdocsEditor.hasMine",
           "icon": "$(git-pull-request-draft)"
+        },
+        {
+          "type": "webview",
+          "id": "techdocsEditor.envio",
+          "name": "%view.envio%",
+          "when": "techdocsEditor.sendOpen",
+          "icon": "$(cloud-upload)"
         },
         {
           "type": "webview",

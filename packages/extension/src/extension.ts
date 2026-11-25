@@ -14,6 +14,8 @@ import { openVisualByDefault } from './openByDefault';
 import { ProposedChanges } from './proposedChange';
 import { PrepareContext } from './prepareContext';
 import { PublishPanel } from './publish/publishPanel';
+import { SendService } from './send/sendService';
+import { SendView } from './send/sendView';
 import { RemoteOpener } from './remote/openRemote';
 import { ConflictPanel, resolveSaveConflicts } from './remote/conflictPanel';
 import { showPageHistory, useTestHistoryPick } from './remote/pageHistory';
@@ -53,7 +55,6 @@ export function activate(context: vscode.ExtensionContext) {
   const publish = new PublishPanel(context.extensionUri, sites, lint, remotes, remoteFs, conflicts);
   // A faixa de estado da página (rascunho, em revisão…) no editor visual, e os botões dela
   publish.onDidChangeStrip(({ uri, strip }) => provider.setStrip(uri, strip));
-  provider.onStripAction(({ uri, action }) => publish.runStripAction(uri, action));
   const mine = new MineView(sites, remotes, opener);
   docs.useDrafts(() => mine.draftRefs());
   // "Minhas alterações" acompanha quando a página muda de estado (salvou, enviou, publicou)
@@ -233,8 +234,23 @@ export function activate(context: vscode.ExtensionContext) {
       if (file) return vscode.commands.executeCommand('vscode.openWith', file, 'default', vscode.ViewColumn.Beside);
     }),
   );
+  // O envio do repositório inteiro (spec 09): Enviar (N) na árvore, no editor e na barra de status; painel Envio
+  const send = new SendService(context.extensionUri, sites, repoCheck, provider, count => docs.setSendBadge(count));
+  const sendView = new SendView(context.extensionUri, send);
+  provider.onStripAction(({ uri, action }) => {
+    if (action === 'send' || send.repoOf(uri)?.state) void send.action(uri, action);
+    else void publish.runStripAction(uri, action);
+  });
+  context.subscriptions.push(
+    send,
+    sendView,
+    vscode.window.registerWebviewViewProvider(SendView.viewId, sendView),
+    vscode.commands.registerCommand('techdocsEditor.send', (target?: vscode.Uri | DocsItem) =>
+      send.open(target instanceof DocsItem ? target.uri : target),
+    ),
+  );
   // Usado pelos testes de integração (test/vscode)
-  return { provider, treeActions, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick, useTestAnswers };
+  return { send, provider, treeActions, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick, useTestAnswers };
 }
 
 /**

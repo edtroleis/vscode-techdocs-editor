@@ -1,7 +1,7 @@
 import type { PanelState } from './publishPanel';
 
 /** Ações da faixa de estado (e do item da barra de status). */
-export type StripAction = 'submit' | 'check' | 'discard' | 'history' | 'details' | 'showLine' | 'openPr' | 'signIn' | 'resolve';
+export type StripAction = 'send' | 'submit' | 'check' | 'discard' | 'history' | 'details' | 'showLine' | 'openPr' | 'signIn' | 'resolve';
 
 /**
  * Faixa no topo da página (editor visual) e na barra de status (editor de texto): em que pé está a página

@@ -296,6 +296,12 @@ export class DocsTreeView implements vscode.TreeDataProvider<DocsItem>, vscode.D
     return item.parent;
   }
 
+  /** O número de mudanças para enviar, no ícone da seção (spec 09). */
+  setSendBadge(count: number) {
+    const badge = count ? { value: count, tooltip: count === 1 ? vscode.l10n.t('1 change to send') : vscode.l10n.t('{0} changes to send', count) } : undefined;
+    for (const view of this.views) view.badge = badge;
+  }
+
   /** A seção está aberta na barra lateral (testes). */
   get visible(): boolean {
     return this.views.some(view => view.visible);
