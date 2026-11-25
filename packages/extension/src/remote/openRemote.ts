@@ -173,6 +173,8 @@ export async function localClone(host: string, slug: string): Promise<vscode.Uri
     const remote = url ? parseGitHubRemote(url) : undefined;
     return remote?.host === host && remote.slug.toLowerCase() === slug.toLowerCase();
   };
+  // Recém-aberto pelo Git do VS Code, o repositório ainda não leu os remotes: lê antes de comparar
+  for (const repo of api?.repositories ?? []) if (!repo.state.remotes.length) await repo.status().catch(() => undefined);
   return api?.repositories.find(repo => repo.state.remotes.some(r => same(r.fetchUrl) || same(r.pushUrl)))?.rootUri;
 }
 
