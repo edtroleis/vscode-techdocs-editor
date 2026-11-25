@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import type { RepoGit } from '../../../src/publish/types';
 import type { SendService } from '../../../src/send/sendService';
 import { preflight } from '../../../src/send/preflight';
+import { CloneFlow } from '../../../src/clone/cloneFlow';
 import { FakeGitHub } from '../../../../core/test/fakeGitHub';
 import { useTestTransport } from '../../../src/publish/githubAuth';
 import { gitApi, VscodeGit } from '../../../src/publish/vscodeGit';
@@ -209,6 +210,41 @@ export function defineSendTests() {
       equal(shown.at(-1), `${github.userId}+pessoa@users.noreply.github.com`, 'o e-mail privado por último');
       equal(git(repo, 'config', '--global', 'user.name'), 'Pessoa Teste', 'nome');
       equal(git(repo, 'config', '--global', 'user.email'), 'pessoa@empresa.com', 'e-mail');
+    });
+  });
+
+  suite('Clonar e o link do Backstage', function () {
+    this.timeout(60_000);
+    const memento = () => {
+      const data = new Map<string, unknown>();
+      return { keys: () => [...data.keys()], get: (key: string) => data.get(key), update: async (key: string, value: unknown) => void data.set(key, value) } as unknown as vscode.Memento;
+    };
+    teardown(() => vscode.commands.executeCommand('workbench.action.closeAllEditors'));
+
+    test('link com o repositório já no computador abre a página sem clonar', async () => {
+      const flow = new CloneFlow({ state: memento(), parent: '/nao/deve/clonar' });
+      const opened = await flow.fromLink(vscode.Uri.parse('vscode://edtroleis.techdocs-editor/open?host=github.com&repo=acme/wiki&path=docs/index.md'));
+      equal(opened?.path.endsWith('/publicado/docs/index.md'), true, 'abriu a cópia do workspace');
+      const tab = vscode.window.tabGroups.activeTabGroup.activeTab?.input as { uri?: vscode.Uri } | undefined;
+      equal(tab?.uri?.path.endsWith('/publicado/docs/index.md'), true, 'a página está aberta');
+    });
+
+    test('link sem Git no computador: aviso com o link para instalar', async () => {
+      const warned: string[][] = [];
+      const flow = new CloneFlow({
+        state: memento(),
+        git: async () => undefined,
+        warn: async (message, ...actions) => (warned.push([message, ...actions]), undefined),
+      });
+      const opened = await flow.fromLink(vscode.Uri.parse('vscode://edtroleis.techdocs-editor/open?host=github.com&repo=acme/outro&path=docs/a.md'));
+      equal(opened, undefined, 'nada aberto');
+      equal(warned.length, 1, 'um aviso');
+      equal(warned[0][1], 'Install Git', 'o botão de instalar');
+    });
+
+    test('link inválido não abre nada', async () => {
+      const flow = new CloneFlow({ state: memento(), parent: '/nao/deve/clonar' });
+      equal(await flow.fromLink(vscode.Uri.parse('vscode://edtroleis.techdocs-editor/open?host=github.com&repo=acme/wiki&path=../fora.md')), undefined, 'inválido');
     });
   });
 }

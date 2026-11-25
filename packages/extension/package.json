@@ -995,6 +995,11 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "%config.maintainer%"
+        },
+        "techdocsEditor.clone.folder": {
+          "type": "string",
+          "default": "~/Documents/TechDocs",
+          "markdownDescription": "%config.clone.folder%"
         }
       }
     },

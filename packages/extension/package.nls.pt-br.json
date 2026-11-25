@@ -119,5 +119,6 @@
   "command.visualKeepKey": "Atalho do editor visual",
   "command.templateOptions": "Opções dos templates",
   "command.send": "Enviar as mudanças para o repositório",
-  "view.envio": "Envio"
+  "view.envio": "Envio",
+  "config.clone.folder": "Onde **Abrir documentação do GitHub** traz os repositórios (`~` é o seu diretório pessoal)."
 }

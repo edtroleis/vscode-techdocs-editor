@@ -14,6 +14,7 @@ import { openVisualByDefault } from './openByDefault';
 import { ProposedChanges } from './proposedChange';
 import { PrepareContext } from './prepareContext';
 import { PublishPanel } from './publish/publishPanel';
+import { CloneFlow } from './clone/cloneFlow';
 import { SendService } from './send/sendService';
 import { SendView } from './send/sendView';
 import { RemoteOpener } from './remote/openRemote';
@@ -46,6 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
   const remoteFs = new RemoteFileSystem(remotes);
   const opener = new RemoteOpener(remotes);
   const lint = new LintService(sites);
+  // Abrir documentação do GitHub: clona e abre (spec 09); a página do link abre quando o diretório abrir
+  const clone = new CloneFlow({ state: context.globalState });
+  void clone.openPending();
   const provider = new VisualEditorProvider(context.extensionUri, lint, sites, remoteFs);
   const treeActions = new TreeActions();
   const docs = new DocsTreeView(sites, remotes, context.workspaceState, treeActions, lint);
@@ -86,10 +90,10 @@ export function activate(context: vscode.ExtensionContext) {
     resolveSaveConflicts(remoteFs, conflicts),
     vscode.window.registerUriHandler({
       handleUri: async uri => {
-        await opener.fromLink(uri);
+        await clone.fromLink(uri);
       },
     }),
-    vscode.commands.registerCommand('techdocsEditor.openRemote', (input?: string) => opener.fromInput(typeof input === 'string' ? input : undefined)),
+    vscode.commands.registerCommand('techdocsEditor.openRemote', (input?: string) => clone.fromInput(typeof input === 'string' ? input : undefined)),
     vscode.commands.registerCommand('techdocsEditor.pageHistory', (uri?: vscode.Uri | DocsItem) =>
       showPageHistory(remotes, remoteFs, uri instanceof vscode.Uri ? uri : uri?.uri),
     ),
@@ -250,7 +254,7 @@ export function activate(context: vscode.ExtensionContext) {
     ),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { send, provider, treeActions, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick, useTestAnswers };
+  return { send, clone, provider, treeActions, sites, lint, docs, mine, publish, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, prepare, preview, remotes, remoteFs, opener, conflicts, useTestSiteChoice, useTestHistoryPick, useTestSitePick, useTestAnswers };
 }
 
 /**

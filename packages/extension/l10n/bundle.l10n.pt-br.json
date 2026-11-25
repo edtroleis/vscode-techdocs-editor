@@ -678,5 +678,12 @@
   "Only who you invite sees it.": "Só quem você convidar vê.",
   "Public": "Público",
   "Anyone on the internet sees it.": "Qualquer pessoa na internet vê.",
-  "Who can see it": "Quem pode ver"
+  "Who can see it": "Quem pode ver",
+  "Install Git": "Instalar o Git",
+  "Git is needed to bring the documentation to this computer. Install it and open VS Code again.": "É preciso o Git para trazer a documentação para este computador. Instale e abra o VS Code de novo.",
+  "{0} already exists. Choose another directory.": "{0} já existe. Escolha outro diretório.",
+  "Choose another directory": "Escolher outro diretório",
+  "The documentation comes to this computer, in {0}. You edit it here and send it to GitHub when you want.": "A documentação vem para este computador, em {0}. Você edita aqui e envia ao GitHub quando quiser.",
+  "Bring it": "Trazer",
+  "Bring it here": "Trazer para cá"
 }

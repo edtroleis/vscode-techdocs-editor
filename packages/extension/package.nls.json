@@ -119,5 +119,6 @@
   "command.visualKeepKey": "Visual editor shortcut",
   "command.templateOptions": "Template options",
   "command.send": "Send changes to the repository",
-  "view.envio": "Send"
+  "view.envio": "Send",
+  "config.clone.folder": "Where **Open documentation from GitHub** brings the repositories (`~` is your home directory)."
 }
