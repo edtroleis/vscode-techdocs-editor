@@ -17,6 +17,7 @@ import { SendService } from './send/sendService';
 import { SendView } from './send/sendView';
 import { RepoCheck } from './repoCheck';
 import { AttachmentOptions } from './attachments';
+import { UnusedAttachments } from './unusedAttachments';
 import { PASTE_KIND, PasteAsMarkdown } from './pasteMarkdown';
 import { CentralTemplates } from './templates/centralTemplates';
 import { NewPageCommand } from './templates/newPage';
@@ -59,6 +60,8 @@ export function activate(context: vscode.ExtensionContext) {
   const repoCheck = new RepoCheck(sites, lint, newSite, proposals);
   const checkView = new CheckView(repoCheck);
   const catalogOptions = new CatalogOptions(repoCheck);
+  const unusedAttachments = new UnusedAttachments(repoCheck, sites);
+  context.subscriptions.push(unusedAttachments);
   const templateOptions = new TemplateOptions(central, repoCheck);
   const preview = new SitePreview(context.extensionUri, newSite);
   newSite.usePreview(preview);
@@ -226,7 +229,7 @@ export function activate(context: vscode.ExtensionContext) {
     ),
   );
   // Usado pelos testes de integração (test/vscode)
-  return { useTestTransport, send, clone, provider, treeActions, sites, lint, docs, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, settingsView, prepare, preview, useTestSiteChoice, useTestSitePick, useTestAnswers };
+  return { useTestTransport, send, clone, provider, treeActions, sites, lint, docs, newPage, newSite, repoCheck, checkView, central, catalogOptions, templateOptions, settingsView, unusedAttachments, prepare, preview, useTestSiteChoice, useTestSitePick, useTestAnswers };
 }
 
 /**

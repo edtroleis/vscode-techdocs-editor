@@ -579,6 +579,8 @@
   "Use a number of MB greater than zero.": "Use um número de MB maior que zero.",
   "{0}: not accepted. Executables, scripts and .md never go in (the rest was saved).": "{0}: não aceito. Executáveis, scripts e .md nunca entram (o resto foi gravado).",
   "Attachments no page uses": "Anexos que nenhuma página usa",
-  "{0} deleted.": "{0} apagado.",
-  "No page uses {0}: delete it?": "Nenhuma página usa {0}: apagar?"
+  "{0} deleted.": "{0} excluído.",
+  "No page uses {0}: delete it?": "Nenhuma página usa {0}: excluir?",
+  "Keep": "Manter",
+  "{0} is no longer used by any page. Delete it?": "Nenhuma página usa mais {0}. Excluir?"
 }

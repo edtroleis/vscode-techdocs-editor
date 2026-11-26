@@ -69,6 +69,7 @@ type Api = {
   catalogOptions: CatalogOptions;
   templateOptions: import('../../../src/templates/templateOptions').TemplateOptions;
   settingsView: import('../../../src/settingsView').SettingsView;
+  unusedAttachments: import('../../../src/unusedAttachments').UnusedAttachments;
   prepare: PrepareContext;
   preview: SitePreview;
   useTestSiteChoice: typeof useTestSiteChoice;
@@ -1726,6 +1727,61 @@ export function defineTests() {
         ok(await has('check-att/docs/images/print.png'), 'print de volta');
       } finally {
         await remove('check-att');
+      }
+    });
+
+    test('anexo que sai da página ao salvar (spec 07): pergunta se apaga, com Desfazer; Manter não pergunta de novo; usado em outra página, nada', async () => {
+      const { unusedAttachments, sites } = await api();
+      await sites.ready;
+      const put = (path: string, data: Uint8Array) => vscode.workspace.fs.writeFile(file(path), data);
+      const text = (t: string) => new TextEncoder().encode(t);
+      const has = (path: string) => vscode.workspace.fs.stat(file(path)).then(() => true, () => false);
+      await put('wiki/docs/assets/solto.pdf', new Uint8Array([1, 2]));
+      await put('wiki/docs/assets/comum.pdf', new Uint8Array([3]));
+      await put('wiki/docs/outra-anexo.md', text('# Outra\n\n[Comum](assets/comum.pdf)\n'));
+      const linked = '# Anexos\n\n[Solto](assets/solto.pdf) e [Comum](assets/comum.pdf)\n';
+      await put('wiki/docs/anexos-teste.md', text(linked));
+      const asked: string[] = [];
+      let answers: (string | undefined)[] = [];
+      unusedAttachments.useTestAnswers(async (_kind, message) => {
+        asked.push(message);
+        return answers.shift();
+      });
+      const document = await vscode.workspace.openTextDocument(file('wiki/docs/anexos-teste.md'));
+      const save = async (next: string) => {
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(document.uri, new vscode.Range(0, 0, document.lineCount, 0), next);
+        await vscode.workspace.applyEdit(edit);
+        await document.save();
+        await unusedAttachments.settled();
+      };
+      try {
+        // Os dois links saem: só o solto é perguntado (o comum está em outra página); Apagar, depois Desfazer
+        answers = ['Delete', 'Undo'];
+        await save('# Anexos\n\nSem anexos.\n');
+        equal(asked.join(' | '), 'solto.pdf is no longer used by any page. Delete it? | solto.pdf deleted.', 'perguntas');
+        equal(Array.from(await vscode.workspace.fs.readFile(file('wiki/docs/assets/solto.pdf'))).join(), '1,2', 'Desfazer devolve os bytes');
+        // Apagar sem desfazer
+        asked.length = 0;
+        await save(linked);
+        answers = ['Delete', undefined];
+        await save('# Anexos\n\nSem anexos.\n');
+        ok(!(await has('wiki/docs/assets/solto.pdf')), 'apagado');
+        ok(await has('wiki/docs/assets/comum.pdf'), 'o usado por outra página fica');
+        // Manter: não pergunta de novo
+        await put('wiki/docs/assets/solto.pdf', new Uint8Array([1, 2]));
+        await save(linked);
+        asked.length = 0;
+        answers = ['Keep'];
+        await save('# Anexos\n\nSem anexos.\n');
+        await save(linked);
+        await save('# Anexos\n\nSem anexos de novo.\n');
+        equal(asked.length, 1, `perguntou de novo: ${asked.join(' | ')}`);
+        ok(await has('wiki/docs/assets/solto.pdf'), 'mantido');
+      } finally {
+        unusedAttachments.useTestAnswers(undefined);
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        for (const path of ['wiki/docs/anexos-teste.md', 'wiki/docs/outra-anexo.md', 'wiki/docs/assets/solto.pdf', 'wiki/docs/assets/comum.pdf']) await remove(path);
       }
     });
 

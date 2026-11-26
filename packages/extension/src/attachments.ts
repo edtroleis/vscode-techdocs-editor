@@ -95,6 +95,10 @@ export class AttachmentRefused extends Error {
 
 export type SavedAttachment = { kind: 'image' | 'file'; link: string; text: string };
 
+const attachedEmitter = new vscode.EventEmitter<{ page: vscode.Uri; file: vscode.Uri }>();
+/** Arquivo gravado para a página (conta como citado por ela, mesmo antes de salvar: unusedAttachments.ts). */
+export const onAttached = attachedEmitter.event;
+
 const sameBytes = (a: Uint8Array, b: Uint8Array) => a.byteLength === b.byteLength && a.every((byte, i) => byte === b[i]);
 
 /**
@@ -141,6 +145,7 @@ export async function saveAttachment(
     );
     if (existing && !sameBytes(existing, data)) continue;
     if (!existing) await vscode.workspace.fs.writeFile(uri, data);
+    attachedEmitter.fire({ page, file: uri });
     return { kind, link, text: kind === 'image' ? name.replace(/\.[^.]*$/, '') : attachmentLinkText(name, data.byteLength, vscode.env.language) };
   }
 }
