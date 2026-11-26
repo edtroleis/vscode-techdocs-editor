@@ -129,6 +129,11 @@ export const test = base.extend<Options & { vscode: VsCode }>({
       ...(recordDir ? { recordVideo: { dir: recordDir, size: windowSize } } : {}),
     });
     const page = await app.firstWindow();
+    // A janela de teste nem sempre tem o foco do sistema (outra janela na frente, tela bloqueada): sem ele, o VS Code
+    // não passa o foco ao editor visual e o que se digita se perde. O Chromium simula a janela focada, como o
+    // Playwright faz nas páginas dele
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => undefined);
     // E2E_LOG=1: mostra as mensagens da extensão (host e webview) na saída do teste
     if (process.env.E2E_LOG) {
       page.on('console', message => {
