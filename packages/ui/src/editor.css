@@ -886,5 +886,9 @@
 
 /* Anexo (spec 07): link relativo para um arquivo que não é página (PDF, planilha…) ganha o clipe na frente */
 .milkdown .ProseMirror a[href]:not([href$='.md']):not([href*='.md#']):not([href$='/']):not([href*='://']):not([href^='mailto:']):not([href^='#'])::before {
-  content: '📎 ';
+  /* inline-block: o sublinhado do link não passa pelo clipe */
+  content: '📎';
+  display: inline-block;
+  margin-right: 0.25em;
+  text-decoration: none;
 }

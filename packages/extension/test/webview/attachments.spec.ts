@@ -68,3 +68,20 @@ test('"/anexo" acha o item e abre o seletor; colchetes no nome não quebram o li
   await expect.poll(() => lastEdit(page)).toContain('[Plano \\[v2\\] (XLSX, 3 B)](assets/plano-v2.xlsx)');
   expect(await lastEdit(page)).not.toContain('/anexo');
 });
+
+test('o texto do link é editável: trocar o nome inteiro ou apagar uma letra mantém o link; o clipe fica fora do sublinhado', async ({ page }) => {
+  await openWebview(page, PAGE);
+  const message = await attach(page, byInsertMenu(page));
+  await fromHost(page, { type: 'attached', id: message.id, kind: 'file', link: 'assets/manual-do-cliente.pdf', text: 'Manual do Cliente (PDF, 2,3 MB)' });
+  const link = page.locator('.milkdown .ProseMirror a[href="assets/manual-do-cliente.pdf"]');
+  await expect(link).toHaveCount(1);
+  const before = await link.evaluate(a => getComputedStyle(a, '::before'));
+  expect(before.display).toBe('inline-block');
+  // Trocar o nome inteiro
+  await link.selectText();
+  await page.keyboard.type('Contrato assinado');
+  await expect.poll(() => lastEdit(page)).toContain('[Contrato assinado](assets/manual-do-cliente.pdf)');
+  // Apagar uma letra
+  await page.keyboard.press('Backspace');
+  await expect.poll(() => lastEdit(page)).toContain('[Contrato assinad](assets/manual-do-cliente.pdf)');
+});
