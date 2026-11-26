@@ -23,6 +23,15 @@ plus their changes.
 It is the same editor as the [TechDocs editor plugin for Backstage](https://github.com/edtroleis/backstage-plugin-techdocs-editor),
 so pages edited in the portal and in VS Code come out the same.
 
+### The same task, without and with the extension
+
+A new page in the Guides section, with steps and an image, in the site menu and sent for review.
+
+| Without the extension | With the extension |
+|---|---|
+| ![Without the extension: create the file in the right folder, write Markdown and the image path by hand, add the page to the nav of mkdocs.yml with the right indentation, then branch, commit and push in the terminal and open the pull request on GitHub](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/without-extension.gif) | ![With the extension: a new page right in the section of the menu, written like a document with a numbered list and an image from the computer, then one Send button for the branch, the commit and the pull request](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/with-extension.gif) |
+| Markdown, image paths, the `nav` of `mkdocs.yml` and git, all by hand | The menu, the visual editor and **Send** |
+
 ### Watch it in 2 minutes
 
 [![The walkthrough: install from the Marketplace, the documentation tree, a blank page, a page from a template, the visual editor, a Mermaid diagram and fixing formatting](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/walkthrough.jpg)](https://github.com/edtroleis/vscode-techdocs-editor/blob/main/docs/media/walkthrough.mp4)
@@ -83,13 +92,15 @@ Mermaid diagram and fixing formatting ([video, MP4](https://github.com/edtroleis
 
 ### Images go where MkDocs expects them
 
-![Insert an image from the computer: it is saved to docs/assets and linked relative to the page](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/images.gif)
+![Insert an image from the computer: it is saved to docs/images with a clean name and linked relative to the page](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/images.gif)
 
 Choose an image from your computer and it is saved to `docs/images/<name>`, with a clean name
 (`Screen Shot (1).PNG` → `screen-shot-1.png`), linked relative to the page. Never a temporary `blob:` address, and
 never larger than you allow (`techdocsEditor.images.maxSizeMB`).
 
 ### Attach PDFs, spreadsheets and other files
+
+![Insert › File… attaches a PDF: copied to docs/assets with a clean name and linked with its type and size](https://raw.githubusercontent.com/edtroleis/vscode-techdocs-editor/main/docs/media/attachments.gif)
 
 **+ Insert** › **File…** (or `/file` in the page) opens the file picker. Each file is copied to `docs/assets/` with a
 clean name and goes into the page where the cursor is, as a link with its name, type and size:

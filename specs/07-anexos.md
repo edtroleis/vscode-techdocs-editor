@@ -93,7 +93,7 @@ Nas configurações do VS Code: `techdocsEditor.attachments.images`, `techdocsEd
 | AX7 | Engrenagem | "Opções dos anexos" na barra de título da seção TechDocs: lista diretório, tamanho máximo e extensões das imagens, e diretório, tamanho máximo e extensões dos anexos, cada um com o valor e a origem (repositório, configurações, padrão); trocar um abre a pergunta certa (caixa de texto validada, ou a lista de extensões com marcação, já com as de fábrica marcadas, mais uma caixa para acrescentar outra; executáveis e `md` não aparecem e são recusados se digitados); "Voltar ao padrão" em cada um; no fim, "Para o time" (diff do `.techdocs-editor.yaml`, depois grava) ou "Só para mim" (configurações do usuário) | ✅ |
 | AX8 | Conferir | Achado `attachment-unused` (aviso): arquivo nos diretórios de imagens e de anexos que nenhum `.md` do site nem o `mkdocs.yml` cita (protege logo, favicon e CSS extra). Ajuste automático apaga os arquivos, com Desfazer | ✅ |
 | AX9 | Navegador | Funciona no vscode.dev: seletor, arrastar, colar e gravar pelo `workspace.fs`, sem APIs de Node | ✅ |
-| AX10 | Documentação | README e README.pt-BR (anexos, diretórios, engrenagem), CHANGELOG, GIF de anexar um PDF; specs 01 (W9) e 02 (LC3, M6) apontam para esta | ⬜ |
+| AX10 | Documentação | README e README.pt-BR (anexos, diretórios, engrenagem), CHANGELOG, GIF de anexar um PDF; specs 01 (W9) e 02 (LC3, M6) apontam para esta | ✅ |
 
 ## Conferir antes de implementar
 

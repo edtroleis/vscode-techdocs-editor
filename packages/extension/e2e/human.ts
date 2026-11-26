@@ -65,6 +65,18 @@ export async function clickLike(page: Page, target: Locator, options: { dblclick
   await page.evaluate(() => document.getElementById('demo-cursor')!.classList.remove('down'));
 }
 
+/** Leva o cursor desenhado até o elemento e para em cima dele, sem clicar. */
+export async function hoverLike(page: Page, target: Locator) {
+  const box = (await target.boundingBox())!;
+  await page.evaluate(({ x, y }) => {
+    const cursor = document.getElementById('demo-cursor')!;
+    cursor.style.left = `${x}px`;
+    cursor.style.top = `${y}px`;
+  }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+  await page.waitForTimeout(600);
+  await target.hover();
+}
+
 /** Arrasta de `from` até `to` com o cursor de demonstração junto, devagar (para os vídeos). */
 export async function dragLike(page: Page, from: Locator, to: Locator) {
   const a = (await from.boundingBox())!;

@@ -35,7 +35,7 @@ const quickInput = (page: Page) => page.locator('.quick-input-widget input');
 
 test.describe('images', () => {
   test.use(scene('images'));
-  test('imagem do computador vai para docs/assets', async ({ vscode: { page, workspace, startedAt } }) => {
+  test('imagem do computador vai para docs/images', async ({ vscode: { page, workspace, startedAt } }) => {
     const png = readFileSync(join(workspace, 'wiki/docs/assets/diagrama.png'));
     await overlay(page);
     await openFile(page, 'wiki/docs/guias/primeiros-passos.md');
@@ -56,11 +56,39 @@ test.describe('images', () => {
     await clickLike(page, block.locator('label.uploader'));
     await (await chooser).setFiles({ name: 'Architecture overview.png', mimeType: 'image/png', buffer: png });
     await expect(block.locator('img')).toBeVisible();
-    await caption(page, 'Saved to docs/assets, linked relative to the page');
+    await caption(page, 'Saved to docs/images with a clean name, linked relative to the page');
     await pause(page, 1_000);
     await runCommand(page, 'TechDocs: Open as Markdown text');
     await pause(page, 2_500);
     // Salvo: com alteração pendente, o VS Code pergunta antes de fechar e o vídeo não termina
+    await page.keyboard.press('Control+S');
+    await pause(page, 500);
+  });
+});
+
+test.describe('attachments', () => {
+  test.use(scene('attachments'));
+  test('Inserir › Arquivo… anexa um PDF em docs/assets', async ({ vscode: { page, startedAt } }) => {
+    await overlay(page);
+    await openFile(page, 'wiki/docs/guias/primeiros-passos.md');
+    await openVisualCommand(page);
+    await prose(page).waitFor({ timeout: 30_000 });
+    markStart('attachments', startedAt);
+    await caption(page, 'Insert › File… attaches a PDF, a spreadsheet or any accepted file');
+    await clickLike(page, prose(page).locator('> p').first());
+    await cursorToEnd(page, prose(page).locator('> p').first());
+    await page.keyboard.press('Enter');
+    await typeSlowly(page, 'The signed contract is here: ');
+    await clickLike(page, visual(page).locator('.top-bar-item[title="Insert"]'));
+    await pause(page, 700);
+    const chooser = page.waitForEvent('filechooser');
+    await clickLike(page, visual(page).getByRole('menuitem', { name: 'File…' }));
+    await (await chooser).setFiles({ name: 'Customer manual.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(1_250_000, 1) });
+    await expect(visual(page).locator('.ProseMirror a[href$="customer-manual.pdf"]')).toBeVisible();
+    await caption(page, 'Copied to docs/assets with a clean name, linked with its type and size');
+    await pause(page, 1_500);
+    await runCommand(page, 'TechDocs: Open as Markdown text');
+    await pause(page, 2_500);
     await page.keyboard.press('Control+S');
     await pause(page, 500);
   });

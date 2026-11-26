@@ -20,6 +20,8 @@ execFileSync('npx', ['playwright', 'test', '-c', 'packages/extension/e2e/videos/
 });
 
 const starts = JSON.parse(readFileSync(join(raw, 'starts.json'), 'utf8'));
+// Cenas longas (o "sem a extensão" tem 40 s de digitação): menos quadros e cores, para o GIF ficar abaixo de 4 MB
+const LONG = { 'without-extension': { fps: 5, width: 900, colors: 80 } };
 mkdirSync(out, { recursive: true });
 for (const name of readdirSync(raw).filter(entry => statSync(join(raw, entry)).isDirectory())) {
   const [video] = readdirSync(join(raw, name)).filter(file => file.endsWith('.webm'));
@@ -30,7 +32,7 @@ for (const name of readdirSync(raw).filter(entry => statSync(join(raw, entry)).i
     '-y', '-loglevel', 'error',
     '-ss', String(Math.max(0, (starts[name] ?? 0) - 0.3)),
     '-i', join(raw, name, video),
-    '-vf', 'fps=10,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle',
+    '-vf', `fps=${LONG[name]?.fps ?? 10},scale=${LONG[name]?.width ?? 960}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=${LONG[name]?.colors ?? 128}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle`,
     '-loop', '0',
     gif,
   ]);
