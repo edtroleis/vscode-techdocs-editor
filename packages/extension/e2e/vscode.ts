@@ -49,7 +49,7 @@ export const test = base.extend<Options & { vscode: VsCode }>({
   locale: [undefined, { option: true }],
   devExtension: [true, { option: true }],
   vscode: async ({ theme, settings, recordDir, windowSize, folder, locale, devExtension }, use, testInfo) => {
-    const executablePath = await downloadAndUnzipVSCode({ cachePath: join(ROOT, '.vscode-test') });
+    const executablePath = await downloadAndUnzipVSCode({ cachePath: join(ROOT, '.vscode-test'), version: process.env.VSCODE_VERSION ?? 'stable' });
     const workspace: string = folder ?? createWorkspace();
     const userData = mkdtempSync(join(tmpdir(), 'techdocs-editor-user-'));
     mkdirSync(join(userData, 'User'), { recursive: true });

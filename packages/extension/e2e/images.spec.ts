@@ -1,6 +1,6 @@
 /**
  * Imagem pelo editor visual no VS Code de verdade (spec 01, W9; spec 02, LC3): o botão do bloco de
- * imagem, o arquivo gravado em <docs>/assets/ e o link relativo à página no Markdown.
+ * imagem, o arquivo gravado em <docs>/images/ com o nome limpo (spec 07) e o link relativo à página no Markdown.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -8,7 +8,7 @@ import { cursorAtEndOfFirstParagraph, expect, openVisual, save, test, visual } f
 
 const PAGE = 'wiki/docs/guias/primeiros-passos.md';
 
-test('"Imagem" no menu /, escolher o arquivo: grava em docs/assets e mostra a imagem', async ({
+test('"Imagem" no menu /, escolher o arquivo: grava em docs/images e mostra a imagem', async ({
   vscode: { page, workspace, file },
 }) => {
   const png = readFileSync(join(workspace, 'wiki/docs/assets/diagrama.png'));
@@ -34,10 +34,9 @@ test('"Imagem" no menu /, escolher o arquivo: grava em docs/assets e mostra a im
       await save(page);
       return file(PAGE);
     })
-    .toMatch(/\n!\[Arquitetura Nova\]\(\.\.\/assets\/\d+-arquitetura-nova\.png\)\n/);
+    .toMatch(/\n!\[Arquitetura Nova\]\(\.\.\/images\/arquitetura-nova\.png\)\n/);
   const text = file(PAGE);
-  const [, name] = /\.\.\/assets\/(\d+-arquitetura-nova\.png)/.exec(text)!;
-  const saved = join(workspace, 'wiki/docs/assets', name);
+  const saved = join(workspace, 'wiki/docs/images/arquitetura-nova.png');
   expect(existsSync(saved)).toBe(true);
   expect(readFileSync(saved).equals(png)).toBe(true);
   expect(text).not.toContain('blob:');
