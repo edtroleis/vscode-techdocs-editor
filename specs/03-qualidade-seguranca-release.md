@@ -143,6 +143,17 @@ entrega e abre cada página como uma pessoa abriria. Só roda quando pedido: nã
 | Documentação | README em inglês + `README.pt-BR.md`, GIFs gravados pelos testes (como o `yarn record:videos` do plugin), seção de segurança (escopos, OAuth Apps da organização) |
 | Licença | Apache-2.0, `THIRD_PARTY_NOTICES.md` para o markdownlint empacotado |
 
+### Open VSX (0.26)
+
+Até a 0.22 o passo Open VSX do workflow é pulado (sem o segredo `OVSX_PAT`): quem usa VSCodium, Gitpod, Eclipse Che
+ou Dev Spaces não recebe as versões. Na 0.26:
+
+- O dono do projeto cria a conta em open-vsx.org (login pelo GitHub), assina o acordo de publicação da Eclipse,
+  cria o token e o cadastra como `OVSX_PAT` no ambiente `release` do GitHub.
+- Reservar o namespace `edtroleis` (`npx ovsx create-namespace edtroleis`) e pedir a verificação dele.
+- A release publica no Open VSX com o mesmo `.vsix`; a versão aparece em open-vsx.org e instala no VSCodium.
+- README: o link do Open VSX ao lado do Marketplace.
+
 ### Versão de teste antes de cada release
 
 Antes de cada release no GitHub (antes da tag `v*`), gerar um `.vsix` de teste e instalar no VS Code do dono do
