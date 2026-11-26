@@ -99,7 +99,8 @@ file again is reused; another file with the same name gets `-2`. In the visual e
 Executables, scripts and `.md` never go in. Anything outside the accepted types or larger than the limit is refused
 with the reason and **Open Settings**. In **TechDocs Settings** › **Images and attachments** you set the directory,
 the maximum size and the types of images and of other attachments (types as text, separated by commas; `*` accepts
-any), **For the team** or **Just for me**. The **Check** points out attachments no page (nor `mkdocs.yml`) uses, with
+any), **For the team** or **Just for me**. When you save a page that no longer links an attachment no other page
+uses, you are asked **Delete** or **Keep**; nothing is deleted on its own. The **Check** points out attachments no page (nor `mkdocs.yml`) uses, with
 a fix that deletes them and **Undo**.
 
 ### Paste from Confluence, Outline and the web

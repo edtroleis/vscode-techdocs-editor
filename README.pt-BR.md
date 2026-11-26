@@ -99,7 +99,8 @@ mesmo arquivo de novo é reaproveitado; outro arquivo com o mesmo nome ganha `-2
 Executáveis, scripts e `.md` nunca entram. O que estiver fora dos tipos aceitos ou passar do limite é recusado com o
 motivo e **Abrir Configurações**. Em **Configurações do TechDocs** › **Imagens e anexos** você define o diretório, o
 tamanho máximo e os tipos das imagens e dos outros anexos (tipos em texto, separados por vírgula; `*` aceita
-qualquer um), **Para o time** ou **Só para mim**. A **Verificação** aponta os anexos que nenhuma página (nem o
+qualquer um), **Para o time** ou **Só para mim**. Ao salvar uma página que não cita mais um anexo que nenhuma outra
+página usa, vem a pergunta **Excluir** ou **Manter**; nada sai sozinho. A **Verificação** aponta os anexos que nenhuma página (nem o
 `mkdocs.yml`) usa, com o ajuste que apaga e **Desfazer**.
 
 ### Colar do Confluence, do Outline e da web

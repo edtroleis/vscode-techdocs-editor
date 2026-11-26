@@ -6,6 +6,24 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **+ Insert › File…** (and `/file` in the page) attaches PDFs, spreadsheets and other files: copied to `docs/assets/`
+  with a clean name and linked where the cursor is, with name, type and size. Executables, scripts and `.md` never go
+  in; other refusals say why and offer **Open Settings**.
+- **TechDocs Settings › Images and attachments**: directory, maximum size and types (free text, `*` for any) of
+  images and of other attachments, for the team (`attachments:` in `.techdocs-editor.yaml`) or just for you.
+- Saving a page that no longer links an attachment no other page uses asks **Delete** or **Keep** (with **Undo**
+  after deleting; **Keep** does not ask again about that file).
+- The check points out attachments no page nor `mkdocs.yml` uses, with a fix that deletes them and **Undo** (not in
+  the send screen).
+
+### Changed
+
+- Images go to `docs/images/` with a clean name (no timestamp in front); the same image again is reused. Images
+  already in `docs/assets/` stay where they are.
+- An image pasted from another tool that comes back as a web page (a login) is no longer saved.
+
 ## [0.21.0] - 2026-11-25
 
 ### Changed
