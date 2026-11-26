@@ -6,6 +6,8 @@ All notable changes to the TechDocs Editor extension. The format follows
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-25
+
 ### Added
 
 - **+ Insert › File…** (and `/file` in the page) attaches PDFs, spreadsheets and other files: copied to `docs/assets/`
